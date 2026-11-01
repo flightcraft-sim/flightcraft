@@ -13,3 +13,8 @@ workspace = true
 
 [dependencies]
 flightcraft-sim.workspace = true
+eframe.workspace = true
+egui-wgpu.workspace = true
+wgpu.workspace = true
+bytemuck.workspace = true
+glam.workspace = true

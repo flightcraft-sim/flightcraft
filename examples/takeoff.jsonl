@@ -1,0 +1,5 @@
+# A takeoff and climb-out in the Corvid, for the desktop app: flightcraft --script examples/takeoff.jsonl
+{"at_s": 0.0, "command": "sim.set_controls", "input": {"throttle": 1.0, "brake": 0.0, "flaps": 0.0, "elevator": 0.0}}
+{"at_s": 9.0, "command": "sim.set_controls", "input": {"elevator": 0.3}}
+{"at_s": 12.0, "command": "sim.set_controls", "input": {"elevator": 0.15}}
+{"at_s": 20.0, "command": "sim.set_controls", "input": {"elevator": 0.08}}

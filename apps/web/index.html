@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FlightCraft · Corvid</title>
+    <link data-trunk rel="rust" data-bin="flightcraft-web">
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; color-scheme: dark; }
+      canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      #loading { position: absolute; top: 45%; width: 100%; text-align: center; font: 16px system-ui; }
+    </style>
+  </head>
+  <body>
+    <div id="loading" role="status">Starting FlightCraft…</div>
+    <canvas id="flightcraft" aria-label="FlightCraft flight simulator"></canvas>
+  </body>
+</html>

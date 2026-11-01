@@ -14,3 +14,14 @@ workspace = true
 
 [dependencies]
 flightcraft-ui.workspace = true
+eframe.workspace = true
+
+[dev-dependencies]
+egui-wgpu.workspace = true
+wgpu.workspace = true
+pollster.workspace = true
+image.workspace = true
+
+[[bin]]
+name = "flightcraft"
+path = "src/main.rs"

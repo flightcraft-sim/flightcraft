@@ -1,0 +1,348 @@
+use crate::{Palette, mesh};
+use eframe::egui;
+use egui_wgpu::{CallbackResources, CallbackTrait, ScreenDescriptor};
+use wgpu::util::DeviceExt;
+
+const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct Uniform {
+    pub view_projection: [[f32; 4]; 4],
+    pub aircraft: [[f32; 4]; 4],
+    pub sky_top: [f32; 4],
+    pub sky_horizon: [f32; 4],
+    pub ground: [f32; 4],
+    pub grid: [f32; 4],
+    pub eye: [f32; 4],
+}
+
+pub(crate) struct SceneCallback {
+    pub uniform: Uniform,
+    pub size: [f32; 2],
+    pub show_aircraft: bool,
+}
+
+struct Targets {
+    size: [u32; 2],
+    color: wgpu::TextureView,
+    depth: wgpu::TextureView,
+    bind: wgpu::BindGroup,
+}
+
+struct Gpu {
+    sky: wgpu::RenderPipeline,
+    scene: wgpu::RenderPipeline,
+    blit: wgpu::RenderPipeline,
+    vertices: wgpu::Buffer,
+    vertex_count: u32,
+    world_count: u32,
+    uniform: wgpu::Buffer,
+    uniform_bind: wgpu::BindGroup,
+    texture_layout: wgpu::BindGroupLayout,
+    targets: Targets,
+}
+
+/// Install resources in egui's callback store; there is one scene per viewport.
+pub fn initialize(state: &egui_wgpu::RenderState, palette: Palette) {
+    state
+        .renderer
+        .write()
+        .callback_resources
+        .insert(Gpu::new(&state.device, state.target_format, palette));
+}
+
+fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout) -> Targets {
+    let [width, height] = size;
+    let descriptor = |format, usage| wgpu::TextureDescriptor {
+        label: Some("flight scene target"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage,
+        view_formats: &[],
+    };
+    let color = device
+        .create_texture(&descriptor(
+            COLOR_FORMAT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        ))
+        .create_view(&Default::default());
+    let depth = device
+        .create_texture(&descriptor(DEPTH_FORMAT, wgpu::TextureUsages::RENDER_ATTACHMENT))
+        .create_view(&Default::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("scene sampler"),
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+    });
+    let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("scene image"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&color),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&sampler),
+            },
+        ],
+    });
+    Targets {
+        size,
+        color,
+        depth,
+        bind,
+    }
+}
+
+impl Gpu {
+    fn new(device: &wgpu::Device, output: wgpu::TextureFormat, palette: Palette) -> Self {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("flight scene WGSL"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("scene.wgsl").into()),
+        });
+        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("scene uniforms"),
+            size: std::mem::size_of::<Uniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("scene uniform layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<Uniform>() as u64),
+                },
+                count: None,
+            }],
+        });
+        let uniform_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("scene uniform bind"),
+            layout: &uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform.as_entire_binding(),
+            }],
+        });
+        let scene_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("scene pipeline layout"),
+            bind_group_layouts: &[&uniform_layout],
+            push_constant_ranges: &[],
+        });
+        let vertex_attributes =
+            wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32];
+        let vertex_layout = wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<mesh::Vertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &vertex_attributes,
+        };
+        let pipeline = |label, vertex, fragment, buffers: &[wgpu::VertexBufferLayout<'_>], sky: bool| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&scene_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some(vertex),
+                    compilation_options: Default::default(),
+                    buffers,
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some(fragment),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: COLOR_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: None,
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: !sky,
+                    depth_compare: if sky {
+                        wgpu::CompareFunction::Always
+                    } else {
+                        wgpu::CompareFunction::LessEqual
+                    },
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: Default::default(),
+                multiview: None,
+                cache: None,
+            })
+        };
+        let sky = pipeline("sky gradient", "sky_vertex", "sky_fragment", &[], true);
+        let scene = pipeline(
+            "terrain and aircraft",
+            "scene_vertex",
+            "scene_fragment",
+            &[vertex_layout],
+            false,
+        );
+        let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("scene texture layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let blit_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("scene composite WGSL"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("composite.wgsl").into()),
+        });
+        let blit_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("composite layout"),
+            bind_group_layouts: &[&texture_layout],
+            push_constant_ranges: &[],
+        });
+        let blit = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("scene composite"),
+            layout: Some(&blit_layout),
+            vertex: wgpu::VertexState {
+                module: &blit_shader,
+                entry_point: Some("vertex"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &blit_shader,
+                entry_point: Some("fragment"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: output,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            multiview: None,
+            cache: None,
+        });
+        let (mesh, world_count) = mesh::build(palette);
+        let vertex_count = mesh.len() as u32;
+        let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("original field and Corvid mesh"),
+            contents: bytemuck::cast_slice(&mesh),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let targets = targets(device, [1, 1], &texture_layout);
+        Self {
+            sky,
+            scene,
+            blit,
+            vertices,
+            vertex_count,
+            world_count,
+            uniform,
+            uniform_bind,
+            texture_layout,
+            targets,
+        }
+    }
+}
+
+impl CallbackTrait for SceneCallback {
+    fn prepare(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        screen: &ScreenDescriptor,
+        encoder: &mut wgpu::CommandEncoder,
+        resources: &mut CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        let Some(gpu) = resources.get_mut::<Gpu>() else {
+            return Vec::new();
+        };
+        let max_dimension = device.limits().max_texture_dimension_2d.min(4096) as f32;
+        let size = self
+            .size
+            .map(|v| (v * screen.pixels_per_point).round().clamp(1.0, max_dimension) as u32);
+        if gpu.targets.size != size {
+            gpu.targets = targets(device, size, &gpu.texture_layout);
+        }
+        queue.write_buffer(&gpu.uniform, 0, bytemuck::bytes_of(&self.uniform));
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("flight scene"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &gpu.targets.color,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &gpu.targets.depth,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        pass.set_bind_group(0, &gpu.uniform_bind, &[]);
+        pass.set_pipeline(&gpu.sky);
+        pass.draw(0..3, 0..1);
+        pass.set_pipeline(&gpu.scene);
+        pass.set_vertex_buffer(0, gpu.vertices.slice(..));
+        let count = if self.show_aircraft {
+            gpu.vertex_count
+        } else {
+            gpu.world_count
+        };
+        pass.draw(0..count, 0..1);
+        Vec::new()
+    }
+
+    fn paint(
+        &self,
+        _info: egui::PaintCallbackInfo,
+        pass: &mut wgpu::RenderPass<'static>,
+        resources: &CallbackResources,
+    ) {
+        if let Some(gpu) = resources.get::<Gpu>() {
+            pass.set_pipeline(&gpu.blit);
+            pass.set_bind_group(0, &gpu.targets.bind, &[]);
+            pass.draw(0..3, 0..1);
+        }
+    }
+}
