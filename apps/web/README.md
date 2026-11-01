@@ -64,3 +64,10 @@ On Flatpak installations, replace `google-chrome` with `flatpak run com.google.C
 Inspect the screenshot for the scene and instruments, and inspect stderr for app errors. For a
 takeoff capture, add `?script=takeoff.jsonl` and allow more time; GPU initialization and headless
 animation scheduling can require wall time in addition to a virtual-time budget.
+
+## Choosing the GPU path
+
+The page uses WebGPU where the browser has it and WebGL 2 otherwise. Add `?gpu=webgl2` to force
+WebGL 2 (a fallback if WebGPU misbehaves on a machine), or `?gpu=webgpu` to allow WebGPU only. The
+status bar shows which one is drawing. `scripts/web-smoke.sh` loads the page both ways in headless
+Chrome and fails on any shader or GPU error; CI runs it before publishing.

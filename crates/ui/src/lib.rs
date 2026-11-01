@@ -73,6 +73,8 @@ pub struct FlightCraftApp {
     paused: bool,
     last_time: Option<f64>,
     error: Option<String>,
+    /// The GPU path drawing the app, for the status bar.
+    renderer: &'static str,
     settings: bool,
     compact_panel: bool,
     slip_ball: instruments::SlipBall,
@@ -101,6 +103,16 @@ impl FlightCraftApp {
             .as_ref()
             .ok_or_else(|| std::io::Error::other("FlightCraft needs the wgpu renderer"))?;
         flightcraft_render::initialize(render_state, theme::scene());
+        // Shown in the status bar: which GPU path is drawing matters for every graphics bug report.
+        let renderer = match render_state.adapter.get_info().backend {
+            eframe::wgpu::Backend::BrowserWebGpu => "WebGPU",
+            eframe::wgpu::Backend::Gl if cfg!(target_arch = "wasm32") => "WebGL 2",
+            eframe::wgpu::Backend::Gl => "OpenGL",
+            eframe::wgpu::Backend::Vulkan => "Vulkan",
+            eframe::wgpu::Backend::Metal => "Metal",
+            eframe::wgpu::Backend::Dx12 => "Direct3D 12",
+            eframe::wgpu::Backend::Noop => "no GPU",
+        };
         let stored = cc.storage.and_then(|s| s.get_string(KEYMAP_STORAGE));
         let (keymap, error) = match stored {
             Some(json) => match Keymap::from_json(&json) {
@@ -129,6 +141,7 @@ impl FlightCraftApp {
             paused,
             last_time: None,
             error,
+            renderer,
             settings: false,
             compact_panel: cc
                 .storage
@@ -261,6 +274,14 @@ impl FlightCraftApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             self.screenshot = None;
         }
+    }
+}
+
+impl FlightCraftApp {
+    /// The GPU path drawing the app: "WebGPU", "WebGL 2", "Vulkan", "Metal", and so on.
+    #[must_use]
+    pub fn renderer(&self) -> &'static str {
+        self.renderer
     }
 }
 
@@ -454,6 +475,13 @@ impl eframe::App for FlightCraftApp {
                         } else {
                             theme::MUTED
                         }),
+                    );
+                    ui.separator();
+                    ui.label(
+                        RichText::new(self.renderer)
+                            .monospace()
+                            .size(10.0)
+                            .color(theme::MUTED),
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(

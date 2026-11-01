@@ -28,12 +28,12 @@ async fn start() -> Result<(), wasm_bindgen::JsValue> {
     runner
         .start(
             canvas,
-            eframe::WebOptions::default(),
+            web_options()?,
             Box::new(move |cc| {
-                Ok(Box::new(flightcraft_ui::FlightCraftApp::new(
-                    cc,
-                    flightcraft_ui::AppOptions { script },
-                )?))
+                let app = flightcraft_ui::FlightCraftApp::new(cc, flightcraft_ui::AppOptions { script })?;
+                // Tests and bug reports read this line to know which GPU path ran.
+                web_sys::console::info_1(&format!("FlightCraft renderer: {}", app.renderer()).into());
+                Ok(Box::new(app))
             }),
         )
         .await?;
@@ -42,6 +42,26 @@ async fn start() -> Result<(), wasm_bindgen::JsValue> {
     }
     // WebRunner's registered callbacks retain the runner for the lifetime of the page.
     Ok(())
+}
+
+/// `?gpu=webgl2` forces WebGL 2 (a fallback for a machine whose WebGPU misbehaves) and `?gpu=webgpu`
+/// allows WebGPU only (for tests); anything else lets wgpu choose WebGPU with WebGL 2 as fallback.
+#[cfg(target_arch = "wasm32")]
+fn web_options() -> Result<eframe::WebOptions, wasm_bindgen::JsValue> {
+    use eframe::{egui_wgpu, wgpu};
+    let window =
+        web_sys::window().ok_or_else(|| wasm_bindgen::JsValue::from_str("Browser window unavailable"))?;
+    let query = web_sys::UrlSearchParams::new_with_str(&window.location().search()?)?;
+    let backends = match query.get("gpu").as_deref() {
+        Some("webgl2") => wgpu::Backends::GL,
+        Some("webgpu") => wgpu::Backends::BROWSER_WEBGPU,
+        _ => return Ok(eframe::WebOptions::default()),
+    };
+    let mut options = eframe::WebOptions::default();
+    if let egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
+        setup.instance_descriptor.backends = backends;
+    }
+    Ok(options)
 }
 
 /// Fetch relative URLs from the page's static host, or absolute URLs with CORS enabled.

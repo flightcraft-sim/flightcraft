@@ -47,9 +47,11 @@ struct Surface {
 }
 @fragment fn scene_fragment(i: Surface) -> @location(0) vec4<f32> {
     var color = i.color.rgb;
+    // Derivatives must be taken in uniform control flow (WebGPU rejects the shader otherwise), so
+    // the grid's screen-space width is computed for every fragment, before any branch on its kind.
+    let cell = i.world.xz / 25.0;
+    let derivative = max(fwidth(cell), vec2<f32>(0.0001));
     if i.kind == 0.0 {
-        let cell = i.world.xz / 25.0;
-        let derivative = max(fwidth(cell), vec2<f32>(0.0001));
         let grid_distance = abs(fract(cell - 0.5) - 0.5) / derivative;
         let line = 1.0 - min(min(grid_distance.x, grid_distance.y), 1.0);
         let checker = 0.97 + 0.03 * sin(i.world.x * 0.08) * sin(i.world.z * 0.08);
