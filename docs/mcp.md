@@ -68,8 +68,9 @@ For example, after initialization, send these lines to advance two simulated sec
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sim_state","arguments":{}}}
 ```
 
-The current simulation stub advances time only. Flight-quality checks, including the ignored
-traffic-pattern test, await the flight model.
+The JSON command flight test takes off, climbs above 300 m AGL, flies four right turns, lands,
+and stops on the runway. The MCP flight test drives the same pilot through JSON-RPC tool calls
+for takeoff and a climb to 150 m AGL. Both use only JSON observations and command inputs.
 
 Run `cargo xtask schemas` after changing command types to regenerate `schema/commands.json`.
 `cargo xtask schemas --check` detects stale schemas and runs as part of `cargo xtask ci`.
