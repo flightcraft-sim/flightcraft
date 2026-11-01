@@ -9,9 +9,11 @@ core that people, scripts, and AI agents fly the same way.
   takeoff, climb, turns, and landing on one runway in a standard atmosphere with no wind.
 - The desktop app: a 3D chase view, six instruments, keyboard and gamepad controls you can rebind.
   `cargo run -p flightcraft-desktop -- --script examples/takeoff.jsonl` flies a scripted takeoff.
-- The browser build of the same app compiles (`apps/web`); it is not yet tested in a browser.
+- The same app in the browser: `cargo xtask web` writes static files to `dist/` that any static
+  host serves (WebGPU, or WebGL 2 where there is none). `?script=takeoff.jsonl` flies the takeoff.
 - An MCP server (`flightcraft-mcp`, see [docs/mcp.md](docs/mcp.md)): an agent resets, sets controls,
-  steps, and reads the state. A test flies the full traffic pattern through it.
+  steps, and reads the state. With the autopilot holds and `sim.run_until`, a test flies the full
+  traffic pattern in 32 calls.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 
 Not yet: terrain, weather, failures, a second aircraft, or a cockpit view. The plan is in

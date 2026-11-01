@@ -13,9 +13,9 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 4 | 6-DOF rigid body, integrator, gear contact (`sim`) (done) | 2, 3 |
 | 5 | Golden test: scripted takeoff, climb, and landing with a fixed trajectory hash (done) | 4 |
 | 6 | Command registry with schemas and the session (`control`) (done) | 4 |
-| 7 | Renderer: ground, runway, aircraft, chase camera (`render`) | 4 |
-| 8 | Desktop app: keyboard and gamepad, basic instruments, configurable shortcuts, theme tokens | 6, 7 |
-| 9 | Browser build of the same app | 8 |
+| 7 | Renderer: ground, runway, aircraft, chase camera (`render`) (done) | 4 |
+| 8 | Desktop app: keyboard and gamepad, basic instruments, configurable shortcuts, theme tokens (done) | 6, 7 |
+| 9 | Browser build of the same app (done) | 8 |
 
 ## Next: M2 Agent pilot
 
@@ -25,7 +25,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 11 | Agent test: a scripted client flies the traffic pattern and lands (done) | 5, 10 |
 | 12 | MCP bridged to the running app, with screenshots | 8, 10 |
 | 13 | Model accuracy tests (stall, trim, phugoid, damping) (done) | 4 |
-| 13a | Hold commands (altitude, heading, airspeed, climb rate) so an agent flies a pattern in tens of calls, not thousands | 6 |
+| 13a | Hold commands (altitude, heading, airspeed, climb rate) so an agent flies a pattern in tens of calls, not thousands (done: 32 calls) | 6 |
 | 14 | Golden hash checked on macOS, Windows, and wasm in CI | 5, 9 |
 
 ## Later

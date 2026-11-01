@@ -27,6 +27,9 @@ pub fn install(ctx: &egui::Context) {
         fonts.families.insert(family, vec!["Droid Sans".to_owned()]);
     }
     ctx.set_fonts(fonts);
+    // The palette is dark only: never follow the system or browser light theme, or egui falls back
+    // to its default light widgets beside our panels.
+    ctx.set_theme(egui::ThemePreference::Dark);
     let mut v = egui::Visuals::dark();
     v.override_text_color = Some(TEXT);
     v.panel_fill = PANEL;
