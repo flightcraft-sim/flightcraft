@@ -102,9 +102,14 @@ reports, textbook aerodynamics, and the published performance figures used only 
 6. The autopilot mode machine.
 7. Each real type, variant by variant, against its published numbers.
 
-## 8. Open questions
+## 8. Decisions
 
-1. Real type names and manufacturer trademarks in this public repository, and whether exact
-   replicas of avionics interfaces belong here, in separate packages, or nowhere.
-2. Where real-aircraft packages live: in this repository or as separate aircraft packages that the
-   app loads.
+1. **Real aircraft live in separate aircraft packs.** This repository, the engine, stays
+   brand-neutral: no manufacturer names, logos, or type names in its code, assets, or docs. Each real
+   type is its own pack that the app loads, named descriptively, with a note that it is not
+   affiliated with or endorsed by the manufacturer.
+2. **Avionics are behaviour plus a skin.** Every unit's behaviour (buttons, knobs, modes, pages,
+   procedures, and failure logic) is one module with its tests. How it looks is a separate skin
+   drawn on top. Public skins are our own design built on public FAA display conventions; a skin
+   that reproduces a manufacturer's screens exactly is kept private and never published. Both skins
+   run on the same modules, so behaviour is written and tested once.
