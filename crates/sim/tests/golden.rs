@@ -11,6 +11,7 @@ fn wrap(x: f64) -> f64 {
 
 #[test]
 fn runway_pattern() {
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
     let mut sim = Sim::new(&Start::Runway).unwrap();
     let mut phase = 0;
     let mut took_off = false;
@@ -83,26 +84,25 @@ fn runway_pattern() {
         }
         let bank = (wrap(heading - r.heading_rad) * 1.3).clamp(-0.40, 0.40);
         let rho = world::atmosphere(r.altitude_msl_m).density_kg_m3;
-        let desired_cl = 2.0 * aero::MASS_KG * world::GRAVITY_MPS2
-            / (rho * speed.max(26.0) * speed.max(26.0) * aero::WING_AREA_M2 * libm::cos(bank));
+        let desired_cl = 2.0 * 1000.0 * world::GRAVITY_MPS2
+            / (rho * speed.max(26.0) * speed.max(26.0) * 15.0 * libm::cos(bank));
         let trim_alpha = ((desired_cl - 0.25) / 5.0).clamp(-0.05, 0.23);
         let mut pitch = trim_alpha + climb / speed.max(25.0);
         // Feed forward the independently computed drag and climb power; proportional
         // speed feedback corrects transient errors without a persistent speed bias.
-        let target_cl = 2.0 * aero::MASS_KG * world::GRAVITY_MPS2
-            / (rho * target_speed * target_speed * aero::WING_AREA_M2);
+        let target_cl = 2.0 * 1000.0 * world::GRAVITY_MPS2 / (rho * target_speed * target_speed * 15.0);
         let target_alpha = ((target_cl - 0.25) / 5.0).clamp(-0.05, 0.23);
         let drag = 0.5
             * rho
             * target_speed
             * target_speed
-            * aero::WING_AREA_M2
-            * aero::coefficients(target_alpha, 0.0).drag;
-        let needed = drag + aero::MASS_KG * world::GRAVITY_MPS2 * climb / target_speed;
+            * 15.0
+            * aero::coefficients(&aircraft, target_alpha, 0.0).drag;
+        let needed = drag + 1000.0 * world::GRAVITY_MPS2 * climb / target_speed;
         let (mut lo, mut hi) = (0.0, 1.0);
         for _ in 0..24 {
             let mid = (lo + hi) * 0.5;
-            if aero::propulsion(target_speed, mid, rho).0 > needed {
+            if aero::propulsion(&aircraft, target_speed, mid, rho).0 > needed {
                 hi = mid;
             } else {
                 lo = mid;
@@ -121,7 +121,8 @@ fn runway_pattern() {
             throttle = 0.0;
         }
         let controls = Controls {
-            elevator: -aero::coefficients(r.alpha_rad, 0.0).pitch + 2.0 * (pitch - r.pitch_rad) - 0.8 * q,
+            elevator: -aero::coefficients(&aircraft, r.alpha_rad, 0.0).pitch + 2.0 * (pitch - r.pitch_rad)
+                - 0.8 * q,
             aileron: 1.2 * (bank - r.roll_rad) - 0.35 * p,
             rudder: 0.8 * (world::GRAVITY_MPS2 * libm::tan(r.roll_rad) / speed.max(15.0) - rate_yaw)
                 - 0.8 * r.beta_rad,

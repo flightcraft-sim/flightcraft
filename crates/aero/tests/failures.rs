@@ -5,19 +5,22 @@ use flightcraft_aero::{
 
 #[test]
 fn failed_engine_has_no_idle_power_and_windmills() {
-    assert_eq!(propulsion_with_power(0.0, 1.0, 1.225, 0.0), (0.0, 0.0));
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
+    assert_eq!(propulsion_with_power(&aircraft, 0.0, 1.0, 1.225, 0.0), (0.0, 0.0));
     for speed in [10.0, 30.0, 50.0] {
-        let failed = propulsion_with_power(speed, 1.0, 1.225, 0.0);
+        let failed = propulsion_with_power(&aircraft, speed, 1.0, 1.225, 0.0);
         assert!(failed.0 < 0.0 && failed.1 > 0.0);
-        assert_eq!(failed, propulsion_with_power(speed, 0.0, 1.225, 0.0));
+        assert_eq!(failed, propulsion_with_power(&aircraft, speed, 0.0, 1.225, 0.0));
         assert!(
-            propulsion_with_power(speed, 1.0, 1.225, 0.4).0 < propulsion_with_power(speed, 1.0, 1.225, 1.0).0
+            propulsion_with_power(&aircraft, speed, 1.0, 1.225, 0.4).0
+                < propulsion_with_power(&aircraft, speed, 1.0, 1.225, 1.0).0
         );
     }
 }
 
 #[test]
 fn jams_override_demands_before_forces_and_moments() {
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
     let flow = Airflow {
         velocity_body_mps: [35.0, 1.0, 2.0],
         ..Airflow::default()
@@ -38,11 +41,11 @@ fn jams_override_demands_before_forces_and_moments() {
             throttle: 0.7,
         };
         let actual = failures.apply(demanded);
-        let with_failure = forces_with_failures(flow, demanded, 1.225, failures);
-        let explicit = forces(flow, actual, 1.225);
+        let with_failure = forces_with_failures(&aircraft, flow, demanded, 1.225, failures);
+        let explicit = forces(&aircraft, flow, actual, 1.225);
         assert_eq!(with_failure.force_n, explicit.force_n);
         assert_eq!(with_failure.moment_nm, explicit.moment_nm);
-        let healthy = forces(flow, demanded, 1.225);
+        let healthy = forces(&aircraft, flow, demanded, 1.225);
         assert!(with_failure.force_n != healthy.force_n || with_failure.moment_nm != healthy.moment_nm);
         for position in [f64::NAN, f64::INFINITY, -2.0, 2.0] {
             let before = failures;

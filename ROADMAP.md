@@ -26,13 +26,13 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 12 | MCP bridged to the running app, with screenshots (done) | 8, 10 |
 | 13 | Model accuracy tests (stall, trim, phugoid, damping) (done) | 4 |
 | 13a | Hold commands (altitude, heading, airspeed, climb rate) so an agent flies a pattern in tens of calls, not thousands (done: 32 calls) | 6 |
-| 14 | Golden hash checked on macOS and Windows in CI (done); wasm still to add | 5, 9 |
+| 14 | Golden hash checked on macOS, Windows, and wasm in CI (done) | 5, 9 |
 
 ## Later
 
 | # | Item | Depends on |
 |---|---|---|
-| 15 | Aircraft file format, versioned, hostile-input safe | 3 |
+| 15 | Aircraft file format, versioned, hostile-input safe (done) | 3 |
 | 16 | Constant wind, then gusts and turbulence (done) | 4 |
 | 17 | Engine failure and other failures as commands (done) | 6 |
 | 18 | Terrain tiles from SRTM for one region, streamed | 7, decision on data hosting |

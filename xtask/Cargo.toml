@@ -16,3 +16,5 @@ workspace = true
 serde_json.workspace = true
 flightcraft-control.workspace = true
 syn.workspace = true
+flightcraft-aero.workspace = true
+schemars.workspace = true

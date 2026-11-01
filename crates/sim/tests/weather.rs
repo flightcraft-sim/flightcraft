@@ -111,20 +111,19 @@ fn seeded_gusts_replay_across_batching_readouts_and_clones() {
 
 #[test]
 fn failed_engine_glides_near_best_glide_speed_under_pitch_speed_hold() {
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
     let mut sim = air(Weather::default());
     let rho = flightcraft_world::atmosphere(1000.0).density_kg_m3;
     // Independently find maximum L/D including the failed prop's drag area.
     let mut best = (0.0_f64, 0.0_f64);
     for i in 0..240 {
-        let coeff = aero::coefficients(f64::from(i) * 0.001, 0.0);
-        let ratio = coeff.lift / (coeff.drag + 0.10 / aero::WING_AREA_M2);
+        let coeff = aero::coefficients(&aircraft, f64::from(i) * 0.001, 0.0);
+        let ratio = coeff.lift / (coeff.drag + 0.10 / 15.0);
         if ratio > best.0 {
             best = (ratio, coeff.lift);
         }
     }
-    let target = libm::sqrt(
-        2.0 * aero::MASS_KG * flightcraft_world::GRAVITY_MPS2 / (rho * aero::WING_AREA_M2 * best.1),
-    );
+    let target = libm::sqrt(2.0 * 1000.0 * flightcraft_world::GRAVITY_MPS2 / (rho * 15.0 * best.1));
     sim.set_failures(Failures {
         engine_power_fraction: 0.0,
         ..Failures::default()

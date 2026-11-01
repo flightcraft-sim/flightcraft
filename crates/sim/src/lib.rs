@@ -17,7 +17,7 @@ pub mod autopilot;
 mod dynamics;
 mod math;
 
-pub use flightcraft_aero::{ControlSurface, Failures};
+pub use flightcraft_aero::{Aircraft, AircraftError, ControlSurface, Failures};
 use flightcraft_world as world;
 pub use flightcraft_world::{TurbulenceLevel, Weather};
 use math::*;
@@ -147,6 +147,8 @@ pub enum Start {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum SimError {
+    #[error(transparent)]
+    Aircraft(#[from] AircraftError),
     #[error("invalid start: {0}")]
     InvalidStart(String),
     #[error("unknown aircraft: {0}")]
@@ -162,6 +164,7 @@ pub enum SimError {
 /// One simulation: an aircraft, a world, and its state.
 #[derive(Clone, Debug)]
 pub struct Sim {
+    aircraft: Aircraft,
     state: State,
     controls: Controls,
     steps: u64,
@@ -180,6 +183,20 @@ impl Sim {
     /// Start with weather and its seed. An air start has the requested airspeed;
     /// its ground velocity includes the initial mean wind. Gust filters start at zero.
     pub fn new_with_weather(start: &Start, weather: Weather) -> Result<Self, SimError> {
+        Self::new_with_aircraft_and_weather(start, Aircraft::corvid()?, weather)
+    }
+
+    /// Start with a validated custom aircraft and calm weather.
+    pub fn new_with_aircraft(start: &Start, aircraft: Aircraft) -> Result<Self, SimError> {
+        Self::new_with_aircraft_and_weather(start, aircraft, Weather::default())
+    }
+
+    pub fn new_with_aircraft_and_weather(
+        start: &Start,
+        aircraft: Aircraft,
+        weather: Weather,
+    ) -> Result<Self, SimError> {
+        aircraft.validate()?;
         let wind = world::Wind::new(weather)?;
         let mut state = State::default();
         let controls = match *start {
@@ -187,7 +204,22 @@ impl Sim {
                 state.position_m = [
                     0.0,
                     0.0,
-                    -(1.15 - flightcraft_aero::MASS_KG * world::GRAVITY_MPS2 / 200_000.0),
+                    -(aircraft
+                        .geometry
+                        .gear
+                        .iter()
+                        .map(|g| {
+                            let [_, _, z] = aircraft.relative_point(g.point_m);
+                            z
+                        })
+                        .fold(0.0, f64::max)
+                        - aircraft.mass.mass_kg * world::GRAVITY_MPS2
+                            / aircraft
+                                .geometry
+                                .gear
+                                .iter()
+                                .map(|g| g.stiffness_n_m)
+                                .sum::<f64>()),
                 ];
                 Controls::default()
             }
@@ -207,7 +239,7 @@ impl Sim {
                     ));
                 }
                 let heading = heading_rad.rem_euclid(core::f64::consts::TAU);
-                let (alpha, controls) = dynamics::trim(height_m, airspeed_mps);
+                let (alpha, controls) = dynamics::trim(&aircraft, height_m, airspeed_mps);
                 state.position_m = [0.0, 0.0, -height_m];
                 state.velocity_mps = [
                     airspeed_mps * libm::cos(heading),
@@ -221,7 +253,13 @@ impl Sim {
         if matches!(start, Start::Air { .. }) && wind.velocity_mps(state.position_m) != [0.0; 3] {
             state.velocity_mps = add(state.velocity_mps, wind.velocity_mps(state.position_m));
         }
-        Ok(Self {
+        if !dynamics::valid(&state) {
+            return Err(SimError::InvalidStart(
+                "aircraft initialization outside finite simulation envelope".into(),
+            ));
+        }
+        let mut sim = Self {
+            aircraft,
             wind,
             failures: Failures::default(),
             state,
@@ -229,7 +267,9 @@ impl Sim {
             steps: 0,
             crashed: false,
             autopilot: autopilot::Autopilot::default(),
-        })
+        };
+        sim.controls = sim.limit_controls(sim.controls);
+        Ok(sim)
     }
 
     /// Restore a finite state for experiments and replay. Quaternion is normalised.
@@ -249,8 +289,10 @@ impl Sim {
         state.attitude = normalise(state.attitude);
         let steps = libm::round(state.time_s / DT_S) as u64;
         state.time_s = steps as f64 * DT_S;
-        let crashed = dynamics::crash(&state);
+        let aircraft = Aircraft::corvid()?;
+        let crashed = dynamics::crash(&aircraft, &state);
         Ok(Self {
+            aircraft,
             wind: world::Wind::new(Weather::default())?,
             failures: Failures::default(),
             state,
@@ -259,6 +301,11 @@ impl Sim {
             crashed,
             autopilot: autopilot::Autopilot::default(),
         })
+    }
+
+    #[must_use]
+    pub fn aircraft(&self) -> &Aircraft {
+        &self.aircraft
     }
 
     /// Replace weather atomically and restart the gust process at its supplied seed.
@@ -286,7 +333,9 @@ impl Sim {
 
     #[must_use]
     pub fn effective_controls(&self) -> Controls {
-        let c = self.failures.apply(dynamics::aero_controls(self.controls));
+        let c = self
+            .aircraft
+            .limit_controls(self.failures.apply(dynamics::aero_controls(self.controls)));
         Controls {
             elevator: c.elevator,
             aileron: c.aileron,
@@ -298,7 +347,21 @@ impl Sim {
 
     /// Set the controls (clamped). They hold until set again.
     pub fn set_controls(&mut self, controls: Controls) {
-        self.controls = controls.clamped();
+        self.controls = self.limit_controls(controls);
+    }
+
+    fn limit_controls(&self, controls: Controls) -> Controls {
+        let controls = controls.clamped();
+        let c = self.aircraft.limit_controls(dynamics::aero_controls(controls));
+        let [lo, hi] = self.aircraft.systems.brake;
+        Controls {
+            elevator: c.elevator,
+            aileron: c.aileron,
+            rudder: c.rudder,
+            throttle: c.throttle,
+            flaps: c.flaps,
+            brake: controls.brake.clamp(lo, hi),
+        }
     }
 
     #[must_use]
@@ -327,22 +390,35 @@ impl Sim {
             }
             if self.autopilot.targets().engaged() {
                 let readout = self.readout();
-                self.controls = self.autopilot.update(readout, self.state.angular_rate_rps);
+                self.controls = self
+                    .autopilot
+                    .update(&self.aircraft, readout, self.state.angular_rate_rps);
             }
+            self.controls = self.limit_controls(self.controls);
             let relative = dynamics::relative_velocity(&self.state, &self.wind);
             // Advance exactly once; substages and observational reads never consume noise.
             if self.wind.advance(DT_S, relative).is_err() {
                 self.crashed = true;
                 break;
             }
-            let mut next = dynamics::rk4(self.state, self.controls, &self.wind, self.failures);
+            let Some(mut next) = dynamics::rk4(
+                &self.aircraft,
+                self.state,
+                self.controls,
+                &self.wind,
+                self.failures,
+            ) else {
+                self.crashed = true;
+                break;
+            };
             if !dynamics::valid(&next) {
                 self.crashed = true;
                 break;
             }
             self.steps = self.steps.saturating_add(1);
             next.time_s = self.steps as f64 * DT_S;
-            self.crashed = dynamics::crash(&next) || dynamics::hard_touchdown(&self.state, &next);
+            self.crashed = dynamics::crash(&self.aircraft, &next)
+                || dynamics::hard_touchdown(&self.aircraft, &self.state, &next);
             self.state = next;
         }
     }
@@ -365,9 +441,9 @@ impl Sim {
         let [roll, pitch, heading] = euler(s.attitude);
         let [u, v, w] = dynamics::airflow(s, &self.wind).velocity_body_mps;
         let speed = norm(dynamics::relative_velocity(s, &self.wind));
-        let loads = dynamics::loads(s, self.controls, &self.wind, self.failures);
+        let loads = dynamics::loads(&self.aircraft, s, self.controls, &self.wind, self.failures);
         let [_, _, fz] = loads.force_n;
-        let h = dynamics::height(s);
+        let h = dynamics::height(&self.aircraft, s);
         Readout {
             time_s: s.time_s,
             indicated_airspeed_mps: speed
@@ -386,7 +462,7 @@ impl Sim {
             } else {
                 0.0
             },
-            load_factor_g: -fz / (flightcraft_aero::MASS_KG * world::GRAVITY_MPS2),
+            load_factor_g: -fz / (self.aircraft.mass.mass_kg * world::GRAVITY_MPS2),
             engine_rpm: loads.engine_rpm,
             on_ground: h <= 0.0,
             crashed: self.crashed,

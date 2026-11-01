@@ -63,6 +63,25 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p flightcraft-sim
 
+  golden-wasm:
+    name: Golden trajectory (wasm32-wasip1)
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime run
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: rustup target add wasm32-wasip1
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pinned official Wasmtime release
+        run: |
+          curl --fail --location --retry 3 --output wasmtime.tar.xz https://github.com/bytecodealliance/wasmtime/releases/download/v38.0.0/wasmtime-v38.0.0-x86_64-linux.tar.xz
+          tar -xJf wasmtime.tar.xz
+          echo "$PWD/wasmtime-v38.0.0-x86_64-linux" >> "$GITHUB_PATH"
+      # WASI preview 1 uses the normal Rust test harness, with one test thread.
+      # The existing test asserts the same fixed hash as native; no separate wasm baseline.
+      - run: cargo test --locked -p flightcraft-sim --test golden --target wasm32-wasip1 -- --test-threads=1
+
   licences:
     name: Licences and advisories
     runs-on: ubuntu-24.04

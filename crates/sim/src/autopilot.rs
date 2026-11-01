@@ -145,7 +145,7 @@ impl Autopilot {
         self.targets = targets;
     }
 
-    pub(crate) fn update(&mut self, r: Readout, rates: [f64; 3]) -> Controls {
+    pub(crate) fn update(&mut self, aircraft: &aero::Aircraft, r: Readout, rates: [f64; 3]) -> Controls {
         let t = self.targets;
         let [p, q, yaw_rate] = rates;
         let speed = r.true_airspeed_mps;
@@ -203,11 +203,11 @@ impl Autopilot {
         let rho = world::atmosphere(r.altitude_msl_m).density_kg_m3;
         let target_pitch = t.pitch_rad.or_else(|| {
             climb.map(|desired| {
-                let cl = 2.0 * aero::MASS_KG * world::GRAVITY_MPS2
+                let cl = 2.0 * aircraft.mass.mass_kg * world::GRAVITY_MPS2
                     / (rho
                         * speed.max(26.0)
                         * speed.max(26.0)
-                        * aero::WING_AREA_M2
+                        * aircraft.geometry.wing_area_m2
                         * libm::cos(bank.unwrap_or(r.roll_rad)));
                 let alpha = ((cl - 0.25) / 5.0).clamp(-0.05, 0.23);
                 self.climb.output(
@@ -223,7 +223,9 @@ impl Autopilot {
         if let Some(pitch) = target_pitch {
             c.elevator = self.pitch.output(
                 pitch - r.pitch_rad,
-                -aero::coefficients(r.alpha_rad, c.flaps).pitch / aero::DERIVATIVES.cm_elevator - 0.8 * q,
+                -aero::coefficients(aircraft, r.alpha_rad, c.flaps).pitch
+                    / aircraft.aerodynamics.derivatives.cm_elevator
+                    - 0.8 * q,
                 2.2,
                 0.15,
                 -1.0,
@@ -233,16 +235,22 @@ impl Autopilot {
         if t.airspeed_mode == AirspeedMode::Throttle
             && let Some(target) = t.airspeed_mps
         {
-            let cl = 2.0 * aero::MASS_KG * world::GRAVITY_MPS2 / (rho * target * target * aero::WING_AREA_M2);
+            let cl = 2.0 * aircraft.mass.mass_kg * world::GRAVITY_MPS2
+                / (rho * target * target * aircraft.geometry.wing_area_m2);
             let alpha = ((cl - 0.25) / 5.0).clamp(-0.05, 0.23);
-            let drag =
-                0.5 * rho * target * target * aero::WING_AREA_M2 * aero::coefficients(alpha, c.flaps).drag;
-            let needed =
-                drag + aero::MASS_KG * world::GRAVITY_MPS2 * climb.unwrap_or(r.vertical_speed_mps) / target;
+            let drag = 0.5
+                * rho
+                * target
+                * target
+                * aircraft.geometry.wing_area_m2
+                * aero::coefficients(aircraft, alpha, c.flaps).drag;
+            let needed = drag
+                + aircraft.mass.mass_kg * world::GRAVITY_MPS2 * climb.unwrap_or(r.vertical_speed_mps)
+                    / target;
             let (mut lo, mut hi) = (0.0, 1.0);
             for _ in 0..24 {
                 let mid = (lo + hi) * 0.5;
-                if aero::propulsion(target, mid, rho).0 > needed {
+                if aero::propulsion(aircraft, target, mid, rho).0 > needed {
                     hi = mid;
                 } else {
                     lo = mid;

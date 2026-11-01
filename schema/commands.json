@@ -3199,6 +3199,169 @@
     }
   },
   {
+    "name": "aircraft.list",
+    "description": "List built-in aircraft identities.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ListAircraft",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "author": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "display_name",
+            "description",
+            "author"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aircraft": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "aircraft"
+      ],
+      "title": "AircraftList",
+      "type": "object"
+    }
+  },
+  {
+    "name": "aircraft.load",
+    "description": "Load aircraft JSON (or a native file), staging for sim.reset or resetting now.",
+    "input_schema": {
+      "$defs": {
+        "AircraftSource": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "json",
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "text"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "file",
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "path"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reset": {
+          "default": false,
+          "description": "False stages selection for sim.reset; true resets immediately on the runway, paused.",
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/AircraftSource"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "LoadAircraft",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "author": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "display_name": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "display_name",
+            "description",
+            "author"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "active_aircraft_id": {
+          "type": "string"
+        },
+        "aircraft": {
+          "$ref": "#/$defs/Identity"
+        },
+        "reset": {
+          "description": "True when this command also reset the simulation.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "aircraft",
+        "active_aircraft_id",
+        "reset"
+      ],
+      "title": "AircraftLoaded",
+      "type": "object"
+    }
+  },
+  {
     "name": "view.set_camera",
     "description": "Set chase or cockpit view and chase distance/height in metres (needs the app).",
     "input_schema": {

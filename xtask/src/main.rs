@@ -51,7 +51,7 @@ const LAYERS: &[(&str, &[&str])] = &[
         ],
     ),
     ("flightcraft-mcp", &["flightcraft-control", "flightcraft-sim"]),
-    ("xtask", &["flightcraft-control"]),
+    ("xtask", &["flightcraft-control", "flightcraft-aero"]),
 ];
 
 /// Crates the deterministic core must never use.
@@ -139,23 +139,33 @@ fn root() -> Result<PathBuf, String> {
 }
 
 fn schemas(check: bool) -> Result<(), String> {
-    let path = root()?.join("schema/commands.json");
-    let mut generated = serde_json::to_string_pretty(&flightcraft_control::Session::commands())
-        .map_err(|error| format!("cannot serialize schemas: {error}"))?;
-    generated.push('\n');
-    if check {
-        let current = std::fs::read_to_string(&path)
-            .map_err(|error| format!("cannot read schema/commands.json: {error}; run cargo xtask schemas"))?;
-        if current != generated {
-            return Err("schema/commands.json is stale; run cargo xtask schemas".into());
+    let documents = [
+        (
+            "commands.json",
+            serde_json::to_string_pretty(&flightcraft_control::Session::commands()),
+        ),
+        (
+            "aircraft.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::Aircraft)),
+        ),
+    ];
+    for (name, value) in documents {
+        let path = root()?.join("schema").join(name);
+        let mut generated = value.map_err(|e| e.to_string())?;
+        generated.push('\n');
+        if check {
+            let current = std::fs::read_to_string(&path)
+                .map_err(|e| format!("cannot read schema/{name}: {e}; run cargo xtask schemas"))?;
+            if current != generated {
+                return Err(format!("schema/{name} is stale; run cargo xtask schemas"));
+            }
+        } else {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(path, generated).map_err(|e| e.to_string())?;
         }
-        eprintln!("xtask: schemas ok");
-    } else {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        std::fs::write(path, generated).map_err(|error| error.to_string())?;
-        eprintln!("xtask: wrote schema/commands.json");
+        eprintln!("xtask: schema/{name} {}", if check { "ok" } else { "written" });
     }
     Ok(())
 }

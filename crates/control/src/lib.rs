@@ -4,6 +4,8 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+mod aircraft;
+pub use aircraft::*;
 mod app;
 mod holds;
 pub use app::*;
@@ -58,6 +60,7 @@ pub enum CommandError {
 #[derive(Debug)]
 pub struct Session {
     sim: Sim,
+    selected_aircraft: flightcraft_aero::Aircraft,
     paused: bool,
     rate: f64,
     camera: Option<CameraSettings>,
@@ -69,6 +72,7 @@ impl Session {
     pub fn new() -> Result<Self, CommandError> {
         Ok(Self {
             sim: Sim::new(&Start::Runway)?,
+            selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
             paused: true,
             rate: 1.0,
             camera: None,
@@ -246,7 +250,11 @@ impl Command for Reset {
                 }
             }
         };
-        session.sim = Sim::new_with_weather(&start, self.weather.unwrap_or_default())?;
+        session.sim = Sim::new_with_aircraft_and_weather(
+            &start,
+            session.selected_aircraft.clone(),
+            self.weather.unwrap_or_default(),
+        )?;
         session.flight_generation = session.flight_generation.wrapping_add(1);
         session.paused = self.paused.unwrap_or(true);
         Ok(session.snapshot())
@@ -492,6 +500,8 @@ registry!(
     Resume,
     SetRate,
     ListCommands,
+    ListAircraft,
+    LoadAircraft,
     SetCamera,
     AppScreenshot,
     Wait

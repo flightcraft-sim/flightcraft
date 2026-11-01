@@ -14,13 +14,19 @@ fn air(speed: f64) -> Sim {
 
 #[test]
 fn level_trim_and_drag_polar() {
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
     for speed in [35.0, 40.0, 50.0] {
         let mut s = air(speed);
         let initial = s.readout();
         let rho = world::atmosphere(1000.0).density_kg_m3;
-        let c = aero::coefficients(initial.alpha_rad, 0.0);
-        let drag = 0.5 * rho * speed * speed * aero::WING_AREA_M2 * c.drag;
-        let (thrust, _) = aero::propulsion(speed * libm::cos(initial.alpha_rad), s.controls().throttle, rho);
+        let c = aero::coefficients(&aircraft, initial.alpha_rad, 0.0);
+        let drag = 0.5 * rho * speed * speed * 15.0 * c.drag;
+        let (thrust, _) = aero::propulsion(
+            &aircraft,
+            speed * libm::cos(initial.alpha_rad),
+            s.controls().throttle,
+            rho,
+        );
         assert!((thrust * libm::cos(initial.alpha_rad) - drag).abs() < 0.01);
         s.step(120 * 60);
         println!("trim {speed}: {:?}", s.readout());
@@ -33,8 +39,9 @@ fn level_trim_and_drag_polar() {
 
 #[test]
 fn stall_speed() {
+    let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
     let rho = world::atmosphere(0.0).density_kg_m3;
-    let theory = libm::sqrt(2.0 * aero::MASS_KG * G / (rho * aero::WING_AREA_M2 * aero::CL_MAX));
+    let theory = libm::sqrt(2.0 * 1000.0 * G / (rho * 15.0 * 1.50));
     // Measure maximum vertical support across the entire incidence table, then find
     // the minimum supporting speed. This includes the propeller's vertical component.
     let mut measured = 0.0;
@@ -43,8 +50,9 @@ fn stall_speed() {
         let mut support: f64 = 0.0;
         for deg in 0..=40 {
             let alpha = f64::from(deg) * 0.5 * PI / 180.0;
-            let c = aero::coefficients(alpha, 0.0);
+            let c = aero::coefficients(&aircraft, alpha, 0.0);
             let loads = aero::forces(
+                &aircraft,
                 aero::Airflow {
                     velocity_body_mps: [v * libm::cos(alpha), 0.0, v * libm::sin(alpha)],
                     angular_rate_rps: [0.0; 3],
@@ -59,7 +67,7 @@ fn stall_speed() {
             let [fx, _, fz] = loads.force_n;
             support = support.max(fx * libm::sin(alpha) - fz * libm::cos(alpha));
         }
-        if support >= aero::MASS_KG * G {
+        if support >= 1000.0 * G {
             measured = v;
             break;
         }
