@@ -117,3 +117,36 @@ mod tests {
         assert!(script.run_due(&mut session, 1.0).is_err());
     }
 }
+
+#[cfg(test)]
+mod larrow_tests {
+    use super::*;
+
+    #[test]
+    fn bundled_tailwheel_takeoff_raises_tail_rotates_and_climbs() {
+        let mut script = Script::parse(include_str!("../../../examples/larrow-takeoff.jsonl")).unwrap();
+        let mut session = Session::new().unwrap();
+        let mut raised = false;
+        let mut airborne = false;
+        for _ in 0..4200 {
+            let r = session.sim().readout();
+            script.run_due(&mut session, r.time_s).unwrap();
+            session
+                .execute("sim.step", serde_json::json!({"steps":1}))
+                .unwrap();
+            let r = session.sim().readout();
+            assert!(!r.crashed, "{r:?}");
+            let tail = session.sim().aircraft().geometry.gear.last().unwrap();
+            let [tx, _, tz] = session.sim().aircraft().relative_point(tail.point_m);
+            let tail_height = r.altitude_msl_m + tx * r.pitch_rad.sin() - tz * r.pitch_rad.cos();
+            raised |= !airborne && r.on_ground && r.ground_speed_mps > 15.0 && tail_height > 0.25;
+            airborne |= r.height_agl_m > 1.0;
+        }
+        assert_eq!(session.sim().aircraft().identity.id, "larrow");
+        assert!(raised && airborne);
+        assert!(session.sim().readout().height_agl_m > 100.0);
+        assert!(session.sim().readout().vertical_speed_mps > 2.0);
+        assert!((session.sim().readout().true_airspeed_mps / 42.0 - 1.0).abs() < 0.05);
+        assert!(!script.active());
+    }
+}

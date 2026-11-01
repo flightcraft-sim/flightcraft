@@ -2,6 +2,29 @@ use crate::{Controls, DT_S, State, math::*};
 use flightcraft_aero as aero;
 use flightcraft_world::{GRAVITY_MPS2 as G, Surface, Wind, atmosphere, ground};
 
+/// Longitudinal wheel contact plane. Positive pitch puts a short aft wheel on the ground.
+pub fn runway_pitch(aircraft: &aero::Aircraft) -> f64 {
+    let gear = &aircraft.geometry.gear;
+    let aft = gear.iter().min_by(|a, b| {
+        let [ax, _, _] = a.point_m;
+        let [bx, _, _] = b.point_m;
+        ax.total_cmp(&bx)
+    });
+    let fore = gear.iter().max_by(|a, b| {
+        let [ax, _, _] = a.point_m;
+        let [bx, _, _] = b.point_m;
+        ax.total_cmp(&bx)
+    });
+    if let (Some(aft), Some(fore)) = (aft, fore) {
+        let [ax, _, az] = aft.point_m;
+        let [fx, _, fz] = fore.point_m;
+        if fx - ax > 1e-6 && fz != az {
+            return libm::atan2(fz - az, fx - ax);
+        }
+    }
+    0.0
+}
+
 pub fn aero_controls(c: Controls) -> aero::Controls {
     aero::Controls {
         elevator: c.elevator,

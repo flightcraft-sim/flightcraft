@@ -112,3 +112,38 @@ fn aircraft_schema_is_valid_and_matches_the_builtin_file() {
     value["mass"]["unexpected"] = json!(true);
     assert!(!validator.is_valid(&value));
 }
+
+#[test]
+fn builtin_larrow_lists_stages_resets_and_rejects_unknown_ids_atomically() {
+    let mut s = Session::new().unwrap();
+    let list = s.execute("aircraft.list", json!({})).unwrap();
+    assert_eq!(list["aircraft"].as_array().unwrap().len(), 2);
+    assert_eq!(list["aircraft"][1]["id"], "larrow");
+    s.execute(
+        "aircraft.load",
+        json!({"source":{"kind":"built_in","id":"larrow"}}),
+    )
+    .unwrap();
+    assert_eq!(s.sim().aircraft().identity.id, "corvid");
+    let before = *s.sim().state();
+    assert!(
+        s.execute(
+            "aircraft.load",
+            json!({"source":{"kind":"built_in","id":"unknown"},"reset":true})
+        )
+        .is_err()
+    );
+    assert_eq!(*s.sim().state(), before);
+    s.execute("sim.reset", json!({"start":{"kind":"runway"}}))
+        .unwrap();
+    assert_eq!(s.sim().aircraft().identity.id, "larrow");
+    assert!(s.sim().readout().pitch_rad > 0.15);
+    s.execute(
+        "aircraft.load",
+        json!({"source":{"kind":"built_in","id":"corvid"},"reset":true}),
+    )
+    .unwrap();
+    assert_eq!(s.sim().aircraft().identity.id, "corvid");
+    assert_eq!(s.sim().readout().pitch_rad, 0.0);
+    assert_eq!(s.sim().aircraft(), &flightcraft_aero::Aircraft::corvid().unwrap());
+}

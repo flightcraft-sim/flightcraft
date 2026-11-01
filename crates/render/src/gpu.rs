@@ -23,6 +23,7 @@ pub(crate) struct SceneCallback {
     pub uniform: Uniform,
     pub size: [f32; 2],
     pub show_aircraft: bool,
+    pub larrow: bool,
 }
 
 struct Targets {
@@ -32,16 +33,20 @@ struct Targets {
     bind: wgpu::BindGroup,
 }
 
-struct Gpu {
-    sky: wgpu::RenderPipeline,
-    scene: wgpu::RenderPipeline,
-    transparent: wgpu::RenderPipeline,
-    blit: wgpu::RenderPipeline,
+struct DrawMesh {
     vertices: wgpu::Buffer,
     vertex_count: u32,
     world_count: u32,
     exterior_end: u32,
     cockpit_end: u32,
+}
+
+struct Gpu {
+    sky: wgpu::RenderPipeline,
+    scene: wgpu::RenderPipeline,
+    transparent: wgpu::RenderPipeline,
+    blit: wgpu::RenderPipeline,
+    meshes: [DrawMesh; 2],
     uniform: wgpu::Buffer,
     uniform_bind: wgpu::BindGroup,
     texture_layout: wgpu::BindGroupLayout,
@@ -272,12 +277,20 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
-        let geometry = mesh::build(palette);
-        let vertex_count = geometry.vertices.len() as u32;
-        let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("original field and Corvid mesh"),
-            contents: bytemuck::cast_slice(&geometry.vertices),
-            usage: wgpu::BufferUsages::VERTEX,
+        let meshes = [false, true].map(|larrow| {
+            let geometry = mesh::build(palette, larrow);
+            let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("original field and aircraft mesh"),
+                contents: bytemuck::cast_slice(&geometry.vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+            DrawMesh {
+                vertices,
+                vertex_count: geometry.vertices.len() as u32,
+                world_count: geometry.world_end,
+                exterior_end: geometry.exterior_end,
+                cockpit_end: geometry.cockpit_end,
+            }
         });
         let targets = targets(device, [1, 1], &texture_layout);
         Self {
@@ -285,11 +298,7 @@ impl Gpu {
             scene,
             transparent,
             blit,
-            vertices,
-            vertex_count,
-            world_count: geometry.world_end,
-            exterior_end: geometry.exterior_end,
-            cockpit_end: geometry.cockpit_end,
+            meshes,
             uniform,
             uniform_bind,
             texture_layout,
@@ -344,16 +353,18 @@ impl CallbackTrait for SceneCallback {
         pass.set_pipeline(&gpu.sky);
         pass.draw(0..3, 0..1);
         pass.set_pipeline(&gpu.scene);
-        pass.set_vertex_buffer(0, gpu.vertices.slice(..));
-        pass.draw(0..gpu.world_count, 0..1);
+        let [corvid, larrow] = &gpu.meshes;
+        let mesh = if self.larrow { larrow } else { corvid };
+        pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+        pass.draw(0..mesh.world_count, 0..1);
         if self.show_aircraft {
-            pass.draw(gpu.world_count..gpu.exterior_end, 0..1);
+            pass.draw(mesh.world_count..mesh.exterior_end, 0..1);
         } else {
-            pass.draw(gpu.exterior_end..gpu.cockpit_end, 0..1);
+            pass.draw(mesh.exterior_end..mesh.cockpit_end, 0..1);
         }
         if self.uniform.eye.get(3).is_some_and(|power| *power > 0.01) {
             pass.set_pipeline(&gpu.transparent);
-            pass.draw(gpu.cockpit_end..gpu.vertex_count, 0..1);
+            pass.draw(mesh.cockpit_end..mesh.vertex_count, 0..1);
         }
         Vec::new()
     }

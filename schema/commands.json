@@ -3252,11 +3252,28 @@
   },
   {
     "name": "aircraft.load",
-    "description": "Load aircraft JSON (or a native file), staging for sim.reset or resetting now.",
+    "description": "Load a built-in aircraft, JSON, or a native file, staging for sim.reset or resetting now.",
     "input_schema": {
       "$defs": {
         "AircraftSource": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "built_in",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {

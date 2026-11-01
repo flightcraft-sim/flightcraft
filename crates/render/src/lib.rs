@@ -47,6 +47,7 @@ pub struct Scene {
     look_target: Vec2,
     look: Vec2,
     propeller_power: f32,
+    larrow: bool,
 }
 
 impl Default for Scene {
@@ -60,6 +61,7 @@ impl Default for Scene {
             look_target: Vec2::ZERO,
             look: Vec2::ZERO,
             propeller_power: 0.0,
+            larrow: false,
         }
     }
 }
@@ -69,6 +71,16 @@ fn drawing(v: Vec3) -> Vec3 {
 }
 
 impl Scene {
+    /// Select the built-in display mesh by the active definition's identity.
+    /// Unknown identities use the default trainer outline.
+    pub fn set_aircraft(&mut self, id: &str) {
+        let larrow = id == "larrow";
+        if self.larrow != larrow {
+            self.larrow = larrow;
+            self.reset_camera();
+        }
+    }
+
     /// Presentation offsets supplied by the app's validated camera command.
     pub fn set_chase_offsets(&mut self, distance_m: f32, height_m: f32) {
         if distance_m.is_finite() && height_m.is_finite() {
@@ -122,8 +134,12 @@ impl Scene {
             Quat::IDENTITY
         };
         // The bootstrap state has its CG at ground height. Keep the visual gear above the plane.
-        let position =
-            drawing(Vec3::new(north, east, down)).max(Vec3::new(f32::NEG_INFINITY, 1.15, f32::NEG_INFINITY));
+        let position = drawing(Vec3::new(north, east, down));
+        let position = if self.larrow {
+            position
+        } else {
+            position.max(Vec3::new(f32::NEG_INFINITY, 1.15, f32::NEG_INFINITY))
+        };
         let axis = |v| drawing(attitude * v).extend(0.0);
         let model = Mat4::from_cols(axis(Vec3::X), axis(Vec3::Y), axis(Vec3::Z), position.extend(1.0));
         self.smooth_look(dt);
@@ -142,10 +158,15 @@ impl Scene {
                 (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
             }
             CameraMode::Cockpit => {
-                let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
+                let pilot_eye = if self.larrow {
+                    Vec3::new(-0.1, 0.0, -0.63)
+                } else {
+                    CORVID_PILOT_EYE_M
+                };
+                let eye = position + drawing(attitude * pilot_eye);
                 (
                     eye,
-                    camera::cockpit_view(position, attitude, self.look.x, self.look.y),
+                    camera::cockpit_view(position, attitude, self.look.x, self.look.y, pilot_eye),
                 )
             }
         };
@@ -168,6 +189,7 @@ impl Scene {
                 uniform,
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera == CameraMode::Chase,
+                larrow: self.larrow,
             },
         ));
     }
@@ -207,5 +229,25 @@ mod tests {
         fast.set_cockpit_look(f32::NAN, f32::INFINITY);
         fast.smooth_look(f32::NAN);
         assert!(fast.look.is_finite());
+    }
+}
+
+#[cfg(test)]
+mod aircraft_tests {
+    use super::*;
+
+    #[test]
+    fn mesh_follows_identity_and_clears_the_chase_camera_on_change() {
+        let mut scene = Scene {
+            eye: Some(Vec3::ONE),
+            ..Default::default()
+        };
+        scene.set_aircraft("larrow");
+        assert!(scene.larrow && scene.eye.is_none());
+        scene.eye = Some(Vec3::ONE);
+        scene.set_aircraft("larrow");
+        assert_eq!(scene.eye, Some(Vec3::ONE));
+        scene.set_aircraft("custom");
+        assert!(!scene.larrow && scene.eye.is_none());
     }
 }

@@ -2,13 +2,13 @@
 use crate::drawing;
 use glam::{Mat4, Quat, Vec3};
 
-/// Corvid left-seat pilot eye, metres from the body reference point. Shared by every cockpit view.
+/// Corvid left-seat pilot eye, metres from the body reference point. Used by the Corvid cockpit view.
 pub const CORVID_PILOT_EYE_M: Vec3 = Vec3::new(0.15, -0.28, -0.43);
 pub const VERTICAL_FOV_RAD: f32 = 52.0 * std::f32::consts::PI / 180.0;
 
-pub(crate) fn cockpit_view(position: Vec3, attitude: Quat, yaw: f32, pitch: f32) -> Mat4 {
+pub(crate) fn cockpit_view(position: Vec3, attitude: Quat, yaw: f32, pitch: f32, pilot_eye: Vec3) -> Mat4 {
     let head = Quat::from_rotation_z(yaw) * Quat::from_rotation_y(pitch);
-    let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
+    let eye = position + drawing(attitude * pilot_eye);
     let forward = drawing(attitude * head * Vec3::X);
     let up = drawing(attitude * head * -Vec3::Z);
     Mat4::look_to_rh(eye, forward, up)
@@ -39,7 +39,7 @@ mod tests {
                     let attitude = Quat::from_rotation_z(heading_deg.to_radians())
                         * Quat::from_rotation_y(pitch)
                         * Quat::from_rotation_x(roll);
-                    let view = cockpit_view(Vec3::ZERO, attitude, 0.0, 0.0);
+                    let view = cockpit_view(Vec3::ZERO, attitude, 0.0, 0.0, CORVID_PILOT_EYE_M);
                     let [a, b, c] = attitude_horizon(roll, pitch);
                     // Homogeneous directions at infinity: the true horizon is independent of altitude.
                     for azimuth in (0..360).step_by(17) {
@@ -65,7 +65,7 @@ mod tests {
             for pitch in [-1.4, 0.0, 1.4] {
                 let attitude = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
                 let position = Vec3::new(12.0, 34.0, 56.0);
-                let view = cockpit_view(position, attitude, yaw, pitch);
+                let view = cockpit_view(position, attitude, yaw, pitch, CORVID_PILOT_EYE_M);
                 let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
                 assert!(view.transform_point3(eye).length() < 1e-4);
                 assert!((view.determinant() - 1.0).abs() < 1e-5);

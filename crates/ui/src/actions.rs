@@ -3,6 +3,21 @@
 use flightcraft_control::{CommandError, Pause, Reset, ResetStart, Resume, Session, SetControls, Step};
 use flightcraft_sim::Controls;
 
+/// Select a built-in through the same load and reset commands used by scripts.
+pub fn select_aircraft(session: &mut Session, id: &str) -> Result<(), CommandError> {
+    session.execute(
+        "aircraft.load",
+        serde_json::json!({
+            "source": {"kind": "built_in", "id": id}
+        }),
+    )?;
+    reset(session)
+}
+
+pub fn aircraft_choices(session: &mut Session) -> Result<flightcraft_control::AircraftList, CommandError> {
+    session.run(flightcraft_control::ListAircraft {})
+}
+
 pub fn set_controls(session: &mut Session, controls: Controls) -> Result<(), CommandError> {
     let c = controls.clamped();
     session.run(SetControls {
@@ -72,4 +87,31 @@ pub fn cockpit_look(session: &mut Session, yaw: f64, pitch: f64) -> Result<(), C
         )?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn picker_loads_resets_and_preserves_weather_and_rate() {
+        let mut session = Session::new().unwrap();
+        session
+            .execute("sim.set_rate", serde_json::json!({"rate":2.0}))
+            .unwrap();
+        let weather = session.sim().weather();
+        let generation = session.flight_generation();
+        select_aircraft(&mut session, "larrow").unwrap();
+        assert_eq!(session.sim().aircraft().identity.id, "larrow");
+        assert_eq!(session.sim().state().time_s, 0.0);
+        assert_eq!(session.flight_generation(), generation + 1);
+        assert_eq!(session.sim().weather(), weather);
+        assert_eq!(session.rate(), 2.0);
+        assert!(!session.paused());
+        let before = session.sim().state_hash();
+        assert!(select_aircraft(&mut session, "missing").is_err());
+        assert_eq!(session.sim().state_hash(), before);
+        select_aircraft(&mut session, "corvid").unwrap();
+        assert_eq!(session.sim().aircraft().identity.id, "corvid");
+    }
 }

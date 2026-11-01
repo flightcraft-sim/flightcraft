@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_AIRCRAFT_BYTES: usize = 1024 * 1024;
 pub const CORVID_JSON: &str = include_str!("../../../aircraft/corvid.aircraft.json");
+pub const LARROW_JSON: &str = include_str!("../../../aircraft/larrow.aircraft.json");
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -245,6 +246,15 @@ impl Aircraft {
 
     pub fn corvid() -> Result<Self, AircraftError> {
         Self::from_json(CORVID_JSON)
+    }
+
+    pub fn larrow() -> Result<Self, AircraftError> {
+        Self::from_json(LARROW_JSON)
+    }
+
+    /// Built-in definitions in picker order, validated through the ordinary loader.
+    pub fn builtins() -> Result<Vec<Self>, AircraftError> {
+        Ok(vec![Self::corvid()?, Self::larrow()?])
     }
 
     /// Validate Rust-created definitions as well as decoded files.

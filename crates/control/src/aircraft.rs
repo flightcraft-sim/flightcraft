@@ -22,11 +22,11 @@ impl Command for ListAircraft {
     type Output = AircraftList;
     fn run(self, _session: &mut Session) -> Result<Self::Output, CommandError> {
         Ok(AircraftList {
-            aircraft: vec![
-                Aircraft::corvid()
-                    .map_err(flightcraft_sim::SimError::from)?
-                    .identity,
-            ],
+            aircraft: Aircraft::builtins()
+                .map_err(flightcraft_sim::SimError::from)?
+                .into_iter()
+                .map(|a| a.identity)
+                .collect(),
         })
     }
 }
@@ -34,6 +34,9 @@ impl Command for ListAircraft {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AircraftSource {
+    BuiltIn {
+        id: String,
+    },
     Json {
         text: String,
     },
@@ -63,7 +66,7 @@ pub struct AircraftLoaded {
 impl Command for LoadAircraft {
     const NAME: &'static str = "aircraft.load";
     const DESCRIPTION: &'static str =
-        "Load aircraft JSON (or a native file), staging for sim.reset or resetting now.";
+        "Load a built-in aircraft, JSON, or a native file, staging for sim.reset or resetting now.";
     type Output = AircraftLoaded;
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
         let invalid = |message| CommandError::InvalidInput {
@@ -71,6 +74,12 @@ impl Command for LoadAircraft {
             message,
         };
         let text = match self.source {
+            AircraftSource::BuiltIn { id } => Aircraft::builtins()
+                .map_err(flightcraft_sim::SimError::from)?
+                .into_iter()
+                .find(|a| a.identity.id == id)
+                .ok_or_else(|| invalid(format!("source.id: unknown built-in aircraft {id}")))
+                .and_then(|a| serde_json::to_string(&a).map_err(|e| invalid(e.to_string())))?,
             AircraftSource::Json { text } => text,
             #[cfg(not(target_arch = "wasm32"))]
             AircraftSource::File { path } => {

@@ -322,8 +322,6 @@ impl eframe::App for FlightCraftApp {
         if let Err(e) = controlled.and_then(|()| actions::step(&mut self.session, steps)) {
             self.error = Some(e.to_string());
         }
-        let readout = self.session.sim().readout();
-
         egui::TopBottomPanel::top("header")
             .exact_height(64.0)
             .frame(
@@ -345,11 +343,38 @@ impl eframe::App for FlightCraftApp {
                     );
                     ui.label(RichText::new("FlightCraft").size(23.0).strong());
                     ui.add_space(12.0);
-                    ui.label(
-                        RichText::new("CORVID  /  01")
+                    let identity = self.session.sim().aircraft().identity.clone();
+                    ui.menu_button(
+                        RichText::new(&identity.display_name)
                             .monospace()
                             .size(11.0)
                             .color(theme::MUTED),
+                        |ui| match actions::aircraft_choices(&mut self.session) {
+                            Ok(choices) => {
+                                for aircraft in choices.aircraft {
+                                    if ui
+                                        .selectable_label(identity.id == aircraft.id, &aircraft.display_name)
+                                        .on_hover_text(&aircraft.description)
+                                        .clicked()
+                                    {
+                                        match actions::select_aircraft(&mut self.session, &aircraft.id) {
+                                            Ok(()) => {
+                                                self.paused = self.session.paused();
+                                                self.input.trim = 0.0;
+                                                self.clock.reset();
+                                                self.scene.reset_camera();
+                                                self.error = None;
+                                            }
+                                            Err(e) => self.error = Some(e.to_string()),
+                                        }
+                                        ui.close();
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                self.error = Some(e.to_string());
+                            }
+                        },
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Input bindings").clicked() {
@@ -383,6 +408,7 @@ impl eframe::App for FlightCraftApp {
                     });
                 });
             });
+        let readout = self.session.sim().readout();
         egui::TopBottomPanel::bottom("footer")
             .exact_height(30.0)
             .frame(
@@ -454,6 +480,8 @@ impl eframe::App for FlightCraftApp {
                 self.scene.set_propeller_power(
                     (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
                 );
+                self.scene
+                    .set_aircraft(&self.session.sim().aircraft().identity.id);
                 self.scene
                     .show(ui, self.session.sim().state(), elapsed as f32, theme::scene());
                 let rect = ui.max_rect().shrink(24.0);

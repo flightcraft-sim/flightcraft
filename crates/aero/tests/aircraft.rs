@@ -187,3 +187,35 @@ fn symmetric_tensor_tolerance_and_round_trip() {
     let encoded = serde_json::to_string(&a).unwrap();
     assert_eq!(Aircraft::from_json(&encoded).unwrap(), a);
 }
+
+#[test]
+fn larrow_is_stable_low_margin_and_has_signed_tailwheel_steering() {
+    let a = Aircraft::larrow().unwrap();
+    assert_eq!(
+        Aircraft::from_json(&serde_json::to_string(&a).unwrap()).unwrap(),
+        a
+    );
+    let corvid = Aircraft::corvid().unwrap();
+    let slope = |t: &flightcraft_aero::Table| {
+        let (x0, y0) = t.points.first().unwrap();
+        let (x1, y1) = t.points.last().unwrap();
+        (y1 - y0) / (x1 - x0)
+    };
+    assert!(slope(&a.aerodynamics.cm_alpha) < 0.0);
+    assert!(slope(&a.aerodynamics.cm_alpha) > slope(&corvid.aerodynamics.cm_alpha));
+    assert!(slope(&a.aerodynamics.cl_beta) < 0.0);
+    assert!(slope(&a.aerodynamics.cn_beta) > 0.0);
+    assert!(slope(&a.aerodynamics.cn_beta) < slope(&corvid.aerodynamics.cn_beta));
+    let mains = &a.geometry.gear[..2];
+    assert!(mains.iter().all(|g| g.point_m[0] > a.mass.cg_m[0]));
+    let tail = a.geometry.gear.last().unwrap();
+    assert!(tail.point_m[0] < a.mass.cg_m[0] && tail.steering_rad < 0.0);
+    let clean_peak = a
+        .aerodynamics
+        .cl_clean
+        .points
+        .iter()
+        .map(|&(_, cl)| cl)
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert_eq!(clean_peak, a.aerodynamics.cl_max);
+}

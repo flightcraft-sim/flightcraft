@@ -1,4 +1,4 @@
-//! Original Corvid trainer: SI units, body axes forward/right/down, positive moments
+//! Original fictional aircraft: SI units, body axes forward/right/down, positive moments
 //! right-wing-down/nose-up/nose-right. Controls are normalised; positive elevator pitches up.
 //! All tables are original engineering estimates, not measurements of an existing aircraft.
 #![deny(clippy::disallowed_methods)]
@@ -91,14 +91,14 @@ pub fn coefficients(aircraft: &Aircraft, alpha: f64, flaps: f64) -> Coefficients
 }
 
 /// Solve the fixed-pitch propeller power balance with a fixed 40-iteration bisection.
-/// Idle is 1.8 kW at sea level; RPM is capped at 2,800 by the engine power limit.
+/// Uses the definition's density-scaled shaft power, propeller tables, and RPM limits.
 #[must_use]
 pub fn propulsion(aircraft: &Aircraft, speed_mps: f64, throttle: f64, density: f64) -> (f64, f64) {
     propulsion_with_power(aircraft, speed_mps, throttle, density, 1.0)
 }
 
-/// Shaft power is scaled, including idle. At zero power an original windmilling
-/// estimate uses an equivalent drag area of 0.10 m² and advance ratio 1.5.
+/// Shaft power is scaled, including idle. At zero power the definition supplies the
+/// equivalent windmilling drag area and advance ratio.
 #[must_use]
 pub fn propulsion_with_power(
     aircraft: &Aircraft,

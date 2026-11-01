@@ -201,6 +201,12 @@ impl Sim {
         let mut state = State::default();
         let controls = match *start {
             Start::Runway => {
+                // Unequal wheel heights encode a tail-down (or nose-down) parked attitude.
+                // Equal-height gear retains the original level initialization exactly.
+                let pitch = dynamics::runway_pitch(&aircraft);
+                if pitch != 0.0 {
+                    state.attitude = attitude(pitch, 0.0);
+                }
                 state.position_m = [
                     0.0,
                     0.0,
@@ -209,7 +215,12 @@ impl Sim {
                         .gear
                         .iter()
                         .map(|g| {
-                            let [_, _, z] = aircraft.relative_point(g.point_m);
+                            let point = aircraft.relative_point(g.point_m);
+                            let [_, _, z] = if pitch == 0.0 {
+                                point
+                            } else {
+                                rotate(state.attitude, point)
+                            };
                             z
                         })
                         .fold(0.0, f64::max)

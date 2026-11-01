@@ -1,4 +1,4 @@
-//! Original procedural Corvid mesh and flat training field. No external assets.
+//! Original procedural aircraft meshes and flat training field. No external assets.
 use crate::Palette;
 use glam::Vec3;
 
@@ -79,7 +79,7 @@ pub(crate) struct Geometry {
     pub cockpit_end: u32,
 }
 
-pub(crate) fn build(p: Palette) -> Geometry {
+pub(crate) fn build(p: Palette, larrow: bool) -> Geometry {
     let mut m = Mesh::default();
     m.ground([-7000.0, 7000.0], [14000.0, 14000.0], 0.0, p.ground, 0.0);
     m.ground([-13.5, 8.0], [27.0, 916.0], 0.008, p.shadow, 3.0);
@@ -113,6 +113,9 @@ pub(crate) fn build(p: Palette) -> Geometry {
         }
     }
     let world_vertices = m.0.len() as u32;
+    if larrow {
+        return build_larrow(m, p, world_vertices);
+    }
     // Body x forward, y right, z down. A tapered, six-section fuselage.
     let sections = [
         (-3.6, 0.10, 0.08, 0.02),
@@ -273,6 +276,139 @@ pub(crate) fn build(p: Palette) -> Geometry {
     Geometry {
         vertices: m.0,
         world_end: world_vertices,
+        exterior_end,
+        cockpit_end,
+    }
+}
+
+/// Narrow single-seat canopy, low wing, and three wheels at the flight-model contacts.
+fn build_larrow(mut m: Mesh, p: Palette, world_end: u32) -> Geometry {
+    let sections = [
+        (-3.25, 0.06, 0.08),
+        (-2.0, 0.17, 0.22),
+        (-0.65, 0.36, 0.40),
+        (0.65, 0.38, 0.40),
+        (1.6, 0.28, 0.30),
+        (2.0, 0.12, 0.18),
+    ];
+    for pair in sections.windows(2) {
+        if let [start, end] = pair {
+            let ring = |&(x, w, h): &(f32, f32, f32)| {
+                [
+                    Vec3::new(x, -w, -h),
+                    Vec3::new(x, w, -h),
+                    Vec3::new(x, w, h),
+                    Vec3::new(x, -w, h),
+                ]
+            };
+            let [a, b, c, d] = ring(start);
+            let [e, f, g, h] = ring(end);
+            for face in [[a, e, f, b], [b, f, g, c], [c, g, h, d], [d, h, e, a]] {
+                m.quad(face, p.aircraft, 1.0);
+            }
+        }
+    }
+    // 8 m span, 1.375 m mean chord; contrasting tips and aileron strips.
+    m.box_body([-0.65, -4.0, 0.12], [0.725, 4.0, 0.22], p.aircraft);
+    for (lo, hi) in [(-4.0, -3.65), (3.65, 4.0)] {
+        m.box_body([-0.65, lo, 0.10], [0.725, hi, 0.23], p.accent);
+    }
+    for (lo, hi) in [(-3.8, -2.0), (2.0, 3.8)] {
+        m.box_body([-0.67, lo, 0.11], [-0.45, hi, 0.23], p.accent);
+    }
+    m.box_body([-3.05, -1.35, -0.02], [-2.35, 1.35, 0.07], p.aircraft);
+    m.quad(
+        [
+            Vec3::new(-3.2, 0.0, 0.0),
+            Vec3::new(-3.0, 0.0, -1.05),
+            Vec3::new(-2.65, 0.0, -1.05),
+            Vec3::new(-2.25, 0.0, 0.0),
+        ],
+        p.accent,
+        1.0,
+    );
+    // Faceted bubble over a single central seat, with its own windscreen.
+    for side in [-1.0, 1.0] {
+        m.quad(
+            [
+                Vec3::new(-0.95, side * 0.32, -0.35),
+                Vec3::new(0.7, side * 0.32, -0.35),
+                Vec3::new(0.35, side * 0.22, -0.82),
+                Vec3::new(-0.5, side * 0.22, -0.85),
+            ],
+            p.glass,
+            1.0,
+        );
+    }
+    m.quad(
+        [
+            Vec3::new(-0.5, -0.22, -0.85),
+            Vec3::new(0.35, -0.22, -0.82),
+            Vec3::new(0.35, 0.22, -0.82),
+            Vec3::new(-0.5, 0.22, -0.85),
+        ],
+        p.glass,
+        1.0,
+    );
+    m.quad(
+        [
+            Vec3::new(0.7, -0.32, -0.35),
+            Vec3::new(0.7, 0.32, -0.35),
+            Vec3::new(0.35, 0.22, -0.82),
+            Vec3::new(0.35, -0.22, -0.82),
+        ],
+        p.glass,
+        1.0,
+    );
+    m.box_body([-0.55, -0.19, -0.55], [-0.40, 0.19, -0.27], p.rubber);
+    for y in [-1.05_f32, 1.05] {
+        m.quad(
+            [
+                Vec3::new(0.42, y.signum() * 0.3, 0.28),
+                Vec3::new(0.62, y.signum() * 0.3, 0.28),
+                Vec3::new(0.62, y, 0.82),
+                Vec3::new(0.42, y, 0.82),
+            ],
+            p.cockpit_frame,
+            1.0,
+        );
+        m.box_body([0.35, y - 0.09, 0.64], [0.75, y + 0.09, 1.0], p.rubber);
+    }
+    m.box_body([-3.12, -0.035, 0.06], [-3.05, 0.035, 0.24], p.cockpit_frame);
+    m.box_body([-3.21, -0.055, 0.14], [-2.99, 0.055, 0.32], p.rubber);
+    m.box_body([2.0, -0.12, -0.16], [2.12, 0.12, 0.16], p.accent);
+    let exterior_end = m.0.len() as u32;
+    // Central pilot, unobstructed low wing, and a small glare shield.
+    m.box_body([0.40, -0.32, -0.32], [0.8, 0.32, -0.26], p.glare_shield);
+    for y in [-0.32, 0.32] {
+        m.box_body([-0.9, y - 0.02, -0.32], [0.7, y + 0.02, -0.27], p.cockpit_frame);
+        m.quad(
+            [
+                Vec3::new(0.68, y, -0.32),
+                Vec3::new(0.71, y, -0.32),
+                Vec3::new(0.37, y * 0.69, -0.82),
+                Vec3::new(0.34, y * 0.69, -0.82),
+            ],
+            p.cockpit_frame,
+            1.0,
+        );
+    }
+    for (lo, hi) in [(-4.0, -0.36), (0.36, 4.0)] {
+        m.box_body([-0.65, lo, 0.12], [0.725, hi, 0.22], p.aircraft);
+    }
+    m.box_body([0.8, -0.27, -0.25], [2.0, 0.27, 0.25], p.aircraft);
+    let cockpit_end = m.0.len() as u32;
+    let center = Vec3::new(2.13, 0.0, 0.0);
+    for i in 0..48 {
+        let edge = |i: u32| {
+            let angle = i as f32 * std::f32::consts::TAU / 48.0;
+            center + Vec3::new(0.0, 0.925 * angle.cos(), 0.925 * angle.sin())
+        };
+        m.triangle(center, edge(i), edge(i + 1), p.propeller, 2.0);
+    }
+    Geometry {
+        vertices: m.0,
+        world_end,
         exterior_end,
         cockpit_end,
     }
