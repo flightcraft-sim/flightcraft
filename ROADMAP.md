@@ -7,12 +7,12 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 
 | # | Item | Depends on |
 |---|---|---|
-| 1 | Workspace, licences, CI, licence check (`cargo deny`), layer check | nothing |
-| 2 | ISA atmosphere and flat world with one runway (`world`) | 1 |
-| 3 | Corvid aircraft definition and coefficient tables (`aero`) | 1 |
-| 4 | 6-DOF rigid body, integrator, gear contact (`sim`) | 2, 3 |
-| 5 | Golden test: scripted takeoff, climb, and landing with a fixed trajectory hash | 4 |
-| 6 | Command registry with schemas and the session (`control`) | 4 |
+| 1 | Workspace, licences, CI, licence check (`cargo deny`), layer check (done) | nothing |
+| 2 | ISA atmosphere and flat world with one runway (`world`) (done) | 1 |
+| 3 | Corvid aircraft definition and coefficient tables (`aero`) (done) | 1 |
+| 4 | 6-DOF rigid body, integrator, gear contact (`sim`) (done) | 2, 3 |
+| 5 | Golden test: scripted takeoff, climb, and landing with a fixed trajectory hash (done) | 4 |
+| 6 | Command registry with schemas and the session (`control`) (done) | 4 |
 | 7 | Renderer: ground, runway, aircraft, chase camera (`render`) | 4 |
 | 8 | Desktop app: keyboard and gamepad, basic instruments, configurable shortcuts, theme tokens | 6, 7 |
 | 9 | Browser build of the same app | 8 |
@@ -21,10 +21,11 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 
 | # | Item | Depends on |
 |---|---|---|
-| 10 | Headless MCP server over stdio (`apps/mcp`) | 6 |
-| 11 | Agent test: a scripted client flies the traffic pattern and lands | 5, 10 |
+| 10 | Headless MCP server over stdio (`apps/mcp`) (done) | 6 |
+| 11 | Agent test: a scripted client flies the traffic pattern and lands (done) | 5, 10 |
 | 12 | MCP bridged to the running app, with screenshots | 8, 10 |
-| 13 | Model accuracy tests (stall, trim, phugoid, damping) | 4 |
+| 13 | Model accuracy tests (stall, trim, phugoid, damping) (done) | 4 |
+| 13a | Hold commands (altitude, heading, airspeed, climb rate) so an agent flies a pattern in tens of calls, not thousands | 6 |
 | 14 | Golden hash checked on macOS, Windows, and wasm in CI | 5, 9 |
 
 ## Later
