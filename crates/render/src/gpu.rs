@@ -15,6 +15,11 @@ pub(crate) struct Uniform {
     pub sky_top: [f32; 4],
     pub sky_horizon: [f32; 4],
     pub ground: [f32; 4],
+    pub dry_grass: [f32; 4],
+    pub rock: [f32; 4],
+    pub forest: [f32; 4],
+    pub shoreline: [f32; 4],
+    pub water: [f32; 4],
     pub grid: [f32; 4],
     pub eye: [f32; 4],
 }
@@ -164,8 +169,7 @@ impl Gpu {
             bind_group_layouts: &[&uniform_layout],
             push_constant_ranges: &[],
         });
-        let vertex_attributes =
-            wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32];
+        let vertex_attributes = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32, 4 => Float32];
         let vertex_layout = wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<mesh::Vertex>() as u64,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -339,7 +343,7 @@ impl CallbackTrait for SceneCallback {
                 .tiles()
                 .iter()
                 .map(|tile| {
-                    let geometry = mesh::terrain(tile, gpu.palette);
+                    let geometry = mesh::terrain(tile, &self.world, gpu.palette);
                     TerrainBuffer {
                         vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("cached terrain LODs"),
@@ -426,5 +430,58 @@ impl CallbackTrait for SceneCallback {
             pass.set_bind_group(0, &gpu.targets.bind, &[]);
             pass.draw(0..3, 0..1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn scene_shader_validates_and_translates_to_webgl2() -> Result<(), Box<dyn std::error::Error>> {
+        use naga::{back::glsl, valid};
+        let module = naga::front::wgsl::parse_str(include_str!("scene.wgsl"))?;
+        let info = valid::Validator::new(valid::ValidationFlags::all(), valid::Capabilities::empty())
+            .validate(&module)?;
+        let options = glsl::Options {
+            version: glsl::Version::Embedded {
+                version: 300,
+                is_webgl: true,
+            },
+            ..Default::default()
+        };
+        for entry in &module.entry_points {
+            let pipeline = glsl::PipelineOptions {
+                shader_stage: entry.stage,
+                entry_point: entry.name.clone(),
+                multiview: None,
+            };
+            let mut output = String::new();
+            glsl::Writer::new(
+                &mut output,
+                &module,
+                &info,
+                &options,
+                &pipeline,
+                Default::default(),
+            )?
+            .write()?;
+            assert!(output.starts_with("#version 300 es"));
+        }
+        // The host buffer and WGSL must agree, including the newly added terrain tokens.
+        let uniforms = module
+            .types
+            .iter()
+            .find_map(|(_, ty)| match &ty.inner {
+                naga::TypeInner::Struct { members, span } if ty.name.as_deref() == Some("Uniforms") => {
+                    Some((members, *span))
+                }
+                _ => None,
+            })
+            .ok_or("missing scene uniforms")?;
+        assert_eq!(uniforms.1 as usize, std::mem::size_of::<super::Uniform>());
+        assert_eq!(
+            uniforms.0.last().map(|m| m.offset as usize),
+            Some(std::mem::offset_of!(super::Uniform, eye))
+        );
+        Ok(())
     }
 }

@@ -802,6 +802,7 @@ dependencies = [
  "flightcraft-sim",
  "flightcraft-world",
  "glam",
+ "naga",
  "wgpu",
 ]
 

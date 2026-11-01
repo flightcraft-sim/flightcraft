@@ -9,6 +9,7 @@ pub(crate) struct Vertex {
     normal: [f32; 3],
     color: [f32; 4],
     kind: f32,
+    water_coverage: f32,
 }
 
 #[derive(Default)]
@@ -23,6 +24,7 @@ impl Mesh {
                 normal,
                 color,
                 kind,
+                water_coverage: 0.0,
             });
         }
     }
@@ -422,53 +424,103 @@ pub(crate) struct TerrainMesh {
     pub center: [f32; 3],
 }
 
-pub(crate) fn terrain(tile: &flightcraft_world::HeightTile, p: Palette) -> TerrainMesh {
+pub(crate) fn terrain(
+    tile: &flightcraft_world::HeightTile,
+    world: &flightcraft_world::World,
+    p: Palette,
+) -> TerrainMesh {
     use flightcraft_world::Surface;
     let [north, east] = tile.origin_m();
     let extent = tile.extent_m();
+    let end = tile.size() - 1;
+    let spacing = tile.spacing_m();
+    // Sample on both sides of each vertex, including across tile seams. This immutable mask
+    // follows the actual surface cells, without encoding a particular lake's position or height.
+    let mut coverage = Vec::new();
+    for j in 0..=end {
+        for i in 0..=end {
+            let n = north + f64::from(i) * spacing;
+            let e = east + f64::from(j) * spacing;
+            let mut water = 0.0;
+            for (dn, de) in [(-0.25, -0.25), (-0.25, 0.25), (0.25, -0.25), (0.25, 0.25)] {
+                if world.ground(n + dn * spacing, e + de * spacing).surface == Surface::Water {
+                    water += 0.25;
+                }
+            }
+            coverage.push(water);
+        }
+    }
+    let point = |i: u32, j: u32| {
+        let n = north + f64::from(i) * spacing;
+        let e = east + f64::from(j) * spacing;
+        let ground = tile
+            .sample(n, e)
+            .unwrap_or_else(|| flightcraft_world::ground(n, e));
+        let water = coverage
+            .get((j * tile.size() + i) as usize)
+            .copied()
+            .unwrap_or(0.0);
+        (
+            Vec3::new(e as f32, ground.height_msl_m as f32, -n as f32),
+            ground,
+            water,
+        )
+    };
+    let surface = |i: u32, j: u32| {
+        tile.sample(
+            north + (f64::from(i) + 0.5) * spacing,
+            east + (f64::from(j) + 0.5) * spacing,
+        )
+        .map(|g| g.surface)
+        .unwrap_or(Surface::Grass)
+    };
+    let cell = |m: &mut Mesh, i: u32, j: u32, ii: u32, jj: u32| {
+        let corners = [point(i, j), point(ii, j), point(ii, jj), point(i, jj)];
+        let surface = surface(i, j);
+        for corner in [0, 1, 2, 0, 2, 3].into_iter().filter_map(|k| corners.get(k)) {
+            let (position, ground, water_coverage) = corner;
+            let [dn, de, down] = ground.normal_ned.map(|v| v as f32);
+            let (color, kind) = match surface {
+                Surface::Water => (p.water, 5.0),
+                Surface::Pavement => (p.runway, 3.0),
+                Surface::Grass => (p.ground, 4.0),
+            };
+            m.0.push(Vertex {
+                position: position.to_array(),
+                normal: if surface == Surface::Water {
+                    [0.0, 1.0, 0.0]
+                } else {
+                    [de, -down, -dn]
+                },
+                color,
+                kind,
+                water_coverage: *water_coverage,
+            });
+        }
+    };
     let mut m = Mesh::default();
     let mut fine_end = 0;
-    // Coarse cells also sample full-resolution tile normals, retaining slope shading.
+    // Coarse cells sample full-resolution normals. Keep mixed material blocks at full resolution
+    // in both LODs, so a shoreline cannot move or turn into a sloping water triangle on a switch.
     for step in [1_u32, 4] {
-        let end = tile.size() - 1;
-        let point = |i: u32, j: u32| {
-            let n = north + f64::from(i) * tile.spacing_m();
-            let e = east + f64::from(j) * tile.spacing_m();
-            let ground = tile
-                .sample(n, e)
-                .unwrap_or_else(|| flightcraft_world::ground(n, e));
-            (Vec3::new(e as f32, ground.height_msl_m as f32, -n as f32), ground)
-        };
         for j in (0..end).step_by(step as usize) {
             for i in (0..end).step_by(step as usize) {
                 let ii = (i + step).min(end);
                 let jj = (j + step).min(end);
-                let corners = [point(i, j), point(ii, j), point(ii, jj), point(i, jj)];
-                let n = north + f64::from(i + ii) * 0.5 * tile.spacing_m();
-                let e = east + f64::from(j + jj) * 0.5 * tile.spacing_m();
-                let surface = tile.sample(n, e).map(|g| g.surface).unwrap_or(Surface::Grass);
-                for corner in [0, 1, 2, 0, 2, 3].into_iter().filter_map(|k| corners.get(k)) {
-                    let (position, ground) = corner;
-                    let [dn, de, down] = ground.normal_ned.map(|v| v as f32);
-                    let blend = ((1.0 + down) * 2.0).clamp(0.0, 1.0);
-                    let color = match surface {
-                        Surface::Water => p.water,
-                        Surface::Pavement => p.runway,
-                        Surface::Grass => std::array::from_fn(|k| {
-                            p.ground.get(k).copied().unwrap_or(1.0) * (1.0 - blend)
-                                + p.earth.get(k).copied().unwrap_or(1.0) * blend
-                        }),
-                    };
-                    m.0.push(Vertex {
-                        position: position.to_array(),
-                        normal: if surface == Surface::Water {
-                            [0.0, 1.0, 0.0]
-                        } else {
-                            [de, -down, -dn]
-                        },
-                        color,
-                        kind: if surface == Surface::Water { 5.0 } else { 4.0 },
-                    });
+                let first = surface(i, j);
+                let shoreline = [point(i, j), point(ii, j), point(ii, jj), point(i, jj)]
+                    .iter()
+                    .any(|(_, _, water)| *water > 0.0 && *water < 1.0);
+                let mixed =
+                    step > 1 && (shoreline || (j..jj).any(|y| (i..ii).any(|x| surface(x, y) != first)));
+                if mixed {
+                    for y in j..jj {
+                        for x in i..ii {
+                            cell(&mut m, x, y, x + 1, y + 1);
+                        }
+                    }
+                } else {
+                    cell(&mut m, i, j, ii, jj);
                 }
             }
         }
@@ -513,6 +565,10 @@ mod terrain_tests {
             sky_horizon: [0.0; 4],
             ground: [0.3, 0.4, 0.3, 1.0],
             earth: [0.5, 0.4, 0.2, 1.0],
+            dry_grass: [0.6, 0.6, 0.4, 1.0],
+            rock: [0.5, 0.5, 0.5, 1.0],
+            forest: [0.2, 0.3, 0.2, 1.0],
+            shoreline: [0.7, 0.7, 0.5, 1.0],
             water: [0.1, 0.3, 0.6, 1.0],
             grid: [0.0; 4],
             runway: [0.0; 4],
@@ -574,10 +630,34 @@ mod terrain_tests {
         let p = palette();
         let mut water_vertices = 0;
         for tile in world.tiles() {
-            let mesh = terrain(tile, p);
+            let mesh = terrain(tile, &world, p);
             assert!(mesh.fine_end as usize > mesh.vertices.len() - mesh.fine_end as usize);
             assert!(mesh.vertices.len() * std::mem::size_of::<Vertex>() < 16 * 1024 * 1024);
+            let (fine, coarse) = mesh.vertices.split_at(mesh.fine_end as usize);
+            let shore_triangles = |vertices: &[Vertex]| {
+                vertices
+                    .chunks_exact(3)
+                    .filter(|triangle| {
+                        triangle
+                            .iter()
+                            .any(|v| v.water_coverage > 0.0 && v.water_coverage < 1.0)
+                    })
+                    .map(|triangle| {
+                        triangle
+                            .iter()
+                            .flat_map(|v| {
+                                v.position
+                                    .into_iter()
+                                    .chain([v.kind, v.water_coverage])
+                                    .map(f32::to_bits)
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<std::collections::BTreeSet<_>>()
+            };
+            assert_eq!(shore_triangles(fine), shore_triangles(coarse));
             for vertex in mesh.vertices {
+                assert!((0.0..=1.0).contains(&vertex.water_coverage));
                 assert!(
                     vertex
                         .position
@@ -606,5 +686,78 @@ mod terrain_tests {
             assert!(!near_tile([100_000.0; 4], mesh.center));
         }
         assert!(water_vertices > 0);
+    }
+
+    #[test]
+    fn shoreline_mask_agrees_across_tile_seams() {
+        use flightcraft_world::{HeightTile, Surface};
+        let tiles = [0.0, 80.0]
+            .into_iter()
+            .map(|north| {
+                let samples = (0..9)
+                    .flat_map(|j| std::iter::repeat_n(35.0 + (j as f32 - 3.0).max(0.0) * 5.0, 9))
+                    .collect();
+                let surfaces = (0..8)
+                    .flat_map(|j| std::iter::repeat_n(if j < 3 { Surface::Water } else { Surface::Grass }, 8))
+                    .collect();
+                HeightTile::new([north - 1000.0, 1000.0], 10.0, 9, samples, surfaces).unwrap()
+            })
+            .collect();
+        let world = World::from_tiles(tiles).unwrap();
+        let meshes: Vec<_> = world
+            .tiles()
+            .iter()
+            .map(|tile| terrain(tile, &world, palette()))
+            .collect();
+        for mesh in &meshes {
+            let (fine, coarse) = mesh.vertices.split_at(mesh.fine_end as usize);
+            for lod in [fine, coarse] {
+                let mut water_area = 0.0;
+                for triangle in lod.chunks_exact(3) {
+                    if let [a, b, c] = triangle
+                        && a.kind == 5.0
+                    {
+                        for vertex in triangle {
+                            let [_, height, _] = vertex.position;
+                            assert_eq!(height, 35.0);
+                        }
+                        let ab = Vec3::from(b.position) - Vec3::from(a.position);
+                        let ac = Vec3::from(c.position) - Vec3::from(a.position);
+                        water_area += ab.cross(ac).length() * 0.5;
+                    }
+                }
+                // The water/land boundary deliberately cuts through a coarse block.
+                assert_eq!(water_area, 80.0 * 30.0);
+            }
+        }
+        let seam = |mesh: &TerrainMesh| {
+            mesh.vertices
+                .iter()
+                .filter(|v| {
+                    let [_, height, z] = v.position;
+                    z == 920.0 && height >= 35.0
+                })
+                .map(|v| {
+                    let [x, y, z] = v.position;
+                    [
+                        x.to_bits(),
+                        y.to_bits(),
+                        z.to_bits(),
+                        v.kind.to_bits(),
+                        v.water_coverage.to_bits(),
+                    ]
+                })
+                .collect::<std::collections::BTreeSet<_>>()
+        };
+        let a = seam(meshes.first().unwrap());
+        let b = seam(meshes.get(1).unwrap());
+        assert!(!a.is_empty());
+        assert_eq!(a, b);
+        assert!(
+            meshes
+                .iter()
+                .flat_map(|m| &m.vertices)
+                .any(|v| v.water_coverage == 0.5)
+        );
     }
 }

@@ -34,6 +34,7 @@ egui-wgpu = { version = "=0.33.3", default-features = false, features = ["fragil
 wgpu = { version = "27", default-features = false, features = ["std", "wgsl", "vulkan", "gles", "webgpu", "webgl", "fragile-send-sync-non-atomic-wasm"] }
 bytemuck = { version = "1", features = ["derive"] }
 glam = "0.30"
+naga = { version = "27", features = ["wgsl-in", "glsl-out"] }
 gilrs = "0.11"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
