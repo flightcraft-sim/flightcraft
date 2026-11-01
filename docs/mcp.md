@@ -47,6 +47,9 @@ requests `-32600`, and malformed JSON `-32700`.
 | `sim_pause` | `sim.pause` | `{}`. Pauses the app's real-time loop; returns playback settings. |
 | `sim_resume` | `sim.resume` | `{}`. Resumes the app's real-time loop; returns playback settings. |
 | `sim_set_rate` | `sim.set_rate` | `rate` from 0.25 to 8. Returns playback settings. |
+| `sim_wait` | `sim.wait` | `seconds` from 0 to 60. Waits for simulated time to advance in the running app; returns state, readout, and playback settings. App only. |
+| `view_set_camera` | `view.set_camera` | `mode`: `chase` or `cockpit` (placeholder), optional chase `distance_m` (2 to 200) and `height_m` (0 to 100). Returns camera settings. App only. |
+| `app_screenshot` | `app.screenshot` | Optional `directory` for a new PNG, and `base64` (default false). Direct calls require a directory or base64. MCP always requests base64 and returns PNG image content, plus `path` and `png_base64` in structured content (`path` is null without a directory). App only. |
 | `commands_list` | `commands.list` | `{}`. Returns `commands`, including dotted names, descriptions, and both schemas. |
 
 Units are SI and appear in field names: seconds (`time_s`), metres (`height_m`, `position_m`),
@@ -57,7 +60,7 @@ nonnegative height and airspeed, and heading between 0 and 2π radians inclusive
 fields, non-finite numbers, and out-of-range values are errors. Optional values generally reject
 null; hold targets explicitly accept null or false to disengage.
 
-Each connection owns one session, initially paused on the runway at rate 1. Reset preserves rate
+Each headless server owns one session, initially paused on the runway at rate 1. Reset preserves rate
 and resets simulated time. Explicit stepping works while paused and always uses the fixed 1/120 s
 timestep; rate and pause are settings for the app's real-time loop. This headless server has no
 background stepping loop. Unspecified controls remain unchanged, and invalid calls leave the
@@ -74,7 +77,7 @@ disengage other vertical holds first. Heading and wings level own aileron and ru
 brakes, and controls without an engaged owner remain with the pilot. Readouts include the
 `autopilot` targets, and reset disengages all holds.
 
-Each wait condition has a `kind` and the fields below. Comparisons are inclusive, heading uses
+Each `sim_run_until` condition has a `kind` and the fields below. Comparisons are inclusive, heading uses
 the shortest angular distance across north, and elapsed time starts at entry to each call.
 
 | Condition kind | Fields |
@@ -118,6 +121,85 @@ climb to 300 m, level off, turn east, and wait for the heading:
 Check `fired` and the returned readout, then choose the next hold targets and wait condition.
 `crates/control/tests/pattern_holds.rs` flies takeoff, the climb above 300 m, four turns, descent,
 landing, and the stop on the runway in fewer than 60 JSON command calls.
+
+## Drive the running desktop
+
+Start the desktop and connect the stdio MCP server to the same port:
+
+```sh
+flightcraft --control 7890
+flightcraft-mcp --connect 7890
+```
+
+Use this client configuration (with an absolute executable path when needed):
+
+```json
+{
+  "mcpServers": {
+    "flightcraft": {
+      "command": "flightcraft-mcp",
+      "args": ["--connect", "7890"]
+    }
+  }
+}
+```
+
+Bridged and headless modes expose the same tool list and schemas. Every bridged tool call goes to
+one session owned by the desktop UI thread, including state reads. Disconnecting leaves that flight
+running; reconnecting observes the same session. The desktop starts running, whereas a headless
+server starts paused. App-only tools return a clear "needs the app" error in headless mode.
+
+The control socket binds exclusively to IPv4 `127.0.0.1`; flags accept only a numeric port from
+1 to 65535, never a host or address. The listener also rejects any other bind address. The channel
+is available to local processes and has no authentication. Native networking is compiled out on
+wasm. No async runtime is used.
+
+Direct clients send one JSON object per line:
+
+```jsonl
+{"id":1,"command":"sim.pause","input":{}}
+{"id":2,"command":"view.set_camera","input":{"mode":"chase","distance_m":25,"height_m":9}}
+{"id":3,"command":"app.screenshot","input":{"directory":"captures","base64":false}}
+```
+
+A response is `{"id":1,"ok":{...}}` or `{"id":1,"error":"message"}`. IDs are strings,
+numbers, or null. Unknown envelope fields, missing fields, malformed JSON, invalid UTF-8, and
+oversized lines receive errors; unusable IDs become null. Request lines are capped at 1 MiB,
+including the newline. Oversized lines are drained before the next request. At most eight clients
+connect at once, each with one outstanding request; the channel queue and pending app work are also
+bounded. Commands execute at the start of a UI frame through `Session::execute`. Threads move
+lines and responses through standard channels and never access the simulation. Calls on one
+connection are ordered; a waiting client can be interrupted by another client's pause or reset.
+The synchronous MCP stdio server handles one call at a time.
+
+### Real-time rules
+
+- In the desktop, `sim.step` and `sim.run_until` require pause. While running they fail with an
+  instruction to use `sim.pause` first or `sim.wait` for real-time flight. Scripts use the same rule.
+  Explicit stepping while paused still updates the visible flight on the following render.
+- `sim.wait` waits for 0 to 60 simulated seconds to pass in the app's frame loop. It does no explicit
+  stepping and requires a running session. `sim.set_rate` scales that loop while preserving fixed
+  steps. Pause, reset, a crash, or a 120-second wall-clock deadline interrupts an outstanding wait with an
+  error. The response contains the state observed when the target time is reached, which can be
+  slightly later than requested because frames contain several fixed steps.
+- Keyboard and gamepad flight controls are suppressed while a script has commands remaining,
+  while any hold is engaged, or for three seconds after a successful external `sim.set_controls`,
+  `autopilot.set`, `autopilot.off`, or `sim.reset`. State reads and waits do not renew this interval.
+  Keep sending controls within three seconds for manual remote flight, or engage holds. Human
+  pause, reset, and camera actions remain available.
+- `app.screenshot` requests an eframe viewport capture and replies over the next frames when its
+  matching renderer event arrives. It captures the window, including instruments, and keeps the
+  app open. A requested directory is created if necessary; a fresh PNG is created there without
+  overwriting files, and the returned path is absolute. PNGs are capped at 16 MiB. Base64-only
+  capture writes no file. Screenshot requests time out after 120 seconds if no image arrives.
+- `view.set_camera` controls chase or the current cockpit placeholder. Chase defaults are
+  `distance_m: 19` and `height_m: 7`; omitted offsets retain their settings. Camera buttons and
+  shortcuts call this same command.
+
+For visible real-time flight, set controls or holds, call `sim_resume`, then `sim_wait` and
+`sim_state`. For deterministic explicit flight, call `sim_pause`, then use `sim_step` or
+`sim_run_until`. To see the result, call `app_screenshot` with `{"directory":"captures"}`;
+its MCP response includes both an image block and the saved path.
 
 Run `cargo xtask schemas` after changing command types to regenerate `schema/commands.json`.
 `cargo xtask schemas --check` detects stale schemas and runs as part of `cargo xtask ci`.

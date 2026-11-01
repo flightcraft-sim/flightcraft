@@ -42,8 +42,16 @@ pub fn toggle_pause(session: &mut Session, paused: &mut bool) -> Result<(), Comm
     Ok(())
 }
 
-/// The camera is view state, not simulation state; it moves to a `view.set_camera` command when
-/// the view gets commands (ROADMAP item 12).
-pub fn toggle_camera(scene: &mut flightcraft_render::Scene) {
-    scene.toggle_camera();
+/// Camera changes use the same validated command as remote clients and scripts.
+pub fn toggle_camera(session: &mut Session) -> Result<(), CommandError> {
+    use flightcraft_control::CameraMode;
+    let current = session
+        .camera()
+        .ok_or_else(|| CommandError::Failed("camera needs the app".into()))?;
+    let mode = match current.mode {
+        CameraMode::Chase => "cockpit",
+        CameraMode::Cockpit => "chase",
+    };
+    session.execute("view.set_camera", serde_json::json!({"mode": mode}))?;
+    Ok(())
 }

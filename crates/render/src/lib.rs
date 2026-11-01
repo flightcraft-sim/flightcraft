@@ -33,11 +33,24 @@ pub enum CameraMode {
     Cockpit,
 }
 
-#[derive(Default)]
 pub struct Scene {
     eye: Option<Vec3>,
     target: Option<Vec3>,
     pub camera: CameraMode,
+    chase_distance_m: f32,
+    chase_height_m: f32,
+}
+
+impl Default for Scene {
+    fn default() -> Self {
+        Self {
+            eye: None,
+            target: None,
+            camera: CameraMode::Chase,
+            chase_distance_m: 19.0,
+            chase_height_m: 7.0,
+        }
+    }
 }
 
 fn drawing(v: Vec3) -> Vec3 {
@@ -45,6 +58,14 @@ fn drawing(v: Vec3) -> Vec3 {
 }
 
 impl Scene {
+    /// Presentation offsets supplied by the app's validated camera command.
+    pub fn set_chase_offsets(&mut self, distance_m: f32, height_m: f32) {
+        if distance_m.is_finite() && height_m.is_finite() {
+            self.chase_distance_m = distance_m.clamp(2.0, 200.0);
+            self.chase_height_m = height_m.clamp(0.0, 100.0);
+        }
+    }
+
     pub fn toggle_camera(&mut self) {
         self.camera = match self.camera {
             CameraMode::Chase => CameraMode::Cockpit,
@@ -76,7 +97,7 @@ impl Scene {
         let model = Mat4::from_cols(axis(Vec3::X), axis(Vec3::Y), axis(Vec3::Z), position.extend(1.0));
         let (desired_eye, desired_target) = match self.camera {
             CameraMode::Chase => (
-                position + drawing(attitude * Vec3::new(-19.0, 0.0, -7.0)),
+                position + drawing(attitude * Vec3::new(-self.chase_distance_m, 0.0, -self.chase_height_m)),
                 position + drawing(attitude * Vec3::new(10.0, 0.0, -0.3)),
             ),
             CameraMode::Cockpit => (

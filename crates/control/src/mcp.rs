@@ -13,11 +13,19 @@ pub const PROTOCOL_VERSION: &str = "2025-06-18";
 /// Handle a request without IO, clocks, or an async runtime. Responses include a trailing newline.
 #[must_use]
 pub fn handle_line(session: &mut Session, line: &str) -> Option<String> {
+    handle_line_with(&mut |name, input| session.execute(name, input), line)
+}
+
+/// Use the same MCP protocol and registry with a different command transport.
+pub fn handle_line_with(
+    execute: &mut impl FnMut(&str, Value) -> Result<Value, CommandError>,
+    line: &str,
+) -> Option<String> {
     let response = if line.len() > MAX_LINE_BYTES {
         error(Value::Null, -32700, "request line exceeds 1048576 bytes")
     } else {
         match serde_json::from_str::<Value>(line) {
-            Ok(request) => handle_request(session, request)?,
+            Ok(request) => handle_request(execute, request)?,
             Err(parse_error) => error(Value::Null, -32700, &parse_error.to_string()),
         }
     };
@@ -29,7 +37,10 @@ fn error(id: Value, code: i32, message: &str) -> Value {
     json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
 }
 
-fn handle_request(session: &mut Session, request: Value) -> Option<Value> {
+fn handle_request(
+    execute: &mut impl FnMut(&str, Value) -> Result<Value, CommandError>,
+    request: Value,
+) -> Option<Value> {
     let Some(object) = request.as_object() else {
         return Some(error(Value::Null, -32600, "request must be an object"));
     };
@@ -47,7 +58,7 @@ fn handle_request(session: &mut Session, request: Value) -> Option<Value> {
         return Some(error(id, -32600, "invalid JSON-RPC 2.0 request"));
     }
     let params = object.get("params").cloned().unwrap_or_else(|| json!({}));
-    let result = dispatch(session, method.unwrap_or_default(), params);
+    let result = dispatch(execute, method.unwrap_or_default(), params);
     // JSON-RPC notifications never receive responses, including errors.
     let id = id?;
     Some(match result {
@@ -111,7 +122,11 @@ fn empty_object() -> Value {
     json!({})
 }
 
-fn dispatch(session: &mut Session, method: &str, input: Value) -> RpcResult {
+fn dispatch(
+    execute: &mut impl FnMut(&str, Value) -> Result<Value, CommandError>,
+    method: &str,
+    input: Value,
+) -> RpcResult {
     match method {
         "initialize" => {
             if !input.get("clientInfo").is_some_and(Value::is_object) {
@@ -134,7 +149,7 @@ fn dispatch(session: &mut Session, method: &str, input: Value) -> RpcResult {
                 "protocolVersion": version,
                 "capabilities": {"tools": {"listChanged": false}},
                 "serverInfo": {"name": "flightcraft-mcp", "version": env!("CARGO_PKG_VERSION")},
-                "instructions": "Use sim_reset, autopilot_set, sim_run_until, autopilot_off, sim_set_controls, sim_step, and sim_state. Units are SI; explicit steps and waits run even while paused."
+                "instructions": "Use sim_reset, autopilot_set, sim_run_until, autopilot_off, sim_set_controls, sim_step, and sim_state. Units are SI. In bridged mode pause before sim_step or sim_run_until; sim_wait waits for real-time flight while running. App commands need a desktop connection."
             }))
         }
         "ping" | "notifications/initialized" => {
@@ -160,17 +175,35 @@ fn dispatch(session: &mut Session, method: &str, input: Value) -> RpcResult {
             Ok(json!({"tools": tools}))
         }
         "tools/call" => {
-            let input: CallParams = params(input)?;
+            let mut input: CallParams = params(input)?;
             let command = Session::commands()
                 .into_iter()
                 .find(|command| command.name.replace('.', "_") == input.name)
                 .ok_or_else(|| (-32602, format!("unknown tool: {}", input.name)))?;
-            match session.execute(command.name, input.arguments) {
-                Ok(output) => Ok(json!({
-                    "content": [{"type": "text", "text": output.to_string()}],
-                    "structuredContent": output,
-                    "isError": false,
-                })),
+            if command.name == "app.screenshot"
+                && let Some(args) = input.arguments.as_object_mut()
+                && args.get("base64").is_none_or(Value::is_boolean)
+            {
+                args.insert("base64".into(), json!(true));
+            }
+            match execute(command.name, input.arguments) {
+                Ok(mut output) => {
+                    // A screenshot's PNG goes in the image block only: repeating it in the text and
+                    // the structured copy would triple what a client has to read.
+                    let image = if command.name == "app.screenshot" {
+                        output
+                            .as_object_mut()
+                            .and_then(|fields| fields.remove("png_base64"))
+                            .filter(Value::is_string)
+                    } else {
+                        None
+                    };
+                    let mut content = vec![json!({"type": "text", "text": output.to_string()})];
+                    if let Some(data) = image {
+                        content.push(json!({"type": "image", "mimeType": "image/png", "data": data}));
+                    }
+                    Ok(json!({"content": content, "structuredContent": output, "isError": false}))
+                }
                 Err(error @ (CommandError::InvalidInput { .. } | CommandError::Unknown(_))) => {
                     Err((-32602, error.to_string()))
                 }

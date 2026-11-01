@@ -83,6 +83,11 @@ fn protocol_errors_and_bad_tool_inputs() {
         ("initialize", json!({}), -32602),
         ("tools/list", json!({"cursor": "unknown"}), -32602),
         ("tools/call", json!({}), -32602),
+        (
+            "tools/call",
+            json!({"name":"app_screenshot","arguments":{"base64":null}}),
+            -32602,
+        ),
         ("tools/call", json!({"name": "unknown"}), -32602),
         (
             "tools/call",

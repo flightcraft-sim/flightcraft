@@ -4,7 +4,11 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+mod app;
 mod holds;
+pub use app::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod bridge;
 mod systems;
 pub use systems::*;
 pub mod mcp;
@@ -46,6 +50,8 @@ pub enum CommandError {
     Sim(#[from] SimError),
     #[error("{0}")]
     Failed(String),
+    #[error("command awaits completion by the app")]
+    AppPending(AppRequest),
 }
 
 /// One flight session: the simulation and the settings commands change.
@@ -54,6 +60,8 @@ pub struct Session {
     sim: Sim,
     paused: bool,
     rate: f64,
+    camera: Option<CameraSettings>,
+    flight_generation: u64,
 }
 
 impl Session {
@@ -63,7 +71,39 @@ impl Session {
             sim: Sim::new(&Start::Runway)?,
             paused: true,
             rate: 1.0,
+            camera: None,
+            flight_generation: 0,
         })
+    }
+
+    /// Enable app commands for the session hosted by the UI thread.
+    pub fn enable_app(&mut self) {
+        self.camera = Some(CameraSettings::default());
+    }
+
+    #[must_use]
+    pub fn camera(&self) -> Option<CameraSettings> {
+        self.camera
+    }
+
+    /// Changes on every successful reset, including a reset to the same simulated time.
+    #[must_use]
+    pub fn flight_generation(&self) -> u64 {
+        self.flight_generation
+    }
+
+    /// Whether any hold currently owns flight controls.
+    #[must_use]
+    pub fn holds_active(&self) -> bool {
+        let targets = self.sim.readout().autopilot;
+        targets.wings_level
+            || targets
+                .pitch_rad
+                .or(targets.altitude_m)
+                .or(targets.vertical_speed_mps)
+                .or(targets.heading_rad)
+                .or(targets.airspeed_mps)
+                .is_some()
     }
 
     /// Read-only access for drawing and instruments. Changes go through commands.
@@ -100,6 +140,12 @@ impl Session {
         name: &str,
         input: serde_json::Value,
     ) -> Result<serde_json::Value, CommandError> {
+        if self.camera.is_some() && !self.paused && matches!(name, "sim.step" | "sim.run_until") {
+            return Err(CommandError::Failed(
+                "pause first with sim.pause before explicit stepping; use sim.wait for real-time flight"
+                    .into(),
+            ));
+        }
         dispatch(self, name, input)
     }
 
@@ -201,6 +247,7 @@ impl Command for Reset {
             }
         };
         session.sim = Sim::new_with_weather(&start, self.weather.unwrap_or_default())?;
+        session.flight_generation = session.flight_generation.wrapping_add(1);
         session.paused = self.paused.unwrap_or(true);
         Ok(session.snapshot())
     }
@@ -444,5 +491,8 @@ registry!(
     Pause,
     Resume,
     SetRate,
-    ListCommands
+    ListCommands,
+    SetCamera,
+    AppScreenshot,
+    Wait
 );

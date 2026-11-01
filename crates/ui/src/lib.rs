@@ -1,5 +1,7 @@
 //! The shared eframe application for desktop and browser.
 pub mod actions;
+#[cfg(not(target_arch = "wasm32"))]
+mod bridge;
 pub mod clock;
 mod input;
 mod instruments;
@@ -52,6 +54,8 @@ impl Screenshot {
 pub struct AppOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot: Option<Screenshot>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub control: Option<flightcraft_control::bridge::Listener>,
     /// Timed commands to run; they hold the flight controls until they run out.
     pub script: Option<script::Script>,
 }
@@ -59,6 +63,8 @@ pub struct AppOptions {
 /// One session, one fixed-step accumulator, and read-only presentation of its state.
 pub struct FlightCraftApp {
     session: Session,
+    #[cfg(not(target_arch = "wasm32"))]
+    bridge: bridge::Bridge,
     scene: Scene,
     clock: clock::FixedStep,
     input: input::Input,
@@ -105,10 +111,13 @@ impl FlightCraftApp {
         let bindings_json = keymap.json()?;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
+        session.enable_app();
         session.run(flightcraft_control::Resume {})?;
         let paused = session.paused();
         Ok(Self {
             session,
+            #[cfg(not(target_arch = "wasm32"))]
+            bridge: bridge::Bridge::new(options.control),
             scene: Scene::default(),
             clock: clock::FixedStep::default(),
             input: input::Input::default(),
@@ -188,7 +197,9 @@ impl FlightCraftApp {
         self.frames = ctx.cumulative_frame_nr();
         let image = ctx.input(|i| {
             i.events.iter().find_map(|event| {
-                if let egui::Event::Screenshot { image, .. } = event {
+                if let egui::Event::Screenshot { image, user_data, .. } = event
+                    && user_data.data.is_none()
+                {
                     Some(image.clone())
                 } else {
                     None
@@ -236,6 +247,9 @@ impl FlightCraftApp {
 
 impl eframe::App for FlightCraftApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.bridge.update(ctx, &mut self.session);
+        self.paused = self.session.paused();
         let now = ctx.input(|i| i.time);
         let elapsed = self
             .last_time
@@ -251,23 +265,36 @@ impl eframe::App for FlightCraftApp {
         if frame.pressed(Action::Reset) {
             self.reset();
         }
-        if frame.pressed(Action::Camera) {
-            actions::toggle_camera(&mut self.scene);
+        if frame.pressed(Action::Camera)
+            && let Err(e) = actions::toggle_camera(&mut self.session)
+        {
+            self.error = Some(e.to_string());
         }
-        let controls = self
-            .input
-            .controls(&frame, self.session.sim().controls(), elapsed);
-        let steps = self.clock.advance(elapsed, self.paused);
         let scripted = self.script.active();
         let sim_time_s = self.session.sim().state().time_s;
         if scripted && let Err(e) = self.script.run_due(&mut self.session, sim_time_s) {
             self.error = Some(e);
         }
-        let controlled = if scripted {
+        self.paused = self.session.paused();
+        let external = {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.bridge.controls_active()
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                false
+            }
+        };
+        let controlled = if scripted || external || self.session.holds_active() {
             Ok(())
         } else {
+            let controls = self
+                .input
+                .controls(&frame, self.session.sim().controls(), elapsed);
             actions::set_controls(&mut self.session, controls)
         };
+        let steps = self.clock.advance(elapsed * self.session.rate(), self.paused);
         if let Err(e) = controlled.and_then(|()| actions::step(&mut self.session, steps)) {
             self.error = Some(e.to_string());
         }
@@ -311,8 +338,9 @@ impl eframe::App for FlightCraftApp {
                         if ui
                             .button(format!("{camera}  [{}]", self.keymap.label(Action::Camera)))
                             .clicked()
+                            && let Err(e) = actions::toggle_camera(&mut self.session)
                         {
-                            actions::toggle_camera(&mut self.scene);
+                            self.error = Some(e.to_string());
                         }
                         if ui
                             .button(format!("Reset  [{}]", self.keymap.label(Action::Reset)))
@@ -385,6 +413,18 @@ impl eframe::App for FlightCraftApp {
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(theme::BACKGROUND))
             .show(ctx, |ui| {
+                if let Some(camera) = self.session.camera() {
+                    let mode = match camera.mode {
+                        flightcraft_control::CameraMode::Chase => CameraMode::Chase,
+                        flightcraft_control::CameraMode::Cockpit => CameraMode::Cockpit,
+                    };
+                    if self.scene.camera != mode {
+                        self.scene.camera = mode;
+                        self.scene.reset_camera();
+                    }
+                    self.scene
+                        .set_chase_offsets(camera.distance_m as f32, camera.height_m as f32);
+                }
                 self.scene
                     .show(ui, self.session.sim().state(), elapsed as f32, theme::scene());
                 let rect = ui.max_rect().shrink(24.0);
@@ -461,4 +501,10 @@ impl eframe::App for FlightCraftApp {
             storage.set_string(KEYMAP_STORAGE, json);
         }
     }
+}
+
+/// Open the optional native loopback channel before creating the window.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn control_listener(port: u16) -> std::io::Result<flightcraft_control::bridge::Listener> {
+    flightcraft_control::bridge::Listener::loopback(port)
 }

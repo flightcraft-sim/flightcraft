@@ -14,9 +14,12 @@ core that people, scripts, and AI agents fly the same way.
 - An MCP server (`flightcraft-mcp`, see [docs/mcp.md](docs/mcp.md)): an agent resets, sets controls,
   steps, and reads the state. With the autopilot holds and `sim.run_until`, a test flies the full
   traffic pattern in 32 calls.
+- Bridged MCP: `flightcraft --control 7890` and `flightcraft-mcp --connect 7890` let an agent fly the
+  app a person is watching, and take screenshots of it.
+- Wind, shear, and repeatable turbulence; engine failure, partial power, and jammed controls.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 
-Not yet: terrain, weather, failures, a second aircraft, or a cockpit view. The plan is in
+Not yet: terrain, clouds, a second aircraft, or a cockpit view. The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 
 ## Building

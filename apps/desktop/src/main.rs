@@ -9,9 +9,20 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut frames = 120_u64;
     let mut at_sim_s: Option<f64> = None;
     let mut script = None;
+    let mut control = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--control" => {
+                let port: u16 = args
+                    .next()
+                    .ok_or("--control needs a port from 1 to 65535")?
+                    .parse()?;
+                if port == 0 {
+                    return Err("--control needs a port from 1 to 65535".into());
+                }
+                control = Some(flightcraft_ui::control_listener(port)?);
+            }
             "--screenshot" => path = Some(PathBuf::from(args.next().ok_or("--screenshot needs a PNG path")?)),
             "--frames" => {
                 frames = args.next().ok_or("--frames needs a positive integer")?.parse()?;
@@ -34,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
             "--help" | "-h" => {
                 println!(
-                    "flightcraft [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
+                    "flightcraft [--control <port>] [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--control listens only on 127.0.0.1 for shared-session commands.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
                 );
                 return Ok(());
             }
@@ -71,6 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 cc,
                 AppOptions {
                     screenshot: capture,
+                    control,
                     script,
                 },
             )?))
