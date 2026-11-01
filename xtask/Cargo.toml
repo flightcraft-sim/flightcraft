@@ -14,3 +14,5 @@ workspace = true
 
 [dependencies]
 serde_json.workspace = true
+flightcraft-control.workspace = true
+syn.workspace = true

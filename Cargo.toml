@@ -22,6 +22,9 @@ thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 schemars = "1"
+serde_path_to_error = "0.1"
+syn = { version = "2", features = ["full", "visit"] }
+jsonschema = { version = "0.37", default-features = false }
 # Pure-Rust maths functions: the same bits on every platform (the deterministic core uses only these).
 libm = "0.2"
 

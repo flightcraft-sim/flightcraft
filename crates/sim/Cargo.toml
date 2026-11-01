@@ -17,3 +17,4 @@ flightcraft-aero.workspace = true
 libm.workspace = true
 thiserror.workspace = true
 serde.workspace = true
+schemars.workspace = true

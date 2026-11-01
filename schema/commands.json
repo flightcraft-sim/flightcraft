@@ -1,0 +1,968 @@
+[
+  {
+    "name": "sim.reset",
+    "description": "Start on the runway or in the air, in SI units.",
+    "input_schema": {
+      "$defs": {
+        "ResetStart": {
+          "description": "Start on the default runway or in the air above its threshold.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "runway",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "height_m": {
+                  "format": "double",
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "air",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "height_m",
+                "airspeed_mps",
+                "heading_rad"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "paused": {
+          "default": true,
+          "description": "Defaults to paused. The existing rate is retained across resets.",
+          "type": "boolean"
+        },
+        "start": {
+          "$ref": "#/$defs/ResetStart"
+        }
+      },
+      "required": [
+        "start"
+      ],
+      "title": "Reset",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Readout": {
+          "description": "Derived values for instruments, agents, and tests.",
+          "properties": {
+            "alpha_rad": {
+              "description": "Angle of attack, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_msl_m": {
+              "description": "Altitude above mean sea level, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "beta_rad": {
+              "description": "Sideslip, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "crashed": {
+              "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
+              "type": "boolean"
+            },
+            "engine_rpm": {
+              "description": "Engine speed, revolutions per minute.",
+              "format": "double",
+              "type": "number"
+            },
+            "ground_speed_mps": {
+              "description": "Ground speed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "format": "double",
+              "type": "number"
+            },
+            "height_agl_m": {
+              "description": "Height of the lowest wheel above the ground, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "description": "Indicated airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "load_factor_g": {
+              "description": "Load factor along body z, g (1 in level flight).",
+              "format": "double",
+              "type": "number"
+            },
+            "on_ground": {
+              "description": "True while any wheel touches the ground.",
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "true_airspeed_mps": {
+              "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "description": "Climb rate, m/s (positive up).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "indicated_airspeed_mps",
+            "true_airspeed_mps",
+            "ground_speed_mps",
+            "altitude_msl_m",
+            "height_agl_m",
+            "vertical_speed_mps",
+            "heading_rad",
+            "pitch_rad",
+            "roll_rad",
+            "alpha_rad",
+            "beta_rad",
+            "load_factor_g",
+            "engine_rpm",
+            "on_ground",
+            "crashed",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "State": {
+          "description": "The full rigid-body state.",
+          "properties": {
+            "angular_rate_rps": {
+              "description": "Angular rate in the body frame `[p, q, r]`, rad/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "attitude": {
+              "description": "Attitude, body to world, as a unit quaternion `[w, x, y, z]`.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "position_m": {
+              "description": "Position of the centre of gravity in the world (NED) frame, metres.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "time_s": {
+              "description": "Simulated time since the start, seconds.",
+              "format": "double",
+              "type": "number"
+            },
+            "velocity_mps": {
+              "description": "Velocity in the world (NED) frame, m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "time_s",
+            "position_m",
+            "velocity_mps",
+            "attitude",
+            "angular_rate_rps"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Full simulation state in SI units, plus app playback settings.",
+      "properties": {
+        "paused": {
+          "type": "boolean"
+        },
+        "rate": {
+          "format": "double",
+          "type": "number"
+        },
+        "readout": {
+          "$ref": "#/$defs/Readout"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        }
+      },
+      "required": [
+        "state",
+        "readout",
+        "paused",
+        "rate"
+      ],
+      "title": "StateOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.set_controls",
+    "description": "Set any subset of the six dimensionless pilot controls.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Partial controls; values persist until explicitly changed. Surface inputs are dimensionless.",
+      "properties": {
+        "aileron": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": -1,
+          "type": "number"
+        },
+        "brake": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "elevator": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": -1,
+          "type": "number"
+        },
+        "flaps": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "rudder": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": -1,
+          "type": "number"
+        },
+        "throttle": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "SetControls",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Pilot controls. Each value is clamped to its range when set.",
+      "properties": {
+        "aileron": {
+          "description": "Aileron, -1 (roll left) to 1 (roll right).",
+          "format": "double",
+          "type": "number"
+        },
+        "brake": {
+          "description": "Wheel brakes, 0 to 1.",
+          "format": "double",
+          "type": "number"
+        },
+        "elevator": {
+          "description": "Elevator, -1 (nose down) to 1 (nose up).",
+          "format": "double",
+          "type": "number"
+        },
+        "flaps": {
+          "description": "Flaps, 0 (up) to 1 (fully down).",
+          "format": "double",
+          "type": "number"
+        },
+        "rudder": {
+          "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+          "format": "double",
+          "type": "number"
+        },
+        "throttle": {
+          "description": "Throttle, 0 to 1.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "elevator",
+        "aileron",
+        "rudder",
+        "throttle",
+        "flaps",
+        "brake"
+      ],
+      "title": "Controls",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.step",
+    "description": "Advance up to 72000 fixed steps, even while paused; return the readout.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "format": "uint32",
+          "maximum": 72000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "title": "Step",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Derived values for instruments, agents, and tests.",
+      "properties": {
+        "alpha_rad": {
+          "description": "Angle of attack, radians.",
+          "format": "double",
+          "type": "number"
+        },
+        "altitude_msl_m": {
+          "description": "Altitude above mean sea level, metres.",
+          "format": "double",
+          "type": "number"
+        },
+        "beta_rad": {
+          "description": "Sideslip, radians.",
+          "format": "double",
+          "type": "number"
+        },
+        "controls": {
+          "$ref": "#/$defs/Controls"
+        },
+        "crashed": {
+          "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
+          "type": "boolean"
+        },
+        "engine_rpm": {
+          "description": "Engine speed, revolutions per minute.",
+          "format": "double",
+          "type": "number"
+        },
+        "ground_speed_mps": {
+          "description": "Ground speed, m/s.",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_rad": {
+          "description": "Heading, radians, 0 to 2π, clockwise from north.",
+          "format": "double",
+          "type": "number"
+        },
+        "height_agl_m": {
+          "description": "Height of the lowest wheel above the ground, metres.",
+          "format": "double",
+          "type": "number"
+        },
+        "indicated_airspeed_mps": {
+          "description": "Indicated airspeed, m/s.",
+          "format": "double",
+          "type": "number"
+        },
+        "load_factor_g": {
+          "description": "Load factor along body z, g (1 in level flight).",
+          "format": "double",
+          "type": "number"
+        },
+        "on_ground": {
+          "description": "True while any wheel touches the ground.",
+          "type": "boolean"
+        },
+        "pitch_rad": {
+          "format": "double",
+          "type": "number"
+        },
+        "roll_rad": {
+          "format": "double",
+          "type": "number"
+        },
+        "time_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "true_airspeed_mps": {
+          "description": "True airspeed, m/s.",
+          "format": "double",
+          "type": "number"
+        },
+        "vertical_speed_mps": {
+          "description": "Climb rate, m/s (positive up).",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "time_s",
+        "indicated_airspeed_mps",
+        "true_airspeed_mps",
+        "ground_speed_mps",
+        "altitude_msl_m",
+        "height_agl_m",
+        "vertical_speed_mps",
+        "heading_rad",
+        "pitch_rad",
+        "roll_rad",
+        "alpha_rad",
+        "beta_rad",
+        "load_factor_g",
+        "engine_rpm",
+        "on_ground",
+        "crashed",
+        "controls"
+      ],
+      "title": "Readout",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.state",
+    "description": "Read the full state, instrument readout, and playback settings.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetState",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Readout": {
+          "description": "Derived values for instruments, agents, and tests.",
+          "properties": {
+            "alpha_rad": {
+              "description": "Angle of attack, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_msl_m": {
+              "description": "Altitude above mean sea level, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "beta_rad": {
+              "description": "Sideslip, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "crashed": {
+              "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
+              "type": "boolean"
+            },
+            "engine_rpm": {
+              "description": "Engine speed, revolutions per minute.",
+              "format": "double",
+              "type": "number"
+            },
+            "ground_speed_mps": {
+              "description": "Ground speed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "format": "double",
+              "type": "number"
+            },
+            "height_agl_m": {
+              "description": "Height of the lowest wheel above the ground, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "description": "Indicated airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "load_factor_g": {
+              "description": "Load factor along body z, g (1 in level flight).",
+              "format": "double",
+              "type": "number"
+            },
+            "on_ground": {
+              "description": "True while any wheel touches the ground.",
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "true_airspeed_mps": {
+              "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "description": "Climb rate, m/s (positive up).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "indicated_airspeed_mps",
+            "true_airspeed_mps",
+            "ground_speed_mps",
+            "altitude_msl_m",
+            "height_agl_m",
+            "vertical_speed_mps",
+            "heading_rad",
+            "pitch_rad",
+            "roll_rad",
+            "alpha_rad",
+            "beta_rad",
+            "load_factor_g",
+            "engine_rpm",
+            "on_ground",
+            "crashed",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "State": {
+          "description": "The full rigid-body state.",
+          "properties": {
+            "angular_rate_rps": {
+              "description": "Angular rate in the body frame `[p, q, r]`, rad/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "attitude": {
+              "description": "Attitude, body to world, as a unit quaternion `[w, x, y, z]`.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "position_m": {
+              "description": "Position of the centre of gravity in the world (NED) frame, metres.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "time_s": {
+              "description": "Simulated time since the start, seconds.",
+              "format": "double",
+              "type": "number"
+            },
+            "velocity_mps": {
+              "description": "Velocity in the world (NED) frame, m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "time_s",
+            "position_m",
+            "velocity_mps",
+            "attitude",
+            "angular_rate_rps"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Full simulation state in SI units, plus app playback settings.",
+      "properties": {
+        "paused": {
+          "type": "boolean"
+        },
+        "rate": {
+          "format": "double",
+          "type": "number"
+        },
+        "readout": {
+          "$ref": "#/$defs/Readout"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        }
+      },
+      "required": [
+        "state",
+        "readout",
+        "paused",
+        "rate"
+      ],
+      "title": "StateOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.pause",
+    "description": "Pause the app's real-time stepping loop.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "Pause",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "paused": {
+          "type": "boolean"
+        },
+        "rate": {
+          "description": "Dimensionless real-time multiplier.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "paused",
+        "rate"
+      ],
+      "title": "Playback",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.resume",
+    "description": "Resume the app's real-time stepping loop.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "Resume",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "paused": {
+          "type": "boolean"
+        },
+        "rate": {
+          "description": "Dimensionless real-time multiplier.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "paused",
+        "rate"
+      ],
+      "title": "Playback",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.set_rate",
+    "description": "Set the app's real-time multiplier from 0.25 to 8.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "rate": {
+          "format": "double",
+          "maximum": 8,
+          "minimum": 0.25,
+          "type": "number"
+        }
+      },
+      "required": [
+        "rate"
+      ],
+      "title": "SetRate",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "paused": {
+          "type": "boolean"
+        },
+        "rate": {
+          "description": "Dimensionless real-time multiplier.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "paused",
+        "rate"
+      ],
+      "title": "Playback",
+      "type": "object"
+    }
+  },
+  {
+    "name": "commands.list",
+    "description": "List every command and its input and output JSON schemas.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ListCommands",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CommandInfo": {
+          "description": "What a command list entry says about a command.",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "input_schema": true,
+            "name": {
+              "type": "string"
+            },
+            "output_schema": true
+          },
+          "required": [
+            "name",
+            "description",
+            "input_schema",
+            "output_schema"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/CommandInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "commands"
+      ],
+      "title": "CommandList",
+      "type": "object"
+    }
+  }
+]

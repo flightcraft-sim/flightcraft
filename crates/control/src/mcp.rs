@@ -1,0 +1,185 @@
+//! Synchronous, transport-independent MCP over newline-delimited JSON-RPC 2.0.
+//! Pass each line to [`handle_line`]; notifications return no response.
+
+use serde::{Deserialize, de::DeserializeOwned};
+use serde_json::{Value, json};
+
+use crate::{CommandError, Session};
+
+/// Bounds both the stdio transport and direct handler calls.
+pub const MAX_LINE_BYTES: usize = 1024 * 1024;
+pub const PROTOCOL_VERSION: &str = "2025-06-18";
+
+/// Handle a request without IO, clocks, or an async runtime. Responses include a trailing newline.
+#[must_use]
+pub fn handle_line(session: &mut Session, line: &str) -> Option<String> {
+    let response = if line.len() > MAX_LINE_BYTES {
+        error(Value::Null, -32700, "request line exceeds 1048576 bytes")
+    } else {
+        match serde_json::from_str::<Value>(line) {
+            Ok(request) => handle_request(session, request)?,
+            Err(parse_error) => error(Value::Null, -32700, &parse_error.to_string()),
+        }
+    };
+    // Value contains only JSON-compatible values; Display serializes without a fallible writer.
+    Some(format!("{response}\n"))
+}
+
+fn error(id: Value, code: i32, message: &str) -> Value {
+    json!({"jsonrpc": "2.0", "id": id, "error": {"code": code, "message": message}})
+}
+
+fn handle_request(session: &mut Session, request: Value) -> Option<Value> {
+    let Some(object) = request.as_object() else {
+        return Some(error(Value::Null, -32600, "request must be an object"));
+    };
+    let id = object.get("id").cloned();
+    let valid_id = id
+        .as_ref()
+        .is_none_or(|id| id.is_string() || id.is_number() || id.is_null());
+    let method = object.get("method").and_then(Value::as_str);
+    if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0") || method.is_none() || !valid_id {
+        let id = if valid_id {
+            id.unwrap_or(Value::Null)
+        } else {
+            Value::Null
+        };
+        return Some(error(id, -32600, "invalid JSON-RPC 2.0 request"));
+    }
+    let params = object.get("params").cloned().unwrap_or_else(|| json!({}));
+    let result = dispatch(session, method.unwrap_or_default(), params);
+    // JSON-RPC notifications never receive responses, including errors.
+    let id = id?;
+    Some(match result {
+        Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
+        Err((code, message)) => error(id, code, &message),
+    })
+}
+
+type RpcResult = Result<Value, (i32, String)>;
+
+fn params<T: DeserializeOwned>(value: Value) -> Result<T, (i32, String)> {
+    if !value.is_object() {
+        return Err((-32602, "params must be an object".into()));
+    }
+    serde_path_to_error::deserialize(value).map_err(|error| (-32602, error.to_string()))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EmptyParams {
+    #[serde(rename = "_meta")]
+    _meta: Option<serde_json::Map<String, Value>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct InitializeParams {
+    protocol_version: String,
+    capabilities: serde_json::Map<String, Value>,
+    client_info: ClientInfo,
+    #[serde(rename = "_meta")]
+    _meta: Option<serde_json::Map<String, Value>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ClientInfo {
+    name: String,
+    version: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ListParams {
+    cursor: Option<String>,
+    #[serde(rename = "_meta")]
+    _meta: Option<serde_json::Map<String, Value>>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CallParams {
+    name: String,
+    #[serde(default = "empty_object")]
+    arguments: Value,
+    #[serde(rename = "_meta")]
+    _meta: Option<serde_json::Map<String, Value>>,
+}
+
+fn empty_object() -> Value {
+    json!({})
+}
+
+fn dispatch(session: &mut Session, method: &str, input: Value) -> RpcResult {
+    match method {
+        "initialize" => {
+            if !input.get("clientInfo").is_some_and(Value::is_object) {
+                return Err((-32602, "clientInfo must be an object".into()));
+            }
+            let input: InitializeParams = params(input)?;
+            // Accept older supported versions, otherwise negotiate the server's version.
+            let version = match input.protocol_version.as_str() {
+                "2024-11-05" => "2024-11-05",
+                "2025-03-26" => "2025-03-26",
+                _ => PROTOCOL_VERSION,
+            };
+            // Deserialization validates the shape of client metadata; none is retained.
+            let _ = (
+                input.capabilities,
+                input.client_info.name,
+                input.client_info.version,
+            );
+            Ok(json!({
+                "protocolVersion": version,
+                "capabilities": {"tools": {"listChanged": false}},
+                "serverInfo": {"name": "flightcraft-mcp", "version": env!("CARGO_PKG_VERSION")},
+                "instructions": "Use sim_reset, sim_set_controls, sim_step, and sim_state. Units are SI; explicit steps run even while paused."
+            }))
+        }
+        "ping" | "notifications/initialized" => {
+            let _: EmptyParams = params(input)?;
+            Ok(json!({}))
+        }
+        "tools/list" => {
+            let input: ListParams = params(input)?;
+            if input.cursor.is_some() {
+                return Err((-32602, "unknown cursor; all tools fit in one page".into()));
+            }
+            let tools: Vec<Value> = Session::commands()
+                .into_iter()
+                .map(|command| {
+                    json!({
+                        "name": command.name.replace('.', "_"),
+                        "description": command.description,
+                        "inputSchema": command.input_schema,
+                        "outputSchema": command.output_schema,
+                    })
+                })
+                .collect();
+            Ok(json!({"tools": tools}))
+        }
+        "tools/call" => {
+            let input: CallParams = params(input)?;
+            let command = Session::commands()
+                .into_iter()
+                .find(|command| command.name.replace('.', "_") == input.name)
+                .ok_or_else(|| (-32602, format!("unknown tool: {}", input.name)))?;
+            match session.execute(command.name, input.arguments) {
+                Ok(output) => Ok(json!({
+                    "content": [{"type": "text", "text": output.to_string()}],
+                    "structuredContent": output,
+                    "isError": false,
+                })),
+                Err(error @ (CommandError::InvalidInput { .. } | CommandError::Unknown(_))) => {
+                    Err((-32602, error.to_string()))
+                }
+                Err(error) => Ok(json!({
+                    "content": [{"type": "text", "text": error.to_string()}],
+                    "isError": true,
+                })),
+            }
+        }
+        _ => Err((-32601, format!("unknown method: {method}"))),
+    }
+}

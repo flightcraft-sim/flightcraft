@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 pub const DT_S: f64 = 1.0 / 120.0;
 
 /// Pilot controls. Each value is clamped to its range when set.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Controls {
     /// Elevator, -1 (nose down) to 1 (nose up).
     pub elevator: f64,
@@ -59,7 +59,7 @@ impl Controls {
 }
 
 /// The full rigid-body state.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct State {
     /// Simulated time since the start, seconds.
     pub time_s: f64,
@@ -86,7 +86,7 @@ impl Default for State {
 }
 
 /// Derived values for instruments, agents, and tests.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Readout {
     pub time_s: f64,
     /// Indicated airspeed, m/s.
