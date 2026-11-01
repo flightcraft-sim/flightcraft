@@ -75,9 +75,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install pinned official Wasmtime release
         run: |
-          curl --fail --location --retry 3 --output wasmtime.tar.xz https://github.com/bytecodealliance/wasmtime/releases/download/v38.0.0/wasmtime-v38.0.0-x86_64-linux.tar.xz
+          curl --fail --location --retry 3 --output wasmtime.tar.xz https://github.com/bytecodealliance/wasmtime/releases/download/v49.0.5/wasmtime-v49.0.5-x86_64-linux.tar.xz
           tar -xJf wasmtime.tar.xz
-          echo "$PWD/wasmtime-v38.0.0-x86_64-linux" >> "$GITHUB_PATH"
+          echo "$PWD/wasmtime-v49.0.5-x86_64-linux" >> "$GITHUB_PATH"
       # WASI preview 1 uses the normal Rust test harness, with one test thread.
       # The existing test asserts the same fixed hash as native; no separate wasm baseline.
       - run: cargo test --locked -p flightcraft-sim --test golden --target wasm32-wasip1 -- --test-threads=1
