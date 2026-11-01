@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum CameraMode {
     #[default]
     Chase,
-    /// Placeholder view from the aircraft; no cockpit panel geometry yet.
+    /// First-person view from the Corvid left seat.
     Cockpit,
 }
 
@@ -17,6 +17,8 @@ pub struct CameraSettings {
     pub mode: CameraMode,
     pub distance_m: f64,
     pub height_m: f64,
+    pub look_yaw_rad: f64,
+    pub look_pitch_rad: f64,
 }
 
 impl Default for CameraSettings {
@@ -25,6 +27,8 @@ impl Default for CameraSettings {
             mode: CameraMode::Chase,
             distance_m: 19.0,
             height_m: 7.0,
+            look_yaw_rad: 0.0,
+            look_pitch_rad: 0.0,
         }
     }
 }
@@ -39,12 +43,20 @@ pub struct SetCamera {
     #[serde(default, deserialize_with = "crate::provided")]
     #[schemars(with = "f64", range(min = 0, max = 100), transform = crate::without_default)]
     pub height_m: Option<f64>,
+    /// Cockpit look: positive right, relative to the aircraft, in radians.
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", range(min = -2.1, max = 2.1), transform = crate::without_default)]
+    pub look_yaw_rad: Option<f64>,
+    /// Cockpit look: positive up, relative to the aircraft, in radians.
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", range(min = -1.4, max = 1.4), transform = crate::without_default)]
+    pub look_pitch_rad: Option<f64>,
 }
 
 impl Command for SetCamera {
     const NAME: &'static str = "view.set_camera";
     const DESCRIPTION: &'static str =
-        "Set chase or cockpit view and chase distance/height in metres (needs the app).";
+        "Set chase distance/height in metres and cockpit look yaw/pitch in radians (needs the app).";
     type Output = CameraSettings;
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
         if let Some(v) = self.distance_m {
@@ -53,11 +65,19 @@ impl Command for SetCamera {
         if let Some(v) = self.height_m {
             range(Self::NAME, "height_m", v, 0.0, 100.0)?;
         }
+        if let Some(v) = self.look_yaw_rad {
+            range(Self::NAME, "look_yaw_rad", v, -2.1, 2.1)?;
+        }
+        if let Some(v) = self.look_pitch_rad {
+            range(Self::NAME, "look_pitch_rad", v, -1.4, 1.4)?;
+        }
         let camera = session.camera.as_mut().ok_or_else(needs_app)?;
         *camera = CameraSettings {
             mode: self.mode,
             distance_m: self.distance_m.unwrap_or(camera.distance_m),
             height_m: self.height_m.unwrap_or(camera.height_m),
+            look_yaw_rad: self.look_yaw_rad.unwrap_or(camera.look_yaw_rad),
+            look_pitch_rad: self.look_pitch_rad.unwrap_or(camera.look_pitch_rad),
         };
         Ok(*camera)
     }

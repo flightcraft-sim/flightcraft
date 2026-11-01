@@ -1,5 +1,6 @@
 //! The only module that knows physical keyboard keys. Bindings persist as JSON.
 use eframe::egui::{Event, InputState, Key};
+use gilrs::Button;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -20,10 +21,13 @@ pub enum Action {
     Camera,
     TrimUp,
     TrimDown,
+    LookLeft,
+    LookRight,
+    LookUp,
 }
 
 impl Action {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 18] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -39,6 +43,9 @@ impl Action {
         Self::Camera,
         Self::TrimUp,
         Self::TrimDown,
+        Self::LookLeft,
+        Self::LookRight,
+        Self::LookUp,
     ];
 
     pub fn label(self) -> &'static str {
@@ -58,6 +65,9 @@ impl Action {
             Self::Camera => "Change camera",
             Self::TrimUp => "Trim up",
             Self::TrimDown => "Trim down",
+            Self::LookLeft => "Glance left",
+            Self::LookRight => "Glance right",
+            Self::LookUp => "Glance up",
         }
     }
 }
@@ -65,6 +75,8 @@ impl Action {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Keymap {
     pub bindings: BTreeMap<Action, Vec<Key>>,
+    #[serde(default = "default_gamepad_bindings")]
+    pub gamepad_bindings: BTreeMap<Action, Vec<Button>>,
 }
 
 impl Default for Keymap {
@@ -87,11 +99,33 @@ impl Default for Keymap {
                 (Camera, vec![Key::C]),
                 (TrimUp, vec![Key::Home]),
                 (TrimDown, vec![Key::End]),
+                (LookLeft, vec![Key::J]),
+                (LookRight, vec![Key::L]),
+                (LookUp, vec![Key::I]),
             ]
             .into_iter()
             .collect(),
+            gamepad_bindings: default_gamepad_bindings(),
         }
     }
+}
+
+fn default_gamepad_bindings() -> BTreeMap<Action, Vec<Button>> {
+    [
+        (Action::Pause, Button::Start),
+        (Action::Reset, Button::Select),
+        (Action::Camera, Button::North),
+        (Action::Flaps, Button::South),
+        (Action::Brakes, Button::East),
+        (Action::ThrottleUp, Button::DPadUp),
+        (Action::ThrottleDown, Button::DPadDown),
+        (Action::LookLeft, Button::LeftTrigger),
+        (Action::LookRight, Button::RightTrigger),
+        (Action::LookUp, Button::West),
+    ]
+    .into_iter()
+    .map(|(action, button)| (action, vec![button]))
+    .collect()
 }
 
 impl Keymap {
@@ -122,7 +156,31 @@ impl Keymap {
 
     /// Require every action, at least one key each, and no accidental cross-action collisions.
     pub fn from_json(json: &str) -> Result<Self, String> {
-        let value: Self = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        let mut value: Self = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        // Upgrade saved maps from before head look, preserving every existing custom binding.
+        let looks = [Action::LookLeft, Action::LookRight, Action::LookUp];
+        if looks.iter().all(|a| !value.bindings.contains_key(a)) {
+            for action in looks {
+                let defaults = Self::default().bindings.remove(&action).unwrap_or_default();
+                let available = defaults
+                    .into_iter()
+                    .filter(|key| !value.bindings.values().any(|keys| keys.contains(key)))
+                    .collect::<Vec<_>>();
+                if available.is_empty() {
+                    return Err(format!("Assign a key for {}", action.label()));
+                }
+                value.bindings.insert(action, available);
+            }
+        }
+        let mut buttons = Vec::new();
+        for assigned in value.gamepad_bindings.values() {
+            for button in assigned {
+                if buttons.contains(button) {
+                    return Err(format!("{button:?} is assigned more than once"));
+                }
+                buttons.push(*button);
+            }
+        }
         let mut assigned = Vec::new();
         for action in Action::ALL {
             let keys = value
@@ -161,6 +219,31 @@ mod tests {
         map.bindings.insert(Action::Camera, vec![Key::V]);
         let restored = Keymap::from_json(&map.json().expect("serialize")).expect("parse");
         assert_eq!(restored, map);
+    }
+
+    #[test]
+    fn saved_maps_gain_glances_and_gamepad_buttons_are_configurable() {
+        let mut legacy = Keymap::default();
+        legacy.bindings.insert(Action::Camera, vec![Key::V]);
+        for action in [Action::LookLeft, Action::LookRight, Action::LookUp] {
+            legacy.bindings.remove(&action);
+        }
+        let mut json = serde_json::to_value(&legacy).expect("serialize");
+        json.as_object_mut().expect("object").remove("gamepad_bindings");
+        let mut upgraded = Keymap::from_json(&json.to_string()).expect("upgrade");
+        assert_eq!(upgraded.bindings.get(&Action::Camera), Some(&vec![Key::V]));
+        assert_eq!(upgraded.bindings.len(), Action::ALL.len());
+        upgraded
+            .gamepad_bindings
+            .insert(Action::LookUp, vec![Button::DPadLeft]);
+        assert_eq!(
+            Keymap::from_json(&upgraded.json().expect("serialize")).expect("parse"),
+            upgraded
+        );
+        upgraded
+            .gamepad_bindings
+            .insert(Action::LookLeft, vec![Button::DPadLeft]);
+        assert!(Keymap::from_json(&upgraded.json().expect("serialize")).is_err());
     }
 
     #[test]

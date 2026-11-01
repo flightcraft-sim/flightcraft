@@ -19,7 +19,7 @@ flightcraft-sim.workspace = true
 eframe.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-gilrs.workspace = true
+gilrs = { workspace = true, features = ["serde-serialize"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 image.workspace = true

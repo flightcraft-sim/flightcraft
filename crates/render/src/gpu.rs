@@ -11,6 +11,7 @@ const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 pub(crate) struct Uniform {
     pub view_projection: [[f32; 4]; 4],
     pub aircraft: [[f32; 4]; 4],
+    pub world_from_clip: [[f32; 4]; 4],
     pub sky_top: [f32; 4],
     pub sky_horizon: [f32; 4],
     pub ground: [f32; 4],
@@ -34,10 +35,13 @@ struct Targets {
 struct Gpu {
     sky: wgpu::RenderPipeline,
     scene: wgpu::RenderPipeline,
+    transparent: wgpu::RenderPipeline,
     blit: wgpu::RenderPipeline,
     vertices: wgpu::Buffer,
     vertex_count: u32,
     world_count: u32,
+    exterior_end: u32,
+    cockpit_end: u32,
     uniform: wgpu::Buffer,
     uniform_bind: wgpu::BindGroup,
     texture_layout: wgpu::BindGroupLayout,
@@ -151,7 +155,12 @@ impl Gpu {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &vertex_attributes,
         };
-        let pipeline = |label, vertex, fragment, buffers: &[wgpu::VertexBufferLayout<'_>], sky: bool| {
+        let pipeline = |label,
+                        vertex,
+                        fragment,
+                        buffers: &[wgpu::VertexBufferLayout<'_>],
+                        sky: bool,
+                        transparent: bool| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&scene_layout),
@@ -167,7 +176,7 @@ impl Gpu {
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: COLOR_FORMAT,
-                        blend: None,
+                        blend: transparent.then_some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
@@ -177,7 +186,7 @@ impl Gpu {
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: DEPTH_FORMAT,
-                    depth_write_enabled: !sky,
+                    depth_write_enabled: !sky && !transparent,
                     depth_compare: if sky {
                         wgpu::CompareFunction::Always
                     } else {
@@ -191,13 +200,22 @@ impl Gpu {
                 cache: None,
             })
         };
-        let sky = pipeline("sky gradient", "sky_vertex", "sky_fragment", &[], true);
+        let sky = pipeline("sky gradient", "sky_vertex", "sky_fragment", &[], true, false);
         let scene = pipeline(
             "terrain and aircraft",
             "scene_vertex",
             "scene_fragment",
+            std::slice::from_ref(&vertex_layout),
+            false,
+            false,
+        );
+        let transparent = pipeline(
+            "propeller transparency",
+            "scene_vertex",
+            "scene_fragment",
             &[vertex_layout],
             false,
+            true,
         );
         let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scene texture layout"),
@@ -254,21 +272,24 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
-        let (mesh, world_count) = mesh::build(palette);
-        let vertex_count = mesh.len() as u32;
+        let geometry = mesh::build(palette);
+        let vertex_count = geometry.vertices.len() as u32;
         let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("original field and Corvid mesh"),
-            contents: bytemuck::cast_slice(&mesh),
+            contents: bytemuck::cast_slice(&geometry.vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
         let targets = targets(device, [1, 1], &texture_layout);
         Self {
             sky,
             scene,
+            transparent,
             blit,
             vertices,
             vertex_count,
-            world_count,
+            world_count: geometry.world_end,
+            exterior_end: geometry.exterior_end,
+            cockpit_end: geometry.cockpit_end,
             uniform,
             uniform_bind,
             texture_layout,
@@ -324,12 +345,16 @@ impl CallbackTrait for SceneCallback {
         pass.draw(0..3, 0..1);
         pass.set_pipeline(&gpu.scene);
         pass.set_vertex_buffer(0, gpu.vertices.slice(..));
-        let count = if self.show_aircraft {
-            gpu.vertex_count
+        pass.draw(0..gpu.world_count, 0..1);
+        if self.show_aircraft {
+            pass.draw(gpu.world_count..gpu.exterior_end, 0..1);
         } else {
-            gpu.world_count
-        };
-        pass.draw(0..count, 0..1);
+            pass.draw(gpu.exterior_end..gpu.cockpit_end, 0..1);
+        }
+        if self.uniform.eye.get(3).is_some_and(|power| *power > 0.01) {
+            pass.set_pipeline(&gpu.transparent);
+            pass.draw(gpu.cockpit_end..gpu.vertex_count, 0..1);
+        }
         Vec::new()
     }
 

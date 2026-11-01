@@ -17,6 +17,13 @@ impl ActionFrame {
         self.held.get(&action).copied().unwrap_or_default()
     }
 
+    pub fn cockpit_look(&self) -> [f64; 2] {
+        [
+            self.value(Action::LookRight) - self.value(Action::LookLeft),
+            self.value(Action::LookUp),
+        ]
+    }
+
     pub fn pressed(&self, action: Action) -> bool {
         self.pressed.contains(&action)
     }
@@ -39,19 +46,6 @@ impl Default for Input {
             gamepad_status,
             trim: 0.0,
         }
-    }
-}
-
-fn pad_action(button: Button) -> Option<Action> {
-    match button {
-        Button::Start => Some(Action::Pause),
-        Button::Select => Some(Action::Reset),
-        Button::North => Some(Action::Camera),
-        Button::South => Some(Action::Flaps),
-        Button::East => Some(Action::Brakes),
-        Button::DPadUp => Some(Action::ThrottleUp),
-        Button::DPadDown => Some(Action::ThrottleDown),
-        _ => None,
     }
 }
 
@@ -85,11 +79,12 @@ impl Input {
         }
         if let Some(gilrs) = &mut self.gamepad {
             while let Some(event) = gilrs.next_event() {
-                if focused
-                    && let EventType::ButtonPressed(button, _) = event.event
-                    && let Some(action) = pad_action(button)
-                {
-                    frame.pressed.insert(action);
+                if focused && let EventType::ButtonPressed(button, _) = event.event {
+                    for (action, buttons) in &keymap.gamepad_bindings {
+                        if buttons.contains(&button) {
+                            frame.pressed.insert(*action);
+                        }
+                    }
                 }
             }
             if let Some((_, pad)) = gilrs.gamepads().next() {
@@ -106,11 +101,9 @@ impl Input {
                             frame.axes.insert(negative, (-value).max(0.0));
                         }
                     }
-                    for button in [Button::East, Button::DPadUp, Button::DPadDown] {
-                        if pad.is_pressed(button)
-                            && let Some(action) = pad_action(button)
-                        {
-                            frame.held.insert(action, 1.0);
+                    for (action, buttons) in &keymap.gamepad_bindings {
+                        if buttons.iter().any(|button| pad.is_pressed(*button)) {
+                            frame.held.insert(*action, 1.0);
                         }
                     }
                     // gilrs exposes browser and native triggers as either axes or analog buttons.
@@ -198,6 +191,19 @@ mod tests {
         let neutral = input.controls(&ActionFrame::default(), c, 0.1);
         assert_eq!(neutral.elevator, 0.0);
         assert_eq!(neutral.throttle, c.throttle);
+    }
+
+    #[test]
+    fn glance_actions_release_and_cancel_without_changing_flight_controls() {
+        let mut frame = ActionFrame::default();
+        frame.held.insert(Action::LookLeft, 1.0);
+        frame.held.insert(Action::LookUp, 1.0);
+        assert_eq!(frame.cockpit_look(), [-1.0, 1.0]);
+        let current = Controls::default();
+        assert_eq!(input().controls(&frame, current, 0.1), current);
+        frame.held.insert(Action::LookRight, 1.0);
+        assert_eq!(frame.cockpit_look(), [0.0, 1.0]);
+        assert_eq!(ActionFrame::default().cockpit_look(), [0.0, 0.0]);
     }
 
     #[test]

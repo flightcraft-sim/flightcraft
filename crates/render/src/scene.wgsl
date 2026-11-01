@@ -2,6 +2,7 @@
 struct Uniforms {
     view_projection: mat4x4<f32>,
     aircraft: mat4x4<f32>,
+    world_from_clip: mat4x4<f32>,
     sky_top: vec4<f32>,
     sky_horizon: vec4<f32>,
     ground: vec4<f32>,
@@ -18,7 +19,9 @@ struct Sky { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32> 
     return o;
 }
 @fragment fn sky_fragment(i: Sky) -> @location(0) vec4<f32> {
-    return mix(u.sky_horizon, u.sky_top, smoothstep(0.35, 1.0, i.uv.y));
+    let ray = normalize((u.world_from_clip * vec4<f32>(i.uv * 2.0 - 1.0, 1.0, 1.0)).xyz);
+    let far_color = select(u.ground, u.sky_top, ray.y >= 0.0);
+    return mix(u.sky_horizon, far_color, smoothstep(0.0, 0.65, abs(ray.y)));
 }
 struct Surface {
     @builtin(position) position: vec4<f32>,
@@ -31,7 +34,7 @@ struct Surface {
     var o: Surface;
     var world = vec4<f32>(position, 1.0);
     var n = normal;
-    if kind == 1.0 {
+    if kind == 1.0 || kind == 2.0 {
         world = u.aircraft * world;
         n = (u.aircraft * vec4<f32>(normal, 0.0)).xyz;
     }
@@ -52,7 +55,7 @@ struct Surface {
         let checker = 0.97 + 0.03 * sin(i.world.x * 0.08) * sin(i.world.z * 0.08);
         color = mix(u.ground.rgb * checker, u.grid.rgb, line * 0.65);
     }
-    if i.kind != 1.0 {
+    if i.kind != 1.0 && i.kind != 2.0 {
         // Soft footprint on both terrain and pavement, fading with aircraft height.
         let center = u.aircraft[3].xz;
         let offset = (i.world.xz - center) / vec2<f32>(5.5, 2.4);
@@ -65,5 +68,6 @@ struct Surface {
     }
     let distance = length(i.world - u.eye.xyz);
     let fog = 1.0 - exp(-distance / 6800.0);
-    return vec4<f32>(mix(color, u.sky_horizon.rgb, fog), 1.0);
+    let alpha = select(1.0, i.color.a * u.eye.w, i.kind == 2.0);
+    return vec4<f32>(mix(color, u.sky_horizon.rgb, fog), alpha);
 }

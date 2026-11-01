@@ -1,13 +1,15 @@
 //! Read-only 3D presentation. NED and body coordinates are converted here only.
 
+mod camera;
 mod gpu;
 mod mesh;
 
+pub use camera::{CORVID_PILOT_EYE_M, VERTICAL_FOV_RAD, attitude_horizon};
 pub use gpu::initialize;
 
 use eframe::egui;
 use flightcraft_sim::State;
-use glam::{Mat4, Quat, Vec3, Vec4};
+use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 
 /// Scene colours supplied by the UI's single theme module.
 #[derive(Clone, Copy)]
@@ -23,6 +25,9 @@ pub struct Palette {
     pub glass: [f32; 4],
     pub rubber: [f32; 4],
     pub shadow: [f32; 4],
+    pub cockpit_frame: [f32; 4],
+    pub glare_shield: [f32; 4],
+    pub propeller: [f32; 4],
 }
 
 /// Views share the same state, with no simulation side effects.
@@ -39,6 +44,9 @@ pub struct Scene {
     pub camera: CameraMode,
     chase_distance_m: f32,
     chase_height_m: f32,
+    look_target: Vec2,
+    look: Vec2,
+    propeller_power: f32,
 }
 
 impl Default for Scene {
@@ -49,6 +57,9 @@ impl Default for Scene {
             camera: CameraMode::Chase,
             chase_distance_m: 19.0,
             chase_height_m: 7.0,
+            look_target: Vec2::ZERO,
+            look: Vec2::ZERO,
+            propeller_power: 0.0,
         }
     }
 }
@@ -66,6 +77,21 @@ impl Scene {
         }
     }
 
+    /// Cockpit yaw is positive right; pitch is positive up, in radians.
+    pub fn set_cockpit_look(&mut self, yaw_rad: f32, pitch_rad: f32) {
+        if yaw_rad.is_finite() && pitch_rad.is_finite() {
+            self.look_target = Vec2::new(yaw_rad.clamp(-2.1, 2.1), pitch_rad.clamp(-1.4, 1.4));
+        }
+    }
+
+    pub fn set_propeller_power(&mut self, power: f32) {
+        self.propeller_power = if power.is_finite() {
+            power.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+    }
+
     pub fn toggle_camera(&mut self) {
         self.camera = match self.camera {
             CameraMode::Chase => CameraMode::Cockpit,
@@ -77,6 +103,11 @@ impl Scene {
     pub fn reset_camera(&mut self) {
         self.eye = None;
         self.target = None;
+    }
+
+    fn smooth_look(&mut self, dt: f32) {
+        let dt = if dt.is_finite() { dt.clamp(0.0, 0.25) } else { 0.0 };
+        self.look = self.look.lerp(self.look_target, 1.0 - (-dt * 9.0).exp());
     }
 
     /// Enqueue the wgpu callback. The camera follows the body's quaternion, not UI readouts.
@@ -95,34 +126,41 @@ impl Scene {
             drawing(Vec3::new(north, east, down)).max(Vec3::new(f32::NEG_INFINITY, 1.15, f32::NEG_INFINITY));
         let axis = |v| drawing(attitude * v).extend(0.0);
         let model = Mat4::from_cols(axis(Vec3::X), axis(Vec3::Y), axis(Vec3::Z), position.extend(1.0));
-        let (desired_eye, desired_target) = match self.camera {
-            CameraMode::Chase => (
-                position + drawing(attitude * Vec3::new(-self.chase_distance_m, 0.0, -self.chase_height_m)),
-                position + drawing(attitude * Vec3::new(10.0, 0.0, -0.3)),
-            ),
-            CameraMode::Cockpit => (
-                position + drawing(attitude * Vec3::new(0.7, 0.0, -0.45)),
-                position + drawing(attitude * Vec3::new(100.0, 0.0, -0.45)),
-            ),
-        };
+        self.smooth_look(dt);
         let blend = 1.0 - (-dt.clamp(0.0, 0.25) * 7.0).exp();
-        let eye = self.eye.map_or(desired_eye, |v| v.lerp(desired_eye, blend));
-        let target = self
-            .target
-            .map_or(desired_target, |v| v.lerp(desired_target, blend));
-        self.eye = Some(eye);
-        self.target = Some(target);
+        let (eye, view) = match self.camera {
+            CameraMode::Chase => {
+                let desired_eye = position
+                    + drawing(attitude * Vec3::new(-self.chase_distance_m, 0.0, -self.chase_height_m));
+                let desired_target = position + drawing(attitude * Vec3::new(10.0, 0.0, -0.3));
+                let eye = self.eye.map_or(desired_eye, |v| v.lerp(desired_eye, blend));
+                let target = self
+                    .target
+                    .map_or(desired_target, |v| v.lerp(desired_target, blend));
+                self.eye = Some(eye);
+                self.target = Some(target);
+                (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
+            }
+            CameraMode::Cockpit => {
+                let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
+                (
+                    eye,
+                    camera::cockpit_view(position, attitude, self.look.x, self.look.y),
+                )
+            }
+        };
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
-        let view = Mat4::look_at_rh(eye, target, Vec3::Y);
-        let projection = Mat4::perspective_rh(52_f32.to_radians(), aspect, 0.15, 16000.0);
+        let projection = Mat4::perspective_rh(camera::VERTICAL_FOV_RAD, aspect, 0.05, 16000.0);
+        let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
         let uniform = gpu::Uniform {
             view_projection: (projection * view).to_cols_array_2d(),
             aircraft: model.to_cols_array_2d(),
+            world_from_clip: world_from_clip.to_cols_array_2d(),
             sky_top: palette.sky_top,
             sky_horizon: palette.sky_horizon,
             ground: palette.ground,
             grid: palette.grid,
-            eye: Vec4::new(eye.x, eye.y, eye.z, 0.0).to_array(),
+            eye: Vec4::new(eye.x, eye.y, eye.z, self.propeller_power).to_array(),
         };
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
@@ -144,5 +182,30 @@ mod tests {
         assert_eq!(drawing(Vec3::X), -Vec3::Z);
         assert_eq!(drawing(Vec3::Y), Vec3::X);
         assert_eq!(drawing(Vec3::Z), -Vec3::Y);
+    }
+
+    #[test]
+    fn head_look_is_smooth_frame_rate_independent_and_returns_on_release() {
+        let mut fast = Scene::default();
+        let mut slow = Scene::default();
+        fast.set_cockpit_look(-1.35, 0.9);
+        slow.set_cockpit_look(-1.35, 0.9);
+        fast.smooth_look(1.0 / 120.0);
+        assert!(fast.look.x < 0.0 && fast.look.x > -1.35);
+        for _ in 1..120 {
+            fast.smooth_look(1.0 / 120.0);
+        }
+        for _ in 0..30 {
+            slow.smooth_look(1.0 / 30.0);
+        }
+        assert!((fast.look - slow.look).length() < 1e-5);
+        fast.set_cockpit_look(0.0, 0.0);
+        for _ in 0..120 {
+            fast.smooth_look(1.0 / 120.0);
+        }
+        assert!(fast.look.length() < 0.001);
+        fast.set_cockpit_look(f32::NAN, f32::INFINITY);
+        fast.smooth_look(f32::NAN);
+        assert!(fast.look.is_finite());
     }
 }

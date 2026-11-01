@@ -74,6 +74,7 @@ pub struct FlightCraftApp {
     error: Option<String>,
     settings: bool,
     bindings_json: String,
+    glance_origin: Option<[f64; 2]>,
     binding_message: Option<String>,
     script: script::Script,
     #[cfg(not(target_arch = "wasm32"))]
@@ -127,6 +128,7 @@ impl FlightCraftApp {
             error,
             settings: false,
             bindings_json,
+            glance_origin: None,
             binding_message: None,
             script: options.script.unwrap_or_default(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -153,7 +155,7 @@ impl FlightCraftApp {
     }
 
     fn bindings_window(&mut self, ctx: &egui::Context) {
-        egui::Window::new("Input bindings").open(&mut self.settings).default_width(530.0).show(ctx, |ui| {
+        egui::Window::new("Input bindings").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
                 for action in Action::ALL {
@@ -165,7 +167,11 @@ impl FlightCraftApp {
             ui.add_space(8.0);
             ui.label(RichText::new("GAMEPAD").color(theme::ACCENT).size(11.0));
             ui.label(&self.input.gamepad_status);
-            ui.label("Left stick: pitch / roll · Right stick: yaw\nRight trigger: increase throttle · Left trigger: brakes\nD-pad: throttle · South: flaps · North: camera\nStart: pause · Select: reset · East: brakes");
+            ui.label("Hold a glance, then release to return. Gamepad buttons are editable in gamepad_bindings below.");
+            ui.label("Left stick: pitch / roll · Right stick: yaw\nRight trigger: increase throttle · Left trigger: brakes");
+            for (action, buttons) in &self.keymap.gamepad_bindings {
+                ui.label(format!("{}: {buttons:?}", action.label()));
+            }
             ui.separator();
             ui.label("Edit or paste JSON below. Apply validates it; settings save automatically.");
             egui::ScrollArea::vertical().max_height(170.0).show(ui, |ui| {
@@ -274,6 +280,24 @@ impl eframe::App for FlightCraftApp {
         let sim_time_s = self.session.sim().state().time_s;
         if scripted && let Err(e) = self.script.run_due(&mut self.session, sim_time_s) {
             self.error = Some(e);
+        }
+        let [yaw, pitch] = frame.cockpit_look();
+        if let Some(camera) = self.session.camera() {
+            let looking =
+                camera.mode == flightcraft_control::CameraMode::Cockpit && (yaw != 0.0 || pitch != 0.0);
+            let result = if looking {
+                let [base_yaw, base_pitch] = *self
+                    .glance_origin
+                    .get_or_insert([camera.look_yaw_rad, camera.look_pitch_rad]);
+                actions::cockpit_look(&mut self.session, base_yaw + yaw * 1.35, base_pitch + pitch * 0.9)
+            } else if let Some([yaw, pitch]) = self.glance_origin.take() {
+                actions::cockpit_look(&mut self.session, yaw, pitch)
+            } else {
+                Ok(())
+            };
+            if let Err(e) = result {
+                self.error = Some(e.to_string());
+            }
         }
         self.paused = self.session.paused();
         let external = {
@@ -424,7 +448,12 @@ impl eframe::App for FlightCraftApp {
                     }
                     self.scene
                         .set_chase_offsets(camera.distance_m as f32, camera.height_m as f32);
+                    self.scene
+                        .set_cockpit_look(camera.look_yaw_rad as f32, camera.look_pitch_rad as f32);
                 }
+                self.scene.set_propeller_power(
+                    (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
+                );
                 self.scene
                     .show(ui, self.session.sim().state(), elapsed as f32, theme::scene());
                 let rect = ui.max_rect().shrink(24.0);
@@ -454,13 +483,22 @@ impl eframe::App for FlightCraftApp {
                     FontId::monospace(12.0),
                     theme::BACKGROUND,
                 );
-                let hint = format!(
-                    "PITCH {}  ·  ROLL {}  ·  THROTTLE {} / {}",
-                    self.keymap.label(Action::ElevatorUp),
-                    self.keymap.label(Action::AileronLeft),
-                    self.keymap.label(Action::ThrottleUp),
-                    self.keymap.label(Action::ThrottleDown)
-                );
+                let hint = if self.scene.camera == CameraMode::Cockpit {
+                    format!(
+                        "HOLD TO LOOK   {} LEFT  ·  {} RIGHT  ·  {} UP",
+                        self.keymap.label(Action::LookLeft),
+                        self.keymap.label(Action::LookRight),
+                        self.keymap.label(Action::LookUp)
+                    )
+                } else {
+                    format!(
+                        "PITCH {}  ·  ROLL {}  ·  THROTTLE {} / {}",
+                        self.keymap.label(Action::ElevatorUp),
+                        self.keymap.label(Action::AileronLeft),
+                        self.keymap.label(Action::ThrottleUp),
+                        self.keymap.label(Action::ThrottleDown)
+                    )
+                };
                 let hint_rect = egui::Rect::from_min_size(
                     rect.left_bottom() - egui::vec2(0.0, 29.0),
                     egui::vec2((rect.width() - 4.0).min(660.0), 29.0),

@@ -72,7 +72,14 @@ impl Mesh {
     }
 }
 
-pub(crate) fn build(p: Palette) -> (Vec<Vertex>, u32) {
+pub(crate) struct Geometry {
+    pub vertices: Vec<Vertex>,
+    pub world_end: u32,
+    pub exterior_end: u32,
+    pub cockpit_end: u32,
+}
+
+pub(crate) fn build(p: Palette) -> Geometry {
     let mut m = Mesh::default();
     m.ground([-7000.0, 7000.0], [14000.0, 14000.0], 0.0, p.ground, 0.0);
     m.ground([-13.5, 8.0], [27.0, 916.0], 0.008, p.shadow, 3.0);
@@ -186,5 +193,87 @@ pub(crate) fn build(p: Palette) -> (Vec<Vertex>, u32) {
     m.box_body([1.55, -0.035, 0.2], [1.63, 0.035, 0.98], p.rubber);
     m.box_body([1.36, -0.10, 0.79], [1.85, 0.10, 1.15], p.rubber);
     m.box_body([2.38, -0.065, -1.0], [2.43, 0.065, 1.0], p.rubber);
-    (m.0, world_vertices)
+    let exterior_end = m.0.len() as u32;
+    // Original open cabin: a shallow bevelled glare shield, with no replica panel layout.
+    m.box_body([0.62, -0.54, -0.19], [1.10, 0.54, -0.13], p.glare_shield);
+    m.quad(
+        [
+            Vec3::new(0.62, -0.54, -0.19),
+            Vec3::new(0.62, 0.54, -0.19),
+            Vec3::new(0.53, 0.51, -0.10),
+            Vec3::new(0.53, -0.51, -0.10),
+        ],
+        p.cockpit_frame,
+        1.0,
+    );
+    // Angled windscreen posts, side sills, and the overhead wing roots.
+    for side in [-1.0_f32, 1.0] {
+        let y = side * 0.52;
+        let a = Vec3::new(0.94, y, -0.18);
+        let b = Vec3::new(0.63, y, -0.68);
+        let width = Vec3::new(0.025, 0.0, 0.0);
+        let depth = Vec3::new(0.0, 0.018, 0.0);
+        for offset in [-depth, depth] {
+            m.quad(
+                [
+                    a - width + offset,
+                    a + width + offset,
+                    b + width + offset,
+                    b - width + offset,
+                ],
+                p.cockpit_frame,
+                1.0,
+            );
+        }
+        m.quad(
+            [
+                a - width - depth,
+                a - width + depth,
+                b - width + depth,
+                b - width - depth,
+            ],
+            p.cockpit_frame,
+            1.0,
+        );
+        m.box_body(
+            [-0.60, y - 0.025, -0.06],
+            [0.95, y + 0.025, 0.02],
+            p.cockpit_frame,
+        );
+        let (lo, hi) = if side < 0.0 { (-5.6, -0.46) } else { (0.46, 5.6) };
+        m.box_body([-0.35, lo, -0.74], [1.05, hi, -0.60], p.aircraft);
+        // A solid rectangular strut from the lower cabin to the high wing.
+        let a = Vec3::new(0.10, side * 0.53, 0.25);
+        let b = Vec3::new(0.51, side * 3.5, -0.60);
+        let x = Vec3::new(0.035, 0.0, 0.0);
+        let z = Vec3::new(0.0, 0.0, 0.025);
+        for face in [
+            [a - x - z, a + x - z, b + x - z, b - x - z],
+            [a - x + z, b - x + z, b + x + z, a + x + z],
+            [a - x - z, b - x - z, b - x + z, a - x + z],
+            [a + x - z, a + x + z, b + x + z, b + x - z],
+        ] {
+            m.quad(face, p.cockpit_frame, 1.0);
+        }
+    }
+    m.box_body([0.60, -0.54, -0.70], [0.67, 0.54, -0.65], p.cockpit_frame);
+    // Low nose visible beyond the shield; the full exterior cabin would obstruct the eye.
+    m.box_body([1.10, -0.32, -0.12], [2.3, 0.32, 0.18], p.aircraft);
+    m.box_body([2.27, -0.17, -0.18], [2.36, 0.17, 0.18], p.accent);
+    let cockpit_end = m.0.len() as u32;
+    // One transparent fan, drawn after opaque geometry without depth writes. No animation clock.
+    let center = Vec3::new(2.40, 0.0, 0.0);
+    for i in 0..48 {
+        let edge = |i: u32| {
+            let angle = i as f32 * std::f32::consts::TAU / 48.0;
+            center + Vec3::new(0.0, angle.cos(), angle.sin())
+        };
+        m.triangle(center, edge(i), edge(i + 1), p.propeller, 2.0);
+    }
+    Geometry {
+        vertices: m.0,
+        world_end: world_vertices,
+        exterior_end,
+        cockpit_end,
+    }
 }

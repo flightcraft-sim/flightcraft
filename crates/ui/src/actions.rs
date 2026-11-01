@@ -55,3 +55,21 @@ pub fn toggle_camera(session: &mut Session) -> Result<(), CommandError> {
     session.execute("view.set_camera", serde_json::json!({"mode": mode}))?;
     Ok(())
 }
+
+/// A glance is a temporary camera command, using the same angular limits as scripts.
+pub fn cockpit_look(session: &mut Session, yaw: f64, pitch: f64) -> Result<(), CommandError> {
+    let current = session
+        .camera()
+        .ok_or_else(|| CommandError::Failed("camera needs the app".into()))?;
+    let yaw = yaw.clamp(-2.1, 2.1);
+    let pitch = pitch.clamp(-1.4, 1.4);
+    if current.look_yaw_rad != yaw || current.look_pitch_rad != pitch {
+        session.execute(
+            "view.set_camera",
+            serde_json::json!({
+                "mode": current.mode, "look_yaw_rad": yaw, "look_pitch_rad": pitch,
+            }),
+        )?;
+    }
+    Ok(())
+}

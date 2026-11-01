@@ -105,22 +105,28 @@ fn attitude(p: &Painter, rect: Rect, readout: &Readout) {
     face(p, center, radius);
     p.circle_filled(center, radius - 2.0, t::SKY);
     let roll = readout.roll_rad as f32;
-    let normal = egui::vec2(roll.sin(), roll.cos());
+    let [a, b, c] = flightcraft_render::attitude_horizon(roll, readout.pitch_rad as f32);
+    let normal = egui::vec2(a, b);
     let right = egui::vec2(roll.cos(), -roll.sin());
-    let offset = (readout.pitch_rad as f32 * radius * 1.1).clamp(-radius * 1.5, radius * 1.5);
+    let offset = -c * radius;
     let earth = earth_polygon(center, radius - 2.0, normal, offset);
     if earth.len() >= 3 {
         p.add(Shape::convex_polygon(earth, t::EARTH, Stroke::NONE));
     }
     for pitch in [-20.0_f32, -10.0, 0.0, 10.0, 20.0] {
-        let y = offset - pitch.to_radians() * radius * 1.1;
+        let length = normal.length();
+        if length < 1e-5 {
+            continue;
+        }
+        let y = offset / length
+            - pitch.to_radians() * radius / (flightcraft_render::VERTICAL_FOV_RAD * 0.5).tan();
         if y.abs() < radius - 6.0 {
             let half = if pitch == 0.0 {
                 ((radius - 3.0).powi(2) - y.powi(2)).sqrt()
             } else {
                 17.0
             };
-            let at = center + normal * y;
+            let at = center + normal.normalized() * y;
             p.line_segment(
                 [at - right * half, at + right * half],
                 Stroke::new(1.0_f32, t::TEXT),
@@ -387,5 +393,24 @@ pub fn panel(ui: &mut egui::Ui, r: &Readout, trim: f64) {
                 t::MUTED
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn attitude_earth_clip_handles_inverted_and_vertical_flight() {
+        let earth = |roll, pitch| {
+            let [a, b, c] = flightcraft_render::attitude_horizon(roll, pitch);
+            earth_polygon(Pos2::ZERO, 60.0, egui::vec2(a, b), -c * 60.0)
+        };
+        let level = earth(0.0, 0.0);
+        assert!(level.iter().all(|p| p.y >= -1e-4));
+        let inverted = earth(PI, 0.0);
+        assert!(inverted.iter().all(|p| p.y <= 1e-4));
+        assert!(earth(1.2, PI / 2.0).is_empty());
+        assert!(earth(1.2, -PI / 2.0).len() >= 96);
     }
 }

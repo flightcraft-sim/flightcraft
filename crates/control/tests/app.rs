@@ -100,3 +100,47 @@ fn holds_own_controls_until_disengaged() {
     session.execute("autopilot.off", json!({})).unwrap();
     assert!(!session.holds_active());
 }
+
+#[test]
+fn cockpit_look_validates_atomically_and_preserves_chase_settings() {
+    let mut session = Session::new().unwrap();
+    session.enable_app();
+    session
+        .execute(
+            "view.set_camera",
+            json!({
+                "mode":"cockpit", "distance_m":42, "height_m":9,
+                "look_yaw_rad":-1.35, "look_pitch_rad":0.9,
+            }),
+        )
+        .unwrap();
+    let previous = session.camera();
+    for input in [
+        json!({"mode":"chase", "look_yaw_rad":2.1001}),
+        json!({"mode":"chase", "look_yaw_rad":-2.1001}),
+        json!({"mode":"chase", "look_pitch_rad":1.4001}),
+        json!({"mode":"chase", "look_pitch_rad":-1.4001}),
+        json!({"mode":"chase", "look_pitch_rad":null}),
+        json!({"mode":"chase", "look_yaw_rad":"NaN"}),
+    ] {
+        assert!(session.execute("view.set_camera", input).is_err());
+        assert_eq!(session.camera(), previous);
+    }
+    let output = session
+        .execute("view.set_camera", json!({"mode":"chase"}))
+        .unwrap();
+    assert_eq!(output["distance_m"], 42.0);
+    assert_eq!(output["height_m"], 9.0);
+    assert_eq!(output["look_yaw_rad"], -1.35);
+    assert_eq!(output["look_pitch_rad"], 0.9);
+    for (yaw, pitch) in [(-2.1, -1.4), (2.1, 1.4), (0.0, 0.0)] {
+        session
+            .execute(
+                "view.set_camera",
+                json!({
+                    "mode":"cockpit", "look_yaw_rad":yaw, "look_pitch_rad":pitch,
+                }),
+            )
+            .unwrap();
+    }
+}

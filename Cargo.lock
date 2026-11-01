@@ -994,6 +994,7 @@ dependencies = [
  "fnv",
  "gilrs-core",
  "log",
+ "serde",
  "uuid",
  "vec_map",
 ]
@@ -1012,6 +1013,7 @@ dependencies = [
  "nix",
  "objc2-core-foundation",
  "objc2-io-kit",
+ "serde",
  "uuid",
  "vec_map",
  "wasm-bindgen",
