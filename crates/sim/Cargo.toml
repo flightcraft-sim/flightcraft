@@ -1,0 +1,19 @@
+[package]
+name = "flightcraft-sim"
+description = "Deterministic, headless 6-DOF flight simulation."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+flightcraft-world.workspace = true
+flightcraft-aero.workspace = true
+libm.workspace = true
+thiserror.workspace = true
+serde.workspace = true

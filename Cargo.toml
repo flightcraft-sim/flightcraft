@@ -1,0 +1,41 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.90"
+authors = ["FlightCraft contributors"]
+repository = "https://github.com/raykholo/flightcraft"
+
+[workspace.dependencies]
+flightcraft-world = { path = "crates/world" }
+flightcraft-aero = { path = "crates/aero" }
+flightcraft-sim = { path = "crates/sim" }
+flightcraft-control = { path = "crates/control" }
+flightcraft-render = { path = "crates/render" }
+flightcraft-ui = { path = "crates/ui" }
+
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+schemars = "1"
+# Pure-Rust maths functions: the same bits on every platform (the deterministic core uses only these).
+libm = "0.2"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+
+[profile.dev.package."*"]
+opt-level = 2

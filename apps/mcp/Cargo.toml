@@ -1,0 +1,16 @@
+[package]
+publish = false
+name = "flightcraft-mcp"
+description = "Headless FlightCraft MCP server over stdio."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+flightcraft-control.workspace = true

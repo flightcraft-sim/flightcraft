@@ -1,0 +1,16 @@
+[package]
+publish = false
+name = "flightcraft-desktop"
+description = "FlightCraft desktop app."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+flightcraft-ui.workspace = true
