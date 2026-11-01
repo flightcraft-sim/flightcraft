@@ -477,6 +477,7 @@ impl eframe::App for FlightCraftApp {
                     self.scene
                         .set_cockpit_look(camera.look_yaw_rad as f32, camera.look_pitch_rad as f32);
                 }
+                self.scene.set_world(self.session.sim().world());
                 self.scene.set_propeller_power(
                     (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
                 );

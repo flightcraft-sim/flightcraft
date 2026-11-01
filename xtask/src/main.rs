@@ -51,7 +51,10 @@ const LAYERS: &[(&str, &[&str])] = &[
         ],
     ),
     ("flightcraft-mcp", &["flightcraft-control", "flightcraft-sim"]),
-    ("xtask", &["flightcraft-control", "flightcraft-aero"]),
+    (
+        "xtask",
+        &["flightcraft-control", "flightcraft-aero", "flightcraft-world"],
+    ),
 ];
 
 /// Crates the deterministic core must never use.
@@ -73,6 +76,7 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     let result = match task.as_str() {
         "layers" => layers(),
+        "terrain" => terrain(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
             Some("--check") if std::env::args().nth(3).is_none() => schemas(true),
@@ -81,7 +85,7 @@ fn main() -> ExitCode {
         "determinism" => determinism(),
         "web" => web::build(),
         "ci" => ci(),
-        _ => Err("usage: cargo xtask <ci|layers|schemas [--check]|determinism|web>".to_string()),
+        _ => Err("usage: cargo xtask <ci|terrain|layers|schemas [--check]|determinism|web>".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -352,6 +356,19 @@ fn layers() -> Result<(), String> {
     } else {
         Err(errors.join("\n"))
     }
+}
+
+fn terrain() -> Result<(), String> {
+    let directory = root()?.join("assets/terrain/training-valley");
+    std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+    let tiles = flightcraft_world::generate_training_valley(flightcraft_world::TRAINING_SEED)
+        .map_err(|e| e.to_string())?;
+    for (index, tile) in tiles.iter().enumerate() {
+        std::fs::write(directory.join(format!("{index:02}.fcht")), tile.write())
+            .map_err(|e| e.to_string())?;
+    }
+    eprintln!("xtask: wrote {} training valley tiles", tiles.len());
+    Ok(())
 }
 
 #[cfg(test)]

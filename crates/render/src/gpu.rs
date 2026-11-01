@@ -20,6 +20,7 @@ pub(crate) struct Uniform {
 }
 
 pub(crate) struct SceneCallback {
+    pub world: flightcraft_world::World,
     pub uniform: Uniform,
     pub size: [f32; 2],
     pub show_aircraft: bool,
@@ -33,6 +34,13 @@ struct Targets {
     bind: wgpu::BindGroup,
 }
 
+struct TerrainBuffer {
+    vertices: wgpu::Buffer,
+    count: u32,
+    fine_end: u32,
+    center: [f32; 3],
+}
+
 struct DrawMesh {
     vertices: wgpu::Buffer,
     vertex_count: u32,
@@ -42,6 +50,9 @@ struct DrawMesh {
 }
 
 struct Gpu {
+    terrain: Vec<TerrainBuffer>,
+    terrain_fingerprint: Option<u64>,
+    palette: Palette,
     sky: wgpu::RenderPipeline,
     scene: wgpu::RenderPipeline,
     transparent: wgpu::RenderPipeline,
@@ -299,6 +310,9 @@ impl Gpu {
             transparent,
             blit,
             meshes,
+            terrain: Vec::new(),
+            terrain_fingerprint: None,
+            palette,
             uniform,
             uniform_bind,
             texture_layout,
@@ -319,6 +333,27 @@ impl CallbackTrait for SceneCallback {
         let Some(gpu) = resources.get_mut::<Gpu>() else {
             return Vec::new();
         };
+        if !self.world.tiles().is_empty() && gpu.terrain_fingerprint != Some(self.world.fingerprint()) {
+            gpu.terrain = self
+                .world
+                .tiles()
+                .iter()
+                .map(|tile| {
+                    let geometry = mesh::terrain(tile, gpu.palette);
+                    TerrainBuffer {
+                        vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("cached terrain LODs"),
+                            contents: bytemuck::cast_slice(&geometry.vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        }),
+                        count: geometry.vertices.len() as u32,
+                        fine_end: geometry.fine_end,
+                        center: geometry.center,
+                    }
+                })
+                .collect();
+            gpu.terrain_fingerprint = Some(self.world.fingerprint());
+        }
         let max_dimension = device.limits().max_texture_dimension_2d.min(4096) as f32;
         let size = self
             .size
@@ -353,6 +388,17 @@ impl CallbackTrait for SceneCallback {
         pass.set_pipeline(&gpu.sky);
         pass.draw(0..3, 0..1);
         pass.set_pipeline(&gpu.scene);
+        if !self.world.tiles().is_empty() {
+            for tile in &gpu.terrain {
+                pass.set_vertex_buffer(0, tile.vertices.slice(..));
+                let range = if mesh::near_tile(self.uniform.eye, tile.center) {
+                    0..tile.fine_end
+                } else {
+                    tile.fine_end..tile.count
+                };
+                pass.draw(range, 0..1);
+            }
+        }
         let [corvid, larrow] = &gpu.meshes;
         let mesh = if self.larrow { larrow } else { corvid };
         pass.set_vertex_buffer(0, mesh.vertices.slice(..));

@@ -18,3 +18,4 @@ flightcraft-control.workspace = true
 syn.workspace = true
 flightcraft-aero.workspace = true
 schemars.workspace = true
+flightcraft-world.workspace = true

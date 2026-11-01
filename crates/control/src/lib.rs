@@ -17,6 +17,7 @@ pub mod mcp;
 pub use holds::*;
 
 use flightcraft_sim::{Controls, Readout, Sim, SimError, Start, State};
+pub use flightcraft_world::WorldChoice;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -165,6 +166,7 @@ impl Session {
             readout: self.sim.readout(),
             paused: self.paused,
             rate: self.rate,
+            world: self.sim.world().choice(),
         }
     }
 
@@ -183,6 +185,7 @@ pub struct StateOutput {
     pub readout: Readout,
     pub paused: bool,
     pub rate: f64,
+    pub world: WorldChoice,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -210,6 +213,9 @@ pub enum ResetStart {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Reset {
+    /// World data is part of the start. Omission retains the original flat world.
+    #[serde(default)]
+    pub world: WorldChoice,
     pub start: ResetStart,
     /// Omission starts in calm air. Supplying weather makes its seed part of the start.
     #[serde(default, deserialize_with = "provided")]
@@ -250,10 +256,11 @@ impl Command for Reset {
                 }
             }
         };
-        session.sim = Sim::new_with_aircraft_and_weather(
+        session.sim = Sim::new_with_aircraft_weather_world(
             &start,
             session.selected_aircraft.clone(),
             self.weather.unwrap_or_default(),
+            flightcraft_world::World::load(self.world).map_err(SimError::from)?,
         )?;
         session.flight_generation = session.flight_generation.wrapping_add(1);
         session.paused = self.paused.unwrap_or(true);
@@ -487,6 +494,7 @@ macro_rules! registry {
 
 registry!(
     Reset,
+    WorldHeight,
     SetControls,
     Step,
     SetAutopilot,
@@ -506,3 +514,24 @@ registry!(
     AppScreenshot,
     Wait
 );
+
+/// Query the selected world's elevation, upward NED normal, and surface.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct WorldHeight {
+    #[schemars(range(min = -100_000_000.0, max = 100_000_000.0))]
+    pub north_m: f64,
+    #[schemars(range(min = -100_000_000.0, max = 100_000_000.0))]
+    pub east_m: f64,
+}
+impl Command for WorldHeight {
+    const NAME: &'static str = "world.height";
+    const DESCRIPTION: &'static str =
+        "Read terrain height MSL in metres, upward NED unit normal, and surface at a local point.";
+    type Output = flightcraft_world::Ground;
+    fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
+        range(Self::NAME, "north_m", self.north_m, -1e8, 1e8)?;
+        range(Self::NAME, "east_m", self.east_m, -1e8, 1e8)?;
+        Ok(session.sim.world().ground(self.north_m, self.east_m))
+    }
+}

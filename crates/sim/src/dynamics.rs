@@ -1,6 +1,6 @@
 use crate::{Controls, DT_S, State, math::*};
 use flightcraft_aero as aero;
-use flightcraft_world::{GRAVITY_MPS2 as G, Surface, Wind, atmosphere, ground};
+use flightcraft_world::{GRAVITY_MPS2 as G, Surface, Wind, World, atmosphere};
 
 /// Longitudinal wheel contact plane. Positive pitch puts a short aft wheel on the ground.
 pub fn runway_pitch(aircraft: &aero::Aircraft) -> f64 {
@@ -69,43 +69,48 @@ pub fn loads(
         failures,
     )
 }
-pub fn wheel_height(s: &State, point: [f64; 3]) -> f64 {
+pub fn wheel_height(s: &State, point: [f64; 3], world: &World) -> f64 {
     let [x, y, z] = add(s.position_m, rotate(s.attitude, point));
-    -z - ground(x, y).height_msl_m
+    -z - world.ground(x, y).height_msl_m
 }
-pub fn height(aircraft: &aero::Aircraft, s: &State) -> f64 {
+pub fn height(aircraft: &aero::Aircraft, s: &State, world: &World) -> f64 {
     aircraft.geometry.gear.iter().fold(f64::INFINITY, |h, gear| {
-        h.min(wheel_height(s, aircraft.relative_point(gear.point_m)))
+        h.min(wheel_height(s, aircraft.relative_point(gear.point_m), world))
     })
 }
 // Test arrival rate before the spring/damper impulse can mask a hard touchdown.
-pub fn hard_touchdown(aircraft: &aero::Aircraft, before: &State, after: &State) -> bool {
+pub fn hard_touchdown(aircraft: &aero::Aircraft, before: &State, after: &State, world: &World) -> bool {
     aircraft.geometry.gear.iter().any(|gear| {
         let point = aircraft.relative_point(gear.point_m);
-        let [_, _, down] = add(
+        let velocity = add(
             before.velocity_mps,
             rotate(before.attitude, cross(before.angular_rate_rps, point)),
         );
-        wheel_height(before, point) > 0.0
-            && wheel_height(after, point) <= 0.0
+        let down = arrival(before, point, velocity, world);
+        wheel_height(before, point, world) > 0.0
+            && wheel_height(after, point, world) <= 0.0
             && down > aircraft.systems.hard_touchdown_mps
     })
 }
 
-pub fn crash(aircraft: &aero::Aircraft, s: &State) -> bool {
+pub fn crash(aircraft: &aero::Aircraft, s: &State, world: &World) -> bool {
     if aircraft
         .geometry
         .hard_points_m
         .iter()
-        .any(|p| wheel_height(s, aircraft.relative_point(*p)) < 0.0)
+        .any(|p| wheel_height(s, aircraft.relative_point(*p), world) < 0.0)
     {
         return true;
     }
     aircraft.geometry.gear.iter().any(|gear| {
         let p = aircraft.relative_point(gear.point_m);
-        let h = wheel_height(s, p);
-        let [_, _, vz] = add(s.velocity_mps, rotate(s.attitude, cross(s.angular_rate_rps, p)));
-        h < -aircraft.systems.gear_travel_m || (h < 0.0 && vz > aircraft.systems.hard_touchdown_mps)
+        let h = wheel_height(s, p, world);
+        let velocity = add(s.velocity_mps, rotate(s.attitude, cross(s.angular_rate_rps, p)));
+        let vz = arrival(s, p, velocity, world);
+        let [n, e, _] = add(s.position_m, rotate(s.attitude, p));
+        let [_, _, normal_down] = world.ground(n, e).normal_ned;
+        let clearance = if normal_down == -1.0 { h } else { h * -normal_down };
+        clearance < -aircraft.systems.gear_travel_m || (h < 0.0 && vz > aircraft.systems.hard_touchdown_mps)
     })
 }
 
@@ -115,6 +120,7 @@ pub fn derivative(
     c: Controls,
     wind: &Wind,
     failures: aero::Failures,
+    world: &World,
 ) -> State {
     let a = loads(aircraft, s, c, wind, failures);
     let c = Controls {
@@ -128,7 +134,7 @@ pub fn derivative(
     for gear in &aircraft.geometry.gear {
         let point = aircraft.relative_point(gear.point_m);
         let (k, damper, share) = (gear.stiffness_n_m, gear.damping_ns_m, gear.weight_fraction);
-        let h = wheel_height(s, point);
+        let h = wheel_height(s, point, world);
         if h > 0.0 {
             continue;
         }
@@ -138,9 +144,18 @@ pub fn derivative(
             rotate(s.attitude, cross(s.angular_rate_rps, point)),
         );
         let [vx, vy, vz] = velocity;
-        let normal = (-k * h + damper * vz).clamp(0.0, aircraft.systems.max_normal_force_n);
         let [x, y, _] = add(s.position_m, arm);
-        let rolling = if ground(x, y).surface == Surface::Pavement {
+        let ground = world.ground(x, y);
+        let up = ground.normal_ned;
+        let sloped = up != [0.0, 0.0, -1.0];
+        let [_, _, normal_down] = up;
+        let (penetration, closing) = if sloped {
+            (h * -normal_down, -dot(velocity, up))
+        } else {
+            (h, vz)
+        };
+        let normal = (-k * penetration + damper * closing).clamp(0.0, aircraft.systems.max_normal_force_n);
+        let rolling = if ground.surface == Surface::Pavement {
             aircraft.systems.rolling_pavement
         } else {
             aircraft.systems.rolling_other
@@ -152,9 +167,15 @@ pub fn derivative(
             gear.steering_rad * c.rudder
         };
         let angle = yaw + steer;
-        let forward = [libm::cos(angle), libm::sin(angle), 0.0];
-        let lateral = [-libm::sin(angle), libm::cos(angle), 0.0];
-        let planar = [vx, vy, 0.0];
+        let mut forward = [libm::cos(angle), libm::sin(angle), 0.0];
+        let mut lateral = [-libm::sin(angle), libm::cos(angle), 0.0];
+        let mut planar = [vx, vy, 0.0];
+        if sloped {
+            forward = add(forward, scale(up, -dot(forward, up)));
+            forward = scale(forward, 1.0 / norm(forward));
+            lateral = cross(forward, up);
+            planar = add(velocity, scale(up, -dot(velocity, up)));
+        }
         // A wheel can cancel its share of free force at rest (static friction).
         // The velocity term also prevents brake reversal in a single fixed step.
         let longitudinal = (-dot(planar, forward) * aircraft.mass.mass_kg * share / DT_S
@@ -171,7 +192,11 @@ pub fn derivative(
             );
         let contact = add(
             add(scale(forward, longitudinal), scale(lateral, side)),
-            [0.0, 0.0, -normal],
+            if sloped {
+                scale(up, normal)
+            } else {
+                [0.0, 0.0, -normal]
+            },
         );
         force = add(force, contact);
         moment = add(moment, cross(point, rotate(conjugate(s.attitude), contact)));
@@ -214,23 +239,24 @@ pub fn rk4(
     c: Controls,
     wind: &Wind,
     failures: aero::Failures,
+    world: &World,
 ) -> Option<State> {
-    let a = derivative(aircraft, &s, c, wind, failures);
+    let a = derivative(aircraft, &s, c, wind, failures, world);
     let sb = advance(s, a, DT_S * 0.5);
     if !valid(&sb) {
         return None;
     }
-    let b = derivative(aircraft, &sb, c, wind, failures);
+    let b = derivative(aircraft, &sb, c, wind, failures, world);
     let sd = advance(s, b, DT_S * 0.5);
     if !valid(&sd) {
         return None;
     }
-    let d = derivative(aircraft, &sd, c, wind, failures);
+    let d = derivative(aircraft, &sd, c, wind, failures, world);
     let se = advance(s, d, DT_S);
     if !valid(&se) {
         return None;
     }
-    let e = derivative(aircraft, &se, c, wind, failures);
+    let e = derivative(aircraft, &se, c, wind, failures, world);
     let mut result = advance(
         advance(advance(advance(s, a, DT_S / 6.0), b, DT_S / 3.0), d, DT_S / 3.0),
         e,
@@ -306,6 +332,18 @@ fn tensor_acceleration(
         ((c * f - b * i) * x + (a * i - c * c) * y + (b * c - a * f) * z) / det,
         ((b * f - c * e) * x + (b * c - a * f) * y + (a * e - b * b) * z) / det,
     ]
+}
+
+// Preserve the original flat arithmetic, including signed zeros.
+fn arrival(s: &State, point: [f64; 3], velocity: [f64; 3], world: &World) -> f64 {
+    let [n, e, _] = add(s.position_m, rotate(s.attitude, point));
+    let up = world.ground(n, e).normal_ned;
+    let [_, _, down] = velocity;
+    if up == [0.0, 0.0, -1.0] {
+        down
+    } else {
+        -dot(velocity, up)
+    }
 }
 
 #[cfg(test)]

@@ -39,6 +39,7 @@ pub fn step(session: &mut Session, steps: u32) -> Result<(), CommandError> {
 /// Back to the runway threshold, running.
 pub fn reset(session: &mut Session) -> Result<(), CommandError> {
     session.run(Reset {
+        world: session.sim().world().choice(),
         start: ResetStart::Runway {},
         paused: Some(false),
         weather: Some(session.sim().weather()),

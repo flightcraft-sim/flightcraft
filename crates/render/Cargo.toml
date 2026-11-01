@@ -13,6 +13,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+flightcraft-world.workspace = true
 flightcraft-sim.workspace = true
 eframe.workspace = true
 egui-wgpu.workspace = true

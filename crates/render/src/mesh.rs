@@ -413,3 +413,198 @@ fn build_larrow(mut m: Mesh, p: Palette, world_end: u32) -> Geometry {
         cockpit_end,
     }
 }
+
+/// Two immutable, nonindexed LOD meshes per tile, within WebGL 2 buffer limits.
+/// Skirts hide cracks where neighbours select different LODs. Tile boundaries remain fixed.
+pub(crate) struct TerrainMesh {
+    pub vertices: Vec<Vertex>,
+    pub fine_end: u32,
+    pub center: [f32; 3],
+}
+
+pub(crate) fn terrain(tile: &flightcraft_world::HeightTile, p: Palette) -> TerrainMesh {
+    use flightcraft_world::Surface;
+    let [north, east] = tile.origin_m();
+    let extent = tile.extent_m();
+    let mut m = Mesh::default();
+    let mut fine_end = 0;
+    // Coarse cells also sample full-resolution tile normals, retaining slope shading.
+    for step in [1_u32, 4] {
+        let end = tile.size() - 1;
+        let point = |i: u32, j: u32| {
+            let n = north + f64::from(i) * tile.spacing_m();
+            let e = east + f64::from(j) * tile.spacing_m();
+            let ground = tile
+                .sample(n, e)
+                .unwrap_or_else(|| flightcraft_world::ground(n, e));
+            (Vec3::new(e as f32, ground.height_msl_m as f32, -n as f32), ground)
+        };
+        for j in (0..end).step_by(step as usize) {
+            for i in (0..end).step_by(step as usize) {
+                let ii = (i + step).min(end);
+                let jj = (j + step).min(end);
+                let corners = [point(i, j), point(ii, j), point(ii, jj), point(i, jj)];
+                let n = north + f64::from(i + ii) * 0.5 * tile.spacing_m();
+                let e = east + f64::from(j + jj) * 0.5 * tile.spacing_m();
+                let surface = tile.sample(n, e).map(|g| g.surface).unwrap_or(Surface::Grass);
+                for corner in [0, 1, 2, 0, 2, 3].into_iter().filter_map(|k| corners.get(k)) {
+                    let (position, ground) = corner;
+                    let [dn, de, down] = ground.normal_ned.map(|v| v as f32);
+                    let blend = ((1.0 + down) * 2.0).clamp(0.0, 1.0);
+                    let color = match surface {
+                        Surface::Water => p.water,
+                        Surface::Pavement => p.runway,
+                        Surface::Grass => std::array::from_fn(|k| {
+                            p.ground.get(k).copied().unwrap_or(1.0) * (1.0 - blend)
+                                + p.earth.get(k).copied().unwrap_or(1.0) * blend
+                        }),
+                    };
+                    m.0.push(Vertex {
+                        position: position.to_array(),
+                        normal: if surface == Surface::Water {
+                            [0.0, 1.0, 0.0]
+                        } else {
+                            [de, -down, -dn]
+                        },
+                        color,
+                        kind: if surface == Surface::Water { 5.0 } else { 4.0 },
+                    });
+                }
+            }
+        }
+        for i in (0..end).step_by(step as usize) {
+            let next = (i + step).min(end);
+            for (a, b) in [
+                (point(i, 0).0, point(next, 0).0),
+                (point(i, end).0, point(next, end).0),
+                (point(0, i).0, point(0, next).0),
+                (point(end, i).0, point(end, next).0),
+            ] {
+                m.quad([a, b, b - Vec3::Y * 100.0, a - Vec3::Y * 100.0], p.ground, 4.0);
+            }
+        }
+        if step == 1 {
+            fine_end = m.0.len() as u32;
+        }
+    }
+    TerrainMesh {
+        vertices: m.0,
+        fine_end,
+        center: [(east + extent * 0.5) as f32, 0.0, -(north + extent * 0.5) as f32],
+    }
+}
+
+#[must_use]
+pub(crate) fn near_tile(eye: [f32; 4], center: [f32; 3]) -> bool {
+    let [x, y, z, _] = eye;
+    let [cx, cy, cz] = center;
+    (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz) < 3000.0 * 3000.0
+}
+
+#[cfg(test)]
+mod terrain_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use flightcraft_world::{World, WorldChoice};
+
+    fn palette() -> Palette {
+        Palette {
+            sky_top: [0.0; 4],
+            sky_horizon: [0.0; 4],
+            ground: [0.3, 0.4, 0.3, 1.0],
+            earth: [0.5, 0.4, 0.2, 1.0],
+            water: [0.1, 0.3, 0.6, 1.0],
+            grid: [0.0; 4],
+            runway: [0.0; 4],
+            marking: [0.0; 4],
+            aircraft: [0.0; 4],
+            accent: [0.0; 4],
+            glass: [0.0; 4],
+            rubber: [0.0; 4],
+            shadow: [0.0; 4],
+            cockpit_frame: [0.0; 4],
+            glare_shield: [0.0; 4],
+            propeller: [0.0; 4],
+        }
+    }
+
+    #[test]
+    fn both_aircraft_keep_the_world_and_their_own_cockpit_ranges() {
+        let corvid = build(palette(), false);
+        let larrow = build(palette(), true);
+        assert_eq!(corvid.world_end, larrow.world_end);
+        assert_ne!(corvid.exterior_end, larrow.exterior_end);
+        assert_ne!(corvid.cockpit_end, larrow.cockpit_end);
+        for (a, b) in corvid
+            .vertices
+            .iter()
+            .zip(&larrow.vertices)
+            .take(corvid.world_end as usize)
+        {
+            assert_eq!(a.position, b.position);
+            assert_eq!(a.normal, b.normal);
+            assert_eq!(a.color, b.color);
+            assert_eq!(a.kind, b.kind);
+        }
+        for geometry in [corvid, larrow] {
+            assert!(geometry.world_end < geometry.exterior_end);
+            assert!(geometry.exterior_end < geometry.cockpit_end);
+            assert!((geometry.cockpit_end as usize) < geometry.vertices.len());
+            for (index, vertex) in geometry
+                .vertices
+                .iter()
+                .enumerate()
+                .skip(geometry.world_end as usize)
+            {
+                assert_eq!(
+                    vertex.kind,
+                    if index < geometry.cockpit_end as usize {
+                        1.0
+                    } else {
+                        2.0
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn lods_fit_webgl_buffers_and_water_stays_flat() {
+        let world = World::load(WorldChoice::TrainingValley).unwrap();
+        let p = palette();
+        let mut water_vertices = 0;
+        for tile in world.tiles() {
+            let mesh = terrain(tile, p);
+            assert!(mesh.fine_end as usize > mesh.vertices.len() - mesh.fine_end as usize);
+            assert!(mesh.vertices.len() * std::mem::size_of::<Vertex>() < 16 * 1024 * 1024);
+            for vertex in mesh.vertices {
+                assert!(
+                    vertex
+                        .position
+                        .into_iter()
+                        .chain(vertex.normal)
+                        .chain(vertex.color)
+                        .all(f32::is_finite)
+                );
+                if vertex.kind == 5.0 {
+                    let [_, height, _] = vertex.position;
+                    assert_eq!(height, 35.0);
+                    assert_eq!(vertex.normal, [0.0, 1.0, 0.0]);
+                    assert_eq!(vertex.color, p.water);
+                    water_vertices += 1;
+                }
+            }
+            assert!(near_tile(
+                [
+                    mesh.center.first().copied().unwrap_or(0.0),
+                    100.0,
+                    mesh.center.get(2).copied().unwrap_or(0.0),
+                    0.0
+                ],
+                mesh.center
+            ));
+            assert!(!near_tile([100_000.0; 4], mesh.center));
+        }
+        assert!(water_vertices > 0);
+    }
+}

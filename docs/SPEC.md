@@ -117,6 +117,10 @@ Plausibility and consistency, checked by tests rather than by feel:
 First slice: flat ground at sea level with one paved runway (900 m by 23 m, heading 360) on the
 standard atmosphere, no wind.
 
+The original training valley now provides bundled height tiles, slope contact, and two renderer
+levels of detail; see [terrain format and commands](terrain.md). The flat world remains the
+default and retains the original golden trajectory.
+
 Later, from open data only, each with a row in ATTRIBUTION.md:
 
 | Data | Source | Licence | Status |

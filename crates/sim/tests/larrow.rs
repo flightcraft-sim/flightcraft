@@ -266,3 +266,77 @@ fn positive_rudder_steers_the_tailwheel_nose_right() {
     assert!(sim.state().position_m[1] > 0.2);
     assert!((0.02..PI).contains(&r.heading_rad), "{r:?}");
 }
+
+#[test]
+fn larrow_lands_and_stops_on_the_valley_runway() {
+    let mut sim = Sim::new_with_aircraft_weather_world(
+        &Start::Air {
+            height_m: 15.0,
+            airspeed_mps: 33.0,
+            heading_rad: 0.0,
+        },
+        Aircraft::larrow().unwrap(),
+        world::Weather::default(),
+        world::World::load(world::WorldChoice::TrainingValley).unwrap(),
+    )
+    .unwrap();
+    assert!(!sim.readout().on_ground);
+    let mut touchdown = None;
+    for _ in 0..2400 {
+        let r = sim.readout();
+        let [p, q, yaw] = sim.state().angular_rate_rps;
+        let [north, east, _] = sim.state().position_m;
+        if r.on_ground && touchdown.is_none() {
+            assert_eq!(sim.world().ground(north, east).surface, world::Surface::Pavement);
+            touchdown = Some(*sim.state());
+        }
+        let landed = touchdown.is_some();
+        let climb = if r.height_agl_m < 7.0 {
+            -0.35 - 0.10 * r.height_agl_m
+        } else {
+            -2.5
+        };
+        let speed = r.true_airspeed_mps;
+        let aircraft = sim.aircraft();
+        let rho = world::atmosphere(r.altitude_msl_m).density_kg_m3;
+        let alpha = ((2.0 * aircraft.mass.mass_kg * G
+            / (rho * speed.max(30.0) * speed.max(30.0) * aircraft.geometry.wing_area_m2)
+            - 0.04)
+            / 4.6)
+            .clamp(0.0, 0.23);
+        let pitch = if landed {
+            0.18
+        } else {
+            alpha + climb / speed.max(25.0)
+        };
+        let cm = aero::coefficients(aircraft, r.alpha_rad, 0.0).pitch;
+        let throttle = if landed || r.height_agl_m < 4.0 {
+            0.0
+        } else {
+            (0.45 + 0.08 * (33.0 - speed) + 0.06 * climb).clamp(0.0, 1.0)
+        };
+        sim.set_controls(Controls {
+            elevator: (-cm + 2.0 * (pitch - r.pitch_rad) - 0.8 * q) / 0.85,
+            aileron: -1.2 * r.roll_rad - 0.35 * p,
+            rudder: -0.8 * r.beta_rad - 0.6 * yaw,
+            throttle,
+            brake: if landed { 0.25 } else { 0.0 },
+            flaps: 0.0,
+        });
+        sim.step(3);
+        assert!(!sim.readout().crashed, "{:?}", sim.readout());
+        if landed && sim.readout().on_ground && sim.readout().ground_speed_mps < 0.2 {
+            break;
+        }
+    }
+    let touchdown = touchdown.unwrap();
+    let [north, east, _] = sim.state().position_m;
+    println!(
+        "valley touchdown={:?}; stopped={:?}",
+        touchdown.position_m,
+        sim.state().position_m
+    );
+    assert!(sim.readout().on_ground && sim.readout().ground_speed_mps < 0.2);
+    assert_eq!(sim.world().ground(north, east).surface, world::Surface::Pavement);
+    assert_eq!(sim.world().choice(), world::WorldChoice::TrainingValley);
+}

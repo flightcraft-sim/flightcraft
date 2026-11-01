@@ -17,6 +17,8 @@ pub struct Palette {
     pub sky_top: [f32; 4],
     pub sky_horizon: [f32; 4],
     pub ground: [f32; 4],
+    pub earth: [f32; 4],
+    pub water: [f32; 4],
     pub grid: [f32; 4],
     pub runway: [f32; 4],
     pub marking: [f32; 4],
@@ -39,6 +41,7 @@ pub enum CameraMode {
 }
 
 pub struct Scene {
+    world: flightcraft_world::World,
     eye: Option<Vec3>,
     target: Option<Vec3>,
     pub camera: CameraMode,
@@ -53,6 +56,7 @@ pub struct Scene {
 impl Default for Scene {
     fn default() -> Self {
         Self {
+            world: flightcraft_world::World::default(),
             eye: None,
             target: None,
             camera: CameraMode::Chase,
@@ -79,6 +83,11 @@ impl Scene {
             self.larrow = larrow;
             self.reset_camera();
         }
+    }
+
+    /// Share the session's immutable terrain; GPU meshes are cached by content identity.
+    pub fn set_world(&mut self, world: &flightcraft_world::World) {
+        self.world = world.clone();
     }
 
     /// Presentation offsets supplied by the app's validated camera command.
@@ -187,6 +196,7 @@ impl Scene {
             rect,
             gpu::SceneCallback {
                 uniform,
+                world: self.world.clone(),
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera == CameraMode::Chase,
                 larrow: self.larrow,

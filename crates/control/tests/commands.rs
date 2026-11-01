@@ -8,6 +8,7 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
     let mut session = Session::new().unwrap();
     let examples = [
         ("sim.reset", json!({"start": {"kind": "runway"}})),
+        ("world.height", json!({"north_m":450,"east_m":0})),
         ("sim.set_controls", json!({"throttle": 0.7})),
         ("sim.step", json!({"steps": 120})),
         ("autopilot.set", json!({"heading_rad": 0.1, "pitch_rad": 0.0})),
@@ -55,7 +56,12 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
             .flat_map(|object| object.values())
         {
             if let Some(default) = property.get("default") {
-                assert!(jsonschema::validator_for(property).unwrap().is_valid(default));
+                // A property may reference a shared type in the command's root schema.
+                let mut schema = property.clone();
+                if let Some(definitions) = command.input_schema.get("$defs") {
+                    schema["$defs"] = definitions.clone();
+                }
+                assert!(jsonschema::validator_for(&schema).unwrap().is_valid(default));
             }
         }
         let output = session.execute(name, input).unwrap();
@@ -210,6 +216,7 @@ fn typed_commands_reject_nonfinite_and_out_of_range_values_too() {
     assert!(
         session
             .run(Reset {
+                world: Default::default(),
                 start: ResetStart::Air {
                     height_m: f64::NAN,
                     airspeed_mps: 30.0,

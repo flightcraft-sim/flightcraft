@@ -100,6 +100,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "WorldChoice": {
+          "enum": [
+            "flat",
+            "training-valley"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -116,6 +123,11 @@
         "weather": {
           "$ref": "#/$defs/Weather",
           "description": "Omission starts in calm air. Supplying weather makes its seed part of the start."
+        },
+        "world": {
+          "$ref": "#/$defs/WorldChoice",
+          "default": "flat",
+          "description": "World data is part of the start. Omission retains the original flat world."
         }
       },
       "required": [
@@ -534,6 +546,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "WorldChoice": {
+          "enum": [
+            "flat",
+            "training-valley"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -551,15 +570,87 @@
         },
         "state": {
           "$ref": "#/$defs/State"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldChoice"
         }
       },
       "required": [
         "state",
         "readout",
         "paused",
-        "rate"
+        "rate",
+        "world"
       ],
       "title": "StateOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "world.height",
+    "description": "Read terrain height MSL in metres, upward NED unit normal, and surface at a local point.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Query the selected world's elevation, upward NED normal, and surface.",
+      "properties": {
+        "east_m": {
+          "format": "double",
+          "maximum": 100000000.0,
+          "minimum": -100000000.0,
+          "type": "number"
+        },
+        "north_m": {
+          "format": "double",
+          "maximum": 100000000.0,
+          "minimum": -100000000.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "north_m",
+        "east_m"
+      ],
+      "title": "WorldHeight",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Surface": {
+          "enum": [
+            "grass",
+            "pavement",
+            "water"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "height_msl_m": {
+          "format": "double",
+          "type": "number"
+        },
+        "normal_ned": {
+          "description": "Upward unit normal in the local NED frame.",
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "surface": {
+          "$ref": "#/$defs/Surface"
+        }
+      },
+      "required": [
+        "height_msl_m",
+        "normal_ned",
+        "surface"
+      ],
+      "title": "Ground",
       "type": "object"
     }
   },
@@ -2495,6 +2586,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "WorldChoice": {
+          "enum": [
+            "flat",
+            "training-valley"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2512,13 +2610,17 @@
         },
         "state": {
           "$ref": "#/$defs/State"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldChoice"
         }
       },
       "required": [
         "state",
         "readout",
         "paused",
-        "rate"
+        "rate",
+        "world"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -3958,6 +4060,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "WorldChoice": {
+          "enum": [
+            "flat",
+            "training-valley"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3975,13 +4084,17 @@
         },
         "state": {
           "$ref": "#/$defs/State"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldChoice"
         }
       },
       "required": [
         "state",
         "readout",
         "paused",
-        "rate"
+        "rate",
+        "world"
       ],
       "title": "StateOutput",
       "type": "object"

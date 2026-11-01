@@ -1,6 +1,8 @@
-//! Deterministic ISA atmosphere, flat terrain, and the original Corvid Field.
+//! Deterministic atmosphere, height tiles, and the original Corvid Field.
 #![deny(clippy::disallowed_methods)]
 
+mod terrain;
+pub use terrain::*;
 mod weather;
 pub use weather::*;
 
@@ -49,10 +51,12 @@ pub fn atmosphere(height_m: f64) -> Atmosphere {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum Surface {
     Grass,
     Pavement,
+    Water,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -80,9 +84,11 @@ pub const AIRFIELD: Airfield = Airfield {
     runway: RUNWAY,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, schemars::JsonSchema)]
 pub struct Ground {
     pub height_msl_m: f64,
+    /// Upward unit normal in the local NED frame.
+    pub normal_ned: [f64; 3],
     pub surface: Surface,
 }
 
@@ -95,6 +101,7 @@ pub fn ground(north_m: f64, east_m: f64) -> Ground {
         && east_m.abs() <= RUNWAY.width_m * 0.5;
     Ground {
         height_msl_m: 0.0,
+        normal_ned: [0.0, 0.0, -1.0],
         surface: if paved { Surface::Pavement } else { Surface::Grass },
     }
 }

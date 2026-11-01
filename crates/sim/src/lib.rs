@@ -19,7 +19,7 @@ mod math;
 
 pub use flightcraft_aero::{Aircraft, AircraftError, ControlSurface, Failures};
 use flightcraft_world as world;
-pub use flightcraft_world::{TurbulenceLevel, Weather};
+pub use flightcraft_world::{TurbulenceLevel, Weather, World, WorldChoice};
 use math::*;
 use serde::{Deserialize, Serialize};
 
@@ -149,6 +149,8 @@ pub enum Start {
 pub enum SimError {
     #[error(transparent)]
     Aircraft(#[from] AircraftError),
+    #[error(transparent)]
+    Terrain(#[from] world::TerrainError),
     #[error("invalid start: {0}")]
     InvalidStart(String),
     #[error("unknown aircraft: {0}")]
@@ -165,6 +167,7 @@ pub enum SimError {
 #[derive(Clone, Debug)]
 pub struct Sim {
     aircraft: Aircraft,
+    world: World,
     state: State,
     controls: Controls,
     steps: u64,
@@ -195,6 +198,19 @@ impl Sim {
         start: &Start,
         aircraft: Aircraft,
         weather: Weather,
+    ) -> Result<Self, SimError> {
+        Self::new_with_aircraft_weather_world(start, aircraft, weather, World::default())
+    }
+
+    pub fn new_with_world(start: &Start, world: World) -> Result<Self, SimError> {
+        Self::new_with_aircraft_weather_world(start, Aircraft::corvid()?, Weather::default(), world)
+    }
+
+    pub fn new_with_aircraft_weather_world(
+        start: &Start,
+        aircraft: Aircraft,
+        weather: Weather,
+        world: World,
     ) -> Result<Self, SimError> {
         aircraft.validate()?;
         let wind = world::Wind::new(weather)?;
@@ -271,6 +287,7 @@ impl Sim {
         }
         let mut sim = Self {
             aircraft,
+            world,
             wind,
             failures: Failures::default(),
             state,
@@ -287,7 +304,11 @@ impl Sim {
     /// Time must be nonnegative, positions within 100,000 km, body rates within 50 rad/s,
     /// and each velocity component within 500 m/s. Out-of-envelope integration freezes
     /// the last valid state and marks the simulation crashed.
-    pub fn from_state(mut state: State, controls: Controls) -> Result<Self, SimError> {
+    pub fn from_state(state: State, controls: Controls) -> Result<Self, SimError> {
+        Self::from_state_in_world(state, controls, World::default())
+    }
+
+    pub fn from_state_in_world(mut state: State, controls: Controls, world: World) -> Result<Self, SimError> {
         if !dynamics::valid(&state) || state.time_s > 1e12 {
             return Err(SimError::InvalidStart(
                 "state outside finite simulation envelope".into(),
@@ -301,9 +322,10 @@ impl Sim {
         let steps = libm::round(state.time_s / DT_S) as u64;
         state.time_s = steps as f64 * DT_S;
         let aircraft = Aircraft::corvid()?;
-        let crashed = dynamics::crash(&aircraft, &state);
+        let crashed = dynamics::crash(&aircraft, &state, &world);
         Ok(Self {
             aircraft,
+            world,
             wind: world::Wind::new(Weather::default())?,
             failures: Failures::default(),
             state,
@@ -317,6 +339,11 @@ impl Sim {
     #[must_use]
     pub fn aircraft(&self) -> &Aircraft {
         &self.aircraft
+    }
+
+    #[must_use]
+    pub fn world(&self) -> &World {
+        &self.world
     }
 
     /// Replace weather atomically and restart the gust process at its supplied seed.
@@ -418,6 +445,7 @@ impl Sim {
                 self.controls,
                 &self.wind,
                 self.failures,
+                &self.world,
             ) else {
                 self.crashed = true;
                 break;
@@ -428,8 +456,8 @@ impl Sim {
             }
             self.steps = self.steps.saturating_add(1);
             next.time_s = self.steps as f64 * DT_S;
-            self.crashed = dynamics::crash(&self.aircraft, &next)
-                || dynamics::hard_touchdown(&self.aircraft, &self.state, &next);
+            self.crashed = dynamics::crash(&self.aircraft, &next, &self.world)
+                || dynamics::hard_touchdown(&self.aircraft, &self.state, &next, &self.world);
             self.state = next;
         }
     }
@@ -454,7 +482,7 @@ impl Sim {
         let speed = norm(dynamics::relative_velocity(s, &self.wind));
         let loads = dynamics::loads(&self.aircraft, s, self.controls, &self.wind, self.failures);
         let [_, _, fz] = loads.force_n;
-        let h = dynamics::height(&self.aircraft, s);
+        let h = dynamics::height(&self.aircraft, s, &self.world);
         Readout {
             time_s: s.time_s,
             indicated_airspeed_mps: speed
@@ -539,6 +567,10 @@ impl Sim {
                     eat(position.to_bits());
                 }
             }
+        }
+        if !self.world.tiles().is_empty() {
+            eat(0x7465_7272_6169_6e01);
+            eat(self.world.fingerprint());
         }
         h
     }

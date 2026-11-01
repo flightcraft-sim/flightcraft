@@ -2,7 +2,7 @@
 //! Closed-loop pilot, using only the public simulation interface.
 use flightcraft_aero as aero;
 use flightcraft_sim::{Controls, Sim, Start};
-use flightcraft_world::{self as world, Surface};
+use flightcraft_world::{self as world, Surface, World, WorldChoice};
 use std::f64::consts::{PI, TAU};
 
 fn wrap(x: f64) -> f64 {
@@ -11,14 +11,24 @@ fn wrap(x: f64) -> f64 {
 
 #[test]
 fn runway_pattern() {
+    fly_pattern(WorldChoice::Flat);
+}
+
+#[test]
+fn valley_runway_pattern() {
+    fly_pattern(WorldChoice::TrainingValley);
+}
+
+fn fly_pattern(choice: WorldChoice) {
     let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
-    let mut sim = Sim::new(&Start::Runway).unwrap();
+    let mut sim = Sim::new_with_world(&Start::Runway, World::load(choice).unwrap()).unwrap();
     let mut phase = 0;
     let mut took_off = false;
     let mut landed = false;
     let mut takeoff_distance = 0.0;
     let mut touchdown = [0.0; 3];
     let mut max_height: f64 = 0.0;
+    let mut max_altitude: f64 = 0.0;
     let mut climb_sum = 0.0;
     let mut climb_samples = 0;
     let mut trajectory = 0xcbf29ce484222325u64;
@@ -28,6 +38,7 @@ fn runway_pattern() {
         let [p, q, rate_yaw] = sim.state().angular_rate_rps;
         let speed = r.true_airspeed_mps;
         max_height = max_height.max(r.height_agl_m);
+        max_altitude = max_altitude.max(r.altitude_msl_m);
         if !took_off && r.height_agl_m > 0.5 {
             took_off = true;
             takeoff_distance = north;
@@ -155,7 +166,10 @@ fn runway_pattern() {
         "trajectory={trajectory:#018x}; state={:#018x}; takeoff={takeoff_distance:.2} m; climb={climb_rate:.3} m/s; max height={max_height:.2} m; touchdown={touchdown:?}",
         sim.state_hash()
     );
-    assert!(took_off && max_height >= 300.0);
+    assert!(took_off && max_altitude >= 300.0);
+    if choice == WorldChoice::Flat {
+        assert!(max_height >= 300.0);
+    }
     assert!(landed, "did not land: {:?}", sim.readout());
     assert_eq!(
         world::ground(touchdown[0], touchdown[1]).surface,
@@ -168,5 +182,7 @@ fn runway_pattern() {
     assert!((1.5..6.0).contains(&climb_rate));
     // FNV fold of every 0.1 s state hash, including rollout. Update only after reviewing
     // an intentional physics or pilot change and the flight's quantitative assertions.
-    assert_eq!(trajectory, 0x4b3c_ea10_0a2f_b15d);
+    if choice == WorldChoice::Flat {
+        assert_eq!(trajectory, 0x4b3c_ea10_0a2f_b15d);
+    }
 }

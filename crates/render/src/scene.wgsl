@@ -62,7 +62,7 @@ struct Surface {
         let shadow = exp(-dot(offset, offset)) * max(0.0, 1.0 - u.aircraft[3].y / 30.0);
         color *= 1.0 - shadow * 0.23;
     }
-    if i.kind == 1.0 {
+    if i.kind == 1.0 || i.kind == 4.0 {
         let light = 0.62 + 0.38 * abs(dot(normalize(i.normal), normalize(vec3<f32>(0.4, 0.85, 0.3))));
         color *= light;
     }
