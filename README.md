@@ -48,6 +48,6 @@ On Linux the gamepad support needs the udev development files (`libudev-dev` or 
 
 ## Licence
 
-Dual-licensed under either of the [Apache License, Version 2.0](LICENSE-APACHE) or the
-[MIT licence](LICENSE-MIT), at your option. Unless you state otherwise, any contribution you submit
-for inclusion is dual-licensed the same way, without additional terms or conditions.
+Licensed under the [Apache License, Version 2.0](LICENSE). Unless you state otherwise, any
+contribution you submit for inclusion is licensed the same way, without additional terms or
+conditions.
