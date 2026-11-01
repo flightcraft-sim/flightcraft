@@ -75,6 +75,14 @@
     },
     "output_schema": {
       "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -131,6 +139,10 @@
               "description": "Altitude above mean sea level, metres.",
               "format": "double",
               "type": "number"
+            },
+            "autopilot": {
+              "$ref": "#/$defs/Targets",
+              "description": "Engaged holds and their SI targets."
             },
             "beta_rad": {
               "description": "Sideslip, radians.",
@@ -218,7 +230,8 @@
             "engine_rpm",
             "on_ground",
             "crashed",
-            "controls"
+            "controls",
+            "autopilot"
           ],
           "type": "object"
         },
@@ -277,6 +290,64 @@
             "velocity_mps",
             "attitude",
             "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "Targets": {
+          "additionalProperties": false,
+          "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+          "properties": {
+            "airspeed_mode": {
+              "$ref": "#/$defs/AirspeedMode"
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "bank_limit_rad": {
+              "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wings_level": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "wings_level",
+            "bank_limit_rad",
+            "airspeed_mode"
           ],
           "type": "object"
         }
@@ -425,6 +496,14 @@
     },
     "output_schema": {
       "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -468,6 +547,64 @@
             "brake"
           ],
           "type": "object"
+        },
+        "Targets": {
+          "additionalProperties": false,
+          "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+          "properties": {
+            "airspeed_mode": {
+              "$ref": "#/$defs/AirspeedMode"
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "bank_limit_rad": {
+              "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wings_level": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "wings_level",
+            "bank_limit_rad",
+            "airspeed_mode"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -482,6 +619,10 @@
           "description": "Altitude above mean sea level, metres.",
           "format": "double",
           "type": "number"
+        },
+        "autopilot": {
+          "$ref": "#/$defs/Targets",
+          "description": "Engaged holds and their SI targets."
         },
         "beta_rad": {
           "description": "Sideslip, radians.",
@@ -569,23 +710,431 @@
         "engine_rpm",
         "on_ground",
         "crashed",
-        "controls"
+        "controls",
+        "autopilot"
       ],
       "title": "Readout",
       "type": "object"
     }
   },
   {
-    "name": "sim.state",
-    "description": "Read the full state, instrument readout, and playback settings.",
+    "name": "autopilot.set",
+    "description": "Patch SI hold targets; null or false disengages a hold. Pitch airspeed mode uses full power.",
     "input_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
+        "Disengage": {
+          "const": false,
+          "type": "boolean"
+        },
+        "HoldTarget": {
+          "anyOf": [
+            {
+              "format": "double",
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/Disengage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Numeric target, or `null`/`false` to disengage. Omitted fields keep their current setting."
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "title": "GetState",
+      "description": "Patch any subset of holds. Conflicting vertical or lateral holds must be disengaged in the\nsame call. Bounds: pitch -0.25..0.35 rad, altitude 2..10000 m, climb -8..8 m/s, heading 0..2π,\nairspeed 25..80 m/s, and bank limit 0.05..0.6 rad.",
+      "properties": {
+        "airspeed_mode": {
+          "$ref": "#/$defs/AirspeedMode"
+        },
+        "airspeed_mps": {
+          "$ref": "#/$defs/HoldTarget",
+          "maximum": 80.0,
+          "minimum": 25.0
+        },
+        "altitude_m": {
+          "$ref": "#/$defs/HoldTarget",
+          "maximum": 10000.0,
+          "minimum": 2.0
+        },
+        "bank_limit_rad": {
+          "format": "double",
+          "maximum": 0.6,
+          "minimum": 0.05,
+          "type": "number"
+        },
+        "heading_rad": {
+          "$ref": "#/$defs/HoldTarget",
+          "maximum": 6.283185307179586,
+          "minimum": 0.0
+        },
+        "pitch_rad": {
+          "$ref": "#/$defs/HoldTarget",
+          "maximum": 0.35,
+          "minimum": -0.25
+        },
+        "vertical_speed_mps": {
+          "$ref": "#/$defs/HoldTarget",
+          "maximum": 8.0,
+          "minimum": -8.0
+        },
+        "wings_level": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "title": "SetAutopilot",
       "type": "object"
     },
     "output_schema": {
       "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+      "properties": {
+        "airspeed_mode": {
+          "$ref": "#/$defs/AirspeedMode"
+        },
+        "airspeed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bank_limit_rad": {
+          "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pitch_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "vertical_speed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wings_level": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "wings_level",
+        "bank_limit_rad",
+        "airspeed_mode"
+      ],
+      "title": "Targets",
+      "type": "object"
+    }
+  },
+  {
+    "name": "autopilot.off",
+    "description": "Disengage all holds, leaving the last controls in place.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "AutopilotOff",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+      "properties": {
+        "airspeed_mode": {
+          "$ref": "#/$defs/AirspeedMode"
+        },
+        "airspeed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bank_limit_rad": {
+          "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pitch_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "vertical_speed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wings_level": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "wings_level",
+        "bank_limit_rad",
+        "airspeed_mode"
+      ],
+      "title": "Targets",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.run_until",
+    "description": "Step until any condition matches, a crash occurs, or the bounded step cap is reached; works while paused.",
+    "input_schema": {
+      "$defs": {
+        "RunCondition": {
+          "description": "Run stops at the first matching condition in input order. Above/below comparisons are\ninclusive. Elapsed time is relative to the start of this call, including when paused.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 20000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude_above",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 20000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude_below",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 150,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed_above",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 150,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed_below",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "heading_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_within",
+                  "type": "string"
+                },
+                "tolerance_rad": {
+                  "format": "double",
+                  "maximum": 3.141592653589793,
+                  "minimum": 0.0001,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "heading_rad",
+                "tolerance_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "on_ground",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "time_elapsed",
+                  "type": "string"
+                },
+                "seconds": {
+                  "format": "double",
+                  "maximum": 600,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "conditions": {
+          "description": "Stop when any condition matches; at most 16. An empty list runs to the step cap.",
+          "items": {
+            "$ref": "#/$defs/RunCondition"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "max_steps": {
+          "default": 72000,
+          "format": "uint32",
+          "maximum": 72000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "conditions"
+      ],
+      "title": "RunUntil",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -642,6 +1191,10 @@
               "description": "Altitude above mean sea level, metres.",
               "format": "double",
               "type": "number"
+            },
+            "autopilot": {
+              "$ref": "#/$defs/Targets",
+              "description": "Engaged holds and their SI targets."
             },
             "beta_rad": {
               "description": "Sideslip, radians.",
@@ -729,7 +1282,518 @@
             "engine_rpm",
             "on_ground",
             "crashed",
-            "controls"
+            "controls",
+            "autopilot"
+          ],
+          "type": "object"
+        },
+        "RunCondition": {
+          "description": "Run stops at the first matching condition in input order. Above/below comparisons are\ninclusive. Elapsed time is relative to the start of this call, including when paused.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 20000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude_above",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 20000,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude_below",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 150,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed_above",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 150,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed_below",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "heading_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_within",
+                  "type": "string"
+                },
+                "tolerance_rad": {
+                  "format": "double",
+                  "maximum": 3.141592653589793,
+                  "minimum": 0.0001,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "heading_rad",
+                "tolerance_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "on_ground",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "time_elapsed",
+                  "type": "string"
+                },
+                "seconds": {
+                  "format": "double",
+                  "maximum": 600,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "seconds"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "RunStop": {
+          "oneOf": [
+            {
+              "properties": {
+                "condition": {
+                  "$ref": "#/$defs/RunCondition"
+                },
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "condition",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index",
+                "condition"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "step_cap",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "crashed",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "State": {
+          "description": "The full rigid-body state.",
+          "properties": {
+            "angular_rate_rps": {
+              "description": "Angular rate in the body frame `[p, q, r]`, rad/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "attitude": {
+              "description": "Attitude, body to world, as a unit quaternion `[w, x, y, z]`.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "position_m": {
+              "description": "Position of the centre of gravity in the world (NED) frame, metres.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "time_s": {
+              "description": "Simulated time since the start, seconds.",
+              "format": "double",
+              "type": "number"
+            },
+            "velocity_mps": {
+              "description": "Velocity in the world (NED) frame, m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "time_s",
+            "position_m",
+            "velocity_mps",
+            "attitude",
+            "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "Targets": {
+          "additionalProperties": false,
+          "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+          "properties": {
+            "airspeed_mode": {
+              "$ref": "#/$defs/AirspeedMode"
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "bank_limit_rad": {
+              "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wings_level": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "wings_level",
+            "bank_limit_rad",
+            "airspeed_mode"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fired": {
+          "$ref": "#/$defs/RunStop"
+        },
+        "readout": {
+          "$ref": "#/$defs/Readout"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "steps": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "readout",
+        "state",
+        "steps",
+        "fired"
+      ],
+      "title": "RunOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "sim.state",
+    "description": "Read the full state, instrument readout, and playback settings.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetState",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Readout": {
+          "description": "Derived values for instruments, agents, and tests.",
+          "properties": {
+            "alpha_rad": {
+              "description": "Angle of attack, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_msl_m": {
+              "description": "Altitude above mean sea level, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "autopilot": {
+              "$ref": "#/$defs/Targets",
+              "description": "Engaged holds and their SI targets."
+            },
+            "beta_rad": {
+              "description": "Sideslip, radians.",
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "crashed": {
+              "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
+              "type": "boolean"
+            },
+            "engine_rpm": {
+              "description": "Engine speed, revolutions per minute.",
+              "format": "double",
+              "type": "number"
+            },
+            "ground_speed_mps": {
+              "description": "Ground speed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "format": "double",
+              "type": "number"
+            },
+            "height_agl_m": {
+              "description": "Height of the lowest wheel above the ground, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "description": "Indicated airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "load_factor_g": {
+              "description": "Load factor along body z, g (1 in level flight).",
+              "format": "double",
+              "type": "number"
+            },
+            "on_ground": {
+              "description": "True while any wheel touches the ground.",
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "true_airspeed_mps": {
+              "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "description": "Climb rate, m/s (positive up).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "indicated_airspeed_mps",
+            "true_airspeed_mps",
+            "ground_speed_mps",
+            "altitude_msl_m",
+            "height_agl_m",
+            "vertical_speed_mps",
+            "heading_rad",
+            "pitch_rad",
+            "roll_rad",
+            "alpha_rad",
+            "beta_rad",
+            "load_factor_g",
+            "engine_rpm",
+            "on_ground",
+            "crashed",
+            "controls",
+            "autopilot"
           ],
           "type": "object"
         },
@@ -788,6 +1852,64 @@
             "velocity_mps",
             "attitude",
             "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "Targets": {
+          "additionalProperties": false,
+          "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+          "properties": {
+            "airspeed_mode": {
+              "$ref": "#/$defs/AirspeedMode"
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "bank_limit_rad": {
+              "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wings_level": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "wings_level",
+            "bank_limit_rad",
+            "airspeed_mode"
           ],
           "type": "object"
         }

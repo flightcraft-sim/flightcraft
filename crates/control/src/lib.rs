@@ -4,7 +4,9 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+mod holds;
 pub mod mcp;
+pub use holds::*;
 
 use flightcraft_sim::{Controls, Readout, Sim, SimError, Start, State};
 use schemars::JsonSchema;
@@ -426,6 +428,9 @@ registry!(
     Reset,
     SetControls,
     Step,
+    SetAutopilot,
+    AutopilotOff,
+    RunUntil,
     GetState,
     Pause,
     Resume,

@@ -134,7 +134,7 @@ fn dispatch(session: &mut Session, method: &str, input: Value) -> RpcResult {
                 "protocolVersion": version,
                 "capabilities": {"tools": {"listChanged": false}},
                 "serverInfo": {"name": "flightcraft-mcp", "version": env!("CARGO_PKG_VERSION")},
-                "instructions": "Use sim_reset, sim_set_controls, sim_step, and sim_state. Units are SI; explicit steps run even while paused."
+                "instructions": "Use sim_reset, autopilot_set, sim_run_until, autopilot_off, sim_set_controls, sim_step, and sim_state. Units are SI; explicit steps and waits run even while paused."
             }))
         }
         "ping" | "notifications/initialized" => {

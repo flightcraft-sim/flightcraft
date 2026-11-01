@@ -13,6 +13,7 @@
 
 #![deny(clippy::disallowed_methods)]
 
+pub mod autopilot;
 mod dynamics;
 mod math;
 
@@ -118,6 +119,8 @@ pub struct Readout {
     /// True once the aircraft has hit the ground too hard or off a gear contact.
     pub crashed: bool,
     pub controls: Controls,
+    /// Engaged holds and their SI targets.
+    pub autopilot: autopilot::Targets,
 }
 
 /// How a simulation starts.
@@ -139,6 +142,8 @@ pub enum SimError {
     InvalidStart(String),
     #[error("unknown aircraft: {0}")]
     UnknownAircraft(String),
+    #[error("invalid autopilot targets: {0}")]
+    InvalidAutopilot(String),
 }
 
 /// One simulation: an aircraft, a world, and its state.
@@ -148,6 +153,7 @@ pub struct Sim {
     controls: Controls,
     steps: u64,
     crashed: bool,
+    autopilot: autopilot::Autopilot,
 }
 
 impl Sim {
@@ -195,6 +201,7 @@ impl Sim {
             controls,
             steps: 0,
             crashed: false,
+            autopilot: autopilot::Autopilot::default(),
         })
     }
 
@@ -221,6 +228,7 @@ impl Sim {
             controls: controls.clamped(),
             steps,
             crashed,
+            autopilot: autopilot::Autopilot::default(),
         })
     }
 
@@ -234,12 +242,28 @@ impl Sim {
         self.controls
     }
 
+    /// Replace the engaged holds atomically. Incompatible or hostile targets are errors.
+    pub fn set_autopilot(&mut self, targets: autopilot::Targets) -> Result<(), SimError> {
+        targets.validate()?;
+        self.autopilot.set(targets);
+        Ok(())
+    }
+
+    /// Disengage all holds. The last controls remain available to the pilot.
+    pub fn autopilot_off(&mut self) {
+        self.autopilot = autopilot::Autopilot::default();
+    }
+
     /// Advance up to `n` fixed steps of [`DT_S`], stopping at a crash or numerical envelope exit.
     /// The last finite state is retained. Crashed simulations remain frozen.
     pub fn step(&mut self, n: u32) {
         for _ in 0..n {
             if self.crashed {
                 break;
+            }
+            if self.autopilot.targets().engaged() {
+                let readout = self.readout();
+                self.controls = self.autopilot.update(readout, self.state.angular_rate_rps);
             }
             let mut next = dynamics::rk4(self.state, self.controls);
             if !dynamics::valid(&next) {
@@ -297,6 +321,7 @@ impl Sim {
             on_ground: h <= 0.0,
             crashed: self.crashed,
             controls: self.controls,
+            autopilot: self.autopilot.targets(),
         }
     }
 
