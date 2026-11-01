@@ -47,6 +47,30 @@ jobs:
           name: flightcraft-web
           path: dist/
           if-no-files-found: error
+      - name: Keep the build for GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+  pages:
+    name: Publish the web app
+    # The browser build goes live only from main, and only after the checks pass.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, wasm]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   golden:
     name: Golden trajectory (${{ matrix.os }})

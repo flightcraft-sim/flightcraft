@@ -3,6 +3,9 @@
 An open-source flight simulator in pure Rust, for the desktop and the browser, with a deterministic
 core that people, scripts, and AI agents fly the same way.
 
+**Fly it in your browser:** https://flightcraft-sim.github.io/flightcraft/ (add `?script=takeoff.jsonl`
+to watch a scripted takeoff).
+
 ## What works today
 
 - The Corvid, an original two-seat trainer, flies on a 6-DOF model from textbook aerodynamics:
