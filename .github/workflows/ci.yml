@@ -40,6 +40,8 @@ jobs:
 
   golden:
     name: Golden trajectory (${{ matrix.os }})
+    # The same trajectory hash on every platform. Not on pull requests: those runners cost more.
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
