@@ -1,5 +1,7 @@
 //! Deterministic, headless 6-DOF flight simulation.
 //!
+//! See the crate README for start envelopes, trim, contact, crash, and replay semantics.
+//!
 //! Frames: the world frame is local north-east-down (NED) with its origin at the threshold of
 //! runway 36 on the default airfield; the body frame is x forward, y right, z down. Units are SI
 //! throughout (metres, seconds, radians, kilograms, newtons); conversions to knots and feet live in
@@ -9,6 +11,13 @@
 //! stepping path, and transcendental maths only through `libm`. The same inputs give the same bits
 //! on every platform, checked by [`Sim::state_hash`] in the golden tests.
 
+#![deny(clippy::disallowed_methods)]
+
+mod dynamics;
+mod math;
+
+use flightcraft_world as world;
+use math::*;
 use serde::{Deserialize, Serialize};
 
 /// The fixed simulation timestep: 1/120 s.
@@ -138,24 +147,80 @@ pub struct Sim {
     state: State,
     controls: Controls,
     steps: u64,
+    crashed: bool,
 }
 
 impl Sim {
     /// A new simulation of the default aircraft at `start`.
     pub fn new(start: &Start) -> Result<Self, SimError> {
-        if let Start::Air {
-            height_m,
-            airspeed_mps,
-            heading_rad,
-        } = start
-            && !(height_m.is_finite() && airspeed_mps.is_finite() && heading_rad.is_finite())
-        {
-            return Err(SimError::InvalidStart("values must be finite".into()));
-        }
+        let mut state = State::default();
+        let controls = match *start {
+            Start::Runway => {
+                state.position_m = [
+                    0.0,
+                    0.0,
+                    -(1.15 - flightcraft_aero::MASS_KG * world::GRAVITY_MPS2 / 200_000.0),
+                ];
+                Controls::default()
+            }
+            Start::Air {
+                height_m,
+                airspeed_mps,
+                heading_rad,
+            } => {
+                if !height_m.is_finite()
+                    || !(2.0..=20_000.0).contains(&height_m)
+                    || !airspeed_mps.is_finite()
+                    || !(1.0..=150.0).contains(&airspeed_mps)
+                    || !heading_rad.is_finite()
+                {
+                    return Err(SimError::InvalidStart(
+                        "finite height in 2..=20000 m and speed in 1..=150 m/s required".into(),
+                    ));
+                }
+                let heading = heading_rad.rem_euclid(core::f64::consts::TAU);
+                let (alpha, controls) = dynamics::trim(height_m, airspeed_mps);
+                state.position_m = [0.0, 0.0, -height_m];
+                state.velocity_mps = [
+                    airspeed_mps * libm::cos(heading),
+                    airspeed_mps * libm::sin(heading),
+                    0.0,
+                ];
+                state.attitude = attitude(alpha, heading);
+                controls
+            }
+        };
         Ok(Self {
-            state: State::default(),
-            controls: Controls::default(),
+            state,
+            controls,
             steps: 0,
+            crashed: false,
+        })
+    }
+
+    /// Restore a finite state for experiments and replay. Quaternion is normalised.
+    /// Time must be nonnegative, positions within 100,000 km, body rates within 50 rad/s,
+    /// and each velocity component within 500 m/s. Out-of-envelope integration freezes
+    /// the last valid state and marks the simulation crashed.
+    pub fn from_state(mut state: State, controls: Controls) -> Result<Self, SimError> {
+        if !dynamics::valid(&state) || state.time_s > 1e12 {
+            return Err(SimError::InvalidStart(
+                "state outside finite simulation envelope".into(),
+            ));
+        }
+        let [w, x, y, z] = state.attitude;
+        if w * w + x * x + y * y + z * z < 1e-12 {
+            return Err(SimError::InvalidStart("zero attitude quaternion".into()));
+        }
+        state.attitude = normalise(state.attitude);
+        let steps = libm::round(state.time_s / DT_S) as u64;
+        state.time_s = steps as f64 * DT_S;
+        let crashed = dynamics::crash(&state);
+        Ok(Self {
+            state,
+            controls: controls.clamped(),
+            steps,
+            crashed,
         })
     }
 
@@ -169,11 +234,22 @@ impl Sim {
         self.controls
     }
 
-    /// Advance `n` fixed steps of [`DT_S`].
+    /// Advance up to `n` fixed steps of [`DT_S`], stopping at a crash or numerical envelope exit.
+    /// The last finite state is retained. Crashed simulations remain frozen.
     pub fn step(&mut self, n: u32) {
         for _ in 0..n {
-            self.steps += 1;
-            self.state.time_s = self.steps as f64 * DT_S;
+            if self.crashed {
+                break;
+            }
+            let mut next = dynamics::rk4(self.state, self.controls);
+            if !dynamics::valid(&next) {
+                self.crashed = true;
+                break;
+            }
+            self.steps = self.steps.saturating_add(1);
+            next.time_s = self.steps as f64 * DT_S;
+            self.crashed = dynamics::crash(&next) || dynamics::hard_touchdown(&self.state, &next);
+            self.state = next;
         }
     }
 
@@ -189,14 +265,42 @@ impl Sim {
 
     #[must_use]
     pub fn readout(&self) -> Readout {
+        let s = &self.state;
+        let [_, _, z] = s.position_m;
+        let [vn, ve, vd] = s.velocity_mps;
+        let [roll, pitch, heading] = euler(s.attitude);
+        let [u, v, w] = dynamics::airflow(s).velocity_body_mps;
+        let speed = norm(s.velocity_mps);
+        let loads = dynamics::loads(s, self.controls);
+        let [_, _, fz] = loads.force_n;
+        let h = dynamics::height(s);
         Readout {
-            time_s: self.state.time_s,
+            time_s: s.time_s,
+            indicated_airspeed_mps: speed
+                * libm::sqrt(world::atmosphere(-z).density_kg_m3 / world::SEA_LEVEL_DENSITY),
+            true_airspeed_mps: speed,
+            ground_speed_mps: libm::sqrt(vn * vn + ve * ve),
+            altitude_msl_m: -z,
+            height_agl_m: h.max(0.0),
+            vertical_speed_mps: -vd,
+            heading_rad: heading,
+            pitch_rad: pitch,
+            roll_rad: roll,
+            alpha_rad: libm::atan2(w, u),
+            beta_rad: if speed > 0.01 {
+                libm::asin((v / speed).clamp(-1.0, 1.0))
+            } else {
+                0.0
+            },
+            load_factor_g: -fz / (flightcraft_aero::MASS_KG * world::GRAVITY_MPS2),
+            engine_rpm: loads.engine_rpm,
+            on_ground: h <= 0.0,
+            crashed: self.crashed,
             controls: self.controls,
-            ..Readout::default()
         }
     }
 
-    /// FNV-1a over the bits of the state and the step count: equal on every platform for the same
+    /// FNV-1a over the bits of the state, crash flag, and the step count: equal on every platform for the same
     /// inputs.
     #[must_use]
     pub fn state_hash(&self) -> u64 {
@@ -209,6 +313,7 @@ impl Sim {
             }
         };
         eat(self.steps);
+        eat(u64::from(self.crashed));
         for v in [s.time_s]
             .iter()
             .chain(&s.position_m)
