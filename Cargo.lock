@@ -750,6 +750,7 @@ name = "flightcraft-aero"
 version = "0.1.0"
 dependencies = [
  "libm",
+ "schemars",
  "serde",
  "thiserror 2.0.21",
 ]
@@ -841,6 +842,8 @@ name = "flightcraft-world"
 version = "0.1.0"
 dependencies = [
  "libm",
+ "schemars",
+ "serde",
  "thiserror 2.0.21",
 ]
 

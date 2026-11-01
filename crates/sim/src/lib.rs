@@ -17,7 +17,9 @@ pub mod autopilot;
 mod dynamics;
 mod math;
 
+pub use flightcraft_aero::{ControlSurface, Failures};
 use flightcraft_world as world;
+pub use flightcraft_world::{TurbulenceLevel, Weather};
 use math::*;
 use serde::{Deserialize, Serialize};
 
@@ -121,6 +123,13 @@ pub struct Readout {
     pub controls: Controls,
     /// Engaged holds and their SI targets.
     pub autopilot: autopilot::Targets,
+    pub weather: Weather,
+    /// Total moving-air velocity at the CG, NED m/s.
+    pub wind_ned_mps: [f64; 3],
+    pub gust_ned_mps: [f64; 3],
+    pub failures: Failures,
+    /// Actual surface positions after applying jams (throttle remains a demand).
+    pub effective_controls: Controls,
 }
 
 /// How a simulation starts.
@@ -144,6 +153,10 @@ pub enum SimError {
     UnknownAircraft(String),
     #[error("invalid autopilot targets: {0}")]
     InvalidAutopilot(String),
+    #[error(transparent)]
+    Weather(#[from] world::WeatherError),
+    #[error(transparent)]
+    Failure(#[from] flightcraft_aero::FailureError),
 }
 
 /// One simulation: an aircraft, a world, and its state.
@@ -154,11 +167,20 @@ pub struct Sim {
     steps: u64,
     crashed: bool,
     autopilot: autopilot::Autopilot,
+    wind: world::Wind,
+    failures: Failures,
 }
 
 impl Sim {
     /// A new simulation of the default aircraft at `start`.
     pub fn new(start: &Start) -> Result<Self, SimError> {
+        Self::new_with_weather(start, Weather::default())
+    }
+
+    /// Start with weather and its seed. An air start has the requested airspeed;
+    /// its ground velocity includes the initial mean wind. Gust filters start at zero.
+    pub fn new_with_weather(start: &Start, weather: Weather) -> Result<Self, SimError> {
+        let wind = world::Wind::new(weather)?;
         let mut state = State::default();
         let controls = match *start {
             Start::Runway => {
@@ -196,7 +218,12 @@ impl Sim {
                 controls
             }
         };
+        if matches!(start, Start::Air { .. }) && wind.velocity_mps(state.position_m) != [0.0; 3] {
+            state.velocity_mps = add(state.velocity_mps, wind.velocity_mps(state.position_m));
+        }
         Ok(Self {
+            wind,
+            failures: Failures::default(),
             state,
             controls,
             steps: 0,
@@ -224,12 +251,49 @@ impl Sim {
         state.time_s = steps as f64 * DT_S;
         let crashed = dynamics::crash(&state);
         Ok(Self {
+            wind: world::Wind::new(Weather::default())?,
+            failures: Failures::default(),
             state,
             controls: controls.clamped(),
             steps,
             crashed,
             autopilot: autopilot::Autopilot::default(),
         })
+    }
+
+    /// Replace weather atomically and restart the gust process at its supplied seed.
+    /// In-flight changes preserve ground velocity; only an air start adds mean wind.
+    pub fn set_weather(&mut self, weather: Weather) -> Result<(), SimError> {
+        self.wind = world::Wind::new(weather)?;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn weather(&self) -> Weather {
+        self.wind.weather()
+    }
+
+    pub fn set_failures(&mut self, failures: Failures) -> Result<(), SimError> {
+        failures.validate()?;
+        self.failures = failures;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn failures(&self) -> Failures {
+        self.failures
+    }
+
+    #[must_use]
+    pub fn effective_controls(&self) -> Controls {
+        let c = self.failures.apply(dynamics::aero_controls(self.controls));
+        Controls {
+            elevator: c.elevator,
+            aileron: c.aileron,
+            rudder: c.rudder,
+            flaps: c.flaps,
+            ..self.controls
+        }
     }
 
     /// Set the controls (clamped). They hold until set again.
@@ -265,7 +329,13 @@ impl Sim {
                 let readout = self.readout();
                 self.controls = self.autopilot.update(readout, self.state.angular_rate_rps);
             }
-            let mut next = dynamics::rk4(self.state, self.controls);
+            let relative = dynamics::relative_velocity(&self.state, &self.wind);
+            // Advance exactly once; substages and observational reads never consume noise.
+            if self.wind.advance(DT_S, relative).is_err() {
+                self.crashed = true;
+                break;
+            }
+            let mut next = dynamics::rk4(self.state, self.controls, &self.wind, self.failures);
             if !dynamics::valid(&next) {
                 self.crashed = true;
                 break;
@@ -293,9 +363,9 @@ impl Sim {
         let [_, _, z] = s.position_m;
         let [vn, ve, vd] = s.velocity_mps;
         let [roll, pitch, heading] = euler(s.attitude);
-        let [u, v, w] = dynamics::airflow(s).velocity_body_mps;
-        let speed = norm(s.velocity_mps);
-        let loads = dynamics::loads(s, self.controls);
+        let [u, v, w] = dynamics::airflow(s, &self.wind).velocity_body_mps;
+        let speed = norm(dynamics::relative_velocity(s, &self.wind));
+        let loads = dynamics::loads(s, self.controls, &self.wind, self.failures);
         let [_, _, fz] = loads.force_n;
         let h = dynamics::height(s);
         Readout {
@@ -322,11 +392,16 @@ impl Sim {
             crashed: self.crashed,
             controls: self.controls,
             autopilot: self.autopilot.targets(),
+            weather: self.weather(),
+            wind_ned_mps: self.wind.velocity_mps(s.position_m),
+            gust_ned_mps: self.wind.gust_mps(),
+            failures: self.failures,
+            effective_controls: self.effective_controls(),
         }
     }
 
-    /// FNV-1a over the bits of the state, crash flag, and the step count: equal on every platform for the same
-    /// inputs.
+    /// FNV-1a over rigid-body state, crash flag, and step count, plus nondefault
+    /// weather/process memory and failures. Equal on every platform for the same inputs.
     #[must_use]
     pub fn state_hash(&self) -> u64 {
         let s = &self.state;
@@ -347,6 +422,36 @@ impl Sim {
             .chain(&s.angular_rate_rps)
         {
             eat(v.to_bits());
+        }
+        // Preserve the original hash stream for the default calm, healthy scenario.
+        let weather = self.weather();
+        if weather != Weather::default() || self.failures != Failures::default() {
+            eat(0x7765_6174_6865_7201);
+            eat(weather.wind_from_deg.to_bits());
+            eat(weather.wind_speed_mps.to_bits());
+            eat(u64::from(weather.shear));
+            eat(match weather.turbulence {
+                TurbulenceLevel::Off => 0,
+                TurbulenceLevel::Light => 1,
+                TurbulenceLevel::Moderate => 2,
+                TurbulenceLevel::Severe => 3,
+            });
+            eat(weather.seed);
+            for word in self.wind.hash_words() {
+                eat(word);
+            }
+            eat(self.failures.engine_power_fraction.to_bits());
+            for jam in [
+                self.failures.elevator,
+                self.failures.aileron,
+                self.failures.rudder,
+                self.failures.flaps,
+            ] {
+                eat(u64::from(jam.is_some()));
+                if let Some(position) = jam {
+                    eat(position.to_bits());
+                }
+            }
         }
         h
     }

@@ -1,6 +1,9 @@
 //! Deterministic ISA atmosphere, flat terrain, and the original Corvid Field.
 #![deny(clippy::disallowed_methods)]
 
+mod weather;
+pub use weather::*;
+
 /// Standard gravitational acceleration, m/s².
 pub const GRAVITY_MPS2: f64 = 9.80665;
 /// Specific gas constant of dry air, J/(kg K).

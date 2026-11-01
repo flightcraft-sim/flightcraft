@@ -17,6 +17,12 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
             json!({"conditions": [{"kind": "time_elapsed", "seconds": 0.1}]}),
         ),
         ("sim.state", json!({})),
+        (
+            "weather.set",
+            json!({"wind_from_deg": 270, "wind_speed_mps": 3, "shear": false, "turbulence": "light", "seed": 42}),
+        ),
+        ("failure.set", json!({"failure": {"kind": "engine"}})),
+        ("failure.clear", json!({})),
         ("sim.pause", json!({})),
         ("sim.resume", json!({})),
         ("sim.set_rate", json!({"rate": 2})),
@@ -199,6 +205,7 @@ fn typed_commands_reject_nonfinite_and_out_of_range_values_too() {
                     airspeed_mps: 30.0,
                     heading_rad: 0.0
                 },
+                weather: None,
                 paused: None
             })
             .is_err()

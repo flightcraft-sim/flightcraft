@@ -53,6 +53,53 @@
               "type": "object"
             }
           ]
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -65,6 +112,10 @@
         },
         "start": {
           "$ref": "#/$defs/ResetStart"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather",
+          "description": "Omission starts in calm air. Supplying weather makes its seed part of the start."
         }
       },
       "required": [
@@ -127,6 +178,58 @@
           ],
           "type": "object"
         },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
           "properties": {
@@ -156,15 +259,31 @@
               "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
               "type": "boolean"
             },
+            "effective_controls": {
+              "$ref": "#/$defs/Controls",
+              "description": "Actual surface positions after applying jams (throttle remains a demand)."
+            },
             "engine_rpm": {
               "description": "Engine speed, revolutions per minute.",
               "format": "double",
               "type": "number"
             },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
               "type": "number"
+            },
+            "gust_ned_mps": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             },
             "heading_rad": {
               "description": "Heading, radians, 0 to 2π, clockwise from north.",
@@ -211,6 +330,19 @@
               "description": "Climb rate, m/s (positive up).",
               "format": "double",
               "type": "number"
+            },
+            "weather": {
+              "$ref": "#/$defs/Weather"
+            },
+            "wind_ned_mps": {
+              "description": "Total moving-air velocity at the CG, NED m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             }
           },
           "required": [
@@ -231,7 +363,12 @@
             "on_ground",
             "crashed",
             "controls",
-            "autopilot"
+            "autopilot",
+            "weather",
+            "wind_ned_mps",
+            "gust_ned_mps",
+            "failures",
+            "effective_controls"
           ],
           "type": "object"
         },
@@ -348,6 +485,53 @@
             "wings_level",
             "bank_limit_rad",
             "airspeed_mode"
+          ],
+          "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
           ],
           "type": "object"
         }
@@ -548,6 +732,58 @@
           ],
           "type": "object"
         },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
         "Targets": {
           "additionalProperties": false,
           "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
@@ -605,6 +841,53 @@
             "airspeed_mode"
           ],
           "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -636,15 +919,31 @@
           "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
           "type": "boolean"
         },
+        "effective_controls": {
+          "$ref": "#/$defs/Controls",
+          "description": "Actual surface positions after applying jams (throttle remains a demand)."
+        },
         "engine_rpm": {
           "description": "Engine speed, revolutions per minute.",
           "format": "double",
           "type": "number"
         },
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
         "ground_speed_mps": {
           "description": "Ground speed, m/s.",
           "format": "double",
           "type": "number"
+        },
+        "gust_ned_mps": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
         },
         "heading_rad": {
           "description": "Heading, radians, 0 to 2π, clockwise from north.",
@@ -691,6 +990,19 @@
           "description": "Climb rate, m/s (positive up).",
           "format": "double",
           "type": "number"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        },
+        "wind_ned_mps": {
+          "description": "Total moving-air velocity at the CG, NED m/s.",
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
         }
       },
       "required": [
@@ -711,7 +1023,12 @@
         "on_ground",
         "crashed",
         "controls",
-        "autopilot"
+        "autopilot",
+        "weather",
+        "wind_ned_mps",
+        "gust_ned_mps",
+        "failures",
+        "effective_controls"
       ],
       "title": "Readout",
       "type": "object"
@@ -1179,6 +1496,58 @@
           ],
           "type": "object"
         },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
           "properties": {
@@ -1208,15 +1577,31 @@
               "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
               "type": "boolean"
             },
+            "effective_controls": {
+              "$ref": "#/$defs/Controls",
+              "description": "Actual surface positions after applying jams (throttle remains a demand)."
+            },
             "engine_rpm": {
               "description": "Engine speed, revolutions per minute.",
               "format": "double",
               "type": "number"
             },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
               "type": "number"
+            },
+            "gust_ned_mps": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             },
             "heading_rad": {
               "description": "Heading, radians, 0 to 2π, clockwise from north.",
@@ -1263,6 +1648,19 @@
               "description": "Climb rate, m/s (positive up).",
               "format": "double",
               "type": "number"
+            },
+            "weather": {
+              "$ref": "#/$defs/Weather"
+            },
+            "wind_ned_mps": {
+              "description": "Total moving-air velocity at the CG, NED m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             }
           },
           "required": [
@@ -1283,7 +1681,12 @@
             "on_ground",
             "crashed",
             "controls",
-            "autopilot"
+            "autopilot",
+            "weather",
+            "wind_ned_mps",
+            "gust_ned_mps",
+            "failures",
+            "effective_controls"
           ],
           "type": "object"
         },
@@ -1597,6 +2000,53 @@
             "airspeed_mode"
           ],
           "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1689,6 +2139,58 @@
           ],
           "type": "object"
         },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
           "properties": {
@@ -1718,15 +2220,31 @@
               "description": "True once the aircraft has hit the ground too hard or off a gear contact.",
               "type": "boolean"
             },
+            "effective_controls": {
+              "$ref": "#/$defs/Controls",
+              "description": "Actual surface positions after applying jams (throttle remains a demand)."
+            },
             "engine_rpm": {
               "description": "Engine speed, revolutions per minute.",
               "format": "double",
               "type": "number"
             },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
               "type": "number"
+            },
+            "gust_ned_mps": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             },
             "heading_rad": {
               "description": "Heading, radians, 0 to 2π, clockwise from north.",
@@ -1773,6 +2291,19 @@
               "description": "Climb rate, m/s (positive up).",
               "format": "double",
               "type": "number"
+            },
+            "weather": {
+              "$ref": "#/$defs/Weather"
+            },
+            "wind_ned_mps": {
+              "description": "Total moving-air velocity at the CG, NED m/s.",
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
             }
           },
           "required": [
@@ -1793,7 +2324,12 @@
             "on_ground",
             "crashed",
             "controls",
-            "autopilot"
+            "autopilot",
+            "weather",
+            "wind_ned_mps",
+            "gust_ned_mps",
+            "failures",
+            "effective_controls"
           ],
           "type": "object"
         },
@@ -1912,6 +2448,53 @@
             "airspeed_mode"
           ],
           "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1938,6 +2521,534 @@
         "rate"
       ],
       "title": "StateOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "weather.set",
+    "description": "Replace wind (from degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.",
+    "input_schema": {
+      "$defs": {
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Full weather replacement; restarts the gust filter at this seed without changing velocity.",
+      "properties": {
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "shear": {
+          "type": "boolean"
+        },
+        "turbulence": {
+          "$ref": "#/$defs/TurbulenceLevel"
+        },
+        "wind_from_deg": {
+          "format": "double",
+          "maximum": 360,
+          "minimum": 0,
+          "type": "number"
+        },
+        "wind_speed_mps": {
+          "format": "double",
+          "maximum": 75,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "wind_from_deg",
+        "wind_speed_mps",
+        "shear",
+        "turbulence",
+        "seed"
+      ],
+      "title": "SetWeather",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "failures"
+      ],
+      "title": "Systems",
+      "type": "object"
+    }
+  },
+  {
+    "name": "failure.set",
+    "description": "Fail the engine, set a remaining power fraction, or jam a surface at a fixed deflection.",
+    "input_schema": {
+      "$defs": {
+        "ControlSurface": {
+          "enum": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "flaps"
+          ],
+          "type": "string"
+        },
+        "Failure": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "engine",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "fraction": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "partial_power",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "fraction"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "jam",
+                  "type": "string"
+                },
+                "position": {
+                  "description": "Fixed normalised deflection; flaps require 0..=1.",
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": -1,
+                  "type": "number"
+                },
+                "surface": {
+                  "$ref": "#/$defs/ControlSurface"
+                }
+              },
+              "required": [
+                "kind",
+                "surface",
+                "position"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/Failure"
+        }
+      },
+      "required": [
+        "failure"
+      ],
+      "title": "SetFailure",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "failures"
+      ],
+      "title": "Systems",
+      "type": "object"
+    }
+  },
+  {
+    "name": "failure.clear",
+    "description": "Restore the engine, release a surface jam, or clear all failures (the default).",
+    "input_schema": {
+      "$defs": {
+        "FailureTarget": {
+          "enum": [
+            "all",
+            "engine",
+            "elevator",
+            "aileron",
+            "rudder",
+            "flaps"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/FailureTarget"
+        }
+      },
+      "title": "ClearFailure",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "failures"
+      ],
+      "title": "Systems",
       "type": "object"
     }
   },

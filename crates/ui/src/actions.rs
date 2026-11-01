@@ -26,6 +26,7 @@ pub fn reset(session: &mut Session) -> Result<(), CommandError> {
     session.run(Reset {
         start: ResetStart::Runway {},
         paused: Some(false),
+        weather: Some(session.sim().weather()),
     })?;
     Ok(())
 }

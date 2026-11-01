@@ -5,6 +5,8 @@
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
 mod holds;
+mod systems;
+pub use systems::*;
 pub mod mcp;
 pub use holds::*;
 
@@ -159,6 +161,10 @@ pub enum ResetStart {
 #[serde(deny_unknown_fields)]
 pub struct Reset {
     pub start: ResetStart,
+    /// Omission starts in calm air. Supplying weather makes its seed part of the start.
+    #[serde(default, deserialize_with = "provided")]
+    #[schemars(with = "flightcraft_sim::Weather", transform = without_default)]
+    pub weather: Option<flightcraft_sim::Weather>,
     /// Defaults to paused. The existing rate is retained across resets.
     #[serde(default, deserialize_with = "provided")]
     #[schemars(with = "bool", extend("default" = true))]
@@ -194,7 +200,7 @@ impl Command for Reset {
                 }
             }
         };
-        session.sim = Sim::new(&start)?;
+        session.sim = Sim::new_with_weather(&start, self.weather.unwrap_or_default())?;
         session.paused = self.paused.unwrap_or(true);
         Ok(session.snapshot())
     }
@@ -432,6 +438,9 @@ registry!(
     AutopilotOff,
     RunUntil,
     GetState,
+    SetWeather,
+    SetFailure,
+    ClearFailure,
     Pause,
     Resume,
     SetRate,

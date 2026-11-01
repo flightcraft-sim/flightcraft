@@ -3,6 +3,9 @@
 //! All tables are original engineering estimates, not measurements of an existing aircraft.
 #![deny(clippy::disallowed_methods)]
 
+mod failures;
+pub use failures::*;
+
 use serde::{Deserialize, Serialize};
 const DEG: f64 = core::f64::consts::PI / 180.0;
 pub const MASS_KG: f64 = 1000.0;
@@ -197,10 +200,22 @@ pub fn coefficients(alpha: f64, flaps: f64) -> Coefficients {
 /// Idle is 1.8 kW at sea level; RPM is capped at 2,800 by the engine power limit.
 #[must_use]
 pub fn propulsion(speed_mps: f64, throttle: f64, density: f64) -> (f64, f64) {
+    propulsion_with_power(speed_mps, throttle, density, 1.0)
+}
+
+/// Shaft power is scaled, including idle. At zero power an original windmilling
+/// estimate uses an equivalent drag area of 0.10 m² and advance ratio 1.5.
+#[must_use]
+pub fn propulsion_with_power(speed_mps: f64, throttle: f64, density: f64, power_fraction: f64) -> (f64, f64) {
     let rho = finite(density, 0.01, 2.0).max(0.01);
     let v = finite(speed_mps, 0.0, 500.0);
+    let fraction = finite(power_fraction, 0.0, 1.0);
+    if fraction == 0.0 {
+        return (-0.5 * rho * v * v * 0.10, v / (1.5 * PROP_DIAMETER_M) * 60.0);
+    }
     let power = (1800.0 + (MAX_POWER_W - 1800.0) * finite(throttle, 0.0, 1.0))
-        * interpolate(POWER_DENSITY, rho / 1.225);
+        * interpolate(POWER_DENSITY, rho / 1.225)
+        * fraction;
     let mut lo = 5.0;
     let mut hi = 2800.0 / 60.0;
     for _ in 0..40 {
@@ -225,6 +240,13 @@ pub fn propulsion(speed_mps: f64, throttle: f64, density: f64) -> (f64, f64) {
 /// Hostile inputs are sanitised and bounded before arithmetic.
 #[must_use]
 pub fn forces(airflow: Airflow, controls: Controls, density: f64) -> Loads {
+    forces_with_failures(airflow, controls, density, Failures::default())
+}
+
+/// Apply failures before calculating forces; ordinary forces keep the original model.
+#[must_use]
+pub fn forces_with_failures(airflow: Airflow, controls: Controls, density: f64, failures: Failures) -> Loads {
+    let controls = failures.apply(controls);
     let [u, v, w] = airflow.velocity_body_mps.map(|x| finite(x, -500.0, 500.0));
     let [p, q, r] = airflow.angular_rate_rps.map(|x| finite(x, -50.0, 50.0));
     let speed = libm::sqrt(u * u + v * v + w * w);
@@ -248,7 +270,7 @@ pub fn forces(airflow: Airflow, controls: Controls, density: f64) -> Loads {
         + (d.cn_p * p + d.cn_r * r) * SPAN_M * rate
         + d.cn_rudder * rudder
         + d.cn_aileron * aileron;
-    let (thrust, rpm) = propulsion(u, controls.throttle, density);
+    let (thrust, rpm) = propulsion_with_power(u, controls.throttle, density, failures.engine_power_fraction);
     // Wind axes to body axes, including beta: drag always opposes the airflow.
     let (sa, ca) = (libm::sin(alpha), libm::cos(alpha));
     let (sb, cb) = (libm::sin(beta), libm::cos(beta));

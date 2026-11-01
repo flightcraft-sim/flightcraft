@@ -1,6 +1,6 @@
 use crate::{Controls, DT_S, State, math::*};
 use flightcraft_aero as aero;
-use flightcraft_world::{GRAVITY_MPS2 as G, Surface, atmosphere, ground};
+use flightcraft_world::{GRAVITY_MPS2 as G, Surface, Wind, atmosphere, ground};
 
 /// Main pair and nose leg, body-frame contact points (m), stiffness (N/m), damping
 /// (N s/m), and static weight fraction. All legs have 0.30 m usable travel.
@@ -27,15 +27,33 @@ pub fn aero_controls(c: Controls) -> aero::Controls {
         flaps: c.flaps,
     }
 }
-pub fn airflow(s: &State) -> aero::Airflow {
+pub fn relative_velocity(s: &State, wind: &Wind) -> [f64; 3] {
+    let moving_air = wind.velocity_mps(s.position_m);
+    // Keep every operation of the original calm-air path, including signed zeros.
+    if moving_air == [0.0; 3] {
+        s.velocity_mps
+    } else {
+        let [n, e, d] = s.velocity_mps;
+        let [wn, we, wd] = moving_air;
+        [n - wn, e - we, d - wd]
+    }
+}
+
+pub fn airflow(s: &State, wind: &Wind) -> aero::Airflow {
+    let relative = relative_velocity(s, wind);
     aero::Airflow {
-        velocity_body_mps: rotate(conjugate(s.attitude), s.velocity_mps),
+        velocity_body_mps: rotate(conjugate(s.attitude), relative),
         angular_rate_rps: s.angular_rate_rps,
     }
 }
-pub fn loads(s: &State, c: Controls) -> aero::Loads {
+pub fn loads(s: &State, c: Controls, wind: &Wind, failures: aero::Failures) -> aero::Loads {
     let [_, _, z] = s.position_m;
-    aero::forces(airflow(s), aero_controls(c), atmosphere(-z).density_kg_m3)
+    aero::forces_with_failures(
+        airflow(s, wind),
+        aero_controls(c),
+        atmosphere(-z).density_kg_m3,
+        failures,
+    )
 }
 pub fn wheel_height(s: &State, point: [f64; 3]) -> f64 {
     let [x, y, z] = add(s.position_m, rotate(s.attitude, point));
@@ -67,8 +85,12 @@ pub fn crash(s: &State) -> bool {
     })
 }
 
-pub fn derivative(s: &State, c: Controls) -> State {
-    let a = loads(s, c);
+pub fn derivative(s: &State, c: Controls, wind: &Wind, failures: aero::Failures) -> State {
+    let a = loads(s, c, wind, failures);
+    let c = Controls {
+        rudder: failures.rudder.unwrap_or(c.rudder),
+        ..c
+    };
     let gravity = [0.0, 0.0, aero::MASS_KG * G];
     let mut force = add(rotate(s.attitude, a.force_n), gravity);
     let free_force = force;
@@ -145,11 +167,11 @@ fn advance(s: State, d: State, dt: f64) -> State {
         angular_rate_rps: add(s.angular_rate_rps, scale(d.angular_rate_rps, dt)),
     }
 }
-pub fn rk4(s: State, c: Controls) -> State {
-    let a = derivative(&s, c);
-    let b = derivative(&advance(s, a, DT_S * 0.5), c);
-    let d = derivative(&advance(s, b, DT_S * 0.5), c);
-    let e = derivative(&advance(s, d, DT_S), c);
+pub fn rk4(s: State, c: Controls, wind: &Wind, failures: aero::Failures) -> State {
+    let a = derivative(&s, c, wind, failures);
+    let b = derivative(&advance(s, a, DT_S * 0.5), c, wind, failures);
+    let d = derivative(&advance(s, b, DT_S * 0.5), c, wind, failures);
+    let e = derivative(&advance(s, d, DT_S), c, wind, failures);
     let mut result = advance(
         advance(advance(advance(s, a, DT_S / 6.0), b, DT_S / 3.0), d, DT_S / 3.0),
         e,

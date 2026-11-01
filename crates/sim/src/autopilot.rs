@@ -185,8 +185,20 @@ impl Autopilot {
         {
             c.throttle = 1.0;
             // Speed above target commands a steeper climb; the integral learns available
-            // excess power. At saturation, the aircraft is allowed to accelerate or descend.
-            climb = Some(self.speed.output(speed - target, 0.0, 0.9, 0.10, -3.0, 6.0));
+            // excess power. Reduced power permits a steeper descent to hold glide speed.
+            // At saturation, the aircraft is allowed to accelerate or descend.
+            climb = Some(self.speed.output(
+                speed - target,
+                0.0,
+                0.9,
+                0.10,
+                if r.failures.engine_power_fraction < 1.0 {
+                    -8.0
+                } else {
+                    -3.0
+                },
+                6.0,
+            ));
         }
         let rho = world::atmosphere(r.altitude_msl_m).density_kg_m3;
         let target_pitch = t.pitch_rad.or_else(|| {

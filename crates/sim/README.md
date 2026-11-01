@@ -24,7 +24,9 @@ flag. Reset with `new` to fly again.
 instrument field; IAS uses the square root of the density ratio, altitude is CG
 height, AGL is the lowest wheel's height (zero in contact), and load factor is
 upward aerodynamic/propulsive body-z force divided by weight. Gear loads are
-excluded from that aerodynamic load factor. There is no wind. `controls()` and
+excluded from that aerodynamic load factor. Airflow, IAS, TAS, angle of attack,
+and sideslip use velocity relative to the moving air mass. Ground speed and wheel
+contact continue to use ground velocity. `controls()` and
 `steps()` expose the held controls and completed fixed steps.
 
 `from_state(State, Controls)` adds a validated entry point for flight-dynamics
@@ -35,12 +37,52 @@ components within ±2, and time within 0–10¹² s. Ground strikes in restored 
 are immediately marked crashed. It returns `SimError` for invalid input.
 
 `state_hash()` is FNV-1a over little-endian bits of the step count, crash flag,
-time, position, velocity, quaternion, and body rates. The golden test folds this
+time, position, velocity, quaternion, and body rates. Nondefault scenarios also include weather, the PRNG and filter
+memory, and failures. The default calm, healthy scenario retains the original hash
+stream. The golden test folds this
 hash at 0.1 s intervals through a complete takeoff, rectangular pattern, landing,
 and stop. The stored constant changes only with reviewed model/pilot changes.
 
 The model uses ISA geopotential height up to 20 km, flat ground, diagonal inertia,
 a normally aspirated piston engine, a fixed-pitch propeller, and instantaneous
-control deflection. Torque, propeller slipstream, fuel consumption, wind, and
-terrain variation are future extensions. The original aerodynamic estimates
+control deflection, with optional jams. Torque, propeller slipstream, fuel
+consumption, and terrain variation are future extensions. The original aerodynamic estimates
 support plausibility checks, not aircraft certification or training.
+
+
+`Sim::new_with_weather(&Start, Weather)` includes the weather seed in the start.
+Air starts add initial mean wind to the requested air velocity; runway starts stay
+fixed to the ground. `set_weather` replaces weather and restarts the gust filters
+without changing ground velocity. Wind direction is degrees FROM; speed is m/s at
+10 m AGL. Optional shear is a 1/7 power law capped at 1,000 m AGL. Linear Dryden
+filters use a fixed 533.4 m scale length, with longitudinal/lateral axes aligned
+with the horizontal air-relative flight path and a vertical axis; light, moderate,
+and severe mean per-axis RMS of 1, 2, and 4 m/s. They start at zero, so allow a
+warm-up transient when measuring statistics. Angular gusts are omitted. Filter
+memory advances once per 120 Hz step, and readouts never consume noise.
+
+`set_failures(Failures)` validates and atomically replaces engine power availability
+and jams of elevator, aileron, rudder, and flaps. Zero power removes idle power and
+adds a windmilling propeller estimate (equivalent drag area 0.10 m², advance ratio
+1.5). A partial fraction scales shaft power, including idle. Jams override pilot
+and hold demands until cleared. Readout includes weather, total wind and gust
+velocities in NED, failures, and actual `effective_controls`; `controls` remains
+the pilot or hold demand. Cloning `Sim` preserves all process memory for exact
+continuation. `from_state` restores only rigid-body state, with calm weather and
+healthy systems; replay weather changes from a seeded start to reproduce gusts.
+
+The command interface accepts, for example:
+
+```json
+{"command":"weather.set","input":{"wind_from_deg":270,"wind_speed_mps":3,"shear":false,"turbulence":"light","seed":42}}
+{"command":"failure.set","input":{"failure":{"kind":"engine"}}}
+{"command":"failure.set","input":{"failure":{"kind":"partial_power","fraction":0.5}}}
+{"command":"failure.set","input":{"failure":{"kind":"jam","surface":"elevator","position":0.1}}}
+{"command":"failure.clear","input":{"target":"elevator"}}
+{"command":"failure.clear","input":{}}
+```
+
+These three commands return both current weather and failures. `sim.reset` accepts
+an optional `weather` object with the same fields; omission resets to calm air.
+Reset clears failures and holds. To fly a power-off glide with speed control, use
+`autopilot.set` with `airspeed_mode: "pitch"` and the desired `airspeed_mps`.

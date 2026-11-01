@@ -305,11 +305,11 @@ pub fn panel(ui: &mut egui::Ui, r: &Readout, trim: f64) {
     );
     for (i, label, value, color) in [
         (0.0, "THROTTLE", r.controls.throttle, t::ACCENT),
-        (1.0, "FLAPS", r.controls.flaps, t::TEXT),
+        (1.0, "FLAPS", r.effective_controls.flaps, t::TEXT),
         (2.0, "TRIM", trim, t::AMBER),
         (3.0, "BRAKES", r.controls.brake, t::TEXT),
     ] {
-        let at = egui::pos2(left + 18.0, rect.top() + 50.0 + i * 32.0);
+        let at = egui::pos2(left + 18.0, rect.top() + 35.0 + i * 24.0);
         p.text(at, Align2::LEFT_CENTER, label, FontId::monospace(10.0), t::MUTED);
         p.text(
             egui::pos2(rect.right() - 16.0, at.y),
@@ -318,7 +318,7 @@ pub fn panel(ui: &mut egui::Ui, r: &Readout, trim: f64) {
             FontId::monospace(14.0),
             color,
         );
-        let bar = Rect::from_min_size(at + egui::vec2(0.0, 11.0), egui::vec2(systems_width - 34.0, 3.0));
+        let bar = Rect::from_min_size(at + egui::vec2(0.0, 8.0), egui::vec2(systems_width - 34.0, 3.0));
         p.rect_filled(bar, 1.0, t::RAISED);
         let fraction = if label == "TRIM" {
             ((value + 0.3) / 0.6) as f32
@@ -331,11 +331,61 @@ pub fn panel(ui: &mut egui::Ui, r: &Readout, trim: f64) {
             color,
         );
     }
+    let power = r.failures.engine_power_fraction;
+    let engine = if power == 0.0 {
+        "ENG FAIL".to_owned()
+    } else {
+        format!("ENG {:.0}%", power * 100.0)
+    };
     text(
         p,
-        egui::pos2(center_x, rect.bottom() - 18.0),
-        format!("ENGINE  {:4.0} RPM", r.engine_rpm),
+        egui::pos2(center_x, rect.top() + 131.0),
+        format!("{engine}  {:.0} RPM", r.engine_rpm),
         11.0,
+        if power == 0.0 {
+            t::DANGER
+        } else if power < 1.0 {
+            t::AMBER
+        } else {
+            t::MUTED
+        },
+    );
+    text(
+        p,
+        egui::pos2(center_x, rect.top() + 150.0),
+        format!(
+            "WIND FROM {:03.0}°  {:.0} kt{}",
+            r.weather.wind_from_deg,
+            r.weather.wind_speed_mps * 1.943_844,
+            if r.weather.shear { " S" } else { "" }
+        ),
+        10.0,
+        t::TEXT,
+    );
+    text(
+        p,
+        egui::pos2(center_x, rect.top() + 167.0),
+        format!("TURB {:?}", r.weather.turbulence).to_uppercase(),
+        10.0,
         t::MUTED,
     );
+    let jam = |name: &str, position: Option<f64>| {
+        position.map_or_else(|| format!("{name} FREE"), |v| format!("{name} JAM {v:+.2}"))
+    };
+    for (y, a, b) in [
+        (184.0, ("E", r.failures.elevator), ("A", r.failures.aileron)),
+        (200.0, ("R", r.failures.rudder), ("F", r.failures.flaps)),
+    ] {
+        text(
+            p,
+            egui::pos2(center_x, rect.top() + y),
+            format!("{}   {}", jam(a.0, a.1), jam(b.0, b.1)),
+            10.0,
+            if a.1.is_some() || b.1.is_some() {
+                t::AMBER
+            } else {
+                t::MUTED
+            },
+        );
+    }
 }
