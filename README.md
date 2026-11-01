@@ -17,9 +17,12 @@ core that people, scripts, and AI agents fly the same way.
 - Bridged MCP: `flightcraft --control 7890` and `flightcraft-mcp --connect 7890` let an agent fly the
   app a person is watching, and take screenshots of it.
 - Wind, shear, and repeatable turbulence; engine failure, partial power, and jammed controls.
+- A cockpit view from the left seat, with glances left, right, and up.
+- Aircraft are files: the Corvid is `aircraft/corvid.aircraft.json`, in a versioned format
+  ([docs/aircraft-format.md](docs/aircraft-format.md)) checked field by field on load.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 
-Not yet: terrain, clouds, a second aircraft, or a cockpit view. The plan is in
+Not yet: terrain, clouds, or a second aircraft. The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 
 ## Building
