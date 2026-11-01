@@ -38,7 +38,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 18 | Terrain tiles from SRTM for one region, streamed | 7, decision on data hosting |
 | 19 | OpenStreetMap airfields and features with attribution in the app | 18 |
 | 20 | A second fictional aircraft | 15 |
-| 21 | Cockpit view and a fuller instrument panel | 8 |
+| 21 | Cockpit view (done) and a fuller instrument panel | 8 |
 | 22 | SolidCraft export format agreed and specified | decision with SolidCraft |
 | 23 | Vortex-lattice coefficients from geometry | 15 |
 | 24 | An aircraft modelled in SolidCraft flies | 22, 23 |
