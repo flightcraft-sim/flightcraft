@@ -25,7 +25,10 @@ to watch a scripted takeoff).
   ([docs/aircraft-format.md](docs/aircraft-format.md)) checked field by field on load.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 
-Not yet: terrain, clouds, or a second aircraft. The plan is in
+- Two aircraft, the Corvid trainer and the Larrow aerobatic taildragger, picked in the header.
+- Terrain from height tiles: the original Training Valley world, with ground contact on slopes.
+
+Not yet: real-world elevation, clouds, or the systems behind the instruments. The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 
 ## Building
