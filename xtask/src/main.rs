@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 use syn::visit::Visit;
 
+mod web;
+
 /// Each workspace crate and the workspace crates it may depend on.
 const LAYERS: &[(&str, &[&str])] = &[
     ("flightcraft-world", &[]),
@@ -77,8 +79,9 @@ fn main() -> ExitCode {
             _ => Err("usage: cargo xtask schemas [--check]".into()),
         },
         "determinism" => determinism(),
+        "web" => web::build(),
         "ci" => ci(),
-        _ => Err("usage: cargo xtask <ci|layers|schemas [--check]|determinism>".to_string()),
+        _ => Err("usage: cargo xtask <ci|layers|schemas [--check]|determinism|web>".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -39,6 +39,14 @@ jobs:
       - run: rustup show active-toolchain || rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --target wasm32-unknown-unknown -p flightcraft-world -p flightcraft-aero -p flightcraft-sim -p flightcraft-control -p flightcraft-web -p flightcraft-mcp
+      - name: Install the wasm-bindgen CLI version from Cargo.lock
+        run: cargo install wasm-bindgen-cli --version 0.2.130 --locked
+      - run: cargo xtask web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flightcraft-web
+          path: dist/
+          if-no-files-found: error
 
   golden:
     name: Golden trajectory (${{ matrix.os }})

@@ -83,7 +83,7 @@ pub struct FlightCraftApp {
 impl FlightCraftApp {
     pub fn new(
         cc: &eframe::CreationContext<'_>,
-        _options: AppOptions,
+        options: AppOptions,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         theme::install(&cc.egui_ctx);
         let render_state = cc
@@ -119,10 +119,9 @@ impl FlightCraftApp {
             settings: false,
             bindings_json,
             binding_message: None,
+            script: options.script.unwrap_or_default(),
             #[cfg(not(target_arch = "wasm32"))]
-            script: _options.script.unwrap_or_default(),
-            #[cfg(not(target_arch = "wasm32"))]
-            screenshot: _options.screenshot,
+            screenshot: options.screenshot,
             #[cfg(not(target_arch = "wasm32"))]
             frames: 0,
             #[cfg(not(target_arch = "wasm32"))]
