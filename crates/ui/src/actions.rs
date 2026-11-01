@@ -8,7 +8,7 @@ pub fn select_aircraft(session: &mut Session, id: &str) -> Result<(), CommandErr
     session.execute(
         "aircraft.load",
         serde_json::json!({
-            "source": {"kind": "built_in", "id": id}
+            "source": {"kind": "installed", "id": id}
         }),
     )?;
     reset(session)

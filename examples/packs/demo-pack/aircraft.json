@@ -1,0 +1,28 @@
+{
+  "kind": "aircraft",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-tourer",
+    "display_name": "Corvid Tourer",
+    "description": "Original touring variant with injection and a compact three-instrument panel.",
+    "author": "FlightCraft contributors"
+  },
+  "variant": "corvid-tourer",
+  "panel": "tourer-panel",
+  "load": {
+    "stations": [
+      {
+        "station": "pilot",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "passenger",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "fuel",
+        "mass_kg": 40.0
+      }
+    ]
+  }
+}

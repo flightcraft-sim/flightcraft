@@ -1,0 +1,24 @@
+{
+  "kind": "aircraft",
+  "format_version": 2,
+  "identity": {
+    "id": "larrow",
+    "display_name": "Larrow",
+    "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
+    "author": "FlightCraft contributors"
+  },
+  "variant": "larrow-standard",
+  "panel": "larrow-six",
+  "load": {
+    "stations": [
+      {
+        "station": "pilot",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "fuel",
+        "mass_kg": 40.0
+      }
+    ]
+  }
+}

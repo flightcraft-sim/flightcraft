@@ -90,3 +90,25 @@ fn extreme_valid_aircraft_freezes_before_intermediate_overflow() {
     assert!(sim.readout().crashed);
     assert_eq!(sim.state(), &before);
 }
+
+#[test]
+fn layered_station_load_reaches_simulation_without_changing_its_interface() {
+    let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
+    let load = flightcraft_aero::Load {
+        stations: vec![flightcraft_aero::StationLoad {
+            station: "pilot".into(),
+            mass_kg: 80.0,
+        }],
+    };
+    let resolved = catalog.resolve("corvid-standard", "corvid-six", &load).unwrap();
+    assert_eq!(resolved.aircraft.mass.mass_kg, 880.0);
+    let start = Start::Air {
+        height_m: 500.0,
+        airspeed_mps: 40.0,
+        heading_rad: 0.0,
+    };
+    let sim = Sim::new_with_aircraft(&start, resolved.aircraft).unwrap();
+    let default_sim = Sim::new(&start).unwrap();
+    assert_eq!(sim.aircraft().mass.mass_kg, 880.0);
+    assert_ne!(sim.state().attitude, default_sim.state().attitude);
+}

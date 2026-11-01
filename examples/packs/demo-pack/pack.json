@@ -1,0 +1,28 @@
+{
+  "id": "demo-pack",
+  "name": "Corvid touring demonstration",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "authors": [
+    "FlightCraft contributors"
+  ],
+  "affiliation": "An original fictional design; not affiliated with or endorsed by any aircraft or equipment manufacturer.",
+  "files": [
+    {
+      "path": "variant.json",
+      "kind": "variant"
+    },
+    {
+      "path": "engine.json",
+      "kind": "engine"
+    },
+    {
+      "path": "panel.json",
+      "kind": "panel"
+    },
+    {
+      "path": "aircraft.json",
+      "kind": "aircraft"
+    }
+  ]
+}

@@ -33,6 +33,10 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
             "aircraft.load",
             json!({"source":{"kind":"json","text":flightcraft_aero::CORVID_JSON}}),
         ),
+        (
+            "weight_balance.compute",
+            json!({"variant":"corvid-standard","load":{"stations":[]}}),
+        ),
     ];
     let registry = Session::commands();
     assert_eq!(registry.len(), examples.len() + 3);

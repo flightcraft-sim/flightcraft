@@ -1,0 +1,558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Aircraft",
+  "type": "object",
+  "properties": {
+    "aerodynamics": {
+      "$ref": "#/$defs/Aerodynamics"
+    },
+    "format_version": {
+      "type": "integer",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1
+    },
+    "geometry": {
+      "$ref": "#/$defs/Geometry"
+    },
+    "identity": {
+      "$ref": "#/$defs/Identity"
+    },
+    "mass": {
+      "$ref": "#/$defs/Mass"
+    },
+    "propulsion": {
+      "$ref": "#/$defs/Propulsion"
+    },
+    "systems": {
+      "$ref": "#/$defs/Systems"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "format_version",
+    "identity",
+    "geometry",
+    "mass",
+    "aerodynamics",
+    "propulsion",
+    "systems"
+  ],
+  "$defs": {
+    "Aerodynamics": {
+      "type": "object",
+      "properties": {
+        "blend_start_rad": {
+          "type": "number",
+          "format": "double"
+        },
+        "blend_width_rad": {
+          "type": "number",
+          "format": "double"
+        },
+        "cd_alpha": {
+          "$ref": "#/$defs/Table"
+        },
+        "cl_beta": {
+          "$ref": "#/$defs/Table"
+        },
+        "cl_clean": {
+          "$ref": "#/$defs/Table"
+        },
+        "cl_flaps": {
+          "$ref": "#/$defs/Table"
+        },
+        "cl_max": {
+          "type": "number",
+          "format": "double"
+        },
+        "cm_alpha": {
+          "$ref": "#/$defs/Table"
+        },
+        "cn_beta": {
+          "$ref": "#/$defs/Table"
+        },
+        "cy_beta": {
+          "$ref": "#/$defs/Table"
+        },
+        "derivatives": {
+          "$ref": "#/$defs/Derivatives"
+        },
+        "derivatives_source": {
+          "type": "string"
+        },
+        "flap_drag": {
+          "type": "number",
+          "format": "double"
+        },
+        "flap_pitch": {
+          "type": "number",
+          "format": "double"
+        },
+        "induced_drag": {
+          "type": "number",
+          "format": "double"
+        },
+        "plate_drag": {
+          "type": "number",
+          "format": "double"
+        },
+        "plate_drag_zero": {
+          "type": "number",
+          "format": "double"
+        },
+        "plate_pitch": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cl_clean",
+        "cl_flaps",
+        "cd_alpha",
+        "cm_alpha",
+        "cy_beta",
+        "cl_beta",
+        "cn_beta",
+        "derivatives",
+        "derivatives_source",
+        "cl_max",
+        "induced_drag",
+        "flap_drag",
+        "flap_pitch",
+        "blend_start_rad",
+        "blend_width_rad",
+        "plate_drag_zero",
+        "plate_drag",
+        "plate_pitch"
+      ]
+    },
+    "Derivatives": {
+      "type": "object",
+      "properties": {
+        "cl_aileron": {
+          "type": "number",
+          "format": "double"
+        },
+        "cl_p": {
+          "type": "number",
+          "format": "double"
+        },
+        "cl_r": {
+          "type": "number",
+          "format": "double"
+        },
+        "cm_elevator": {
+          "type": "number",
+          "format": "double"
+        },
+        "cm_q": {
+          "type": "number",
+          "format": "double"
+        },
+        "cn_aileron": {
+          "type": "number",
+          "format": "double"
+        },
+        "cn_p": {
+          "type": "number",
+          "format": "double"
+        },
+        "cn_r": {
+          "type": "number",
+          "format": "double"
+        },
+        "cn_rudder": {
+          "type": "number",
+          "format": "double"
+        },
+        "cy_r": {
+          "type": "number",
+          "format": "double"
+        },
+        "cy_rudder": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "cl_p",
+        "cl_r",
+        "cm_q",
+        "cn_p",
+        "cn_r",
+        "cy_r",
+        "cl_aileron",
+        "cm_elevator",
+        "cn_rudder",
+        "cy_rudder",
+        "cn_aileron"
+      ]
+    },
+    "Gear": {
+      "type": "object",
+      "properties": {
+        "damping_ns_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "point_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "steering_rad": {
+          "type": "number",
+          "format": "double"
+        },
+        "stiffness_n_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "weight_fraction": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "point_m",
+        "stiffness_n_m",
+        "damping_ns_m",
+        "weight_fraction",
+        "steering_rad"
+      ]
+    },
+    "Geometry": {
+      "type": "object",
+      "properties": {
+        "chord_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "gear": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Gear"
+          },
+          "maxItems": 16,
+          "minItems": 1
+        },
+        "hard_points_m": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 3,
+            "minItems": 3
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "reference_point_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "span_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "wing_area_m2": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "wing_area_m2",
+        "span_m",
+        "chord_m",
+        "reference_point_m",
+        "gear",
+        "hard_points_m"
+      ]
+    },
+    "Identity": {
+      "type": "object",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "display_name",
+        "description",
+        "author"
+      ]
+    },
+    "Mass": {
+      "type": "object",
+      "properties": {
+        "cg_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "inertia_kg_m2": {
+          "description": "Full symmetric positive-definite tensor about the CG, in body axes.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 3,
+            "minItems": 3
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "mass_kg": {
+          "description": "Resolved total flight mass, including occupants and fuel.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "mass_kg",
+        "cg_m",
+        "inertia_kg_m2"
+      ]
+    },
+    "Propulsion": {
+      "type": "object",
+      "properties": {
+        "idle_power_w": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_power_w": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_rpm": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_rps": {
+          "type": "number",
+          "format": "double"
+        },
+        "power_density": {
+          "$ref": "#/$defs/Table"
+        },
+        "prop_cp": {
+          "$ref": "#/$defs/Table"
+        },
+        "prop_ct": {
+          "$ref": "#/$defs/Table"
+        },
+        "prop_diameter_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "windmill_advance_ratio": {
+          "type": "number",
+          "format": "double"
+        },
+        "windmill_drag_area_m2": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_power_w",
+        "idle_power_w",
+        "prop_diameter_m",
+        "min_rps",
+        "max_rpm",
+        "windmill_drag_area_m2",
+        "windmill_advance_ratio",
+        "prop_ct",
+        "prop_cp",
+        "power_density"
+      ]
+    },
+    "Systems": {
+      "type": "object",
+      "properties": {
+        "aileron": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "brake": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "brake_friction": {
+          "type": "number",
+          "format": "double"
+        },
+        "elevator": {
+          "description": "Normalised control travel limits, [minimum, maximum].",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "flap_stages": {
+          "description": "Available normalised flap detents; continuous travel between detents is supported.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 32,
+          "minItems": 2
+        },
+        "flaps": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "gear_travel_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "hard_touchdown_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "lateral_friction": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_normal_force_n": {
+          "type": "number",
+          "format": "double"
+        },
+        "rolling_other": {
+          "type": "number",
+          "format": "double"
+        },
+        "rolling_pavement": {
+          "type": "number",
+          "format": "double"
+        },
+        "rudder": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "throttle": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "elevator",
+        "aileron",
+        "rudder",
+        "throttle",
+        "flaps",
+        "brake",
+        "flap_stages",
+        "gear_travel_m",
+        "max_normal_force_n",
+        "hard_touchdown_mps",
+        "rolling_pavement",
+        "rolling_other",
+        "brake_friction",
+        "lateral_friction"
+      ]
+    },
+    "Table": {
+      "type": "object",
+      "properties": {
+        "points": {
+          "description": "[breakpoint, ordinate], linear interpolation, clamped at the edges.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number",
+                "format": "double"
+              },
+              {
+                "type": "number",
+                "format": "double"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 2
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "points",
+        "source"
+      ]
+    }
+  }
+}

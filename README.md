@@ -21,7 +21,7 @@ to watch a scripted takeoff).
   app a person is watching, and take screenshots of it.
 - Wind, shear, and repeatable turbulence; engine failure, partial power, and jammed controls.
 - A cockpit view from the left seat, with glances left, right, and up.
-- Aircraft are files: the Corvid is `aircraft/corvid.aircraft.json`, in a versioned format
+- Aircraft are files: the Corvid is composed from `aircraft/corvid/`, in a versioned format
   ([docs/aircraft-format.md](docs/aircraft-format.md)) checked field by field on load.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 

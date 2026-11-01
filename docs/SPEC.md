@@ -138,19 +138,16 @@ spectra), then cloud layers and visibility for the renderer.
 
 ## 8. Aircraft format
 
-An aircraft is a JSON file (`*.aircraft.json`) with a `format_version`, read by `aero`:
+Aircraft definitions use version 2 JSON documents composed by reference: an airframe family,
+variant, engine, installed systems, panel, and aircraft selection. An aircraft selection combines
+a variant, panel, and station load; weight and balance are computed before flying. Version 1
+fixed-mass files remain readable and can be migrated without changing their flight model.
 
-- identity: an id, a display name, a description, and the author;
-- geometry: wing area, span, mean chord, reference point, gear contact points, and outline meshes
-  for drawing;
-- mass: empty mass, fuel, payload stations, centre of gravity, inertia tensor;
-- aerodynamics: coefficient tables with breakpoints and a source note for each;
-- propulsion: engine power curve and propeller tables;
-- systems: control surface limits and rates, flap stages, brakes.
-
-Loading is hostile-input safe: every value is checked, sizes are capped, and an error names the
-field. The first aircraft is the Corvid, a fictional two-seat, high-wing, fixed-gear trainer of
-about 1000 kg with a 120 kW engine, built into the binary and also shipped as a file.
+The Corvid and Larrow are original fictional designs, embedded offline and shipped under
+`aircraft/<id>/`. External aircraft packs add validated definition files through a manifest with
+licensing, authorship, and an affiliation statement. Loading is hostile-input safe and bounded;
+bad packs are reported and skipped. See [the format and pack specification](aircraft-format.md)
+for fields, limits, commands, and migration.
 
 ## 9. Commands and MCP
 
@@ -164,7 +161,8 @@ The registry lists them, and both the UI and MCP call through it. First set:
 | `sim.step` | advance a number of fixed steps (capped per call) and return the readout |
 | `sim.state` | the full state and the readout |
 | `sim.pause`, `sim.resume`, `sim.set_rate` | real-time control in the app |
-| `aircraft.list`, `aircraft.load` | the aircraft available and loading one from a file or JSON |
+| `aircraft.list`, `aircraft.load` | list installed aircraft and select a variant, panel, and load, or a named aircraft |
+| `weight_balance.compute` | calculate weight, CG, and limit violations for a station load |
 | `view.set_camera` | chase or cockpit, and camera offsets |
 | `app.screenshot` | a PNG of the window (app only) |
 

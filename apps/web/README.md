@@ -71,3 +71,10 @@ The page uses WebGPU where the browser has it and WebGL 2 otherwise. Add `?gpu=w
 WebGL 2 (a fallback if WebGPU misbehaves on a machine), or `?gpu=webgpu` to allow WebGPU only. The
 status bar shows which one is drawing. `scripts/web-smoke.sh` loads the page both ways in headless
 Chrome and fails on any shader or GPU error; CI runs it before publishing.
+
+## Aircraft packs
+
+Aircraft packs can be loaded from static hosts by repeating the `pack` query parameter with
+manifest URLs, for example `?pack=packs/demo-pack/pack.json`. Relative file paths resolve against
+the manifest URL; cross-origin hosts need CORS. Bad packs are reported and skipped. See
+[aircraft format and packs](../../docs/aircraft-format.md) for limits and the example manifest.

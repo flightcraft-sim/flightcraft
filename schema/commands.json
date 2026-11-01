@@ -3350,7 +3350,7 @@
   },
   {
     "name": "aircraft.list",
-    "description": "List built-in aircraft identities.",
+    "description": "List installed aircraft, their variant, panel, and source.",
     "input_schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
@@ -3359,8 +3359,7 @@
     },
     "output_schema": {
       "$defs": {
-        "Identity": {
-          "additionalProperties": false,
+        "AircraftEntry": {
           "properties": {
             "author": {
               "type": "string"
@@ -3373,22 +3372,68 @@
             },
             "id": {
               "type": "string"
+            },
+            "panel": {
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/DefinitionSource"
+            },
+            "variant": {
+              "type": "string"
             }
           },
           "required": [
             "id",
             "display_name",
             "description",
-            "author"
+            "author",
+            "variant",
+            "panel",
+            "source"
           ],
           "type": "object"
+        },
+        "DefinitionSource": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "built_in",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "pack",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "type": "object"
+            }
+          ]
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "aircraft": {
           "items": {
-            "$ref": "#/$defs/Identity"
+            "$ref": "#/$defs/AircraftEntry"
           },
           "type": "array"
         }
@@ -3402,7 +3447,7 @@
   },
   {
     "name": "aircraft.load",
-    "description": "Load a built-in aircraft, JSON, or a native file, staging for sim.reset or resetting now.",
+    "description": "Select a variant, panel, and load, or an installed aircraft or legacy source; stage or reset atomically.",
     "input_schema": {
       "$defs": {
         "AircraftSource": {
@@ -3415,6 +3460,23 @@
                 },
                 "kind": {
                   "const": "built_in",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "installed",
                   "type": "string"
                 }
               },
@@ -3459,23 +3521,106 @@
               "type": "object"
             }
           ]
+        },
+        "Load": {
+          "additionalProperties": false,
+          "properties": {
+            "stations": {
+              "items": {
+                "$ref": "#/$defs/StationLoad"
+              },
+              "maxItems": 64,
+              "type": "array"
+            }
+          },
+          "required": [
+            "stations"
+          ],
+          "type": "object"
+        },
+        "StationLoad": {
+          "additionalProperties": false,
+          "properties": {
+            "mass_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "station": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "station",
+            "mass_kg"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "variant"
+                ]
+              },
+              {
+                "required": [
+                  "panel"
+                ]
+              },
+              {
+                "required": [
+                  "load"
+                ]
+              }
+            ]
+          },
+          "required": [
+            "source"
+          ]
+        },
+        {
+          "not": {
+            "required": [
+              "source"
+            ]
+          },
+          "required": [
+            "variant",
+            "panel",
+            "load"
+          ]
+        }
+      ],
       "properties": {
+        "allow_out_of_limits": {
+          "default": false,
+          "description": "Permit a structurally valid load beyond certified limits, returning warnings.",
+          "type": "boolean"
+        },
+        "load": {
+          "$ref": "#/$defs/Load"
+        },
+        "panel": {
+          "type": "string"
+        },
         "reset": {
           "default": false,
           "description": "False stages selection for sim.reset; true resets immediately on the runway, paused.",
           "type": "boolean"
         },
         "source": {
-          "$ref": "#/$defs/AircraftSource"
+          "$ref": "#/$defs/AircraftSource",
+          "description": "Legacy source selection and explicit variant/panel/load selection are mutually exclusive."
+        },
+        "variant": {
+          "type": "string"
         }
       },
-      "required": [
-        "source"
-      ],
       "title": "LoadAircraft",
       "type": "object"
     },
@@ -3504,6 +3649,45 @@
             "author"
           ],
           "type": "object"
+        },
+        "WeightBalance": {
+          "additionalProperties": false,
+          "properties": {
+            "cg_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "in_limits": {
+              "type": "boolean"
+            },
+            "mass_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "violations": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weight_n": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "mass_kg",
+            "weight_n",
+            "cg_m",
+            "in_limits",
+            "violations"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -3515,16 +3699,131 @@
           "$ref": "#/$defs/Identity"
         },
         "reset": {
-          "description": "True when this command also reset the simulation.",
           "type": "boolean"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "weight_balance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WeightBalance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Absent for version 1 files, which have fixed mass and no envelope."
         }
       },
       "required": [
         "aircraft",
         "active_aircraft_id",
-        "reset"
+        "reset",
+        "warnings"
       ],
       "title": "AircraftLoaded",
+      "type": "object"
+    }
+  },
+  {
+    "name": "weight_balance.compute",
+    "description": "Compute total mass, weight, CG, and limit violations for a variant and station load.",
+    "input_schema": {
+      "$defs": {
+        "Load": {
+          "additionalProperties": false,
+          "properties": {
+            "stations": {
+              "items": {
+                "$ref": "#/$defs/StationLoad"
+              },
+              "maxItems": 64,
+              "type": "array"
+            }
+          },
+          "required": [
+            "stations"
+          ],
+          "type": "object"
+        },
+        "StationLoad": {
+          "additionalProperties": false,
+          "properties": {
+            "mass_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "station": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "station",
+            "mass_kg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "load": {
+          "$ref": "#/$defs/Load"
+        },
+        "variant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "variant",
+        "load"
+      ],
+      "title": "ComputeWeightBalance",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cg_m": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "in_limits": {
+          "type": "boolean"
+        },
+        "mass_kg": {
+          "format": "double",
+          "type": "number"
+        },
+        "violations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "weight_n": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mass_kg",
+        "weight_n",
+        "cg_m",
+        "in_limits",
+        "violations"
+      ],
+      "title": "WeightBalance",
       "type": "object"
     }
   },

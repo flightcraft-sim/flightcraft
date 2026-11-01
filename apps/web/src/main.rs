@@ -1,5 +1,7 @@
 //! Browser entry point. wgpu chooses WebGPU, with WebGL2 as its fallback.
 #[cfg(target_arch = "wasm32")]
+mod packs;
+#[cfg(target_arch = "wasm32")]
 fn main() {
     wasm_bindgen_futures::spawn_local(async {
         if let Err(error) = start().await {
@@ -24,13 +26,15 @@ async fn start() -> Result<(), wasm_bindgen::JsValue> {
         .ok_or_else(|| wasm_bindgen::JsValue::from_str("Flight canvas missing"))?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
     let script = load_script().await?;
+    let packs = packs::load().await;
     let runner = eframe::WebRunner::new();
     runner
         .start(
             canvas,
             web_options()?,
             Box::new(move |cc| {
-                let app = flightcraft_ui::FlightCraftApp::new(cc, flightcraft_ui::AppOptions { script })?;
+                let app =
+                    flightcraft_ui::FlightCraftApp::new(cc, flightcraft_ui::AppOptions { script, packs })?;
                 // Tests and bug reports read this line to know which GPU path ran.
                 web_sys::console::info_1(&format!("FlightCraft renderer: {}", app.renderer()).into());
                 Ok(Box::new(app))

@@ -1,0 +1,48 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "tourer-panel",
+    "display_name": "Tourer compact panel",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [
+    {
+      "id": "airspeed",
+      "module": "airspeed",
+      "position": [
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "attitude",
+      "module": "attitude",
+      "position": [
+        1,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "altimeter",
+      "module": "altimeter",
+      "position": [
+        2,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    }
+  ]
+}

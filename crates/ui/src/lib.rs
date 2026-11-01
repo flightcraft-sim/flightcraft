@@ -10,9 +10,13 @@ pub mod script;
 pub mod theme;
 
 use eframe::egui::{self, Align2, FontId, RichText};
+pub use flightcraft_control::PackOptions;
 use flightcraft_control::Session;
 use flightcraft_render::{CameraMode, Scene};
 use keymap::{Action, Keymap};
+
+#[cfg(not(target_arch = "wasm32"))]
+const PACKS_STORAGE: &str = "flightcraft.packs_directory.v1";
 
 const KEYMAP_STORAGE: &str = "flightcraft.keymap.v1";
 const COMPACT_PANEL_STORAGE: &str = "flightcraft.compact_panel.v1";
@@ -59,11 +63,14 @@ pub struct AppOptions {
     pub control: Option<flightcraft_control::bridge::Listener>,
     /// Timed commands to run; they hold the flight controls until they run out.
     pub script: Option<script::Script>,
+    pub packs: flightcraft_control::PackOptions,
 }
 
 /// One session, one fixed-step accumulator, and read-only presentation of its state.
 pub struct FlightCraftApp {
     session: Session,
+    #[cfg(not(target_arch = "wasm32"))]
+    packs_directory: String,
     #[cfg(not(target_arch = "wasm32"))]
     bridge: bridge::Bridge,
     scene: Scene,
@@ -114,7 +121,7 @@ impl FlightCraftApp {
             eframe::wgpu::Backend::Noop => "no GPU",
         };
         let stored = cc.storage.and_then(|s| s.get_string(KEYMAP_STORAGE));
-        let (keymap, error) = match stored {
+        let (keymap, mut error) = match stored {
             Some(json) => match Keymap::from_json(&json) {
                 Ok(map) => (map, None),
                 Err(e) => (
@@ -127,11 +134,33 @@ impl FlightCraftApp {
         let bindings_json = keymap.json()?;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
+        let mut pack_errors = options.packs.errors;
+        #[cfg(not(target_arch = "wasm32"))]
+        let packs_directory = options
+            .packs
+            .directory
+            .or_else(|| cc.storage.and_then(|s| s.get_string(PACKS_STORAGE)))
+            .unwrap_or_else(|| "packs".into());
+        #[cfg(not(target_arch = "wasm32"))]
+        pack_errors.extend(session.load_packs_directory(std::path::Path::new(&packs_directory)));
+        for pack in options.packs.fetched {
+            if let Err(e) = session.install_pack(&pack) {
+                pack_errors.push(e.to_string());
+            }
+        }
+        if !pack_errors.is_empty() {
+            if let Some(previous) = error.take() {
+                pack_errors.insert(0, previous);
+            }
+            error = Some(pack_errors.join("\n"));
+        }
         session.enable_app();
         session.run(flightcraft_control::Resume {})?;
         let paused = session.paused();
         Ok(Self {
             session,
+            #[cfg(not(target_arch = "wasm32"))]
+            packs_directory,
             #[cfg(not(target_arch = "wasm32"))]
             bridge: bridge::Bridge::new(options.control),
             scene: Scene::default(),
@@ -611,6 +640,8 @@ impl eframe::App for FlightCraftApp {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
+        #[cfg(not(target_arch = "wasm32"))]
+        storage.set_string(PACKS_STORAGE, self.packs_directory.clone());
         if let Ok(json) = self.keymap.json() {
             storage.set_string(KEYMAP_STORAGE, json);
         }

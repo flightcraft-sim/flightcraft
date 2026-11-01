@@ -1,42 +1,274 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Aircraft",
-  "type": "object",
-  "properties": {
-    "aerodynamics": {
-      "$ref": "#/$defs/Aerodynamics"
+  "title": "LayerFile",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "aerodynamics": {
+          "$ref": "#/$defs/Aerodynamics"
+        },
+        "controls": {
+          "$ref": "#/$defs/AirframeControls"
+        },
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "geometry": {
+          "$ref": "#/$defs/Geometry"
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "kind": {
+          "type": "string",
+          "const": "family"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "geometry",
+        "aerodynamics",
+        "controls"
+      ]
     },
-    "format_version": {
-      "type": "integer",
-      "format": "uint32",
-      "maximum": 1,
-      "minimum": 1
+    {
+      "type": "object",
+      "properties": {
+        "cg_envelope": {
+          "description": "Polygon vertices [longitudinal CG in metres, total mass in kg], ordered around its edge.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          },
+          "maxItems": 64,
+          "minItems": 3
+        },
+        "empty_mass": {
+          "$ref": "#/$defs/Mass"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "flap_stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FlapStage"
+          },
+          "maxItems": 32,
+          "minItems": 2
+        },
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "fuel_capacity_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "kind": {
+          "type": "string",
+          "const": "variant"
+        },
+        "max_mass_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_mass_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "stations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LoadStation"
+          },
+          "maxItems": 64
+        },
+        "systems": {
+          "type": "string"
+        },
+        "v_speeds": {
+          "$ref": "#/$defs/VSpeeds"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "family",
+        "engine",
+        "systems",
+        "empty_mass",
+        "min_mass_kg",
+        "max_mass_kg",
+        "cg_envelope",
+        "flap_stages",
+        "fuel_capacity_kg",
+        "stations",
+        "v_speeds"
+      ]
     },
-    "geometry": {
-      "$ref": "#/$defs/Geometry"
+    {
+      "type": "object",
+      "properties": {
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "fuel_flow_kg_s": {
+          "description": "Fuel flow against normalised shaft power, kg/s. Metadata until fuel burn is implemented.",
+          "$ref": "#/$defs/Table"
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "induction": {
+          "$ref": "#/$defs/Induction"
+        },
+        "kind": {
+          "type": "string",
+          "const": "engine"
+        },
+        "propulsion": {
+          "description": "Shaft power versus density ratio and fixed-pitch propeller CT/CP versus advance ratio.",
+          "$ref": "#/$defs/Propulsion"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "propulsion",
+        "induction",
+        "fuel_flow_kg_s"
+      ]
     },
-    "identity": {
-      "$ref": "#/$defs/Identity"
+    {
+      "type": "object",
+      "properties": {
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "installed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64
+        },
+        "kind": {
+          "type": "string",
+          "const": "systems"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "installed"
+      ]
     },
-    "mass": {
-      "$ref": "#/$defs/Mass"
+    {
+      "type": "object",
+      "properties": {
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstrumentInstallation"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "panel"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "instruments"
+      ]
     },
-    "propulsion": {
-      "$ref": "#/$defs/Propulsion"
-    },
-    "systems": {
-      "$ref": "#/$defs/Systems"
+    {
+      "type": "object",
+      "properties": {
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 2,
+          "minimum": 2
+        },
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "kind": {
+          "type": "string",
+          "const": "aircraft"
+        },
+        "load": {
+          "$ref": "#/$defs/Load"
+        },
+        "panel": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "format_version",
+        "identity",
+        "variant",
+        "panel",
+        "load"
+      ]
     }
-  },
-  "additionalProperties": false,
-  "required": [
-    "format_version",
-    "identity",
-    "geometry",
-    "mass",
-    "aerodynamics",
-    "propulsion",
-    "systems"
   ],
   "$defs": {
     "Aerodynamics": {
@@ -128,6 +360,110 @@
         "plate_pitch"
       ]
     },
+    "AirframeControls": {
+      "description": "Surface travel and ground contact properties belong to the airframe; detents to the variant.",
+      "type": "object",
+      "properties": {
+        "aileron": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "brake": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "brake_friction": {
+          "type": "number",
+          "format": "double"
+        },
+        "elevator": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "flaps": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "gear_travel_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "hard_touchdown_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "lateral_friction": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_normal_force_n": {
+          "type": "number",
+          "format": "double"
+        },
+        "rolling_other": {
+          "type": "number",
+          "format": "double"
+        },
+        "rolling_pavement": {
+          "type": "number",
+          "format": "double"
+        },
+        "rudder": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "throttle": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "elevator",
+        "aileron",
+        "rudder",
+        "throttle",
+        "flaps",
+        "brake",
+        "gear_travel_m",
+        "max_normal_force_n",
+        "hard_touchdown_mps",
+        "rolling_pavement",
+        "rolling_other",
+        "brake_friction",
+        "lateral_friction"
+      ]
+    },
     "Derivatives": {
       "type": "object",
       "properties": {
@@ -189,6 +525,24 @@
         "cn_rudder",
         "cy_rudder",
         "cn_aileron"
+      ]
+    },
+    "FlapStage": {
+      "type": "object",
+      "properties": {
+        "max_speed_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "position": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "position",
+        "max_speed_mps"
       ]
     },
     "Gear": {
@@ -310,6 +664,97 @@
         "author"
       ]
     },
+    "Induction": {
+      "type": "string",
+      "enum": [
+        "carburettor",
+        "injection"
+      ]
+    },
+    "InstrumentInstallation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "module": {
+          "type": "string"
+        },
+        "position": {
+          "description": "Panel grid position and size, in arbitrary panel units.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "module",
+        "position",
+        "size"
+      ]
+    },
+    "Load": {
+      "type": "object",
+      "properties": {
+        "stations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StationLoad"
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "stations"
+      ]
+    },
+    "LoadStation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/StationKind"
+        },
+        "max_mass_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "position_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "position_m",
+        "max_mass_kg"
+      ]
+    },
     "Mass": {
       "type": "object",
       "properties": {
@@ -338,7 +783,7 @@
           "minItems": 3
         },
         "mass_kg": {
-          "description": "Total fixed flight mass, including occupants and fuel. No fuel burn in version 1.",
+          "description": "Resolved total flight mass, including occupants and fuel.",
           "type": "number",
           "format": "double"
         }
@@ -405,119 +850,30 @@
         "power_density"
       ]
     },
-    "Systems": {
+    "StationKind": {
+      "type": "string",
+      "enum": [
+        "pilot",
+        "passenger",
+        "baggage",
+        "fuel"
+      ]
+    },
+    "StationLoad": {
       "type": "object",
       "properties": {
-        "aileron": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
-        },
-        "brake": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
-        },
-        "brake_friction": {
+        "mass_kg": {
           "type": "number",
           "format": "double"
         },
-        "elevator": {
-          "description": "Normalised control travel limits, [minimum, maximum].",
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
-        },
-        "flap_stages": {
-          "description": "Available normalised flap detents; continuous travel between detents is supported.",
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 32,
-          "minItems": 2
-        },
-        "flaps": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
-        },
-        "gear_travel_m": {
-          "type": "number",
-          "format": "double"
-        },
-        "hard_touchdown_mps": {
-          "type": "number",
-          "format": "double"
-        },
-        "lateral_friction": {
-          "type": "number",
-          "format": "double"
-        },
-        "max_normal_force_n": {
-          "type": "number",
-          "format": "double"
-        },
-        "rolling_other": {
-          "type": "number",
-          "format": "double"
-        },
-        "rolling_pavement": {
-          "type": "number",
-          "format": "double"
-        },
-        "rudder": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
-        },
-        "throttle": {
-          "type": "array",
-          "items": {
-            "type": "number",
-            "format": "double"
-          },
-          "maxItems": 2,
-          "minItems": 2
+        "station": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "elevator",
-        "aileron",
-        "rudder",
-        "throttle",
-        "flaps",
-        "brake",
-        "flap_stages",
-        "gear_travel_m",
-        "max_normal_force_n",
-        "hard_touchdown_mps",
-        "rolling_pavement",
-        "rolling_other",
-        "brake_friction",
-        "lateral_friction"
+        "station",
+        "mass_kg"
       ]
     },
     "Table": {
@@ -552,6 +908,54 @@
       "required": [
         "points",
         "source"
+      ]
+    },
+    "VSpeeds": {
+      "type": "object",
+      "properties": {
+        "vfe_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vne_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vno_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vr_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vs_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vso_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vx_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "vy_mps": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "vs_mps",
+        "vso_mps",
+        "vr_mps",
+        "vx_mps",
+        "vy_mps",
+        "vfe_mps",
+        "vno_mps",
+        "vne_mps"
       ]
     }
   }

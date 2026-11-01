@@ -1,0 +1,115 @@
+{
+  "kind": "variant",
+  "format_version": 2,
+  "identity": {
+    "id": "larrow-standard",
+    "display_name": "Larrow",
+    "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
+    "author": "FlightCraft contributors"
+  },
+  "family": "larrow-family",
+  "engine": "larrow-engine",
+  "systems": "larrow-systems",
+  "empty_mass": {
+    "mass_kg": 530.0,
+    "cg_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "inertia_kg_m2": [
+      [
+        420.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        675.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        915.0
+      ]
+    ]
+  },
+  "min_mass_kg": 325.0,
+  "max_mass_kg": 780.0,
+  "cg_envelope": [
+    [
+      -0.5,
+      325.0
+    ],
+    [
+      0.5,
+      325.0
+    ],
+    [
+      0.4,
+      780.0
+    ],
+    [
+      -0.3,
+      780.0
+    ]
+  ],
+  "flap_stages": [
+    {
+      "position": 0.0,
+      "max_speed_mps": 45.0
+    },
+    {
+      "position": 0.5,
+      "max_speed_mps": 45.0
+    },
+    {
+      "position": 1.0,
+      "max_speed_mps": 45.0
+    }
+  ],
+  "fuel_capacity_kg": 80,
+  "stations": [
+    {
+      "id": "pilot",
+      "kind": "pilot",
+      "position_m": [
+        0.25,
+        0.0,
+        0.0
+      ],
+      "max_mass_kg": 150
+    },
+    {
+      "id": "baggage",
+      "kind": "baggage",
+      "position_m": [
+        -0.75,
+        0.0,
+        0.125
+      ],
+      "max_mass_kg": 30
+    },
+    {
+      "id": "fuel",
+      "kind": "fuel",
+      "position_m": [
+        -0.5,
+        0.0,
+        0.0
+      ],
+      "max_mass_kg": 80
+    }
+  ],
+  "v_speeds": {
+    "vs_mps": 27.0,
+    "vso_mps": 23.0,
+    "vr_mps": 29.0,
+    "vx_mps": 33.0,
+    "vy_mps": 36.0,
+    "vfe_mps": 45.0,
+    "vno_mps": 55.0,
+    "vne_mps": 65.0
+  }
+}

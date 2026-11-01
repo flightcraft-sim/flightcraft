@@ -1,0 +1,16 @@
+{
+  "kind": "systems",
+  "format_version": 2,
+  "identity": {
+    "id": "larrow-systems",
+    "display_name": "Larrow",
+    "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
+    "author": "FlightCraft contributors"
+  },
+  "installed": [
+    "electrical",
+    "vacuum",
+    "pitot_static",
+    "fuel"
+  ]
+}

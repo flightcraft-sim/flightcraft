@@ -77,6 +77,7 @@ fn main() -> ExitCode {
     let result = match task.as_str() {
         "layers" => layers(),
         "terrain" => terrain(),
+        "aircraft" => migrate_aircraft(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
             Some("--check") if std::env::args().nth(3).is_none() => schemas(true),
@@ -85,7 +86,7 @@ fn main() -> ExitCode {
         "determinism" => determinism(),
         "web" => web::build(),
         "ci" => ci(),
-        _ => Err("usage: cargo xtask <ci|terrain|layers|schemas [--check]|determinism|web>".to_string()),
+        _ => Err("usage: cargo xtask <ci|terrain|aircraft migrate <v1.json> <new-directory>|layers|schemas [--check]|determinism|web>".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -150,7 +151,15 @@ fn schemas(check: bool) -> Result<(), String> {
         ),
         (
             "aircraft.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::LayerFile)),
+        ),
+        (
+            "aircraft-v1.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::Aircraft)),
+        ),
+        (
+            "pack.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::PackManifest)),
         ),
     ];
     for (name, value) in documents {
@@ -368,6 +377,49 @@ fn terrain() -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
     eprintln!("xtask: wrote {} training valley tiles", tiles.len());
+    Ok(())
+}
+
+fn migrate_aircraft() -> Result<(), String> {
+    use std::io::Read;
+    let mut args = std::env::args().skip(2);
+    let usage = "usage: cargo xtask aircraft migrate <version-1.json> <new-directory>";
+    if args.next().as_deref() != Some("migrate") {
+        return Err(usage.into());
+    }
+    let input = args.next().ok_or(usage)?;
+    let output = args.next().ok_or(usage)?;
+    if args.next().is_some() {
+        return Err(usage.into());
+    }
+    let mut text = String::new();
+    std::fs::File::open(input)
+        .map_err(|e| e.to_string())?
+        .take(flightcraft_aero::MAX_AIRCRAFT_BYTES as u64 + 1)
+        .read_to_string(&mut text)
+        .map_err(|e| e.to_string())?;
+    let files = flightcraft_aero::migrate_v1(&text).map_err(|e| e.to_string())?;
+    let mut catalog = flightcraft_aero::AircraftCatalog::default();
+    for file in &files {
+        catalog
+            .insert(file.clone(), flightcraft_aero::DefinitionSource::BuiltIn)
+            .map_err(|e| e.to_string())?;
+    }
+    catalog.validate().map_err(|e| e.to_string())?;
+    std::fs::create_dir(&output).map_err(|e| e.to_string())?;
+    for file in files {
+        let value = serde_json::to_value(file).map_err(|e| e.to_string())?;
+        let kind = value
+            .get("kind")
+            .and_then(serde_json::Value::as_str)
+            .ok_or("missing file kind")?;
+        let text = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
+        std::fs::write(
+            Path::new(&output).join(format!("{kind}.json")),
+            format!("{text}\n"),
+        )
+        .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 

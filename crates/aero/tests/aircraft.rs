@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 fn hostile_files_name_the_field() {
     let original: Value = serde_json::from_str(CORVID_JSON).unwrap();
     let cases = [
-        ("/format_version", json!(2), "format_version"),
+        ("/format_version", json!(3), "format_version"),
         ("/mass/mass_kg", json!(-1), "mass.mass_kg"),
         ("/mass/mass_kg", json!("NaN"), "mass.mass_kg"),
         ("/geometry/wing_area_m2", json!(0), "geometry.wing_area_m2"),

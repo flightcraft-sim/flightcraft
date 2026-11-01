@@ -1,0 +1,323 @@
+{
+  "kind": "family",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-family",
+    "display_name": "Corvid",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "geometry": {
+    "wing_area_m2": 15.0,
+    "span_m": 10.0,
+    "chord_m": 1.5,
+    "reference_point_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "gear": [
+      {
+        "point_m": [
+          -0.45,
+          -1.1,
+          1.15
+        ],
+        "stiffness_n_m": 80000.0,
+        "damping_ns_m": 5000.0,
+        "weight_fraction": 0.4,
+        "steering_rad": 0.0
+      },
+      {
+        "point_m": [
+          -0.45,
+          1.1,
+          1.15
+        ],
+        "stiffness_n_m": 80000.0,
+        "damping_ns_m": 5000.0,
+        "weight_fraction": 0.4,
+        "steering_rad": 0.0
+      },
+      {
+        "point_m": [
+          1.8,
+          0.0,
+          1.15
+        ],
+        "stiffness_n_m": 40000.0,
+        "damping_ns_m": 3000.0,
+        "weight_fraction": 0.2,
+        "steering_rad": 0.45
+      }
+    ],
+    "hard_points_m": [
+      [
+        0.0,
+        0.0,
+        0.5
+      ],
+      [
+        2.0,
+        0.0,
+        0.95
+      ],
+      [
+        -4.0,
+        0.0,
+        0.3
+      ],
+      [
+        0.0,
+        -5.0,
+        -0.3
+      ],
+      [
+        0.0,
+        5.0,
+        -0.3
+      ]
+    ]
+  },
+  "aerodynamics": {
+    "cl_clean": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.65
+        ],
+        [
+          -0.3141592653589793,
+          -0.95
+        ],
+        [
+          -0.24434609527920614,
+          -1.0
+        ],
+        [
+          -0.13962634015954636,
+          -0.448
+        ],
+        [
+          0.0,
+          0.25
+        ],
+        [
+          0.13962634015954636,
+          0.948
+        ],
+        [
+          0.24434609527920614,
+          1.47
+        ],
+        [
+          0.2792526803190927,
+          1.5
+        ],
+        [
+          0.3490658503988659,
+          1.15
+        ],
+        [
+          0.4363323129985824,
+          0.85
+        ]
+      ],
+      "source": "Original finite-wing estimate: cambered four-digit-section shape informed by NACA Report 824 (1945), with slope reduced by lifting-line theory for AR=6.67. Stall and post-stall ordinates are conservative design assumptions, not digitised data."
+    },
+    "cl_flaps": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.45
+        ],
+        [
+          -0.3141592653589793,
+          -0.7
+        ],
+        [
+          -0.24434609527920614,
+          -0.5
+        ],
+        [
+          -0.13962634015954636,
+          0.052
+        ],
+        [
+          0.0,
+          0.75
+        ],
+        [
+          0.13962634015954636,
+          1.448
+        ],
+        [
+          0.20943951023931956,
+          1.85
+        ],
+        [
+          0.2792526803190927,
+          1.65
+        ],
+        [
+          0.3490658503988659,
+          1.3
+        ],
+        [
+          0.4363323129985824,
+          1.0
+        ]
+      ],
+      "source": "Original plain-flap estimate: +0.5 CL in attached flow, earlier separation."
+    },
+    "cd_alpha": {
+      "points": [
+        [
+          -0.4363323129985824,
+          0.18
+        ],
+        [
+          -0.2792526803190927,
+          0.035
+        ],
+        [
+          0.0,
+          0.028
+        ],
+        [
+          0.2792526803190927,
+          0.035
+        ],
+        [
+          0.4363323129985824,
+          0.18
+        ]
+      ],
+      "source": "Original parasitic drag rise with incidence, plus CDi=0.055 CL\u00b2 below. k=1/(pi AR e), e\u22480.87 for the complete wing."
+    },
+    "cm_alpha": {
+      "points": [
+        [
+          -0.4363323129985824,
+          0.563598776
+        ],
+        [
+          0.0,
+          0.04
+        ],
+        [
+          0.4363323129985824,
+          -0.483598776
+        ]
+      ],
+      "source": "Original static margin: Cm_alpha=-1.2/rad, Cm0=0.04, from a tail-volume build-up."
+    },
+    "cy_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          0.340339204
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          -0.340339204
+        ]
+      ],
+      "source": "Original vertical-tail / fuselage sideforce estimate, CY_beta=-0.65/rad."
+    },
+    "cl_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          0.052359878
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          -0.052359878
+        ]
+      ],
+      "source": "Original high-wing dihedral estimate, Cl_beta=-0.10/rad."
+    },
+    "cn_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          -0.078539816
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          0.078539816
+        ]
+      ],
+      "source": "Original tail-volume directional stability estimate, Cn_beta=0.15/rad."
+    },
+    "derivatives": {
+      "cl_p": -0.5,
+      "cl_r": 0.12,
+      "cm_q": -8.0,
+      "cn_p": -0.03,
+      "cn_r": -0.25,
+      "cy_r": 0.2,
+      "cl_aileron": 0.16,
+      "cm_elevator": 1.0,
+      "cn_rudder": 0.1,
+      "cy_rudder": 0.18,
+      "cn_aileron": -0.012
+    },
+    "derivatives_source": "Original strip-theory roll damping, tail-volume pitch/yaw damping, and control effectiveness estimates; rates pb/2V, qc/2V, rb/2V; controls per full normalised travel.",
+    "cl_max": 1.5,
+    "induced_drag": 0.055,
+    "flap_drag": 0.055,
+    "flap_pitch": -0.1,
+    "blend_start_rad": 0.4363323129985824,
+    "blend_width_rad": 0.6108652381980153,
+    "plate_drag_zero": 0.04,
+    "plate_drag": 1.8,
+    "plate_pitch": -0.15
+  },
+  "controls": {
+    "elevator": [
+      -1.0,
+      1.0
+    ],
+    "aileron": [
+      -1.0,
+      1.0
+    ],
+    "rudder": [
+      -1.0,
+      1.0
+    ],
+    "throttle": [
+      0.0,
+      1.0
+    ],
+    "flaps": [
+      0.0,
+      1.0
+    ],
+    "brake": [
+      0.0,
+      1.0
+    ],
+    "gear_travel_m": 0.3,
+    "max_normal_force_n": 80000.0,
+    "hard_touchdown_mps": 4.5,
+    "rolling_pavement": 0.018,
+    "rolling_other": 0.055,
+    "brake_friction": 0.65,
+    "lateral_friction": 0.75
+  }
+}

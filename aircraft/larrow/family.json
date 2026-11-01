@@ -1,0 +1,315 @@
+{
+  "kind": "family",
+  "format_version": 2,
+  "identity": {
+    "id": "larrow-family",
+    "display_name": "Larrow",
+    "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
+    "author": "FlightCraft contributors"
+  },
+  "geometry": {
+    "wing_area_m2": 11.0,
+    "span_m": 8.0,
+    "chord_m": 1.375,
+    "reference_point_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "gear": [
+      {
+        "point_m": [
+          0.55,
+          -1.05,
+          1.0
+        ],
+        "stiffness_n_m": 65000.0,
+        "damping_ns_m": 3500.0,
+        "weight_fraction": 0.405,
+        "steering_rad": 0.0
+      },
+      {
+        "point_m": [
+          0.55,
+          1.05,
+          1.0
+        ],
+        "stiffness_n_m": 65000.0,
+        "damping_ns_m": 3500.0,
+        "weight_fraction": 0.405,
+        "steering_rad": 0.0
+      },
+      {
+        "point_m": [
+          -3.1,
+          0.0,
+          0.32
+        ],
+        "stiffness_n_m": 18000.0,
+        "damping_ns_m": 1800.0,
+        "weight_fraction": 0.19,
+        "steering_rad": -0.55
+      }
+    ],
+    "hard_points_m": [
+      [
+        0.0,
+        0.0,
+        0.43
+      ],
+      [
+        2.0,
+        0.0,
+        0.9
+      ],
+      [
+        -3.25,
+        0.0,
+        0.12
+      ],
+      [
+        0.0,
+        -4.0,
+        0.22
+      ],
+      [
+        0.0,
+        4.0,
+        0.22
+      ]
+    ]
+  },
+  "aerodynamics": {
+    "cl_clean": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.65
+        ],
+        [
+          -0.3490658503988659,
+          -0.9
+        ],
+        [
+          -0.27052603405912107,
+          -1.21
+        ],
+        [
+          -0.17453292519943295,
+          -0.7628514559173915
+        ],
+        [
+          0.0,
+          0.04
+        ],
+        [
+          0.17453292519943295,
+          0.8428514559173915
+        ],
+        [
+          0.27052603405912107,
+          1.25
+        ],
+        [
+          0.3490658503988659,
+          0.94
+        ],
+        [
+          0.4363323129985824,
+          0.69
+        ]
+      ],
+      "source": "Original Prandtl lifting-line estimate: AR=8^2/11=5.82, section slope 2*pi, span efficiency 0.88 give a=4.52/rad, rounded to 4.6. Nearly symmetric section with CL0=0.04; assumed finite-wing CLmax=1.25 at 15.5 degrees. Separation reduces lift to 0.69 at 25 degrees; negative branch is reflected about CL=0.02. Textbook method: Anderson, Fundamentals of Aerodynamics, finite-wing theory; no measured aircraft data."
+    },
+    "cl_flaps": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.45
+        ],
+        [
+          -0.3490658503988659,
+          -0.65
+        ],
+        [
+          -0.27052603405912107,
+          -0.85
+        ],
+        [
+          -0.17453292519943295,
+          -0.4128514559173915
+        ],
+        [
+          0.0,
+          0.39
+        ],
+        [
+          0.17453292519943295,
+          1.1928514559173915
+        ],
+        [
+          0.24434609527920614,
+          1.52
+        ],
+        [
+          0.3490658503988659,
+          1.05
+        ],
+        [
+          0.4363323129985824,
+          0.78
+        ]
+      ],
+      "source": "Original thin-airfoil plain-flap estimate: 25-percent chord flaps over 45 percent of span, with effectiveness 0.55 at 16 degrees, yield delta CL approximately 2*pi*0.55*0.45*0.28=0.44; reduced to 0.35 for finite-span losses. Assumed CLmax=1.52 and earlier separation; no aircraft data."
+    },
+    "cd_alpha": {
+      "points": [
+        [
+          -0.4363323129985824,
+          0.19
+        ],
+        [
+          -0.2792526803190927,
+          0.034
+        ],
+        [
+          0.0,
+          0.025
+        ],
+        [
+          0.2792526803190927,
+          0.034
+        ],
+        [
+          0.4363323129985824,
+          0.19
+        ]
+      ],
+      "source": "Original wetted-area build-up: turbulent skin friction 0.004 times wetted/reference area 4, plus 0.009 form, canopy, and fixed-gear drag gives CD0=0.025. Incidence pressure drag rises quadratically before separation; separated-flow endpoints are conservative assumptions. Induced drag is added separately with k=1/(pi*5.82*0.88)=0.0622."
+    },
+    "cm_alpha": {
+      "points": [
+        [
+          -0.4363323129985824,
+          0.23316615649929118
+        ],
+        [
+          0.0,
+          0.015
+        ],
+        [
+          0.4363323129985824,
+          -0.2031661564992912
+        ]
+      ],
+      "source": "Original tail-volume build-up: a=4.6/rad and static margin 0.109 chord give Cm_alpha=-0.50/rad. Tail volume 0.42, tail slope 3.6/rad, efficiency 0.9, and downwash gradient 0.45 give tail contribution -0.75/rad, balanced by +0.25/rad wing/fuselage. Cm0=0.015 is an assumed rigging moment; statically stable with less margin than the Corvid."
+    },
+    "cy_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          0.2513274122871834
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          -0.2513274122871834
+        ]
+      ],
+      "source": "Original vertical-tail build-up: tail area/wing area=0.12, tail slope 3.0/rad, and dynamic-pressure efficiency 0.9 give -0.324/rad; fuselage adds -0.156/rad, totalling CY_beta=-0.48/rad."
+    },
+    "cl_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          0.023561944901923447
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          -0.023561944901923447
+        ]
+      ],
+      "source": "Original strip-theory estimate for a low wing with 2 degrees dihedral: -(4.6/4)*sin(2 degrees)=-0.040/rad, with -0.005/rad fuselage contribution. Cl_beta=-0.045/rad gives a restoring dihedral effect."
+    },
+    "cn_beta": {
+      "points": [
+        [
+          -0.5235987755982988,
+          -0.049741883681838385
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5235987755982988,
+          0.049741883681838385
+        ]
+      ],
+      "source": "Original vertical-tail volume estimate: 0.12 area ratio times 2.8/8 arm/span times tail slope 3.0 times 0.9 efficiency =0.1134/rad, less 0.0184/rad fuselage destabilisation gives Cn_beta=0.095/rad."
+    },
+    "derivatives": {
+      "cl_p": -0.42,
+      "cl_r": 0.05,
+      "cm_q": -6.0,
+      "cn_p": -0.015,
+      "cn_r": -0.2,
+      "cy_r": 0.22,
+      "cl_aileron": 0.14,
+      "cm_elevator": 0.85,
+      "cn_rudder": 0.09,
+      "cy_rudder": 0.16,
+      "cn_aileron": -0.008
+    },
+    "derivatives_source": "Original textbook strip and tail-volume estimates (Etkin, Dynamics of Flight): Cl_p approximately -a/12=-0.38, increased to -0.42 for the tail; Cm_q=-2*0.9*3.6*0.42*(3.0/1.375)=-5.94, rounded to -6. Vertical-tail damping plus fuselage gives Cn_r=-0.20 and CY_r=0.22. Outboard ailerons spanning y/(b/2)=0.50..0.95, local lift increment 0.43, give Cl_delta=0.43*(0.95^2-0.50^2)/2=0.140. Elevator effectiveness 0.85 and rudder 0.09 are area/arm/travel build-ups; small cross derivatives are conservative design assumptions. Rates use pb/2V, qc/2V, rb/2V, controls full normalised travel.",
+    "cl_max": 1.25,
+    "induced_drag": 0.0622,
+    "flap_drag": 0.04,
+    "flap_pitch": -0.055,
+    "blend_start_rad": 0.4363323129985824,
+    "blend_width_rad": 0.6108652381980153,
+    "plate_drag_zero": 0.035,
+    "plate_drag": 1.8,
+    "plate_pitch": -0.12
+  },
+  "controls": {
+    "elevator": [
+      -1.0,
+      1.0
+    ],
+    "aileron": [
+      -1.0,
+      1.0
+    ],
+    "rudder": [
+      -1.0,
+      1.0
+    ],
+    "throttle": [
+      0.0,
+      1.0
+    ],
+    "flaps": [
+      0.0,
+      1.0
+    ],
+    "brake": [
+      0.0,
+      1.0
+    ],
+    "gear_travel_m": 0.26,
+    "max_normal_force_n": 50000.0,
+    "hard_touchdown_mps": 4.0,
+    "rolling_pavement": 0.02,
+    "rolling_other": 0.06,
+    "brake_friction": 0.55,
+    "lateral_friction": 0.75
+  }
+}

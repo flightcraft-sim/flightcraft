@@ -1,0 +1,84 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-six",
+    "display_name": "Corvid",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [
+    {
+      "id": "airspeed",
+      "module": "airspeed",
+      "position": [
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "attitude",
+      "module": "attitude",
+      "position": [
+        1,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "altimeter",
+      "module": "altimeter",
+      "position": [
+        2,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "turn_coordinator",
+      "module": "turn_coordinator",
+      "position": [
+        0,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "heading",
+      "module": "heading",
+      "position": [
+        1,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "vertical_speed",
+      "module": "vertical_speed",
+      "position": [
+        2,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    }
+  ]
+}

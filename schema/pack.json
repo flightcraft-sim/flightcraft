@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PackManifest",
+  "type": "object",
+  "properties": {
+    "affiliation": {
+      "type": "string"
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PackFile"
+      },
+      "maxItems": 64,
+      "minItems": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "licence",
+    "authors",
+    "affiliation",
+    "files"
+  ],
+  "$defs": {
+    "FileKind": {
+      "type": "string",
+      "enum": [
+        "family",
+        "variant",
+        "engine",
+        "systems",
+        "panel",
+        "aircraft"
+      ]
+    },
+    "PackFile": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/FileKind"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind"
+      ]
+    }
+  }
+}

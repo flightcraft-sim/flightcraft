@@ -1,0 +1,28 @@
+{
+  "kind": "aircraft",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid",
+    "display_name": "Corvid",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "variant": "corvid-standard",
+  "panel": "corvid-six",
+  "load": {
+    "stations": [
+      {
+        "station": "pilot",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "passenger",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "fuel",
+        "mass_kg": 40.0
+      }
+    ]
+  }
+}

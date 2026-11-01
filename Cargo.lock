@@ -838,7 +838,9 @@ name = "flightcraft-web"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "flightcraft-control",
  "flightcraft-ui",
+ "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

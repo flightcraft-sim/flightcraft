@@ -5,7 +5,9 @@
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
 mod aircraft;
+mod packs;
 pub use aircraft::*;
+pub use packs::*;
 mod app;
 mod holds;
 pub use app::*;
@@ -62,6 +64,9 @@ pub enum CommandError {
 pub struct Session {
     sim: Sim,
     selected_aircraft: flightcraft_aero::Aircraft,
+    aircraft_catalog: flightcraft_aero::AircraftCatalog,
+    selected_configuration: Option<flightcraft_aero::ResolvedAircraft>,
+    active_configuration: Option<flightcraft_aero::ResolvedAircraft>,
     paused: bool,
     rate: f64,
     camera: Option<CameraSettings>,
@@ -71,7 +76,14 @@ pub struct Session {
 impl Session {
     /// A session parked on the runway.
     pub fn new() -> Result<Self, CommandError> {
+        let aircraft_catalog = flightcraft_aero::AircraftCatalog::builtins().map_err(SimError::from)?;
+        let configuration = aircraft_catalog
+            .resolve_aircraft("corvid")
+            .map_err(SimError::from)?;
         Ok(Self {
+            selected_configuration: Some(configuration.clone()),
+            active_configuration: Some(configuration),
+            aircraft_catalog,
             sim: Sim::new(&Start::Runway)?,
             selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
             paused: true,
@@ -262,6 +274,7 @@ impl Command for Reset {
             self.weather.unwrap_or_default(),
             flightcraft_world::World::load(self.world).map_err(SimError::from)?,
         )?;
+        session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
         session.paused = self.paused.unwrap_or(true);
         Ok(session.snapshot())
@@ -510,6 +523,7 @@ registry!(
     ListCommands,
     ListAircraft,
     LoadAircraft,
+    ComputeWeightBalance,
     SetCamera,
     AppScreenshot,
     Wait

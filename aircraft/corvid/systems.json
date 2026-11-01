@@ -1,0 +1,16 @@
+{
+  "kind": "systems",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-systems",
+    "display_name": "Corvid",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "installed": [
+    "electrical",
+    "vacuum",
+    "pitot_static",
+    "fuel"
+  ]
+}

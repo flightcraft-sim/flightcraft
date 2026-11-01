@@ -10,9 +10,11 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut at_sim_s: Option<f64> = None;
     let mut script = None;
     let mut control = None;
+    let mut packs_directory = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--packs-dir" => packs_directory = Some(args.next().ok_or("--packs-dir needs a directory")?),
             "--control" => {
                 let port: u16 = args
                     .next()
@@ -45,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
             "--help" | "-h" => {
                 println!(
-                    "flightcraft [--control <port>] [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--control listens only on 127.0.0.1 for shared-session commands.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
+                    "flightcraft [--packs-dir <directory>] [--control <port>] [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--packs-dir loads aircraft packs and saves the directory preference.\n--control listens only on 127.0.0.1 for shared-session commands.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
                 );
                 return Ok(());
             }
@@ -84,6 +86,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     screenshot: capture,
                     control,
                     script,
+                    packs: flightcraft_ui::PackOptions {
+                        directory: packs_directory,
+                        ..Default::default()
+                    },
                 },
             )?))
         }),

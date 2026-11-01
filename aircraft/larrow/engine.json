@@ -1,0 +1,128 @@
+{
+  "kind": "engine",
+  "format_version": 2,
+  "identity": {
+    "id": "larrow-engine",
+    "display_name": "Larrow",
+    "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
+    "author": "FlightCraft contributors"
+  },
+  "propulsion": {
+    "max_power_w": 150000.0,
+    "idle_power_w": 1500.0,
+    "prop_diameter_m": 1.85,
+    "min_rps": 5.0,
+    "max_rpm": 2900.0,
+    "windmill_drag_area_m2": 0.085,
+    "windmill_advance_ratio": 1.6,
+    "prop_ct": {
+      "points": [
+        [
+          0.0,
+          0.115
+        ],
+        [
+          0.3,
+          0.102
+        ],
+        [
+          0.6,
+          0.075
+        ],
+        [
+          0.9,
+          0.034
+        ],
+        [
+          1.2,
+          0.0
+        ],
+        [
+          1.5,
+          -0.022
+        ],
+        [
+          3.0,
+          -0.038
+        ]
+      ],
+      "source": "Original fixed-pitch blade-element design estimate: CT=T/(rho*n^2*D^4). Static CT=0.115 selected for a lightly loaded two-blade 1.85 m propeller; linear unloading to zero at J=1.2 with bounded negative windmill thrust. Paired with CP to keep propulsive efficiency J*CT/CP below 0.85; no real propeller data."
+    },
+    "prop_cp": {
+      "points": [
+        [
+          0.0,
+          0.06
+        ],
+        [
+          0.3,
+          0.057
+        ],
+        [
+          0.6,
+          0.054
+        ],
+        [
+          0.9,
+          0.041
+        ],
+        [
+          1.2,
+          0.031
+        ],
+        [
+          1.5,
+          0.024
+        ],
+        [
+          3.0,
+          0.024
+        ]
+      ],
+      "source": "Original blade-element power estimate: CP=P/(rho*n^3*D^5). Static CP=0.060 absorbs about 150 kW near 2700 rpm; pitch unloading reduces CP with advance ratio. At J=0.6 efficiency is 0.833, and at J=0.9 it is 0.746; piecewise values are original design assumptions."
+    },
+    "power_density": {
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.2,
+          0.2
+        ],
+        [
+          0.4,
+          0.4
+        ],
+        [
+          0.7,
+          0.7
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.4,
+          1.4
+        ]
+      ],
+      "source": "Original ideal normally aspirated piston-engine estimate: oxygen mass flow and available shaft power proportional to air density at fixed volumetric efficiency; P/P0=rho/rho0. Breakpoints sample this analytic relation."
+    }
+  },
+  "induction": "carburettor",
+  "fuel_flow_kg_s": {
+    "points": [
+      [
+        0.0,
+        0.0005
+      ],
+      [
+        1.0,
+        0.01
+      ]
+    ],
+    "source": "Original fictional engine estimate; metadata until fuel burn is implemented."
+  }
+}

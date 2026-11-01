@@ -4,8 +4,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_AIRCRAFT_BYTES: usize = 1024 * 1024;
-pub const CORVID_JSON: &str = include_str!("../../../aircraft/corvid.aircraft.json");
-pub const LARROW_JSON: &str = include_str!("../../../aircraft/larrow.aircraft.json");
+/// Legacy version 1 fixture, retained for migration and compatibility.
+pub const CORVID_JSON: &str = include_str!("../tests/fixtures/corvid-v1.aircraft.json");
+/// Legacy version 1 fixture, retained for migration and compatibility.
+pub const LARROW_JSON: &str = include_str!("../tests/fixtures/larrow-v1.aircraft.json");
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -55,7 +57,7 @@ pub struct Gear {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Mass {
-    /// Total fixed flight mass, including occupants and fuel. No fuel burn in version 1.
+    /// Resolved total flight mass, including occupants and fuel.
     pub mass_kg: f64,
     pub cg_m: [f64; 3],
     /// Full symmetric positive-definite tensor about the CG, in body axes.
@@ -154,25 +156,25 @@ pub struct AircraftError {
     pub message: String,
 }
 
-fn error(field: impl Into<String>, message: impl Into<String>) -> AircraftError {
+pub(crate) fn error(field: impl Into<String>, message: impl Into<String>) -> AircraftError {
     AircraftError {
         field: field.into(),
         message: message.into(),
     }
 }
 
-fn require(ok: bool, field: &str, message: &str) -> Result<(), AircraftError> {
+pub(crate) fn require(ok: bool, field: &str, message: &str) -> Result<(), AircraftError> {
     if ok { Ok(()) } else { Err(error(field, message)) }
 }
 
-fn positive(value: f64, field: &str) -> Result<(), AircraftError> {
+pub(crate) fn positive(value: f64, field: &str) -> Result<(), AircraftError> {
     require(value >= 1e-6, field, "must be positive (at least 0.000001)")
 }
 
 // Covers every numeric leaf, including values supplied by Rust callers. The format has no
 // optional/null fields; serde_json serialises non-finite floats as null. A magnitude cap keeps
 // finite-but-overflowing engineering data out of subsequent products and interpolation.
-fn finite_tree(value: &serde_json::Value, path: &str) -> Result<(), AircraftError> {
+pub(crate) fn finite_tree(value: &serde_json::Value, path: &str) -> Result<(), AircraftError> {
     match value {
         serde_json::Value::Null => Err(error(path, "must be finite")),
         serde_json::Value::Number(n) => require(
@@ -204,7 +206,7 @@ fn finite_tree(value: &serde_json::Value, path: &str) -> Result<(), AircraftErro
 }
 
 impl Table {
-    fn validate(&self, field: &str) -> Result<(), AircraftError> {
+    pub(crate) fn validate(&self, field: &str) -> Result<(), AircraftError> {
         require(
             (2..=256).contains(&self.points.len()),
             &format!("{field}.points"),
@@ -228,6 +230,25 @@ impl Table {
     }
 }
 
+/// Read a bounded document's version without interpreting numeric leaves in other fields.
+/// Full decoding must follow this probe to validate the document and report precise field errors.
+pub fn definition_version(text: &str) -> Result<u32, AircraftError> {
+    require(
+        text.len() <= MAX_AIRCRAFT_BYTES,
+        "file_size",
+        "aircraft exceeds 1 MiB",
+    )?;
+    #[derive(Deserialize)]
+    struct Header {
+        format_version: u32,
+    }
+    let mut decoder = serde_json::Deserializer::from_str(text);
+    let header: Header = serde_path_to_error::deserialize(&mut decoder)
+        .map_err(|e| error(e.path().to_string(), e.inner().to_string()))?;
+    decoder.end().map_err(|e| error("document", e.to_string()))?;
+    Ok(header.format_version)
+}
+
 impl Aircraft {
     /// Parse at most 1 MiB of UTF-8 JSON, rejecting unknown fields at every level.
     pub fn from_json(text: &str) -> Result<Self, AircraftError> {
@@ -236,6 +257,15 @@ impl Aircraft {
             "file_size",
             "aircraft exceeds 1 MiB",
         )?;
+        // Version 1 remains readable for migration and resolved-model interchange.
+        if definition_version(text)? == 2 {
+            let crate::LayerFile::Aircraft(definition) = crate::LayerFile::from_json(text)? else {
+                return Err(error("kind", "requires an aircraft selection"));
+            };
+            return crate::AircraftCatalog::builtins()?
+                .resolve_definition(&definition)
+                .map(|r| r.aircraft);
+        }
         let mut deserializer = serde_json::Deserializer::from_str(text);
         let aircraft: Self = serde_path_to_error::deserialize(&mut deserializer)
             .map_err(|e| error(e.path().to_string(), e.inner().to_string()))?;
@@ -245,11 +275,15 @@ impl Aircraft {
     }
 
     pub fn corvid() -> Result<Self, AircraftError> {
-        Self::from_json(CORVID_JSON)
+        crate::AircraftCatalog::builtins()?
+            .resolve_aircraft("corvid")
+            .map(|r| r.aircraft)
     }
 
     pub fn larrow() -> Result<Self, AircraftError> {
-        Self::from_json(LARROW_JSON)
+        crate::AircraftCatalog::builtins()?
+            .resolve_aircraft("larrow")
+            .map(|r| r.aircraft)
     }
 
     /// Built-in definitions in picker order, validated through the ordinary loader.
