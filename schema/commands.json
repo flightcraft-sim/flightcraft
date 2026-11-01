@@ -312,6 +312,11 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "description": "Aerodynamic specific force along body y, g, positive right.\nA slip ball moves opposite this force; coordinated flight reads zero.",
+              "format": "double",
+              "type": "number"
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
@@ -335,6 +340,11 @@
             },
             "true_airspeed_mps": {
               "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "description": "Heading rate about the local vertical, rad/s, positive right.\nZero within 1e-6 rad of vertical pitch, where heading is undefined.",
               "format": "double",
               "type": "number"
             },
@@ -368,6 +378,8 @@
             "heading_rad",
             "pitch_rad",
             "roll_rad",
+            "turn_rate_rps",
+            "lateral_acceleration_g",
             "alpha_rad",
             "beta_rad",
             "load_factor_g",
@@ -1051,6 +1063,11 @@
           "format": "double",
           "type": "number"
         },
+        "lateral_acceleration_g": {
+          "description": "Aerodynamic specific force along body y, g, positive right.\nA slip ball moves opposite this force; coordinated flight reads zero.",
+          "format": "double",
+          "type": "number"
+        },
         "load_factor_g": {
           "description": "Load factor along body z, g (1 in level flight).",
           "format": "double",
@@ -1074,6 +1091,11 @@
         },
         "true_airspeed_mps": {
           "description": "True airspeed, m/s.",
+          "format": "double",
+          "type": "number"
+        },
+        "turn_rate_rps": {
+          "description": "Heading rate about the local vertical, rad/s, positive right.\nZero within 1e-6 rad of vertical pitch, where heading is undefined.",
           "format": "double",
           "type": "number"
         },
@@ -1107,6 +1129,8 @@
         "heading_rad",
         "pitch_rad",
         "roll_rad",
+        "turn_rate_rps",
+        "lateral_acceleration_g",
         "alpha_rad",
         "beta_rad",
         "load_factor_g",
@@ -1709,6 +1733,11 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "description": "Aerodynamic specific force along body y, g, positive right.\nA slip ball moves opposite this force; coordinated flight reads zero.",
+              "format": "double",
+              "type": "number"
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
@@ -1732,6 +1761,11 @@
             },
             "true_airspeed_mps": {
               "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "description": "Heading rate about the local vertical, rad/s, positive right.\nZero within 1e-6 rad of vertical pitch, where heading is undefined.",
               "format": "double",
               "type": "number"
             },
@@ -1765,6 +1799,8 @@
             "heading_rad",
             "pitch_rad",
             "roll_rad",
+            "turn_rate_rps",
+            "lateral_acceleration_g",
             "alpha_rad",
             "beta_rad",
             "load_factor_g",
@@ -2352,6 +2388,11 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "description": "Aerodynamic specific force along body y, g, positive right.\nA slip ball moves opposite this force; coordinated flight reads zero.",
+              "format": "double",
+              "type": "number"
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
@@ -2375,6 +2416,11 @@
             },
             "true_airspeed_mps": {
               "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "description": "Heading rate about the local vertical, rad/s, positive right.\nZero within 1e-6 rad of vertical pitch, where heading is undefined.",
               "format": "double",
               "type": "number"
             },
@@ -2408,6 +2454,8 @@
             "heading_rad",
             "pitch_rad",
             "roll_rad",
+            "turn_rate_rps",
+            "lateral_acceleration_g",
             "alpha_rad",
             "beta_rad",
             "load_factor_g",
@@ -3826,6 +3874,11 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "description": "Aerodynamic specific force along body y, g, positive right.\nA slip ball moves opposite this force; coordinated flight reads zero.",
+              "format": "double",
+              "type": "number"
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
@@ -3849,6 +3902,11 @@
             },
             "true_airspeed_mps": {
               "description": "True airspeed, m/s.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "description": "Heading rate about the local vertical, rad/s, positive right.\nZero within 1e-6 rad of vertical pitch, where heading is undefined.",
               "format": "double",
               "type": "number"
             },
@@ -3882,6 +3940,8 @@
             "heading_rad",
             "pitch_rad",
             "roll_rad",
+            "turn_rate_rps",
+            "lateral_acceleration_g",
             "alpha_rad",
             "beta_rad",
             "load_factor_g",

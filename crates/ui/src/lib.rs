@@ -15,6 +15,7 @@ use flightcraft_render::{CameraMode, Scene};
 use keymap::{Action, Keymap};
 
 const KEYMAP_STORAGE: &str = "flightcraft.keymap.v1";
+const COMPACT_PANEL_STORAGE: &str = "flightcraft.compact_panel.v1";
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
@@ -73,6 +74,8 @@ pub struct FlightCraftApp {
     last_time: Option<f64>,
     error: Option<String>,
     settings: bool,
+    compact_panel: bool,
+    slip_ball: instruments::SlipBall,
     bindings_json: String,
     glance_origin: Option<[f64; 2]>,
     binding_message: Option<String>,
@@ -127,6 +130,12 @@ impl FlightCraftApp {
             last_time: None,
             error,
             settings: false,
+            compact_panel: cc
+                .storage
+                .and_then(|s| s.get_string(COMPACT_PANEL_STORAGE))
+                .as_deref()
+                == Some("true"),
+            slip_ball: instruments::SlipBall::default(),
             bindings_json,
             glance_origin: None,
             binding_message: None,
@@ -146,6 +155,7 @@ impl FlightCraftApp {
         match actions::reset(&mut self.session) {
             Ok(()) => {
                 self.clock.reset();
+                self.slip_ball = instruments::SlipBall::default();
                 self.input.trim = 0.0;
                 self.scene.reset_camera();
                 self.error = None;
@@ -155,7 +165,10 @@ impl FlightCraftApp {
     }
 
     fn bindings_window(&mut self, ctx: &egui::Context) {
-        egui::Window::new("Input bindings").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
+        egui::Window::new("Preferences and input").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
+            ui.label(RichText::new("INSTRUMENT PANEL").color(theme::ACCENT).size(11.0));
+            ui.checkbox(&mut self.compact_panel, "Compact instruments (one row)");
+            ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
                 for action in Action::ALL {
@@ -362,6 +375,7 @@ impl eframe::App for FlightCraftApp {
                                                 self.paused = self.session.paused();
                                                 self.input.trim = 0.0;
                                                 self.clock.reset();
+                                                self.slip_ball = instruments::SlipBall::default();
                                                 self.scene.reset_camera();
                                                 self.error = None;
                                             }
@@ -377,7 +391,7 @@ impl eframe::App for FlightCraftApp {
                         },
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("Input bindings").clicked() {
+                        if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
                         }
                         let camera = match self.scene.camera {
@@ -451,14 +465,18 @@ impl eframe::App for FlightCraftApp {
                 });
             });
         egui::TopBottomPanel::bottom("instruments")
-            .exact_height(220.0)
+            .exact_height(instruments::panel_height(
+                ctx.content_rect().height(),
+                self.compact_panel,
+            ))
             .frame(
                 egui::Frame::new()
                     .fill(theme::PANEL)
                     .inner_margin(egui::Margin::symmetric(12, 5)),
             )
             .show(ctx, |ui| {
-                instruments::panel(ui, &readout, self.input.trim);
+                let ball = self.slip_ball.update(&readout);
+                instruments::panel(ui, &readout, self.input.trim, self.compact_panel, ball);
             });
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(theme::BACKGROUND))
@@ -564,6 +582,7 @@ impl eframe::App for FlightCraftApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
         if let Ok(json) = self.keymap.json() {
             storage.set_string(KEYMAP_STORAGE, json);
         }

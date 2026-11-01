@@ -108,6 +108,12 @@ pub struct Readout {
     pub heading_rad: f64,
     pub pitch_rad: f64,
     pub roll_rad: f64,
+    /// Heading rate about the local vertical, rad/s, positive right.
+    /// Zero within 1e-6 rad of vertical pitch, where heading is undefined.
+    pub turn_rate_rps: f64,
+    /// Aerodynamic specific force along body y, g, positive right.
+    /// A slip ball moves opposite this force; coordinated flight reads zero.
+    pub lateral_acceleration_g: f64,
     /// Angle of attack, radians.
     pub alpha_rad: f64,
     /// Sideslip, radians.
@@ -481,7 +487,9 @@ impl Sim {
         let [u, v, w] = dynamics::airflow(s, &self.wind).velocity_body_mps;
         let speed = norm(dynamics::relative_velocity(s, &self.wind));
         let loads = dynamics::loads(&self.aircraft, s, self.controls, &self.wind, self.failures);
-        let [_, _, fz] = loads.force_n;
+        let [_, fy, fz] = loads.force_n;
+        let [_, q, r] = s.angular_rate_rps;
+        let cos_pitch = libm::cos(pitch);
         let h = dynamics::height(&self.aircraft, s, &self.world);
         Readout {
             time_s: s.time_s,
@@ -495,6 +503,12 @@ impl Sim {
             heading_rad: heading,
             pitch_rad: pitch,
             roll_rad: roll,
+            turn_rate_rps: if cos_pitch.abs() > 1e-6 {
+                (q * libm::sin(roll) + r * libm::cos(roll)) / cos_pitch
+            } else {
+                0.0
+            },
+            lateral_acceleration_g: fy / (self.aircraft.mass.mass_kg * world::GRAVITY_MPS2),
             alpha_rad: libm::atan2(w, u),
             beta_rad: if speed > 0.01 {
                 libm::asin((v / speed).clamp(-1.0, 1.0))
