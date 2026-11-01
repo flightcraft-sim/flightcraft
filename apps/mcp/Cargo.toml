@@ -1,8 +1,8 @@
 [package]
-publish = false
 name = "flightcraft-mcp"
 description = "Headless FlightCraft MCP server over stdio."
 version.workspace = true
+publish.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

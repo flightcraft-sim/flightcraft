@@ -8,6 +8,9 @@ confidence-threshold = 0.9
 
 [advisories]
 yanked = "warn"
+# Unmaintained crates we depend on directly fail the check; ones deep in the tree (for example the
+# font parser under egui) are their parents' to replace.
+unmaintained = "workspace"
 
 [bans]
 multiple-versions = "allow"

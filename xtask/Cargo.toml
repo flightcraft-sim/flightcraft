@@ -1,8 +1,8 @@
 [package]
-publish = false
 name = "xtask"
 description = "Repository checks: cargo xtask ci."
 version.workspace = true
+publish.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
