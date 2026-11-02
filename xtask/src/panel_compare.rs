@@ -31,14 +31,23 @@ fn resolved_destination(path: &Path) -> Result<PathBuf, String> {
         .unwrap_or(Path::new("."));
     Ok(resolved_destination(parent)?.join(name))
 }
-fn check_output(path: &Path, root: &Path) -> Result<PathBuf, String> {
+/// The git checkout holding the pack, so comparison images (which contain the reference) never land in it.
+fn pack_repository(pack: &Path) -> Option<PathBuf> {
+    let pack = pack.canonicalize().ok()?;
+    pack.ancestors()
+        .find(|p| p.join(".git").exists())
+        .map(Path::to_path_buf)
+}
+/// Outputs may go under the engine's ignored `out/` or anywhere outside both the engine and the pack
+/// repositories. Unrelated checkouts above the output (a scratch folder under a dotfiles repo) are fine.
+fn check_output(path: &Path, root: &Path, pack_repo: Option<&Path>) -> Result<PathBuf, String> {
     let output = resolved_destination(path)?;
     if output.starts_with(root.join("out")) {
         return Ok(output);
     }
-    if output.starts_with(root) || output.ancestors().any(|p| p.join(".git").exists()) {
+    if output.starts_with(root) || pack_repo.is_some_and(|r| output.starts_with(r)) {
         return Err(
-            "--out must be outside the repository or under ignored out/; comparison images are local only"
+            "--out must be outside the engine and pack repositories, or under the engine's ignored out/; comparison images are local only"
                 .into(),
         );
     }
@@ -111,7 +120,8 @@ fn alignment(a: &GrayImage, b: &GrayImage, [x, y, w, h]: [u32; 4]) -> (f64, u64,
 }
 fn compare(pack: &Path, reference: &Path, out: &Path) -> Result<(), String> {
     let root = super::root()?.canonicalize().map_err(|e| e.to_string())?;
-    let out = check_output(out, &root)?;
+    let pack_repo = pack_repository(pack);
+    let out = check_output(out, &root, pack_repo.as_deref())?;
     let reference_path = reference.canonicalize().map_err(|e| e.to_string())?;
     for name in [
         "render.png",
@@ -121,7 +131,7 @@ fn compare(pack: &Path, reference: &Path, out: &Path) -> Result<(), String> {
         "alignment.json",
     ] {
         let child = out.join(name);
-        let resolved = check_output(&child, &root)?;
+        let resolved = check_output(&child, &root, pack_repo.as_deref())?;
         if resolved == reference_path
             || std::fs::symlink_metadata(&child).is_ok_and(|m| m.file_type().is_symlink())
         {
@@ -244,9 +254,32 @@ mod tests {
             .unwrap()
             .canonicalize()
             .unwrap();
-        assert!(check_output(&root.join("out/new-comparison"), &root).is_ok());
-        assert!(check_output(&root.join("docs/new-comparison"), &root).is_err());
-        assert!(check_output(&root.join("out/../new-comparison"), &root).is_err());
+        assert!(check_output(&root.join("out/new-comparison"), &root, None).is_ok());
+        assert!(check_output(&root.join("docs/new-comparison"), &root, None).is_err());
+        assert!(check_output(&root.join("out/../new-comparison"), &root, None).is_err());
+    }
+    #[test]
+    fn pack_repository_is_refused_but_unrelated_checkouts_are_not() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .canonicalize()
+            .unwrap();
+        let temp = std::env::temp_dir().join(format!("flightcraft-panel-repos-{}", std::process::id()));
+        std::fs::create_dir_all(&temp).unwrap();
+        let temp = temp.canonicalize().unwrap();
+        let pack_repo = temp.join("pack");
+        let scratch = temp.join("scratch");
+        for dir in [
+            pack_repo.join(".git"),
+            scratch.join(".git"),
+            scratch.join("compare"),
+        ] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        assert!(check_output(&pack_repo.join("previews/cmp"), &root, Some(&pack_repo)).is_err());
+        assert!(check_output(&scratch.join("compare"), &root, Some(&pack_repo)).is_ok());
+        std::fs::remove_dir_all(temp).unwrap();
     }
     #[test]
     fn edge_score_detects_displacement() {
@@ -271,7 +304,7 @@ mod tests {
         std::fs::create_dir(&temp).unwrap();
         let link = temp.join("repository");
         std::os::unix::fs::symlink(&root, &link).unwrap();
-        assert!(check_output(&link.join("new-panel-comparison"), &root).is_err());
+        assert!(check_output(&link.join("new-panel-comparison"), &root, None).is_err());
         std::fs::remove_file(link).unwrap();
         std::fs::remove_dir(temp).unwrap();
     }
