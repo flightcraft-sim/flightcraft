@@ -1,6 +1,6 @@
 //! Original compact attitude and air-data unit; 45 s alignment and 60 min backup endurance.
-use super::sensor::{Ahrs, Power};
-use crate::{DT_S, Readout, State, systems::SystemsState};
+use super::sensor::{AirDataComputer, ComputerInput, Power};
+use crate::{Readout, State, systems::SystemsState};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -25,11 +25,9 @@ pub struct ElectronicAttitude {
     pub slip_g: f64,
     pub turn_rate_deg_s: f64,
     #[serde(skip)]
-    pub(crate) sensor: Ahrs,
+    pub(crate) computer: AirDataComputer,
     #[serde(skip)]
     pub(crate) air_data_failed: bool,
-    #[serde(skip)]
-    previous_airspeed: Option<f64>,
 }
 impl Default for ElectronicAttitude {
     fn default() -> Self {
@@ -56,13 +54,12 @@ impl ElectronicAttitude {
             baro_inhg: 101325. / 3386.389,
             slip_g: 0.,
             turn_rate_deg_s: 0.,
-            sensor: Ahrs::new(seed),
+            computer: AirDataComputer::with_seed(seed),
             air_data_failed: false,
-            previous_airspeed: None,
         }
     }
     pub(crate) fn hash_words(&self) -> Vec<u64> {
-        let mut words = self.sensor.hash_words();
+        let mut words = self.computer.hash_words();
         words.extend(
             [
                 self.power.switch_on,
@@ -95,7 +92,7 @@ impl ElectronicAttitude {
             .map(f64::to_bits),
         );
         words.push(u64::from(self.air_data_failed));
-        words.push(self.previous_airspeed.map_or(u64::MAX, f64::to_bits));
+
         words
     }
     #[cfg(test)]
@@ -112,41 +109,34 @@ impl ElectronicAttitude {
     ) {
         let bus = systems.electrical.loads.iter().any(|l| l.id == load && l.powered);
         self.power.update(bus, advance);
-        let angles = self.sensor.update(state, self.power.powered, advance);
-        self.attitude_valid = angles.is_some();
-        self.alignment_remaining_s = (45. - self.sensor.alignment_s).max(0.);
-        self.aligning = self.power.powered && !self.sensor.failed && self.alignment_remaining_s > 1e-8;
-        if let Some([roll, pitch, heading]) = angles {
-            self.roll_deg = roll.to_degrees();
-            self.pitch_deg = pitch.to_degrees();
-            self.heading_deg = heading.to_degrees();
-            self.slip_g = truth.lateral_acceleration_g;
-            self.turn_rate_deg_s = truth.turn_rate_rps.to_degrees();
-        }
-        self.air_data_valid = self.power.powered && !self.air_data_failed;
-        if self.air_data_valid {
-            // This unit's blocked-pitot detector holds its last airspeed sample. Round backups
-            // retain the pressure-trapping behaviour of the physical pitot-static system.
-            if !systems.failures.pitot_blocked || self.previous_airspeed.is_none() {
-                self.airspeed_kt = systems.sensed.indicated_airspeed_mps * 1.94384449;
-            }
-            if advance {
-                let raw = self
-                    .previous_airspeed
-                    .map_or(0., |old| (self.airspeed_kt - old) / DT_S * 6.);
-                self.airspeed_trend_kt +=
-                    (raw.clamp(-100., 100.) - self.airspeed_trend_kt) * (1. - libm::exp(-DT_S));
-                if systems.failures.pitot_blocked {
-                    self.airspeed_trend_kt = 0.;
-                }
-                self.previous_airspeed = Some(self.airspeed_kt);
-            }
-            let pressure = systems.static_pressure_pa;
-            let setting = self.baro_inhg * 3386.389;
-            self.altitude_ft = crate::systems::altitude(pressure, setting) * 3.280839895;
-            self.vertical_speed_fpm = systems.sensed.vertical_speed_mps * 196.8503937;
-            self.altitude_trend_ft = self.vertical_speed_fpm / 10.;
-        }
+        self.computer.step(
+            systems,
+            state,
+            truth,
+            ComputerInput {
+                powered: self.power.powered,
+                ahrs_failed: self.computer.sensor.failed,
+                adc_failed: self.air_data_failed,
+                advance,
+                hold_blocked: true,
+                baro_pa: Some(self.baro_inhg * 3386.389),
+            },
+        );
+        let c = &self.computer;
+        self.attitude_valid = c.attitude_valid;
+        self.air_data_valid = c.air_data_valid;
+        self.alignment_remaining_s = c.alignment_remaining_s;
+        self.aligning = self.power.powered && !c.ahrs_failed && c.alignment_remaining_s > 1e-8;
+        self.roll_deg = c.roll_rad.to_degrees();
+        self.pitch_deg = c.pitch_rad.to_degrees();
+        self.heading_deg = c.heading_rad.to_degrees();
+        self.slip_g = c.slip_g;
+        self.turn_rate_deg_s = truth.turn_rate_rps.to_degrees();
+        self.airspeed_kt = c.indicated_airspeed_mps * 1.94384449;
+        self.airspeed_trend_kt = c.airspeed_trend_mps * 1.94384449;
+        self.altitude_ft = c.altitude_msl_m * 3.280839895;
+        self.vertical_speed_fpm = c.vertical_speed_mps * 196.8503937;
+        self.altitude_trend_ft = c.altitude_trend_m * 3.280839895;
     }
 }
 
@@ -170,10 +160,10 @@ mod tests {
         assert_eq!(a, b);
         a.step(State::default(), Readout::default(), &systems);
         assert_ne!(a.roll_deg, 0.);
-        a.sensor.failed = true;
+        a.computer.sensor.failed = true;
         a.step(State::default(), Readout::default(), &systems);
         assert!(!a.attitude_valid && !a.aligning);
-        a.sensor.failed = false;
+        a.computer.sensor.failed = false;
         for _ in 5401..432000 {
             a.step(State::default(), Readout::default(), &systems);
         }

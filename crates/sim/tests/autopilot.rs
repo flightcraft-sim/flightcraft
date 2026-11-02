@@ -187,7 +187,11 @@ fn disengaged_holds_preserve_the_pilot_trajectory_and_fixed_step_batching() {
     for _ in 0..1200 {
         off.step(1);
     }
-    assert_eq!(pilot.state_hash(), off.state_hash());
+    assert_eq!(pilot.state(), off.state());
+    assert_eq!(pilot.readout(), off.readout());
+    // Selecting HDG moves the shared bug; disengaging leaves that cockpit selection in place.
+    assert!((off.systems().controls.heading_bug_rad - 0.2).abs() < 1e-12);
+    assert_ne!(pilot.state_hash(), off.state_hash());
     let mut a = disturbed();
     a.set_autopilot(Targets {
         altitude_m: Some(400.0),

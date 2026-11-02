@@ -160,6 +160,7 @@ pub fn shortcut_with_options(
     let a = &s.electronic_attitude;
     let h = &s.electronic_hsi;
     Some(match action {
+        Action::HeadingBugSync => AvionicsSetting::HeadingBugSync {},
         Action::HeadingBugLeft | Action::HeadingBugRight => AvionicsSetting::HeadingBug {
             degrees: (h.heading_bug_deg + if action == Action::HeadingBugLeft { -1. } else { 1. })
                 .rem_euclid(360.),

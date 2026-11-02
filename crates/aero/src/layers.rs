@@ -27,6 +27,9 @@ pub const INSTRUMENT_MODULES: &[&str] = &[
     "annunciators",
     "electronic_attitude",
     "electronic_hsi",
+    "glass_pfd",
+    "glass_mfd",
+    "glass_standby",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -1003,6 +1006,10 @@ const BUILTIN_LAYERS: &[&str] = &[
     include_str!("../../../aircraft/corvid/standby-variant.json"),
     include_str!("../../../aircraft/corvid/standby-pair.json"),
     include_str!("../../../aircraft/corvid/standby-aircraft.json"),
+    include_str!("../../../aircraft/corvid/glass-panel.json"),
+    include_str!("../../../aircraft/corvid/glass-systems.json"),
+    include_str!("../../../aircraft/corvid/glass-variant.json"),
+    include_str!("../../../aircraft/corvid/glass-aircraft.json"),
     include_str!("../../../aircraft/larrow/family.json"),
     include_str!("../../../aircraft/larrow/variant.json"),
     include_str!("../../../aircraft/larrow/engine.json"),

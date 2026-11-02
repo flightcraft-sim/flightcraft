@@ -1,4 +1,4 @@
-use crate::{DT_S, State, math};
+use crate::{DT_S, State, math, systems::SystemsState};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -45,6 +45,11 @@ pub struct Ahrs {
     seed: u64,
     initial_seed: u64,
 }
+impl Default for Ahrs {
+    fn default() -> Self {
+        Self::new(0x71b5_8a31)
+    }
+}
 impl Ahrs {
     pub fn new(seed: u64) -> Self {
         Self {
@@ -79,6 +84,7 @@ impl Ahrs {
             return None;
         }
         if self.failed {
+            self.alignment_s = 0.;
             return None;
         }
         if !advance {
@@ -99,6 +105,127 @@ impl Ahrs {
             self.q = math::normalise(self.q);
         }
         Some(math::euler(self.q))
+    }
+}
+
+pub const ALIGNMENT_S: f64 = 45.;
+#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema)]
+pub struct AirDataComputer {
+    pub alignment_remaining_s: f64,
+    pub powered: bool,
+    pub attitude_valid: bool,
+    pub ahrs_failed: bool,
+    pub adc_failed: bool,
+    pub air_data_valid: bool,
+    pub roll_rad: f64,
+    pub pitch_rad: f64,
+    pub heading_rad: f64,
+    pub slip_g: f64,
+    pub indicated_airspeed_mps: f64,
+    pub altitude_msl_m: f64,
+    pub vertical_speed_mps: f64,
+    pub airspeed_trend_mps: f64,
+    pub altitude_trend_m: f64,
+    pub true_airspeed_mps: f64,
+    pub outside_temperature_c: f64,
+    #[serde(skip)]
+    pub(crate) sensor: Ahrs,
+    previous_ias: Option<f64>,
+}
+/// Installation policy; pressure processing and AHRS integration share one implementation.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ComputerInput {
+    pub powered: bool,
+    pub ahrs_failed: bool,
+    pub adc_failed: bool,
+    pub advance: bool,
+    pub hold_blocked: bool,
+    pub baro_pa: Option<f64>,
+}
+impl AirDataComputer {
+    pub(crate) fn with_seed(seed: u64) -> Self {
+        Self {
+            sensor: Ahrs::new(seed),
+            ..Default::default()
+        }
+    }
+    pub(crate) fn hash_words(&self) -> Vec<u64> {
+        let mut words = self.sensor.hash_words();
+        words.extend(
+            [
+                self.indicated_airspeed_mps,
+                self.altitude_msl_m,
+                self.vertical_speed_mps,
+                self.airspeed_trend_mps,
+                self.altitude_trend_m,
+                self.true_airspeed_mps,
+                self.outside_temperature_c,
+            ]
+            .map(f64::to_bits),
+        );
+        words.push(self.previous_ias.map_or(u64::MAX, f64::to_bits));
+        words
+    }
+
+    /// Shared rate-integrating electronic AHRS, independent of vacuum gyros.
+    /// ADC reads the existing pressure sensors, preserving trapped-port errors.
+    pub(crate) fn step(
+        &mut self,
+        systems: &SystemsState,
+        state: State,
+        truth: crate::Readout,
+        input: ComputerInput,
+    ) {
+        let ComputerInput {
+            powered,
+            ahrs_failed,
+            adc_failed,
+            advance,
+            hold_blocked,
+            baro_pa,
+        } = input;
+        self.powered = powered;
+        self.ahrs_failed = ahrs_failed;
+        self.adc_failed = adc_failed;
+        let dt_s = if advance { DT_S } else { 0. };
+        self.sensor.failed = ahrs_failed;
+        let angles = self.sensor.update(state, powered, advance);
+        self.alignment_remaining_s = (ALIGNMENT_S - self.sensor.alignment_s).max(0.);
+        self.attitude_valid = angles.is_some();
+        self.air_data_valid = powered && !adc_failed;
+        if let Some([roll, pitch, heading]) = angles {
+            self.roll_rad = roll;
+            self.pitch_rad = pitch;
+            self.heading_rad = heading;
+        }
+        self.slip_g = truth.lateral_acceleration_g;
+        let s = systems.sensed;
+        if !hold_blocked || !systems.failures.pitot_blocked || self.previous_ias.is_none() {
+            self.indicated_airspeed_mps = s.indicated_airspeed_mps;
+        }
+        let ias = self.indicated_airspeed_mps;
+        self.altitude_msl_m = baro_pa.map_or(s.altitude_msl_m, |setting| {
+            crate::systems::altitude(systems.static_pressure_pa, setting)
+        });
+        self.vertical_speed_mps = s.vertical_speed_mps;
+        if let Some(previous) = self.previous_ias.filter(|_| dt_s > 0.0) {
+            let target = ((ias - previous) / dt_s * 6.0).clamp(-50.0, 50.0);
+            self.airspeed_trend_mps += (target - self.airspeed_trend_mps) * (dt_s / 2.0).min(1.0);
+        }
+        if advance {
+            self.previous_ias = powered.then_some(ias);
+        }
+        if hold_blocked && systems.failures.pitot_blocked {
+            self.airspeed_trend_mps = 0.;
+        }
+        self.altitude_trend_m = s.vertical_speed_mps * 6.0;
+        self.outside_temperature_c = systems.controls.temperature_c
+            + flightcraft_world::atmosphere(systems.pressure_altitude_m).temperature_k
+            - 288.15;
+        let density = systems.static_pressure_pa
+            / (flightcraft_world::GAS_CONSTANT * (self.outside_temperature_c + 273.15).max(100.0));
+        self.true_airspeed_mps =
+            s.indicated_airspeed_mps * libm::sqrt(flightcraft_world::SEA_LEVEL_DENSITY / density.max(0.01));
     }
 }
 
@@ -151,5 +278,44 @@ mod tests {
         assert_eq!(a.alignment_s, 0.);
         assert!(a.update(rotating, true, false).is_none());
         assert_eq!(a.alignment_s, 0.);
+    }
+}
+
+#[cfg(test)]
+mod shared_computer_tests {
+    use super::*;
+    #[test]
+    fn shared_computer_aligns_and_preserves_pressure_errors_and_failure_independence() {
+        let sim = crate::Sim::new(&crate::Start::Runway).unwrap();
+        let mut systems = sim.systems().clone();
+        let truth = sim.readout();
+        let mut computer = AirDataComputer::default();
+        let mut input = ComputerInput {
+            powered: true,
+            advance: true,
+            ..Default::default()
+        };
+        for _ in 0..5399 {
+            computer.step(&systems, *sim.state(), truth, input);
+        }
+        assert!(!computer.attitude_valid);
+        computer.step(&systems, *sim.state(), truth, input);
+        assert!(computer.attitude_valid);
+        systems.sensed.indicated_airspeed_mps = 12.;
+        systems.sensed.altitude_msl_m = 800.;
+        computer.step(&systems, *sim.state(), truth, input);
+        assert_eq!(computer.indicated_airspeed_mps, 12.);
+        assert_eq!(computer.altitude_msl_m, 800.);
+        assert!(computer.air_data_valid);
+        input.ahrs_failed = true;
+        computer.step(&systems, *sim.state(), truth, input);
+        assert!(!computer.attitude_valid && computer.air_data_valid);
+        input.ahrs_failed = false;
+        input.adc_failed = true;
+        computer.step(&systems, *sim.state(), truth, input);
+        assert!(!computer.air_data_valid);
+        input.powered = false;
+        computer.step(&systems, *sim.state(), truth, input);
+        assert_eq!(computer.alignment_remaining_s, 45.);
     }
 }

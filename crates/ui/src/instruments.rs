@@ -3,6 +3,8 @@
 mod avionics_controls;
 mod behaviour;
 mod electronic;
+pub(crate) mod formatting;
+pub(crate) mod heading;
 mod options;
 pub use options::{DisplayOptions, EngineUnits, PressureUnit};
 mod switches;
@@ -22,6 +24,7 @@ pub use switches::{shortcut, shortcut_with_options};
 #[derive(Clone, Copy)]
 pub struct InstrumentInput<'a> {
     pub systems: &'a SystemsState,
+    pub glass: Option<&'a flightcraft_control::GlassState>,
     /// Simulation time only: paused redraws consume no needle time.
     pub time_s: f64,
     pub options: DisplayOptions,
@@ -32,6 +35,7 @@ impl<'a> InstrumentInput<'a> {
     pub fn new(systems: &'a SystemsState, time_s: f64) -> Self {
         Self {
             systems,
+            glass: None,
             time_s,
             options: DisplayOptions::default(),
             aircraft: None,
@@ -40,6 +44,10 @@ impl<'a> InstrumentInput<'a> {
     }
     pub fn with_airports(mut self, airports: Option<&'a flightcraft_world::Airports>) -> Self {
         self.airports = airports;
+        self
+    }
+    pub fn with_glass(mut self, glass: &'a flightcraft_control::GlassState) -> Self {
+        self.glass = Some(glass);
         self
     }
     pub fn with_aircraft(mut self, aircraft: &'a flightcraft_aero::ResolvedAircraft) -> Self {
@@ -65,6 +73,10 @@ pub enum Ink {
     Earth,
     Normal,
     Inactive,
+    Gps,
+    AirspaceBlue,
+    TerrainHigh,
+    TerrainLow,
 }
 
 /// Original theme tokens are also the vocabulary available to data-defined private skins.
@@ -104,6 +116,11 @@ impl Token {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DrawItem {
+    #[serde(skip)]
+    Mesh {
+        vertices: Vec<([f32; 2], Ink, Ink, f32)>,
+        indices: Vec<u32>,
+    },
     Circle {
         center: [f32; 2],
         radius: f32,
@@ -144,7 +161,7 @@ impl DrawList {
     fn label(&mut self, at: [f32; 2], text: impl ToString, size: f32, ink: Ink) {
         self.items.push(DrawItem::Label {
             at,
-            text: text.to_string(),
+            text: formatting::clean_zero(&text.to_string()),
             size,
             ink,
         });
@@ -182,6 +199,10 @@ impl Skin for SkinPack {
                     Ink::Earth => t::EARTH,
                     Ink::Normal => t::GREEN,
                     Ink::Inactive => t::BORDER,
+                    Ink::Gps => t::GLASS_GPS,
+                    Ink::AirspaceBlue => t::AIRSPACE_BLUE,
+                    Ink::TerrainHigh => t::TERRAIN_HIGH,
+                    Ink::TerrainLow => t::TERRAIN_LOW,
                 },
                 |(_, token)| token.color(),
             )
@@ -192,6 +213,14 @@ impl Skin for SkinPack {
             }))
         {
             match item {
+                DrawItem::Mesh { vertices, indices } => {
+                    let mut mesh = egui::Mesh::default();
+                    for (at, a, b, blend) in vertices {
+                        mesh.colored_vertex(Pos2::from(*at), color(*a).lerp_to_gamma(color(*b), *blend));
+                    }
+                    mesh.indices = indices.clone();
+                    p.add(Shape::mesh(mesh));
+                }
                 DrawItem::Circle { center, radius, ink } => {
                     p.circle_filled(Pos2::from(*center), *radius, color(*ink));
                 }
@@ -235,6 +264,8 @@ impl Default for Registry {
                 (*id).into(),
                 if id.starts_with("electronic_") {
                     electronic::create
+                } else if id.starts_with("glass_") {
+                    crate::glass::create
                 } else {
                     behaviour::create
                 },
@@ -303,6 +334,7 @@ fn valid_item(item: &DrawItem) -> bool {
         x.is_finite() && y.is_finite() && (0. ..=320.).contains(&x) && (0. ..=180.).contains(&y)
     };
     match item {
+        DrawItem::Mesh { .. } => false,
         DrawItem::Circle { center, radius, .. } => {
             let [x, y] = *center;
             point(center)
@@ -333,8 +365,17 @@ pub struct InstrumentPanel {
     loaded: Option<Panel>,
     modules: Vec<Box<dyn Instrument>>,
     generation: Option<u64>,
+    heading_knobs: BTreeMap<String, heading::Knob>,
+    heading_commands: Vec<flightcraft_sim::avionics::AvionicsSetting>,
+    glass_commands: Vec<flightcraft_control::GlassSetting>,
 }
 impl InstrumentPanel {
+    pub fn take_heading_commands(&mut self) -> Vec<flightcraft_sim::avionics::AvionicsSetting> {
+        std::mem::take(&mut self.heading_commands)
+    }
+    pub fn take_glass_commands(&mut self) -> Vec<flightcraft_control::GlassSetting> {
+        std::mem::take(&mut self.glass_commands)
+    }
     pub fn with_options(options: DisplayOptions) -> Self {
         Self {
             options,
@@ -407,6 +448,23 @@ impl InstrumentPanel {
         let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
         let cells = layout(panel, rect);
         for ((installation, module), cell) in panel.instruments.iter().zip(&mut self.modules).zip(cells) {
+            if installation.module == "glass_mfd"
+                && ui.rect_contains_pointer(cell)
+                && let Some(glass) = input.glass
+            {
+                let wheel = ui.input_mut(|i| {
+                    let value = i.raw_scroll_delta.y;
+                    i.raw_scroll_delta.y = 0.;
+                    value
+                });
+                if wheel != 0. {
+                    self.glass_commands
+                        .push(flightcraft_control::GlassSetting::MapRange {
+                            range_nm: (glass.settings.range_nm * if wheel > 0. { 0.8 } else { 1.25 })
+                                .clamp(1., 200.),
+                        });
+                }
+            }
             let draw = module.update(input);
             if installation.module.starts_with("electronic_")
                 && ui
@@ -423,7 +481,28 @@ impl InstrumentPanel {
                 .ok_or_else(|| format!("Unknown skin: {}", installation.skin))?;
             let local = fit_size(cell, draw.size);
             scaled(ui.painter(), local, draw.size, |p| skin.paint(p, &draw));
-            if installation.module == "altimeter" || installation.module == "heading" {
+            let knob = match installation.module.as_str() {
+                "heading" => Some(([155., 143.], 12.)),
+                "electronic_hsi" => Some(([174., 110.], 12.)),
+                "glass_pfd" => Some(([359., 404.], 13.)),
+                _ => None,
+            };
+            if let Some(([x, y], radius)) = knob {
+                let [canvas_w, _] = draw.size;
+                let factor = local.width() / canvas_w;
+                let rect = Rect::from_center_size(
+                    local.min + egui::vec2(x, y) * factor,
+                    egui::vec2(radius * 2., radius * 2.) * factor,
+                );
+                self.heading_commands.extend(
+                    self.heading_knobs
+                        .entry(installation.id.clone())
+                        .or_default()
+                        .show(ui, ui.id().with(("hdg", &installation.id)), rect),
+                );
+            }
+
+            if installation.module == "altimeter" {
                 let scale = local.width() / 200.;
                 let knob = Rect::from_center_size(
                     local.min + egui::vec2(155., 143.) * scale,
@@ -502,11 +581,11 @@ fn layout(panel: &Panel, rect: Rect) -> Vec<Rect> {
 fn fit(cell: Rect) -> Rect {
     fit_size(cell, [200., 180.])
 }
-fn fit_size(cell: Rect, [width, height]: [f32; 2]) -> Rect {
+pub(crate) fn fit_size(cell: Rect, [width, height]: [f32; 2]) -> Rect {
     let scale = (cell.width() / width).min(cell.height() / height);
     Rect::from_center_size(cell.center(), egui::vec2(width, height) * scale)
 }
-fn scaled(p: &Painter, cell: Rect, size: [f32; 2], draw: impl FnOnce(&Painter)) {
+pub(crate) fn scaled(p: &Painter, cell: Rect, size: [f32; 2], draw: impl FnOnce(&Painter)) {
     let [width, _] = size;
     let scale = cell.width() / width;
     if !scale.is_finite() || scale <= 0. {

@@ -11,7 +11,7 @@ fn every_module_has_bounded_deterministic_lag_and_pauses() {
     let registry = Registry::default();
     for id in flightcraft_aero::INSTRUMENT_MODULES
         .iter()
-        .filter(|id| !id.starts_with("electronic_"))
+        .filter(|id| !id.starts_with("electronic_") && !id.starts_with("glass_"))
     {
         let mut s = SystemsState::default();
         s.sensed.attitude_valid = true;

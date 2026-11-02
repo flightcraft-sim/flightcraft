@@ -117,8 +117,14 @@ fn aircraft_schema_is_valid_and_matches_the_builtin_file() {
 fn builtin_larrow_lists_stages_resets_and_rejects_unknown_ids_atomically() {
     let mut s = Session::new().unwrap();
     let list = s.execute("aircraft.list", json!({})).unwrap();
-    assert_eq!(list["aircraft"].as_array().unwrap().len(), 3);
-    assert_eq!(list["aircraft"][2]["id"], "larrow");
+    assert_eq!(list["aircraft"].as_array().unwrap().len(), 4);
+    assert!(
+        list["aircraft"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|a| a["id"] == "larrow")
+    );
     s.execute(
         "aircraft.load",
         json!({"source":{"kind":"built_in","id":"larrow"}}),

@@ -105,7 +105,7 @@ actively takes ownership or the pilot selects another key position.
 The fuel selector shows LEFT / BOTH / RIGHT / OFF. Mixture displays a percentage of full rich
 and is adjustable by slider or 5% shortcut steps. Primer adds 20% charge per stroke. Master,
 avionics, alternator, fuel pump, lights, pitot heat, alternate static, and installed carb heat
-use the same command path. The heading knob wheel adjusts the bug by 1°. Systems shortcuts
+use the same command path. The heading knob uses the shared heading selection described below. Systems shortcuts
 are bindable in the persisted keymap and start unassigned, preserving existing custom keys.
 
 ## Runtime skin extension
@@ -207,9 +207,9 @@ direct-to captures a new origin. Reset clears the destination and restarts align
 
 Click either screen to open its shared controls and searchable airport list. Heading, course,
 baro, selected altitude, direct-to, power, and reversion changes produce `avionics.set` commands.
-The corresponding actions are bindable in the persisted keymap and initially unassigned. On this
-panel the existing heading-bug and baro shortcuts address the electronic units; round backup knobs
-continue through `systems.set`. The direct-to shortcut opens the entry window.
+The corresponding actions are bindable in the persisted keymap. Heading selection is shared
+with the six-pack, integrated glass, and autopilot heading hold; baro shortcuts address the
+electronic units on this panel. Round backup baro knobs continue through `systems.set`. The direct-to shortcut opens the entry window.
 
 Example command inputs:
 
@@ -225,7 +225,8 @@ Example command inputs:
 {"setting":{"kind":"air_data_failure","failed":true}}
 ```
 
-`avionics.state` takes `{}` and returns `installed`, `electronic_attitude`, and `electronic_hsi`.
+`avionics.state` takes `{}` and returns `installed`, `electronic_attitude`, `electronic_hsi`,
+and `glass_suite` through one command registry entry.
 It is also included in `systems.avionics` in ordinary simulation snapshots. Outputs use pilot
 units (degrees, knots, feet, ft/min, nm, and inHg), include every validity, alignment, power, and
 reversion flag used by the skin, and retain flagged values beneath failure crosses. HSI
@@ -239,3 +240,18 @@ Rust integrations use `Sim::set_avionics(AvionicsSetting)` and `systems().avioni
 `InstrumentPanel::avionics_controls.take_settings` drains command requests after drawing.
 The simulation includes both displayed and hidden avionics state in standby replay hashes;
 conventional-panel trajectories keep their existing baseline.
+
+The standby pair and integrated glass share `sim::avionics::sensor` for quaternion AHRS and
+pressure air data and `sim::avionics::navigation` for WGS84 inverse and great-circle tracking.
+Separate powered units retain independent alignment, batteries, and faults. The standby receiver
+retains its blocked-pitot hold policy; glass consumes trapped pressure indications directly.
+
+Every heading unit has the same wheel/drag/push knob and notched rose marker. New keymaps use
+comma/period for 1° heading detents and H to sync; all three shortcuts remain configurable.
+Rapid encoder events below 80 ms accelerate to 10° per detent. All selections, including
+`heading_bug_step` and `heading_bug_sync`, go through `avionics.set` and update an engaged HDG
+hold. See [the glass command reference](glass.md#shared-heading-selection) for encoder examples.
+The standby heading readout shows the selected bug heading, with actual heading beside the rose.
+Slip/skid and a turn-rate trend replace diagnostic roll/turn text. Normal bus status is hidden;
+battery operation is annunciated. Valid calm wind displays 000° / 0 KT, and unavailable wind
+retains dashes. All instrument labels suppress signed zero after rounding.

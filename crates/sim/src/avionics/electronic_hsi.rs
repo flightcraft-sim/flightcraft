@@ -5,7 +5,7 @@ use flightcraft_world::World;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-const EARTH_NM: f64 = 6371008.8 / 1852.;
+use super::navigation::{cross_track, inverse_nm as inverse};
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct ElectronicHsi {
     pub reversion_attitude: ElectronicAttitude,
@@ -164,11 +164,11 @@ impl ElectronicHsi {
             }
         }
         self.wind_speed_kt = Some(libm::hypot(wn, we) * 1.94384449);
-        self.wind_from_deg = if libm::hypot(wn, we) > 0.1 {
-            true_bearing(-wn, -we)
+        self.wind_from_deg = Some(if libm::hypot(wn, we) > 0.1 {
+            true_bearing(-wn, -we).unwrap_or(0.)
         } else {
-            None
-        };
+            0.
+        });
         if let (Some(pos), Some(dest), Some(origin)) = (position, self.destination_position, self.leg_origin)
         {
             let (distance, bearing) = inverse(pos, dest);
@@ -180,82 +180,6 @@ impl ElectronicHsi {
             self.cdi = Some((cross / self.full_scale_nm).clamp(-1., 1.));
         }
     }
-}
-/// Signed great-circle cross-track distance; positive is to the right of the outbound course.
-fn cross_track(origin: [f64; 2], position: [f64; 2], course_deg: f64) -> f64 {
-    let (distance, bearing) = spherical_inverse(origin, position);
-    libm::asin(
-        (libm::sin(distance / EARTH_NM) * libm::sin((bearing - course_deg).to_radians())).clamp(-1., 1.),
-    ) * EARTH_NM
-}
-fn spherical_inverse([lat1, lon1]: [f64; 2], [lat2, lon2]: [f64; 2]) -> (f64, f64) {
-    let (a, b, d) = (lat1.to_radians(), lat2.to_radians(), (lon2 - lon1).to_radians());
-    let y = libm::sin(d) * libm::cos(b);
-    let x = libm::cos(a) * libm::sin(b) - libm::sin(a) * libm::cos(b) * libm::cos(d);
-    let central = libm::atan2(
-        libm::hypot(x, y),
-        libm::sin(a) * libm::sin(b) + libm::cos(a) * libm::cos(b) * libm::cos(d),
-    );
-    (
-        central * EARTH_NM,
-        libm::atan2(y, x).to_degrees().rem_euclid(360.),
-    )
-}
-/// WGS84 inverse geodesic using a bounded reduced-latitude iteration, in nm and true degrees.
-fn inverse(from: [f64; 2], to: [f64; 2]) -> (f64, f64) {
-    let [lat1, lon1] = from;
-    let [lat2, lon2] = to;
-    let f = 1. / 298.257223563;
-    let b = 6378137. * (1. - f);
-    let u1 = libm::atan((1. - f) * libm::tan(lat1.to_radians()));
-    let u2 = libm::atan((1. - f) * libm::tan(lat2.to_radians()));
-    let (s1, c1, s2, c2) = (libm::sin(u1), libm::cos(u1), libm::sin(u2), libm::cos(u2));
-    let l = (lon2 - lon1).to_radians();
-    let mut lambda = l;
-    for _ in 0..64 {
-        let (sl, cl) = (libm::sin(lambda), libm::cos(lambda));
-        let sin_sigma = libm::hypot(c2 * sl, c1 * s2 - s1 * c2 * cl);
-        if sin_sigma < 1e-15 {
-            return (0., 0.);
-        }
-        let cos_sigma = s1 * s2 + c1 * c2 * cl;
-        let sigma = libm::atan2(sin_sigma, cos_sigma);
-        let sin_alpha = c1 * c2 * sl / sin_sigma;
-        let cos2_alpha = 1. - sin_alpha * sin_alpha;
-        let cos2_mid = if cos2_alpha > 1e-15 {
-            cos_sigma - 2. * s1 * s2 / cos2_alpha
-        } else {
-            0.
-        };
-        let c = f / 16. * cos2_alpha * (4. + f * (4. - 3. * cos2_alpha));
-        let next = l
-            + (1. - c)
-                * f
-                * sin_alpha
-                * (sigma + c * sin_sigma * (cos2_mid + c * cos_sigma * (-1. + 2. * cos2_mid * cos2_mid)));
-        if (next - lambda).abs() < 1e-12 {
-            let u = cos2_alpha * (6378137_f64 * 6378137. - b * b) / (b * b);
-            let a = 1. + u / 16384. * (4096. + u * (-768. + u * (320. - 175. * u)));
-            let bb = u / 1024. * (256. + u * (-128. + u * (74. - 47. * u)));
-            let delta = bb
-                * sin_sigma
-                * (cos2_mid
-                    + bb / 4.
-                        * (cos_sigma * (-1. + 2. * cos2_mid * cos2_mid)
-                            - bb / 6.
-                                * cos2_mid
-                                * (-3. + 4. * sin_sigma * sin_sigma)
-                                * (-3. + 4. * cos2_mid * cos2_mid)));
-            return (
-                b * a * (sigma - delta) / 1852.,
-                libm::atan2(c2 * sl, c1 * s2 - s1 * c2 * cl)
-                    .to_degrees()
-                    .rem_euclid(360.),
-            );
-        }
-        lambda = next;
-    }
-    spherical_inverse(from, to)
 }
 #[cfg(test)]
 mod tests {

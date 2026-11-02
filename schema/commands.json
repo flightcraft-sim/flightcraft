@@ -6802,6 +6802,2231 @@
     }
   },
   {
+    "name": "avionics.set",
+    "description": "Set, step, or sync the shared heading bug, or control standby and glass equipment.",
+    "input_schema": {
+      "$defs": {
+        "AvionicsSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "glass",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/GlassSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "detents": {
+                  "format": "int32",
+                  "maximum": 360,
+                  "minimum": -360,
+                  "type": "integer"
+                },
+                "interval_ms": {
+                  "default": null,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "heading_bug_step",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "detents"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "heading_bug_sync",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "baro",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 105000,
+                  "minimum": 95000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "feet": {
+                  "format": "double",
+                  "maximum": 30000,
+                  "minimum": -1000,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "feet"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "power",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "ahrs_failure",
+                  "type": "string"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "air_data_failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "reversion",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "BearingPointer": {
+          "enum": [
+            "off",
+            "gps"
+          ],
+          "type": "string"
+        },
+        "GlassFailure": {
+          "enum": [
+            "ahrs",
+            "adc",
+            "pfd",
+            "mfd"
+          ],
+          "type": "string"
+        },
+        "GlassPage": {
+          "enum": [
+            "map",
+            "nearest",
+            "flight_plan"
+          ],
+          "type": "string"
+        },
+        "GlassSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "heading_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "course_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "course_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 15000,
+                  "minimum": -500,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "baro",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 110000,
+                  "minimum": 80000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "hpa": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "pressure_units",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "hpa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "bearing_pointer",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/BearingPointer"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 4,
+                  "minLength": 4,
+                  "pattern": "^[0-7]{4}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "transponder",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/TransponderMode"
+                }
+              },
+              "required": [
+                "kind",
+                "code",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "map_range",
+                  "type": "string"
+                },
+                "range_nm": {
+                  "format": "double",
+                  "maximum": 200,
+                  "minimum": 1,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "range_nm"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "orientation",
+                  "type": "string"
+                },
+                "orientation": {
+                  "$ref": "#/$defs/MapOrientation"
+                }
+              },
+              "required": [
+                "kind",
+                "orientation"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "page",
+                  "type": "string"
+                },
+                "page": {
+                  "$ref": "#/$defs/GlassPage"
+                }
+              },
+              "required": [
+                "kind",
+                "page"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airports": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airports"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "active_leg",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/GlassFailure"
+                }
+              },
+              "required": [
+                "kind",
+                "target",
+                "failed"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "MapOrientation": {
+          "enum": [
+            "north_up",
+            "track_up"
+          ],
+          "type": "string"
+        },
+        "TransponderMode": {
+          "enum": [
+            "off",
+            "standby",
+            "on",
+            "alt"
+          ],
+          "type": "string"
+        },
+        "Unit": {
+          "enum": [
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "setting": {
+          "$ref": "#/$defs/AvionicsSetting"
+        }
+      },
+      "required": [
+        "setting"
+      ],
+      "title": "SetAvionics",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirDataComputer": {
+          "properties": {
+            "adc_failed": {
+              "type": "boolean"
+            },
+            "ahrs_failed": {
+              "type": "boolean"
+            },
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_trend_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "outside_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "previous_ias": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "true_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "alignment_remaining_s",
+            "powered",
+            "attitude_valid",
+            "ahrs_failed",
+            "adc_failed",
+            "air_data_valid",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "slip_g",
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "airspeed_trend_mps",
+            "altitude_trend_m",
+            "true_airspeed_mps",
+            "outside_temperature_c"
+          ],
+          "type": "object"
+        },
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "BearingPointer": {
+          "enum": [
+            "off",
+            "gps"
+          ],
+          "type": "string"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "EngineValue": {
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            },
+            "normal": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "value": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "value",
+            "unit",
+            "min",
+            "max",
+            "normal"
+          ],
+          "type": "object"
+        },
+        "GlassPage": {
+          "enum": [
+            "map",
+            "nearest",
+            "flight_plan"
+          ],
+          "type": "string"
+        },
+        "GlassSettings": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "bearing_pointer": {
+              "$ref": "#/$defs/BearingPointer"
+            },
+            "course_manual": {
+              "type": "boolean"
+            },
+            "course_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "flight_plan": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "leg_origin_deg": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "orientation": {
+              "$ref": "#/$defs/MapOrientation"
+            },
+            "page": {
+              "$ref": "#/$defs/GlassPage"
+            },
+            "pressure_hpa": {
+              "type": "boolean"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "transponder_code": {
+              "type": "string"
+            },
+            "transponder_mode": {
+              "$ref": "#/$defs/TransponderMode"
+            }
+          },
+          "required": [
+            "heading_bug_rad",
+            "course_rad",
+            "course_manual",
+            "selected_altitude_m",
+            "pressure_hpa",
+            "bearing_pointer",
+            "transponder_code",
+            "transponder_mode",
+            "range_nm",
+            "orientation",
+            "page",
+            "flight_plan",
+            "active_leg"
+          ],
+          "type": "object"
+        },
+        "GlassState": {
+          "properties": {
+            "air_data": {
+              "$ref": "#/$defs/AirDataComputer"
+            },
+            "aircraft_heading_relative_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "airports": {
+              "items": {
+                "$ref": "#/$defs/MapAirport"
+              },
+              "type": "array"
+            },
+            "baro_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine": {
+              "items": {
+                "$ref": "#/$defs/EngineValue"
+              },
+              "type": "array"
+            },
+            "gps": {
+              "$ref": "#/$defs/GpsState"
+            },
+            "ground_speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "ground_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "mfd_failed": {
+              "type": "boolean"
+            },
+            "nearest": {
+              "items": {
+                "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "outlines": {
+              "items": {
+                "$ref": "#/$defs/MapOutline"
+              },
+              "type": "array"
+            },
+            "pfd_failed": {
+              "type": "boolean"
+            },
+            "region": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "settings": {
+              "$ref": "#/$defs/GlassSettings"
+            },
+            "standby": {
+              "$ref": "#/$defs/AirDataComputer"
+            },
+            "standby_on_backup": {
+              "type": "boolean"
+            },
+            "standby_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "terrain": {
+              "$ref": "#/$defs/TerrainRaster",
+              "description": "Map coordinates are fractions of a square spanning twice the selected range."
+            },
+            "wind_from_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "settings",
+            "air_data",
+            "standby",
+            "standby_on_backup",
+            "standby_remaining_s",
+            "pfd_failed",
+            "mfd_failed",
+            "reversion",
+            "baro_pa",
+            "ground_speed_mps",
+            "ground_track_rad",
+            "wind_from_rad",
+            "wind_speed_mps",
+            "gps",
+            "nearest",
+            "engine",
+            "terrain",
+            "outlines",
+            "airports",
+            "aircraft_heading_relative_rad"
+          ],
+          "type": "object"
+        },
+        "GpsState": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "bearing_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "cdi_deviation": {
+              "description": "Positive needle displacement commands a correction to the right.",
+              "format": "double",
+              "type": "number"
+            },
+            "cdi_full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "cross_track_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "ete_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "valid": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "valid",
+            "active_leg",
+            "distance_nm",
+            "bearing_rad",
+            "desired_track_rad",
+            "cross_track_nm",
+            "cdi_full_scale_nm",
+            "cdi_deviation",
+            "legs"
+          ],
+          "type": "object"
+        },
+        "MapAirport": {
+          "properties": {
+            "ident": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "runways": {
+              "items": {
+                "items": {
+                  "items": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "ident",
+            "position",
+            "runways"
+          ],
+          "type": "object"
+        },
+        "MapOrientation": {
+          "enum": [
+            "north_up",
+            "track_up"
+          ],
+          "type": "string"
+        },
+        "MapOutline": {
+          "properties": {
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "string"
+            },
+            "rings": {
+              "items": {
+                "items": {
+                  "items": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "rings"
+          ],
+          "type": "object"
+        },
+        "NavigationLeg": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "bearing_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "ete_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "airport",
+            "distance_nm",
+            "bearing_rad"
+          ],
+          "type": "object"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "TerrainRaster": {
+          "properties": {
+            "columns": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "description": "North-up or track-up chart samples, left to right, top to bottom; null is uncovered.",
+              "items": {
+                "format": "float",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "type": "array"
+            },
+            "rows": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "columns",
+            "rows",
+            "elevation_m"
+          ],
+          "type": "object"
+        },
+        "TransponderMode": {
+          "enum": [
+            "off",
+            "standby",
+            "on",
+            "alt"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "electronic_attitude": {
+          "$ref": "#/$defs/ElectronicAttitude"
+        },
+        "electronic_hsi": {
+          "$ref": "#/$defs/ElectronicHsi"
+        },
+        "glass_suite": {
+          "$ref": "#/$defs/GlassState"
+        },
+        "installed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "installed",
+        "electronic_attitude",
+        "electronic_hsi",
+        "glass_suite"
+      ],
+      "title": "AvionicsState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "avionics.state",
+    "description": "Read standby and glass displayed values and flags without advancing time.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetAvionics",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirDataComputer": {
+          "properties": {
+            "adc_failed": {
+              "type": "boolean"
+            },
+            "ahrs_failed": {
+              "type": "boolean"
+            },
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_trend_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "outside_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "previous_ias": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "true_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "alignment_remaining_s",
+            "powered",
+            "attitude_valid",
+            "ahrs_failed",
+            "adc_failed",
+            "air_data_valid",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "slip_g",
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "airspeed_trend_mps",
+            "altitude_trend_m",
+            "true_airspeed_mps",
+            "outside_temperature_c"
+          ],
+          "type": "object"
+        },
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "BearingPointer": {
+          "enum": [
+            "off",
+            "gps"
+          ],
+          "type": "string"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "EngineValue": {
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            },
+            "normal": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "unit": {
+              "type": "string"
+            },
+            "value": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "value",
+            "unit",
+            "min",
+            "max",
+            "normal"
+          ],
+          "type": "object"
+        },
+        "GlassPage": {
+          "enum": [
+            "map",
+            "nearest",
+            "flight_plan"
+          ],
+          "type": "string"
+        },
+        "GlassSettings": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "bearing_pointer": {
+              "$ref": "#/$defs/BearingPointer"
+            },
+            "course_manual": {
+              "type": "boolean"
+            },
+            "course_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "flight_plan": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "leg_origin_deg": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "orientation": {
+              "$ref": "#/$defs/MapOrientation"
+            },
+            "page": {
+              "$ref": "#/$defs/GlassPage"
+            },
+            "pressure_hpa": {
+              "type": "boolean"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "transponder_code": {
+              "type": "string"
+            },
+            "transponder_mode": {
+              "$ref": "#/$defs/TransponderMode"
+            }
+          },
+          "required": [
+            "heading_bug_rad",
+            "course_rad",
+            "course_manual",
+            "selected_altitude_m",
+            "pressure_hpa",
+            "bearing_pointer",
+            "transponder_code",
+            "transponder_mode",
+            "range_nm",
+            "orientation",
+            "page",
+            "flight_plan",
+            "active_leg"
+          ],
+          "type": "object"
+        },
+        "GlassState": {
+          "properties": {
+            "air_data": {
+              "$ref": "#/$defs/AirDataComputer"
+            },
+            "aircraft_heading_relative_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "airports": {
+              "items": {
+                "$ref": "#/$defs/MapAirport"
+              },
+              "type": "array"
+            },
+            "baro_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine": {
+              "items": {
+                "$ref": "#/$defs/EngineValue"
+              },
+              "type": "array"
+            },
+            "gps": {
+              "$ref": "#/$defs/GpsState"
+            },
+            "ground_speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "ground_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "mfd_failed": {
+              "type": "boolean"
+            },
+            "nearest": {
+              "items": {
+                "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "outlines": {
+              "items": {
+                "$ref": "#/$defs/MapOutline"
+              },
+              "type": "array"
+            },
+            "pfd_failed": {
+              "type": "boolean"
+            },
+            "region": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "settings": {
+              "$ref": "#/$defs/GlassSettings"
+            },
+            "standby": {
+              "$ref": "#/$defs/AirDataComputer"
+            },
+            "standby_on_backup": {
+              "type": "boolean"
+            },
+            "standby_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "terrain": {
+              "$ref": "#/$defs/TerrainRaster",
+              "description": "Map coordinates are fractions of a square spanning twice the selected range."
+            },
+            "wind_from_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "settings",
+            "air_data",
+            "standby",
+            "standby_on_backup",
+            "standby_remaining_s",
+            "pfd_failed",
+            "mfd_failed",
+            "reversion",
+            "baro_pa",
+            "ground_speed_mps",
+            "ground_track_rad",
+            "wind_from_rad",
+            "wind_speed_mps",
+            "gps",
+            "nearest",
+            "engine",
+            "terrain",
+            "outlines",
+            "airports",
+            "aircraft_heading_relative_rad"
+          ],
+          "type": "object"
+        },
+        "GpsState": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "bearing_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "cdi_deviation": {
+              "description": "Positive needle displacement commands a correction to the right.",
+              "format": "double",
+              "type": "number"
+            },
+            "cdi_full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "cross_track_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "ete_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "valid": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "valid",
+            "active_leg",
+            "distance_nm",
+            "bearing_rad",
+            "desired_track_rad",
+            "cross_track_nm",
+            "cdi_full_scale_nm",
+            "cdi_deviation",
+            "legs"
+          ],
+          "type": "object"
+        },
+        "MapAirport": {
+          "properties": {
+            "ident": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "runways": {
+              "items": {
+                "items": {
+                  "items": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "ident",
+            "position",
+            "runways"
+          ],
+          "type": "object"
+        },
+        "MapOrientation": {
+          "enum": [
+            "north_up",
+            "track_up"
+          ],
+          "type": "string"
+        },
+        "MapOutline": {
+          "properties": {
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "string"
+            },
+            "rings": {
+              "items": {
+                "items": {
+                  "items": {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "rings"
+          ],
+          "type": "object"
+        },
+        "NavigationLeg": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "bearing_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "ete_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "airport",
+            "distance_nm",
+            "bearing_rad"
+          ],
+          "type": "object"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "TerrainRaster": {
+          "properties": {
+            "columns": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "description": "North-up or track-up chart samples, left to right, top to bottom; null is uncovered.",
+              "items": {
+                "format": "float",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "type": "array"
+            },
+            "rows": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "columns",
+            "rows",
+            "elevation_m"
+          ],
+          "type": "object"
+        },
+        "TransponderMode": {
+          "enum": [
+            "off",
+            "standby",
+            "on",
+            "alt"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "electronic_attitude": {
+          "$ref": "#/$defs/ElectronicAttitude"
+        },
+        "electronic_hsi": {
+          "$ref": "#/$defs/ElectronicHsi"
+        },
+        "glass_suite": {
+          "$ref": "#/$defs/GlassState"
+        },
+        "installed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "installed",
+        "electronic_attitude",
+        "electronic_hsi",
+        "glass_suite"
+      ],
+      "title": "AvionicsState",
+      "type": "object"
+    }
+  },
+  {
     "name": "failure.set",
     "description": "Fail the engine, vacuum pump, alternator, or pitot/static ports; reduce power or jam a surface.",
     "input_schema": {
@@ -10879,708 +13104,6 @@
         "longitude_deg"
       ],
       "title": "Coordinate",
-      "type": "object"
-    }
-  },
-  {
-    "name": "avionics.set",
-    "description": "Set a standby unit's heading bug, course, baro, altitude, direct-to airport, power, reversion, or sensor failure.",
-    "input_schema": {
-      "$defs": {
-        "AvionicsSetting": {
-          "oneOf": [
-            {
-              "additionalProperties": false,
-              "properties": {
-                "degrees": {
-                  "format": "double",
-                  "maximum": 360,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "kind": {
-                  "const": "heading_bug",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "degrees"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "degrees": {
-                  "format": "double",
-                  "maximum": 360,
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "kind": {
-                  "const": "course",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "degrees"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "kind": {
-                  "const": "baro",
-                  "type": "string"
-                },
-                "pressure_pa": {
-                  "format": "double",
-                  "maximum": 105000,
-                  "minimum": 95000,
-                  "type": "number"
-                }
-              },
-              "required": [
-                "kind",
-                "pressure_pa"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "feet": {
-                  "format": "double",
-                  "maximum": 30000,
-                  "minimum": -1000,
-                  "type": "number"
-                },
-                "kind": {
-                  "const": "selected_altitude",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "feet"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "ident": {
-                  "maxLength": 8,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "kind": {
-                  "const": "direct_to",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "ident"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "kind": {
-                  "const": "power",
-                  "type": "string"
-                },
-                "on": {
-                  "type": "boolean"
-                },
-                "unit": {
-                  "$ref": "#/$defs/Unit"
-                }
-              },
-              "required": [
-                "kind",
-                "unit",
-                "on"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failed": {
-                  "type": "boolean"
-                },
-                "kind": {
-                  "const": "ahrs_failure",
-                  "type": "string"
-                },
-                "unit": {
-                  "$ref": "#/$defs/Unit"
-                }
-              },
-              "required": [
-                "kind",
-                "unit",
-                "failed"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "failed": {
-                  "type": "boolean"
-                },
-                "kind": {
-                  "const": "air_data_failure",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "failed"
-              ],
-              "type": "object"
-            },
-            {
-              "additionalProperties": false,
-              "properties": {
-                "enabled": {
-                  "type": "boolean"
-                },
-                "kind": {
-                  "const": "reversion",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "kind",
-                "enabled"
-              ],
-              "type": "object"
-            }
-          ]
-        },
-        "Unit": {
-          "enum": [
-            "electronic_attitude",
-            "electronic_hsi"
-          ],
-          "type": "string"
-        }
-      },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "properties": {
-        "setting": {
-          "$ref": "#/$defs/AvionicsSetting"
-        }
-      },
-      "required": [
-        "setting"
-      ],
-      "title": "SetAvionics",
-      "type": "object"
-    },
-    "output_schema": {
-      "$defs": {
-        "ElectronicAttitude": {
-          "properties": {
-            "air_data_valid": {
-              "type": "boolean"
-            },
-            "airspeed_kt": {
-              "format": "double",
-              "type": "number"
-            },
-            "airspeed_trend_kt": {
-              "description": "Six-second prediction, in knots relative to the current tape value.",
-              "format": "double",
-              "type": "number"
-            },
-            "aligning": {
-              "type": "boolean"
-            },
-            "alignment_remaining_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "altitude_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "altitude_trend_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "attitude_valid": {
-              "type": "boolean"
-            },
-            "baro_inhg": {
-              "format": "double",
-              "type": "number"
-            },
-            "heading_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "pitch_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "power": {
-              "$ref": "#/$defs/Power"
-            },
-            "roll_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "selected_altitude_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "slip_g": {
-              "format": "double",
-              "type": "number"
-            },
-            "turn_rate_deg_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "vertical_speed_fpm": {
-              "format": "double",
-              "type": "number"
-            }
-          },
-          "required": [
-            "power",
-            "aligning",
-            "alignment_remaining_s",
-            "attitude_valid",
-            "air_data_valid",
-            "roll_deg",
-            "pitch_deg",
-            "heading_deg",
-            "airspeed_kt",
-            "airspeed_trend_kt",
-            "altitude_ft",
-            "altitude_trend_ft",
-            "vertical_speed_fpm",
-            "selected_altitude_ft",
-            "baro_inhg",
-            "slip_g",
-            "turn_rate_deg_s"
-          ],
-          "type": "object"
-        },
-        "ElectronicHsi": {
-          "properties": {
-            "bearing_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "cdi": {
-              "description": "Positive right of course, clamped at the displayed full-scale stops.",
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "course_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "destination": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "distance_nm": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "full_scale_nm": {
-              "format": "double",
-              "type": "number"
-            },
-            "gps_fix": {
-              "type": "boolean"
-            },
-            "ground_speed_kt": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "heading_bug_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "lateral_deviation_nm": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "manual_reversion": {
-              "type": "boolean"
-            },
-            "reversion": {
-              "type": "boolean"
-            },
-            "reversion_attitude": {
-              "$ref": "#/$defs/ElectronicAttitude"
-            },
-            "track_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "wind_from_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "wind_speed_kt": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            }
-          },
-          "required": [
-            "reversion_attitude",
-            "heading_bug_deg",
-            "course_deg",
-            "gps_fix",
-            "full_scale_nm",
-            "reversion",
-            "manual_reversion"
-          ],
-          "type": "object"
-        },
-        "Power": {
-          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
-          "properties": {
-            "battery_endurance_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "battery_remaining_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "on_battery": {
-              "type": "boolean"
-            },
-            "powered": {
-              "type": "boolean"
-            },
-            "switch_on": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "switch_on",
-            "powered",
-            "on_battery",
-            "battery_remaining_s",
-            "battery_endurance_s"
-          ],
-          "type": "object"
-        }
-      },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "properties": {
-        "electronic_attitude": {
-          "$ref": "#/$defs/ElectronicAttitude"
-        },
-        "electronic_hsi": {
-          "$ref": "#/$defs/ElectronicHsi"
-        },
-        "installed": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "installed",
-        "electronic_attitude",
-        "electronic_hsi"
-      ],
-      "title": "AvionicsState",
-      "type": "object"
-    }
-  },
-  {
-    "name": "avionics.state",
-    "description": "Read the displayed standby values, power, alignment, validity flags, GPS guidance, and reversion state without advancing time.",
-    "input_schema": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "title": "GetAvionics",
-      "type": "object"
-    },
-    "output_schema": {
-      "$defs": {
-        "ElectronicAttitude": {
-          "properties": {
-            "air_data_valid": {
-              "type": "boolean"
-            },
-            "airspeed_kt": {
-              "format": "double",
-              "type": "number"
-            },
-            "airspeed_trend_kt": {
-              "description": "Six-second prediction, in knots relative to the current tape value.",
-              "format": "double",
-              "type": "number"
-            },
-            "aligning": {
-              "type": "boolean"
-            },
-            "alignment_remaining_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "altitude_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "altitude_trend_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "attitude_valid": {
-              "type": "boolean"
-            },
-            "baro_inhg": {
-              "format": "double",
-              "type": "number"
-            },
-            "heading_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "pitch_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "power": {
-              "$ref": "#/$defs/Power"
-            },
-            "roll_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "selected_altitude_ft": {
-              "format": "double",
-              "type": "number"
-            },
-            "slip_g": {
-              "format": "double",
-              "type": "number"
-            },
-            "turn_rate_deg_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "vertical_speed_fpm": {
-              "format": "double",
-              "type": "number"
-            }
-          },
-          "required": [
-            "power",
-            "aligning",
-            "alignment_remaining_s",
-            "attitude_valid",
-            "air_data_valid",
-            "roll_deg",
-            "pitch_deg",
-            "heading_deg",
-            "airspeed_kt",
-            "airspeed_trend_kt",
-            "altitude_ft",
-            "altitude_trend_ft",
-            "vertical_speed_fpm",
-            "selected_altitude_ft",
-            "baro_inhg",
-            "slip_g",
-            "turn_rate_deg_s"
-          ],
-          "type": "object"
-        },
-        "ElectronicHsi": {
-          "properties": {
-            "bearing_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "cdi": {
-              "description": "Positive right of course, clamped at the displayed full-scale stops.",
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "course_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "destination": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "distance_nm": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "full_scale_nm": {
-              "format": "double",
-              "type": "number"
-            },
-            "gps_fix": {
-              "type": "boolean"
-            },
-            "ground_speed_kt": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "heading_bug_deg": {
-              "format": "double",
-              "type": "number"
-            },
-            "lateral_deviation_nm": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "manual_reversion": {
-              "type": "boolean"
-            },
-            "reversion": {
-              "type": "boolean"
-            },
-            "reversion_attitude": {
-              "$ref": "#/$defs/ElectronicAttitude"
-            },
-            "track_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "wind_from_deg": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            },
-            "wind_speed_kt": {
-              "format": "double",
-              "type": [
-                "number",
-                "null"
-              ]
-            }
-          },
-          "required": [
-            "reversion_attitude",
-            "heading_bug_deg",
-            "course_deg",
-            "gps_fix",
-            "full_scale_nm",
-            "reversion",
-            "manual_reversion"
-          ],
-          "type": "object"
-        },
-        "Power": {
-          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
-          "properties": {
-            "battery_endurance_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "battery_remaining_s": {
-              "format": "double",
-              "type": "number"
-            },
-            "on_battery": {
-              "type": "boolean"
-            },
-            "powered": {
-              "type": "boolean"
-            },
-            "switch_on": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "switch_on",
-            "powered",
-            "on_battery",
-            "battery_remaining_s",
-            "battery_endurance_s"
-          ],
-          "type": "object"
-        }
-      },
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "properties": {
-        "electronic_attitude": {
-          "$ref": "#/$defs/ElectronicAttitude"
-        },
-        "electronic_hsi": {
-          "$ref": "#/$defs/ElectronicHsi"
-        },
-        "installed": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "installed",
-        "electronic_attitude",
-        "electronic_hsi"
-      ],
-      "title": "AvionicsState",
       "type": "object"
     }
   }

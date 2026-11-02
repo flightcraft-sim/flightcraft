@@ -4,9 +4,11 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
-mod aircraft;
+pub mod glass;
+pub use glass::*;
 mod avionics;
 pub use avionics::*;
+mod aircraft;
 mod airspace;
 pub use airspace::*;
 mod regions;
@@ -69,6 +71,7 @@ pub enum CommandError {
 #[derive(Debug)]
 pub struct Session {
     sim: Sim,
+    glass: GlassSettings,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
     selected_configuration: Option<flightcraft_aero::ResolvedAircraft>,
@@ -94,6 +97,7 @@ impl Session {
             aircraft_catalog,
             sim: Sim::new(&Start::Runway)?,
             selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
+            glass: GlassSettings::default(),
             paused: true,
             rate: 1.0,
             camera: None,
@@ -158,7 +162,10 @@ impl Session {
 
     /// Run a typed command.
     pub fn run<C: Command>(&mut self, command: C) -> Result<C::Output, CommandError> {
-        command.run(self)
+        self.sequence_glass();
+        let result = command.run(self);
+        self.sequence_glass();
+        result
     }
 
     /// Run a command by name with JSON input; the output is JSON.
@@ -601,6 +608,8 @@ registry!(
     GetState,
     SetWeather,
     SetSystems,
+    SetAvionics,
+    GetAvionics,
     SetFailure,
     ClearFailure,
     Pause,
@@ -614,9 +623,7 @@ registry!(
     AppScreenshot,
     Wait,
     AirportQuery,
-    Geodetic,
-    SetAvionics,
-    GetAvionics
+    Geodetic
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.

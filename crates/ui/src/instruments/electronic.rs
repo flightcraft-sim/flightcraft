@@ -30,7 +30,10 @@ impl Instrument for Hsi {
         d.label(
             [100., 23.],
             if a.attitude_valid {
-                format!("HDG {:03.0}", a.heading_deg)
+                format!(
+                    "HDG {}",
+                    super::heading::degrees_text(h.heading_bug_deg.to_radians())
+                )
             } else if a.aligning {
                 format!("ALIGNING {:02.0}s", a.alignment_remaining_s)
             } else {
@@ -60,8 +63,16 @@ impl Instrument for Hsi {
                 d.label(point(32.), text, 7., Ink::Text);
             }
         }
-        let bug = compass(center, h.heading_bug_deg - a.heading_deg, 44.);
-        d.circle(bug, 2., Ink::Needle);
+        super::heading::marker(
+            &mut d,
+            center,
+            43.,
+            h.heading_bug_deg.to_radians(),
+            a.heading_deg.to_radians(),
+            std::f64::consts::PI,
+        );
+        super::heading::knob_art(&mut d, [174., 110.], 9.);
+        d.label([174., 94.], "HDG", 7., Ink::Needle);
         let course = h.course_deg - a.heading_deg;
         d.line(
             compass(center, course, 29.),
@@ -95,7 +106,10 @@ impl Instrument for Hsi {
         }
         d.label(
             [29., 47.],
-            format!("BUG\n{:03.0}", h.heading_bug_deg),
+            format!(
+                "ACT\n{}",
+                super::heading::degrees_text(a.heading_deg.to_radians())
+            ),
             7.,
             Ink::Needle,
         );
@@ -191,7 +205,7 @@ fn base(a: &ElectronicAttitude, title: &str) -> DrawList {
             a.power.battery_remaining_s / a.power.battery_endurance_s * 100.
         )
     } else {
-        "BUS".into()
+        String::new()
     };
     d.label(
         [153., 10.],
@@ -272,7 +286,7 @@ fn attitude(a: &ElectronicAttitude, input: InstrumentInput<'_>, title: &str) -> 
         ],
         ink: Ink::Needle,
     });
-    d.label([100., 22.], format!("ROLL {:+.0}°", a.roll_deg), 7., Ink::Text);
+
     d.line([82., 79.], [94., 79.], Ink::Needle, 2.);
     d.line([106., 79.], [118., 79.], Ink::Needle, 2.);
     d.circle([100., 79.], 2., Ink::Needle);
@@ -336,11 +350,16 @@ fn attitude(a: &ElectronicAttitude, input: InstrumentInput<'_>, title: &str) -> 
         8.,
         Ink::Text,
     );
-    d.label(
-        [151., 152.],
-        format!("TURN {:+.1}°/s", a.turn_rate_deg_s),
-        7.,
-        Ink::Text,
+    // Three-degree-per-second standard-rate marks and a proportional turn trend.
+    d.line([127., 152.], [177., 152.], Ink::Muted, 1.);
+    for x in [127., 152., 177.] {
+        d.line([x, 149.], [x, 155.], Ink::Text, 1.);
+    }
+    d.line(
+        [152., 152.],
+        [152. + (a.turn_rate_deg_s / 3.).clamp(-1., 1.) as f32 * 25., 152.],
+        Ink::Needle,
+        3.,
     );
     d.line([65., 166.], [135., 166.], Ink::Muted, 1.);
     d.circle(

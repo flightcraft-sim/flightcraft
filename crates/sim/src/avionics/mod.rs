@@ -1,7 +1,9 @@
 //! Independent electronic instruments, stepped only on the fixed simulation clock.
 pub mod electronic_attitude;
 pub mod electronic_hsi;
-mod sensor;
+pub mod glass;
+pub mod navigation;
+pub mod sensor;
 use crate::{Readout, SimError, State, systems::SystemsState};
 use flightcraft_world::World;
 use schemars::JsonSchema;
@@ -18,6 +20,16 @@ pub enum Unit {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AvionicsSetting {
+    Glass {
+        setting: glass::GlassSetting,
+    },
+    HeadingBugStep {
+        #[schemars(range(min=-360,max=360))]
+        detents: i32,
+        #[serde(default)]
+        interval_ms: Option<u32>,
+    },
+    HeadingBugSync {},
     HeadingBug {
         #[schemars(range(min = 0, max = 360))]
         degrees: f64,
@@ -109,6 +121,11 @@ impl AvionicsState {
         let a = &mut self.electronic_attitude;
         let h = &mut self.electronic_hsi;
         match setting {
+            AvionicsSetting::Glass { .. }
+            | AvionicsSetting::HeadingBugStep { .. }
+            | AvionicsSetting::HeadingBugSync {} => {
+                return Err(invalid("setting requires the aircraft command handler"));
+            }
             AvionicsSetting::HeadingBug { degrees } => {
                 bounded(degrees, 0., 360.)?;
                 h.heading_bug_deg = degrees.rem_euclid(360.);
@@ -133,8 +150,8 @@ impl AvionicsState {
                 Unit::ElectronicHsi => h.reversion_attitude.power.switch_on = on,
             },
             AvionicsSetting::AhrsFailure { unit, failed } => match unit {
-                Unit::ElectronicAttitude => a.sensor.failed = failed,
-                Unit::ElectronicHsi => h.reversion_attitude.sensor.failed = failed,
+                Unit::ElectronicAttitude => a.computer.sensor.failed = failed,
+                Unit::ElectronicHsi => h.reversion_attitude.computer.sensor.failed = failed,
             },
             AvionicsSetting::AirDataFailure { failed } => {
                 a.air_data_failed = failed;
@@ -153,5 +170,15 @@ fn bounded(v: f64, lo: f64, hi: f64) -> Result<(), SimError> {
         Ok(())
     } else {
         Err(invalid("avionics setting outside range"))
+    }
+}
+
+/// Slow encoder detents are one degree; intervals below 80 ms accelerate to ten degrees.
+/// Event timing is supplied by a controller, never read from a simulation clock.
+pub fn heading_detent_scale(interval_ms: Option<u32>) -> f64 {
+    if interval_ms.is_some_and(|ms| ms < 80) {
+        10.
+    } else {
+        1.
     }
 }

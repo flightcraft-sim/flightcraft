@@ -43,6 +43,7 @@ pub enum Action {
     AltimeterDown,
     HeadingBugLeft,
     HeadingBugRight,
+    HeadingBugSync,
     StandbyCourseLeft,
     StandbyCourseRight,
     StandbyAltitudeUp,
@@ -51,10 +52,18 @@ pub enum Action {
     StandbyHsiPower,
     StandbyReversion,
     StandbyDirectTo,
+    GlassRangeIn,
+    GlassRangeOut,
+    GlassPage,
+    GlassOrientation,
+    GlassAltitudeUp,
+    GlassAltitudeDown,
+    GlassCourseLeft,
+    GlassCourseRight,
 }
 
 impl Action {
-    pub const ALL: [Self; 45] = [
+    pub const ALL: [Self; 54] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -92,6 +101,7 @@ impl Action {
         Self::AltimeterDown,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
+        Self::HeadingBugSync,
         Self::StandbyCourseLeft,
         Self::StandbyCourseRight,
         Self::StandbyAltitudeUp,
@@ -100,6 +110,14 @@ impl Action {
         Self::StandbyHsiPower,
         Self::StandbyReversion,
         Self::StandbyDirectTo,
+        Self::GlassRangeIn,
+        Self::GlassRangeOut,
+        Self::GlassPage,
+        Self::GlassOrientation,
+        Self::GlassAltitudeUp,
+        Self::GlassAltitudeDown,
+        Self::GlassCourseLeft,
+        Self::GlassCourseRight,
     ];
     /// Systems shortcuts are optional, and can be bound in the same persisted keymap.
     pub const SYSTEMS: [Self; 18] = [
@@ -123,7 +141,8 @@ impl Action {
         Self::HeadingBugRight,
     ];
 
-    pub const AVIONICS: [Self; 12] = [
+    pub const AVIONICS: [Self; 13] = [
+        Self::HeadingBugSync,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
         Self::AltimeterUp,
@@ -138,6 +157,18 @@ impl Action {
         Self::StandbyDirectTo,
     ];
 
+    pub const GLASS: [Self; 10] = [
+        Self::GlassRangeIn,
+        Self::GlassRangeOut,
+        Self::GlassPage,
+        Self::GlassOrientation,
+        Self::GlassAltitudeUp,
+        Self::GlassAltitudeDown,
+        Self::GlassCourseLeft,
+        Self::GlassCourseRight,
+        Self::HeadingBugLeft,
+        Self::HeadingBugRight,
+    ];
     pub fn label(self) -> &'static str {
         match self {
             Self::ElevatorUp => "Pitch up",
@@ -185,6 +216,15 @@ impl Action {
             Self::StandbyReversion => "Toggle attitude reversion",
             Self::StandbyDirectTo => "Open direct to",
             Self::HeadingBugRight => "Heading bug right",
+            Self::HeadingBugSync => "Push heading knob / sync heading",
+            Self::GlassRangeIn => "Glass map zoom in",
+            Self::GlassRangeOut => "Glass map zoom out",
+            Self::GlassPage => "Glass next page",
+            Self::GlassOrientation => "Glass north / track up",
+            Self::GlassAltitudeUp => "Glass selected altitude up",
+            Self::GlassAltitudeDown => "Glass selected altitude down",
+            Self::GlassCourseLeft => "Glass course left",
+            Self::GlassCourseRight => "Glass course right",
         }
     }
 }
@@ -226,8 +266,14 @@ impl Default for Keymap {
                 Action::SYSTEMS
                     .into_iter()
                     .chain(Action::AVIONICS)
+                    .chain(Action::GLASS)
                     .map(|action| (action, Vec::new())),
             )
+            .chain([
+                (HeadingBugLeft, vec![Key::Comma]),
+                (HeadingBugRight, vec![Key::Period]),
+                (HeadingBugSync, vec![Key::H]),
+            ])
             .collect(),
             gamepad_bindings: default_gamepad_bindings(),
         }
@@ -303,7 +349,11 @@ impl Keymap {
                 .ok_or("Assign a key for airspace")?;
             value.bindings.insert(Action::Airspace, vec![key]);
         }
-        for action in Action::SYSTEMS.into_iter().chain(Action::AVIONICS) {
+        for action in Action::SYSTEMS
+            .into_iter()
+            .chain(Action::AVIONICS)
+            .chain(Action::GLASS)
+        {
             value.bindings.entry(action).or_default();
         }
         let mut buttons = Vec::new();
@@ -321,7 +371,11 @@ impl Keymap {
                 .bindings
                 .get(&action)
                 .ok_or_else(|| format!("Missing {}", action.label()))?;
-            if keys.is_empty() && !Action::SYSTEMS.contains(&action) && !Action::AVIONICS.contains(&action) {
+            if keys.is_empty()
+                && !Action::SYSTEMS.contains(&action)
+                && !Action::AVIONICS.contains(&action)
+                && !Action::GLASS.contains(&action)
+            {
                 return Err(format!("{} needs a key", action.label()));
             }
             for key in keys {

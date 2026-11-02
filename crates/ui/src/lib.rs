@@ -3,6 +3,7 @@ pub mod actions;
 #[cfg(not(target_arch = "wasm32"))]
 mod bridge;
 pub mod clock;
+pub mod glass;
 mod input;
 pub mod instruments;
 pub mod keymap;
@@ -87,6 +88,8 @@ pub struct FlightCraftApp {
     settings: bool,
     compact_panel: bool,
     instrument_panel: instruments::InstrumentPanel,
+    glass_controls: glass::GlassControls,
+    glass_popout_knob: instruments::heading::Knob,
     bindings_json: String,
     airport_search: String,
     glance_origin: Option<[f64; 2]>,
@@ -199,6 +202,8 @@ impl FlightCraftApp {
                 .and_then(|s| s.get_string(COMPACT_PANEL_STORAGE))
                 .as_deref()
                 == Some("true"),
+            glass_controls: glass::GlassControls::default(),
+            glass_popout_knob: Default::default(),
             instrument_panel: instruments::InstrumentPanel::with_options(
                 cc.storage
                     .and_then(|s| s.get_string(DISPLAY_OPTIONS_STORAGE))
@@ -394,7 +399,35 @@ impl eframe::App for FlightCraftApp {
                 self.error = Some(e.to_string());
             }
         }
+        let glass_active = self
+            .session
+            .aircraft_configuration()
+            .is_some_and(|c| c.panel.instruments.iter().any(|i| i.module == "glass_pfd"));
+        for action in [
+            Action::HeadingBugLeft,
+            Action::HeadingBugRight,
+            Action::HeadingBugSync,
+        ] {
+            if frame.pressed(action) {
+                let setting = match action {
+                    Action::HeadingBugSync => flightcraft_control::AvionicsSetting::HeadingBugSync {},
+                    _ => flightcraft_control::AvionicsSetting::HeadingBugStep {
+                        detents: if action == Action::HeadingBugLeft { -1 } else { 1 },
+                        interval_ms: None,
+                    },
+                };
+                if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                    self.error = Some(e.to_string());
+                }
+            }
+        }
         for action in Action::AVIONICS {
+            if matches!(
+                action,
+                Action::HeadingBugLeft | Action::HeadingBugRight | Action::HeadingBugSync
+            ) {
+                continue;
+            }
             if frame.pressed(action) {
                 if action == Action::StandbyDirectTo && self.session.sim().systems().avionics.installed {
                     self.instrument_panel.avionics_controls.open_direct_to();
@@ -409,15 +442,26 @@ impl eframe::App for FlightCraftApp {
                 }
             }
         }
+        if glass_active {
+            let state = self.session.glass_state();
+            for action in Action::GLASS {
+                if matches!(action, Action::HeadingBugLeft | Action::HeadingBugRight) {
+                    continue;
+                }
+                if frame.pressed(action)
+                    && let Some(setting) = glass::shortcut(action, &state)
+                    && let Err(e) = self.session.run(flightcraft_control::SetAvionics {
+                        setting: flightcraft_control::AvionicsSetting::Glass { setting },
+                    })
+                {
+                    self.error = Some(e.to_string());
+                }
+            }
+        }
         for action in Action::SYSTEMS {
-            if self.session.sim().systems().avionics.installed
-                && matches!(
-                    action,
-                    Action::HeadingBugLeft
-                        | Action::HeadingBugRight
-                        | Action::AltimeterUp
-                        | Action::AltimeterDown
-                )
+            if matches!(action, Action::HeadingBugLeft | Action::HeadingBugRight)
+                || (self.session.sim().systems().avionics.installed
+                    && matches!(action, Action::AltimeterUp | Action::AltimeterDown))
             {
                 continue;
             }
@@ -710,13 +754,20 @@ impl eframe::App for FlightCraftApp {
                     .inner_margin(egui::Margin::symmetric(12, 5)),
             )
             .show(ctx, |ui| {
+                let state = self.session.glass_state();
+                let mut glass_commands = if glass_active {
+                    self.glass_controls.show(ui, &state)
+                } else {
+                    Vec::new()
+                };
                 let result = if let Some(configuration) = self.session.aircraft_configuration() {
                     self.instrument_panel.show(
                         ui,
                         &configuration.panel,
                         instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
                             .with_aircraft(configuration)
-                            .with_airports(self.session.sim().world().airports()),
+                            .with_airports(self.session.sim().world().airports())
+                            .with_glass(&state),
                         self.session.flight_generation(),
                     )
                 } else {
@@ -728,6 +779,19 @@ impl eframe::App for FlightCraftApp {
                 };
                 for setting in self.instrument_panel.avionics_controls.take_settings() {
                     if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                        self.error = Some(e.to_string());
+                    }
+                }
+                for setting in self.instrument_panel.take_heading_commands() {
+                    if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                        self.error = Some(e.to_string());
+                    }
+                }
+                glass_commands.extend(self.instrument_panel.take_glass_commands());
+                for setting in glass_commands {
+                    if let Err(e) = self.session.run(flightcraft_control::SetAvionics {
+                        setting: flightcraft_control::AvionicsSetting::Glass { setting },
+                    }) {
                         self.error = Some(e.to_string());
                     }
                 }
@@ -745,6 +809,60 @@ impl eframe::App for FlightCraftApp {
                     }
                 }
             });
+        if glass_active && let Some(id) = self.glass_controls.popout.clone() {
+            let mut open = true;
+            let state = self.session.glass_state();
+            let mut knob_commands = Vec::new();
+            egui::Window::new(format!("{} display", id))
+                .open(&mut open)
+                .default_size(egui::vec2(650., 510.))
+                .show(ctx, |ui| {
+                    use instruments::Skin;
+                    if let Ok(mut display) = glass::create(&id) {
+                        let mut input =
+                            instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
+                                .with_glass(&state);
+                        input.aircraft = self.session.aircraft_configuration();
+                        input.options = self.instrument_panel.options;
+                        let draw = display.update(input);
+                        let (rect, _) = ui.allocate_exact_size(ui.available_size(), egui::Sense::hover());
+                        instruments::scaled(
+                            ui.painter(),
+                            instruments::fit_size(rect, draw.size),
+                            draw.size,
+                            |p| {
+                                instruments::SkinPack {
+                                    id: "original".into(),
+                                    colors: Vec::new(),
+                                    face: Vec::new(),
+                                }
+                                .paint(p, &draw);
+                            },
+                        );
+                        if id == "glass_pfd" {
+                            let fitted = instruments::fit_size(rect, draw.size);
+                            let factor = fitted.width() / 500.;
+                            let knob_rect = egui::Rect::from_center_size(
+                                fitted.min + egui::vec2(359., 404.) * factor,
+                                egui::vec2(26., 26.) * factor,
+                            );
+                            knob_commands.extend(self.glass_popout_knob.show(
+                                ui,
+                                ui.id().with("popout_hdg"),
+                                knob_rect,
+                            ));
+                        }
+                    }
+                });
+            for setting in knob_commands {
+                if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                    self.error = Some(e.to_string());
+                }
+            }
+            if !open {
+                self.glass_controls.popout = None;
+            }
+        }
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(theme::BACKGROUND))
             .show(ctx, |ui| {

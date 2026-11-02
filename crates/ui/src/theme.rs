@@ -15,6 +15,10 @@ pub const DANGER: Color32 = Color32::from_rgb(242, 103, 103);
 pub const DIAL: Color32 = Color32::from_rgb(10, 18, 26);
 pub const SKY: Color32 = Color32::from_rgb(64, 126, 167);
 pub const EARTH: Color32 = Color32::from_rgb(126, 94, 64);
+pub const GLASS_GPS: Color32 = Color32::from_rgb(224, 116, 218);
+pub const AIRSPACE_BLUE: Color32 = Color32::from_rgb(75, 143, 255);
+pub const TERRAIN_HIGH: Color32 = Color32::from_rgb(71, 91, 67);
+pub const TERRAIN_LOW: Color32 = Color32::from_rgb(32, 64, 56);
 pub const CLEAR: Color32 = Color32::TRANSPARENT;
 
 pub fn install(ctx: &egui::Context) {

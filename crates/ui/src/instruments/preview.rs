@@ -71,7 +71,7 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
             serde_json::json!({"source":{"kind":"installed","id":name},"reset":true}),
         )
         .unwrap();
-    if name == "corvid-standby" {
+    if name == "corvid-standby" || name == "corvid-glass" {
         let directory =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
         session
@@ -90,10 +90,11 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
         session
             .execute(
                 "avionics.set",
-                serde_json::json!({"setting":{"kind":"direct_to","ident":"KMMU"}}),
+                if name=="corvid-glass" {serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"direct_to","airport":"KMMU"}}})}else{serde_json::json!({"setting":{"kind":"direct_to","ident":"KMMU"}})},
             )
             .unwrap();
     }
+    let glass = session.glass_state();
     let configuration = session.aircraft_configuration().unwrap();
     let panel = &configuration.panel;
     let ctx = egui::Context::default();
@@ -125,7 +126,8 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
                                 ui,
                                 panel,
                                 InstrumentInput::new(session.sim().systems(), 0.)
-                                    .with_aircraft(configuration),
+                                    .with_aircraft(configuration)
+                                    .with_glass(&glass),
                                 0,
                             )
                             .unwrap();
@@ -219,4 +221,34 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
         }
     }
     image::imageops::resize(&image, width, height, image::imageops::FilterType::Lanczos3)
+}
+
+#[test]
+#[ignore = "manual integrated glass panel preview"]
+fn render_glass_panel_preview() {
+    let mut panels = Vec::new();
+    for compact in [false, true] {
+        for (width, height) in [(1280, 800.), (1000, 640.)] {
+            panels.push(capture(
+                "corvid-glass",
+                width,
+                panel_height(height, compact) as u32,
+            ));
+        }
+    }
+    let mut combined = image::RgbaImage::from_pixel(
+        1280,
+        panels.iter().map(image::RgbaImage::height).sum(),
+        image::Rgba(t::BACKGROUND.to_array()),
+    );
+    let mut top = 0;
+    for panel in panels {
+        for (x, y, p) in panel.enumerate_pixels() {
+            combined.put_pixel(x, top + y, *p);
+        }
+        top += panel.height();
+    }
+    combined
+        .save(std::env::temp_dir().join("flightcraft-glass-panel.png"))
+        .unwrap();
 }

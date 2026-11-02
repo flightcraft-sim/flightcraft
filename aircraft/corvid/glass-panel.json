@@ -1,0 +1,77 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-glass-panel",
+    "display_name": "Corvid glass panel",
+    "description": "Original integrated glass suite, electronic standby, and pressure backups.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [
+    {
+      "id": "glass_pfd",
+      "module": "glass_pfd",
+      "skin": "original",
+      "position": [
+        0,
+        0
+      ],
+      "size": [
+        5,
+        3.8
+      ]
+    },
+    {
+      "id": "glass_mfd",
+      "module": "glass_mfd",
+      "skin": "original",
+      "position": [
+        5.1,
+        0
+      ],
+      "size": [
+        5,
+        3.8
+      ]
+    },
+    {
+      "id": "glass_standby",
+      "module": "glass_standby",
+      "skin": "original",
+      "position": [
+        10.2,
+        0
+      ],
+      "size": [
+        2,
+        1.52
+      ]
+    },
+    {
+      "id": "airspeed",
+      "module": "airspeed",
+      "skin": "original",
+      "position": [
+        10.2,
+        1.55
+      ],
+      "size": [
+        1,
+        1.1
+      ]
+    },
+    {
+      "id": "altimeter",
+      "module": "altimeter",
+      "skin": "original",
+      "position": [
+        11.2,
+        1.55
+      ],
+      "size": [
+        1,
+        1.1
+      ]
+    }
+  ]
+}

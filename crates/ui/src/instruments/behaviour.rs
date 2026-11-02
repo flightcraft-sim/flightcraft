@@ -338,10 +338,17 @@ impl Instrument for RoundGauge {
                         d.label(polar(44., angle), label, 12., Ink::Text);
                     }
                 }
-                let bug = s.controls.heading_bug_rad - v.to_radians() - PI / 2.;
-                d.line(polar(63., bug), polar(55., bug), Ink::Warning, 4.);
+                super::heading::marker(
+                    &mut d,
+                    [100., 88.],
+                    62.,
+                    s.controls.heading_bug_rad,
+                    v.to_radians(),
+                    PI,
+                );
                 d.line([100., 24.], [100., 32.], Ink::Needle, 3.);
-                d.circle([155., 143.], 9., Ink::Needle);
+                super::heading::knob_art(&mut d, [155., 143.], 9.);
+                d.label([181., 143.], "HDG", 7., Ink::Needle);
             }
             "turn_coordinator" => {
                 let ball = self.ball.step(
@@ -414,7 +421,16 @@ impl Instrument for RoundGauge {
         }
         if spec.id != "annunciators" {
             if valid {
-                d.label([100., 168.], format!("{v:.0} {}", spec.unit), 13., Ink::Text);
+                d.label(
+                    [100., 168.],
+                    if spec.id == "heading" {
+                        format!("HDG {}", super::heading::degrees_text(s.controls.heading_bug_rad))
+                    } else {
+                        format!("{v:.0} {}", spec.unit)
+                    },
+                    13.,
+                    Ink::Text,
+                );
             } else {
                 d.label([100., 168.], "GYRO INVALID", 13., Ink::Warning);
             }

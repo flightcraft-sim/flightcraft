@@ -16,6 +16,8 @@
 pub mod autopilot;
 pub mod avionics;
 mod dynamics;
+pub use avionics::navigation as glass_navigation;
+pub use avionics::sensor as glass_air_data;
 mod math;
 pub mod systems;
 #[cfg(test)]
@@ -203,6 +205,7 @@ pub struct Sim {
     systems: systems::SystemsState,
     systems_model: Option<systems::SystemsModel>,
     systems_changed: bool,
+    glass: avionics::glass::GlassComputers,
 }
 
 impl Sim {
@@ -341,6 +344,7 @@ impl Sim {
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
             systems_model: None,
+            glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
             state,
             controls,
@@ -383,6 +387,7 @@ impl Sim {
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
             systems_model: None,
+            glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
             state,
             controls: controls.clamped(),
@@ -418,6 +423,8 @@ impl Sim {
         self.systems.avionics = avionics::AvionicsState::configure(configuration);
         self.systems_model = model;
         self.systems_changed = false;
+        self.glass = avionics::glass::GlassComputers::default();
+        self.refresh_glass_computers();
         self.refresh_avionics(false);
         Ok(())
     }
@@ -428,18 +435,75 @@ impl Sim {
     }
 
     pub fn set_systems(&mut self, setting: systems::SystemSetting) -> Result<(), SimError> {
+        if let systems::SystemSetting::HeadingBug { heading_rad } = &setting {
+            if !heading_rad.is_finite() || !(0. ..=core::f64::consts::TAU).contains(heading_rad) {
+                return Err(SimError::InvalidSystems("heading bug outside range".into()));
+            }
+            return self.set_avionics(avionics::AvionicsSetting::HeadingBug {
+                degrees: heading_rad.to_degrees(),
+            });
+        }
         let previous = self.systems.clone();
         self.systems.set(setting, self.systems_model.as_ref())?;
         self.systems_changed |= self.systems != previous;
+        self.refresh_glass_computers();
         Ok(())
     }
 
     /// Set a unit control through the same typed path used by the command registry.
     pub fn set_avionics(&mut self, setting: avionics::AvionicsSetting) -> Result<(), SimError> {
-        self.systems.avionics.set(setting, &self.world, self.state)?;
+        match setting {
+            avionics::AvionicsSetting::HeadingBug { degrees } => self.set_heading_bug(degrees)?,
+            avionics::AvionicsSetting::HeadingBugStep { detents, interval_ms } => {
+                if !(-360..=360).contains(&detents) {
+                    return Err(SimError::InvalidSystems("heading detents outside range".into()));
+                }
+                let degrees = self.systems.controls.heading_bug_rad.to_degrees()
+                    + f64::from(detents) * avionics::heading_detent_scale(interval_ms);
+                self.set_heading_bug(degrees.rem_euclid(360.))?;
+            }
+            avionics::AvionicsSetting::HeadingBugSync {} => {
+                let degrees = libm::round(self.display_heading_degrees()).rem_euclid(360.);
+                self.set_heading_bug(degrees)?;
+            }
+            avionics::AvionicsSetting::Glass { .. } => {
+                return Err(SimError::InvalidSystems(
+                    "glass settings require the session command handler".into(),
+                ));
+            }
+            setting => self.systems.avionics.set(setting, &self.world, self.state)?,
+        }
         self.refresh_avionics(false);
         self.systems_changed = true;
         Ok(())
+    }
+    /// The single selected heading also drives an engaged heading hold.
+    pub fn set_heading_bug(&mut self, degrees: f64) -> Result<(), SimError> {
+        if !degrees.is_finite() || !(0. ..=360.).contains(&degrees) {
+            return Err(SimError::InvalidSystems(
+                "heading bug outside finite 0–360 degrees".into(),
+            ));
+        }
+        let radians = degrees.rem_euclid(360.).to_radians();
+        self.systems.controls.heading_bug_rad = radians;
+        self.systems.avionics.electronic_hsi.heading_bug_deg = degrees.rem_euclid(360.);
+        let mut targets = self.autopilot.targets();
+        if targets.heading_rad.is_some() {
+            targets.heading_rad = Some(radians);
+            self.autopilot.set(targets);
+        }
+        self.systems_changed = true;
+        Ok(())
+    }
+    fn display_heading_degrees(&self) -> f64 {
+        let h = &self.systems.avionics.electronic_hsi.reversion_attitude;
+        if self.systems.avionics.installed && h.attitude_valid {
+            h.heading_deg
+        } else if self.glass.primary.attitude_valid {
+            self.glass.primary.heading_rad.to_degrees()
+        } else {
+            self.systems.sensed.heading_rad.to_degrees()
+        }
     }
 
     fn refresh_avionics(&mut self, advance: bool) {
@@ -534,6 +598,13 @@ impl Sim {
     /// Replace the engaged holds atomically. Incompatible or hostile targets are errors.
     pub fn set_autopilot(&mut self, targets: autopilot::Targets) -> Result<(), SimError> {
         targets.validate()?;
+        if let Some(heading) = targets.heading_rad {
+            self.systems_changed |=
+                self.systems.controls.heading_bug_rad != heading.rem_euclid(core::f64::consts::TAU);
+            self.systems.controls.heading_bug_rad = heading.rem_euclid(core::f64::consts::TAU);
+            self.systems.avionics.electronic_hsi.heading_bug_deg =
+                self.systems.controls.heading_bug_rad.to_degrees();
+        }
         self.autopilot.set(targets);
         Ok(())
     }
@@ -541,6 +612,17 @@ impl Sim {
     /// Disengage all holds. The last controls remain available to the pilot.
     pub fn autopilot_off(&mut self) {
         self.autopilot = autopilot::Autopilot::default();
+    }
+
+    pub fn refresh_glass_computers(&mut self) {
+        let truth = self.readout();
+        self.glass.step(&self.systems, self.state, truth, false);
+    }
+    pub fn glass_computers(&self) -> &avionics::glass::GlassComputers {
+        &self.glass
+    }
+    pub fn glass_computers_mut(&mut self) -> &mut avionics::glass::GlassComputers {
+        &mut self.glass
     }
 
     /// Advance up to `n` fixed steps of [`DT_S`], stopping at a crash or numerical envelope exit.
@@ -586,6 +668,7 @@ impl Sim {
             if let Some(model) = &self.systems_model {
                 let readout = self.readout();
                 self.systems.step(model, readout, self.failures);
+                self.glass.step(&self.systems, self.state, readout, true);
                 let mut load = model.load.clone();
                 // Tanks can share a station. Sum them in declaration order, once per step.
                 for station in model
@@ -761,6 +844,12 @@ impl Sim {
                     Vec::new()
                 })
             {
+                eat(word);
+            }
+        }
+        if self.systems.electrical.loads.iter().any(|l| l.id == "glass_ahrs") {
+            eat(0x676c_6173_7300_0001);
+            for word in self.glass.hash_words() {
                 eat(word);
             }
         }
