@@ -784,7 +784,9 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
     let font = FontId::proportional((v.rect.width() / 35.).clamp(5., 11.));
     let world = s.sim().world();
     let across_nm = f64::from(v.rect.width()) / v.pixels_per_m / 1852.0;
-    if state.opacity(Overlay::Airspace) > 0.
+    let inset = v.rect.width().min(v.rect.height()) < 140.;
+    if !inset
+        && state.opacity(Overlay::Airspace) > 0.
         && let Some(db) = world.airspace()
     {
         let mut labels = Vec::<Pos2>::new();
@@ -848,7 +850,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
         }
     }
     if let Some(nav) = world.navdata() {
-        if state.opacity(Overlay::Airways) > 0. {
+        if !inset && state.opacity(Overlay::Airways) > 0. {
             for airway in &nav.routes {
                 let color = theme::MUTED.linear_multiply(state.opacity(Overlay::Airways) * 0.25);
                 for edge in airway.geometry.windows(2) {
@@ -881,7 +883,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                 }
             }
         }
-        if state.opacity(Overlay::Navaids) > 0. {
+        if !inset && state.opacity(Overlay::Navaids) > 0. {
             for navaid in &nav.navaids {
                 if let Some(pos) = v.point(navaid.position).filter(|p| v.rect.contains(*p)) {
                     let color = theme::AIRSPACE_BLUE.linear_multiply(state.opacity(Overlay::Navaids));
@@ -936,7 +938,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                     || s.gps_map_waypoints()
                         .iter()
                         .any(|w| w.position.inverse(fix.position).0 < 100.);
-                if across_nm >= state.declutter.fixes_across_nm && !on_route {
+                if (inset || across_nm >= state.declutter.fixes_across_nm) && !on_route {
                     continue;
                 }
                 if let Some(pos) = v.point(fix.position).filter(|p| v.rect.contains(*p)) {
@@ -974,15 +976,20 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
         && let Some(airports) = world.airports()
     {
         let mut labels = Vec::<Pos2>::new();
+        let mut symbols = Vec::<Pos2>::new();
         for airport in &airports.airports {
             let position = GeoPoint {
                 latitude_deg: airport.latitude_deg,
                 longitude_deg: airport.longitude_deg,
             };
             if let Some(pos) = v.point(position).filter(|p| v.rect.contains(*p)) {
+                if inset && symbols.iter().any(|p| p.distance(pos) < 16.) {
+                    continue;
+                }
+                symbols.push(pos);
                 let color = text.linear_multiply(state.opacity(Overlay::Airports));
-                p.circle_stroke(pos, 4., Stroke::new(1.5, color));
-                if state.range_nm < 35. {
+                p.circle_stroke(pos, if inset { 2. } else { 4. }, Stroke::new(1., color));
+                if !inset && state.range_nm < 35. {
                     for runway in &airport.runways {
                         let [a, b] = &runway.ends;
                         let point = |end: &flightcraft_world::RunwayEnd| {
@@ -1003,7 +1010,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                         }
                     }
                 }
-                if labels.iter().all(|p| p.distance(pos) > 45.) {
+                if !inset && labels.iter().all(|p| p.distance(pos) > 45.) {
                     p.text(
                         pos + egui::vec2(7., -7.),
                         Align2::LEFT_BOTTOM,

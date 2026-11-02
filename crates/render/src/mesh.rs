@@ -753,7 +753,7 @@ pub(crate) fn near_region_tile(eye: [f32; 4], center: [f32; 3], half_extent_m: f
 }
 
 #[cfg(test)]
-mod terrain_tests {
+pub(crate) mod terrain_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use flightcraft_world::{World, WorldChoice};
@@ -797,8 +797,10 @@ mod terrain_tests {
         }
     }
 
-    pub(super) fn palette() -> Palette {
+    pub(crate) fn palette() -> Palette {
         Palette {
+            terrain_caution: [0.9, 0.7, 0., 1.],
+            terrain_warning: [0.9, 0.1, 0., 1.],
             airspace_b: [0.2; 4],
             airspace_c: [0.3; 4],
             airspace_d: [0.4; 4],
@@ -1110,4 +1112,56 @@ mod airspace_tests {
                     && v.kind >= 6.0)
         );
     }
+}
+
+/// Thin filled strips avoid nonportable wide-line rasterization on WebGL 2.
+pub(crate) fn vision_runways(world: &flightcraft_world::World, p: Palette) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+    let runway = world.runway();
+    let [n, e, down] = runway.threshold_ned_m;
+    let heading = runway.heading_deg.to_radians();
+    let fallback = flightcraft_world::RunwayStrip {
+        ends_m: [
+            [n, e],
+            [
+                n + runway.length_m * heading.cos(),
+                e + runway.length_m * heading.sin(),
+            ],
+        ],
+        elevations_m: [-down, -down],
+        width_m: runway.width_m,
+        surface: flightcraft_world::RunwaySurface::Asphalt,
+        end_idents: [String::new(), String::new()],
+    };
+    let strips = if world.runway_strips().is_empty() {
+        std::slice::from_ref(&fallback)
+    } else {
+        world.runway_strips()
+    };
+    for strip in strips {
+        let [[an, ae], [bn, be]] = strip.ends_m;
+        let [ha, hb] = strip.elevations_m;
+        let length = strip.length_m();
+        let direction = Vec3::new((be - ae) as f32, 0., -(bn - an) as f32) / length as f32;
+        let side = Vec3::new(-direction.z, 0., direction.x) * strip.width_m as f32 * 0.5;
+        let a = Vec3::new(ae as f32, ha as f32 + 1., -an as f32);
+        let b = Vec3::new(be as f32, hb as f32 + 1., -bn as f32);
+        let corners = [a - side, b - side, b + side, a + side, a - side];
+        for edge in corners.windows(2) {
+            if let [a, b] = edge {
+                // The normal carries the edge direction; coverage carries the signed screen offset.
+                let along = (*b - *a).normalize_or_zero();
+                for (position, offset) in [(*a, -1.), (*b, -1.), (*b, 1.), (*a, -1.), (*b, 1.), (*a, 1.)] {
+                    vertices.push(Vertex {
+                        position: position.to_array(),
+                        normal: along.to_array(),
+                        color: p.marking,
+                        kind: 10.,
+                        water_coverage: offset,
+                    });
+                }
+            }
+        }
+    }
+    vertices
 }

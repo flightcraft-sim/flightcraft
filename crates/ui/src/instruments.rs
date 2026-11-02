@@ -23,6 +23,7 @@ pub use switches::{shortcut, shortcut_with_options};
 
 #[derive(Clone, Copy)]
 pub struct InstrumentInput<'a> {
+    pub vision: Option<(&'a flightcraft_world::World, &'a flightcraft_sim::State)>,
     pub systems: &'a SystemsState,
     pub glass: Option<&'a flightcraft_control::GlassState>,
     pub autopilot: Option<&'a flightcraft_sim::equipment::EquipmentState>,
@@ -35,6 +36,7 @@ pub struct InstrumentInput<'a> {
 impl<'a> InstrumentInput<'a> {
     pub fn new(systems: &'a SystemsState, time_s: f64) -> Self {
         Self {
+            vision: None,
             systems,
             glass: None,
             autopilot: None,
@@ -43,6 +45,14 @@ impl<'a> InstrumentInput<'a> {
             aircraft: None,
             airports: None,
         }
+    }
+    pub fn with_vision(
+        mut self,
+        world: &'a flightcraft_world::World,
+        state: &'a flightcraft_sim::State,
+    ) -> Self {
+        self.vision = Some((world, state));
+        self
     }
     pub fn with_airports(mut self, airports: Option<&'a flightcraft_world::Airports>) -> Self {
         self.airports = airports;
@@ -122,6 +132,12 @@ impl Token {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DrawItem {
+    #[serde(skip)]
+    SyntheticVision {
+        min: [f32; 2],
+        max: [f32; 2],
+        view: Box<flightcraft_render::SyntheticVision>,
+    },
     #[serde(skip)]
     Mesh {
         vertices: Vec<([f32; 2], Ink, Ink, f32)>,
@@ -219,6 +235,9 @@ impl Skin for SkinPack {
             }))
         {
             match item {
+                DrawItem::SyntheticVision { min, max, view } => {
+                    view.paint(p, Rect::from_min_max((*min).into(), (*max).into()))
+                }
                 DrawItem::Mesh { vertices, indices } => {
                     let mut mesh = egui::Mesh::default();
                     for (at, a, b, blend) in vertices {
@@ -340,7 +359,7 @@ fn valid_item(item: &DrawItem) -> bool {
         x.is_finite() && y.is_finite() && (0. ..=320.).contains(&x) && (0. ..=180.).contains(&y)
     };
     match item {
-        DrawItem::Mesh { .. } => false,
+        DrawItem::Mesh { .. } | DrawItem::SyntheticVision { .. } => false,
         DrawItem::Circle { center, radius, .. } => {
             let [x, y] = *center;
             point(center)

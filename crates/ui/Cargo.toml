@@ -39,3 +39,8 @@ web-sys = { workspace = true, features = ["AudioContext", "AudioBuffer", "AudioB
 wasm-bindgen-futures.workspace = true
 wasm-bindgen.workspace = true
 js-sys.workspace = true
+
+[dev-dependencies]
+wgpu.workspace = true
+egui-wgpu.workspace = true
+pollster.workspace = true

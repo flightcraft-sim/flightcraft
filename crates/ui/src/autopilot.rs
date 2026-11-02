@@ -253,8 +253,16 @@ impl Encoder {
     }
 }
 fn text(ui: &egui::Ui, at: egui::Pos2, label: impl ToString, size: f32, color: egui::Color32) {
-    ui.painter()
-        .text(at, Align2::CENTER_CENTER, label, FontId::monospace(size), color);
+    let scale = ui
+        .data(|data| data.get_temp::<f32>(ui.id().with("controller-font-scale")))
+        .unwrap_or(1.);
+    ui.painter().text(
+        at,
+        Align2::CENTER_CENTER,
+        label,
+        FontId::monospace((size * scale).max(7.)),
+        color,
+    );
 }
 fn button(ui: &mut egui::Ui, rect: Rect, label: &str, selected: bool) -> egui::Response {
     let response = ui.interact(rect, ui.id().with(label), Sense::click());
@@ -309,26 +317,7 @@ impl Controller {
         heading_bug: f64,
         cws_key: bool,
     ) -> Vec<AvionicsSetting> {
-        let size = match state.installation.family {
-            AutopilotFamily::WingLeveler => egui::vec2(310., 105.),
-            AutopilotFamily::TwoAxisLegacy => egui::vec2(490., 144.),
-            AutopilotFamily::DigitalTwoAxis => egui::vec2(890., 148.),
-        };
-        let scale = (rect.width() / size.x).min(rect.height() / size.y);
-        let origin = rect.center() - size * scale * 0.5;
-        let layer = egui::LayerId::new(ui.layer_id().order, ui.id().with("installed-controller"));
-        ui.ctx()
-            .set_transform_layer(layer, egui::emath::TSTransform::new(origin.to_vec2(), scale));
-        ui.scope_builder(
-            egui::UiBuilder::new()
-                .layer_id(layer)
-                .max_rect(Rect::from_min_size(egui::Pos2::ZERO, size)),
-            |ui| {
-                ui.set_clip_rect(Rect::from_min_size(egui::Pos2::ZERO, size));
-                self.show(ui, state, heading_bug, cws_key)
-            },
-        )
-        .inner
+        self.face(ui, rect, state, heading_bug, cws_key)
     }
     pub fn show(
         &mut self,
@@ -344,14 +333,36 @@ impl Controller {
         } else if legacy {
             egui::vec2(490., 144.)
         } else {
-            egui::vec2(890., 148.)
+            egui::vec2(820., 148.)
         };
         let (plate, _) = ui.allocate_exact_size(
             egui::vec2(size.x.min(ui.available_width()), size.y),
             Sense::hover(),
         );
-        let at = |x, y| plate.min + egui::vec2(x, y);
-        let cell = |x, y, w, h| Rect::from_min_size(at(x, y), egui::vec2(w, h));
+        self.face(ui, plate, s, heading_bug, cws_key)
+    }
+    fn face(
+        &mut self,
+        ui: &mut egui::Ui,
+        plate: Rect,
+        s: &EquipmentState,
+        heading_bug: f64,
+        cws_key: bool,
+    ) -> Vec<AvionicsSetting> {
+        let legacy = s.installation.family == AutopilotFamily::TwoAxisLegacy;
+        let leveler = s.installation.family == AutopilotFamily::WingLeveler;
+        let size = if leveler {
+            egui::vec2(310., 105.)
+        } else if legacy {
+            egui::vec2(490., 144.)
+        } else {
+            egui::vec2(820., 148.)
+        };
+        let scale = plate.size() / size;
+        let font_scale_id = ui.id().with("controller-font-scale");
+        ui.data_mut(|data| data.insert_temp(font_scale_id, scale.x.min(scale.y)));
+        let at = |x, y| plate.min + egui::vec2(x, y) * scale;
+        let cell = |x, y, w, h| Rect::from_min_max(at(x, y), at(x + w, y + h));
         ui.painter().rect(
             plate,
             5.,
@@ -369,7 +380,16 @@ impl Controller {
         let mut settings = Vec::new();
         text(
             ui,
-            at(if legacy { 120. } else { 135. }, 15.),
+            at(
+                if leveler {
+                    135.
+                } else if legacy {
+                    210.
+                } else {
+                    280.
+                },
+                15.,
+            ),
             if leveler {
                 "WING LEVELER"
             } else if legacy {
@@ -470,7 +490,13 @@ impl Controller {
                             || s.active_vertical.is_some_and(|m| vertical(m) == name)
                     }
                 };
-                if button(ui, cell(14. + i as f32 * 43., 101., 39., 29.), name, active).clicked() {
+                let key = if legacy {
+                    cell(14. + i as f32 * 43., 101., 39., 29.)
+                } else {
+                    let advance = 792. / labels.len() as f32;
+                    cell(14. + i as f32 * advance, 119., advance - 4., 24.)
+                };
+                if button(ui, key, name, active).clicked() {
                     let action = match name {
                         "AP" => PanelSetting::Engage { on: !s.engaged },
                         "FD" => PanelSetting::FlightDirector {
@@ -530,11 +556,17 @@ impl Controller {
                 cell(742., 39., 58., 58.)
             };
             knob(ui, alt_rect, !legacy);
-            text(ui, alt_rect.center() - egui::vec2(0., 35.), "ALT", 10., t::TEXT);
-            if !legacy {
+            text(
+                ui,
+                alt_rect.center() - egui::vec2(0., 35. * scale.y),
+                "ALT",
+                10.,
+                t::TEXT,
+            );
+            if !legacy && plate.width() >= 500. {
                 text(
                     ui,
-                    alt_rect.center() + egui::vec2(0., 38.),
+                    alt_rect.center() + egui::vec2(0., 38. * scale.y),
                     "100 / 1,000 FT",
                     9.,
                     t::MUTED,
@@ -560,21 +592,29 @@ impl Controller {
                 knob(ui, hdg, false);
                 text(
                     ui,
-                    hdg.center() - egui::vec2(0., 35.),
+                    hdg.center() - egui::vec2(0., 35. * scale.y),
                     format!("HDG {}°", heading::degrees_text(heading_bug)),
                     11.,
                     t::TEXT,
                 );
-                text(ui, hdg.center() + egui::vec2(0., 38.), "PUSH SYNC", 9., t::MUTED);
+                if plate.width() >= 500. {
+                    text(
+                        ui,
+                        hdg.center() + egui::vec2(0., 38. * scale.y),
+                        "PUSH SYNC",
+                        9.,
+                        t::MUTED,
+                    );
+                }
                 commands.extend(self.heading.show(ui, ui.id().with("ap_hdg"), hdg));
                 let wheel = cell(564., 37., 36., 49.);
                 ui.painter().rect_filled(wheel, 4., t::DIAL);
                 for row in 0..7 {
-                    let y = wheel.top() + 5. + row as f32 * 6.;
+                    let y = wheel.top() + (5. + row as f32 * 6.) * scale.y;
                     ui.painter().line_segment(
                         [
-                            egui::pos2(wheel.left() + 6., y),
-                            egui::pos2(wheel.right() - 6., y),
+                            egui::pos2(wheel.left() + 6. * scale.x, y),
+                            egui::pos2(wheel.right() - 6. * scale.x, y),
                         ],
                         Stroke::new(1., t::MUTED),
                     );

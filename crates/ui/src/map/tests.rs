@@ -312,6 +312,24 @@ fn declutter_preserves_route_fixes_and_pilot_units() {
         features.iter().find(|f| f.kind == "fix").unwrap().ident,
         fix.ident
     );
+    let inset = View::new(&s, &state, Rect::from_min_size(Pos2::ZERO, egui::vec2(120., 90.))).unwrap();
+    let settings_before = serde_json::to_value(s.map_state()).unwrap();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        features = paint_features(
+            &ctx.layer_painter(egui::LayerId::background()),
+            &inset,
+            &mut s,
+            &state,
+        );
+    });
+    assert!(!features.iter().any(|f| f.kind == "navaid"));
+    assert!(features.iter().any(|f| f.kind == "fix" && f.ident == fix.ident));
+    for shape in &output.shapes {
+        if let egui::Shape::Circle(circle) = &shape.shape {
+            assert!(circle.radius <= 2.);
+        }
+    }
+    assert_eq!(serde_json::to_value(s.map_state()).unwrap(), settings_before);
     assert_eq!(
         units::fuel(0.72 * 3.785411784, crate::instruments::EngineUnits::Us),
         "1.0 US gal"

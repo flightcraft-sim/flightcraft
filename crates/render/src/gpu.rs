@@ -22,6 +22,9 @@ pub(crate) struct Uniform {
     pub water: [f32; 4],
     pub grid: [f32; 4],
     pub eye: [f32; 4],
+    pub vision: [f32; 4],
+    pub caution: [f32; 4],
+    pub warning: [f32; 4],
 }
 
 pub(crate) struct SceneCallback {
@@ -70,6 +73,11 @@ struct Gpu {
     uniform_bind: wgpu::BindGroup,
     texture_layout: wgpu::BindGroupLayout,
     targets: Targets,
+    vision_targets: Targets,
+    vision_uniform: wgpu::Buffer,
+    vision_bind: wgpu::BindGroup,
+    vision_schedule: VisionSchedule,
+    vision_runways: Option<(wgpu::Buffer, u32)>,
 }
 
 /// Install resources in egui's callback store; there is one scene per viewport.
@@ -79,6 +87,18 @@ pub fn initialize(state: &egui_wgpu::RenderState, palette: Palette) {
         .write()
         .callback_resources
         .insert(Gpu::new(&state.device, state.target_format, palette));
+}
+
+/// Register the shared terrain target as an egui image, avoiding a separate composite pipeline
+/// switch for each display. Call after `initialize` for the context that hosts the displays.
+pub fn initialize_synthetic_vision(state: &egui_wgpu::RenderState, context: &egui::Context) {
+    let mut renderer = state.renderer.write();
+    let Some(gpu) = renderer.callback_resources.get::<Gpu>() else {
+        return;
+    };
+    let view = gpu.vision_targets.color.clone();
+    let texture = renderer.register_native_texture(&state.device, &view, wgpu::FilterMode::Linear);
+    crate::vision::bind_texture(context, texture);
 }
 
 fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout) -> Targets {
@@ -310,6 +330,21 @@ impl Gpu {
                 cockpit_end: geometry.cockpit_end,
             }
         });
+        let vision_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("synthetic vision uniforms"),
+            size: std::mem::size_of::<Uniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let vision_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("synthetic vision uniform bind"),
+            layout: &uniform_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: vision_uniform.as_entire_binding(),
+            }],
+        });
+        let vision_targets = targets(device, [750, 285], &texture_layout);
         let targets = targets(device, [1, 1], &texture_layout);
         Self {
             sky,
@@ -325,6 +360,75 @@ impl Gpu {
             uniform_bind,
             texture_layout,
             targets,
+            vision_targets,
+            vision_uniform,
+            vision_bind,
+            vision_schedule: VisionSchedule::default(),
+            vision_runways: None,
+        }
+    }
+}
+
+impl Gpu {
+    fn update_world(&mut self, device: &wgpu::Device, world: &flightcraft_world::World) {
+        if self.terrain_fingerprint != Some(world.fingerprint()) {
+            self.meshes = [false, true].map(|larrow| {
+                let geometry = mesh::build_for_world(self.palette, larrow, world);
+                DrawMesh {
+                    vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("field and aircraft mesh"),
+                        contents: bytemuck::cast_slice(&geometry.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    vertex_count: geometry.vertices.len() as u32,
+                    world_count: geometry.world_end,
+                    exterior_end: geometry.exterior_end,
+                    cockpit_end: geometry.cockpit_end,
+                }
+            });
+            self.terrain = world
+                .tiles()
+                .iter()
+                .map(|tile| {
+                    let geometry = mesh::terrain(tile, world, self.palette);
+                    TerrainBuffer {
+                        vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("cached terrain LODs"),
+                            contents: bytemuck::cast_slice(&geometry.vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        }),
+                        count: geometry.vertices.len() as u32,
+                        fine_end: geometry.fine_end,
+                        center: geometry.center,
+                        half_extent_m: tile.extent_m() as f32 * 0.5,
+                    }
+                })
+                .collect();
+            let vertices = mesh::airspace(world, self.palette);
+            self.airspace = if vertices.is_empty() {
+                None
+            } else {
+                Some((
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("airspace curtains and outlines"),
+                        contents: bytemuck::cast_slice(&vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    vertices.len() as u32,
+                ))
+            };
+            let outlines = mesh::vision_runways(world, self.palette);
+            self.vision_runways = (!outlines.is_empty()).then(|| {
+                (
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("synthetic runway outlines"),
+                        contents: bytemuck::cast_slice(&outlines),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    outlines.len() as u32,
+                )
+            });
+            self.terrain_fingerprint = Some(world.fingerprint());
         }
     }
 }
@@ -341,55 +445,7 @@ impl CallbackTrait for SceneCallback {
         let Some(gpu) = resources.get_mut::<Gpu>() else {
             return Vec::new();
         };
-        if gpu.terrain_fingerprint != Some(self.world.fingerprint()) {
-            gpu.meshes = [false, true].map(|larrow| {
-                let geometry = mesh::build_for_world(gpu.palette, larrow, &self.world);
-                DrawMesh {
-                    vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("field and aircraft mesh"),
-                        contents: bytemuck::cast_slice(&geometry.vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    }),
-                    vertex_count: geometry.vertices.len() as u32,
-                    world_count: geometry.world_end,
-                    exterior_end: geometry.exterior_end,
-                    cockpit_end: geometry.cockpit_end,
-                }
-            });
-            gpu.terrain = self
-                .world
-                .tiles()
-                .iter()
-                .map(|tile| {
-                    let geometry = mesh::terrain(tile, &self.world, gpu.palette);
-                    TerrainBuffer {
-                        vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("cached terrain LODs"),
-                            contents: bytemuck::cast_slice(&geometry.vertices),
-                            usage: wgpu::BufferUsages::VERTEX,
-                        }),
-                        count: geometry.vertices.len() as u32,
-                        fine_end: geometry.fine_end,
-                        center: geometry.center,
-                        half_extent_m: tile.extent_m() as f32 * 0.5,
-                    }
-                })
-                .collect();
-            let vertices = mesh::airspace(&self.world, gpu.palette);
-            gpu.airspace = if vertices.is_empty() {
-                None
-            } else {
-                Some((
-                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("airspace curtains and outlines"),
-                        contents: bytemuck::cast_slice(&vertices),
-                        usage: wgpu::BufferUsages::VERTEX,
-                    }),
-                    vertices.len() as u32,
-                ))
-            };
-            gpu.terrain_fingerprint = Some(self.world.fingerprint());
-        }
+        gpu.update_world(device, &self.world);
         let max_dimension = device.limits().max_texture_dimension_2d.min(4096) as f32;
         let size = self
             .size
@@ -523,9 +579,162 @@ mod tests {
             .ok_or("missing scene uniforms")?;
         assert_eq!(uniforms.1 as usize, std::mem::size_of::<super::Uniform>());
         assert_eq!(
-            uniforms.0.last().map(|m| m.offset as usize),
+            uniforms
+                .0
+                .iter()
+                .find(|m| m.name.as_deref() == Some("eye"))
+                .map(|m| m.offset as usize),
             Some(std::mem::offset_of!(super::Uniform, eye))
         );
         Ok(())
+    }
+}
+
+/// Counts real offscreen terrain passes, independently of the number of display composites.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SyntheticVisionStats {
+    pub terrain_passes: u64,
+}
+pub fn synthetic_vision_stats(state: &egui_wgpu::RenderState) -> SyntheticVisionStats {
+    state
+        .renderer
+        .read()
+        .callback_resources
+        .get::<Gpu>()
+        .map_or(SyntheticVisionStats::default(), |gpu| SyntheticVisionStats {
+            terrain_passes: gpu.vision_schedule.passes,
+        })
+}
+#[derive(Default)]
+struct VisionSchedule {
+    last: Option<(u64, f64, u64)>,
+    passes: u64,
+}
+impl VisionSchedule {
+    fn request(&mut self, frame: u64, time: f64, world: u64) -> bool {
+        if !time.is_finite() {
+            return false;
+        }
+        if self.last.is_some_and(|(last_frame, last_time, last_world)| {
+            world == last_world
+                && (frame == last_frame || (time >= last_time && time - last_time < 1. / 30. - 1e-6))
+        }) {
+            return false;
+        }
+        self.last = Some((frame, time, world));
+        self.passes = self.passes.saturating_add(1);
+        true
+    }
+}
+pub(crate) struct VisionCallback {
+    pub composite: bool,
+    pub view: crate::SyntheticVision,
+    pub frame: u64,
+    pub time: f64,
+}
+impl CallbackTrait for VisionCallback {
+    fn prepare(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        _screen: &ScreenDescriptor,
+        encoder: &mut wgpu::CommandEncoder,
+        resources: &mut CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        let Some(gpu) = resources.get_mut::<Gpu>() else {
+            return Vec::new();
+        };
+        if !gpu
+            .vision_schedule
+            .request(self.frame, self.time, self.view.world.fingerprint())
+        {
+            return Vec::new();
+        }
+        gpu.update_world(device, &self.view.world);
+        let uniform = self.view.uniform(gpu.palette);
+        queue.write_buffer(&gpu.vision_uniform, 0, bytemuck::bytes_of(&uniform));
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("shared synthetic vision terrain"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &gpu.vision_targets.color,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &gpu.vision_targets.depth,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.),
+                    store: wgpu::StoreOp::Discard,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        pass.set_bind_group(0, &gpu.vision_bind, &[]);
+        pass.set_pipeline(&gpu.sky);
+        pass.draw(0..3, 0..1);
+        pass.set_pipeline(&gpu.scene);
+        for tile in &gpu.terrain {
+            if !self.view.tile_in_range(tile.center, tile.half_extent_m) {
+                continue;
+            }
+            pass.set_vertex_buffer(0, tile.vertices.slice(..));
+            let near = mesh::near_region_tile(uniform.eye, tile.center, tile.half_extent_m);
+            pass.draw(
+                if near {
+                    0..tile.fine_end
+                } else {
+                    tile.fine_end..tile.count
+                },
+                0..1,
+            );
+        }
+        if self.view.world.tiles().is_empty() {
+            let [mesh, _] = &gpu.meshes;
+            pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.draw(0..6.min(mesh.world_count), 0..1);
+        }
+        if let Some((outlines, count)) = &gpu.vision_runways {
+            pass.set_vertex_buffer(0, outlines.slice(..));
+            pass.draw(0..*count, 0..1);
+        }
+        Vec::new()
+    }
+    fn paint(
+        &self,
+        _info: egui::PaintCallbackInfo,
+        pass: &mut wgpu::RenderPass<'static>,
+        resources: &CallbackResources,
+    ) {
+        if self.composite
+            && let Some(gpu) = resources.get::<Gpu>()
+        {
+            pass.set_pipeline(&gpu.blit);
+            pass.set_bind_group(0, &gpu.vision_targets.bind, &[]);
+            pass.draw(0..3, 0..1);
+        }
+    }
+}
+#[cfg(test)]
+mod vision_schedule_tests {
+    use super::*;
+    #[test]
+    fn zero_displays_skip_pass_and_two_displays_share_thirty_hz_at_120_hz() {
+        let mut schedule = VisionSchedule::default();
+        assert_eq!(schedule.passes, 0);
+        for frame in 0..120 {
+            for _ in 0..2 {
+                schedule.request(frame, frame as f64 / 120., 1);
+            }
+        }
+        assert_eq!(schedule.passes, 30);
+        assert!(schedule.request(120, 1., 2));
+        assert!(!schedule.request(120, 1., 2));
+        assert!(schedule.request(121, 0., 2));
     }
 }

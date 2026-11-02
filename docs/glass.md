@@ -59,6 +59,56 @@ warning system. Range rings and the scale bar preserve their shape on rectangula
 Standalone `GlassState` instrument snapshots retain their 64–256-interval elevation raster and
 legacy procedural map artwork for consumers that do not host the interactive widget.
 
+### Synthetic vision
+
+The **SVT** control enables pilot-eye terrain behind the PFD's pitch ladder, tapes, and flight
+director. It is off by default. Every touch display has its own SVT soft key; changing one display
+leaves the other displays' selections alone. AHRS or ADC invalidity inhibits synthetic vision,
+restoring the conventional background and failure flags. Failed or unpowered displays show their
+existing failure indications. The independent standby keeps its conventional background.
+
+The existing wgpu terrain renderer supplies an offscreen sky gradient, a level horizon,
+elevation colours, water surfaces where supplied by the region, and runway outlines. Airport and
+runway threshold labels appear within 10 nm, with screen-space label spacing to preserve the
+attitude symbology. An open green flight path marker projects ground velocity, including crosswind
+drift and climb or descent; it disappears below 5 m/s or outside the attitude viewport.
+
+The camera and pitch ladder share a perspective projection with 2.5 local pixels per degree at
+the optical centre. Position and ground velocity come from the immutable flight snapshot, roll
+and pitch from the shared AHRS, and terrain awareness from indicated altitude. Terrain within
+1,000 ft below the aircraft is yellow, and terrain within 100 ft is red, including terrain above
+the aircraft. Shading within each band preserves slope relief. Water retains its water colour
+outside the awareness bands. Coverage depends on the loaded region; absent tiles are not invented.
+
+All enabled displays share one 750 × 285 terrain texture and one depth target, updated at most
+30 times per second. Both the main scene and the PFD reuse the same cached terrain buffers;
+the PFD selects fine detail near the aircraft and coarse detail farther away. No enabled, visible,
+valid PFD means no offscreen pass. A single prepare callback updates the shared image, which egui
+composites beneath each display without a separate scene pipeline switch for every display.
+Symbology still draws each presentation frame. WebGPU and WebGL 2 use the same WGSL; derivatives
+remain outside material-dependent branches.
+
+Use `avionics.set` with `{"setting":{"kind":"glass","setting":{"kind":"synthetic_vision",
+"enabled":true}}}` for the glass PFD. Touch displays use `equipment.set` with
+`{"setting":{"kind":"display","id":"left_display","action":{"kind":"synthetic_vision",
+"enabled":true}}}`. State exposes `glass_suite.settings.synthetic_vision` and each touch display's
+`synthetic_vision`; flight reset clears these selections. These are advisory terrain pictures,
+not a certified terrain warning system.
+
+The ignored `render_synthetic_vision_previews` UI test captures actual GPU PFD images over the
+Kittatinny ridge near 1N7 and on final to KMMU 23 in `out/synthetic-vision`. It also checks the
+50 ft AGL red band at KMMU, the disabled pass, and sharing at 120 presentation frames per second.
+It captures the equipment example with both touch displays showing synthetic vision and checks
+that the installed composition uses one terrain pass.
+
+Rust panel hosts supply `InstrumentInput::with_vision(world, state)`; after installing the scene
+renderer, `render::initialize_synthetic_vision(render_state, context)` registers its shared image.
+Custom skins must preserve the position and order of the runtime-only `DrawItem::SyntheticVision`
+underlay. Renderer palettes add `terrain_caution` and `terrain_warning`, using the same theme
+tokens as the MFD.
+
+The GPU test uses downlevel WebGL 2 limits; set `FLIGHTCRAFT_TEST_BACKEND=gl` to exercise GLES.
+
 The engine strip shows RPM, fuel flow, oil pressure and temperature, EGT, CHT, volts, amps,
 and tank sender quantities. RPM, maximum flow, and tank capacities come from the resolved
 engine and systems. Temperature, oil pressure, current, and voltage bands use the same

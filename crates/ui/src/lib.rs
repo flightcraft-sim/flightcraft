@@ -133,6 +133,7 @@ impl FlightCraftApp {
             .as_ref()
             .ok_or_else(|| std::io::Error::other("FlightCraft needs the wgpu renderer"))?;
         flightcraft_render::initialize(render_state, theme::scene());
+        flightcraft_render::initialize_synthetic_vision(render_state, &cc.egui_ctx);
         // Shown in the status bar: which GPU path is drawing matters for every graphics bug report.
         let renderer = match render_state.adapter.get_info().backend {
             eframe::wgpu::Backend::BrowserWebGpu => "WebGPU",
@@ -967,6 +968,7 @@ impl eframe::App for FlightCraftApp {
                             instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
                                 .with_aircraft(configuration)
                                 .with_airports(self.session.sim().world().airports())
+                                .with_vision(self.session.sim().world(), self.session.sim().state())
                                 .with_glass(&state)
                                 .with_autopilot(self.session.sim().installed_autopilot()),
                             self.session.flight_generation(),
@@ -1034,6 +1036,7 @@ impl eframe::App for FlightCraftApp {
                     if let Ok(mut display) = glass::create(&id) {
                         let mut input =
                             instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
+                                .with_vision(self.session.sim().world(), self.session.sim().state())
                                 .with_glass(&state)
                                 .with_autopilot(self.session.sim().installed_autopilot());
                         input.aircraft = self.session.aircraft_configuration();

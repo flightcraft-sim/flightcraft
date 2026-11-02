@@ -221,3 +221,37 @@ fn navigator_drives_shared_radios_procedures_pins_and_magnetic_cdi() {
     assert!(!s.touch_state().navigator.unwrap().powered);
     assert!(!s.sim().radio_state()[0].signal_valid);
 }
+
+#[test]
+fn synthetic_vision_is_independent_per_display_and_resets_with_the_flight() {
+    let mut s = session();
+    assert!(s.touch_state().displays.iter().all(|d| !d.synthetic_vision));
+    let input = json!({"setting":{"kind":"display","id":"left_display","action":{"kind":"synthetic_vision","enabled":true}}});
+    let command = Session::commands()
+        .into_iter()
+        .find(|c| c.name == "equipment.set")
+        .unwrap();
+    assert!(jsonschema::is_valid(&command.input_schema, &input));
+    let output = s.execute("equipment.set", input).unwrap();
+    assert!(jsonschema::is_valid(&command.output_schema, &output));
+    assert!(s.touch_state().displays[0].synthetic_vision);
+    assert!(!s.touch_state().displays[1].synthetic_vision);
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":{"kind":"synthetic_vision","enabled":true}}}),
+    )
+    .unwrap();
+    assert!(s.glass_state().settings.synthetic_vision);
+    assert!(!s.touch_state().displays[1].synthetic_vision);
+    assert!(s.execute("equipment.set",json!({"setting":{"kind":"display","id":"missing","action":{"kind":"synthetic_vision","enabled":true}}})).is_err());
+    set(
+        &mut s,
+        json!({"kind":"display","id":"right_display","action":{"kind":"failure","failed":true}}),
+    );
+    assert!(s.touch_state().displays[0].synthetic_vision);
+    assert!(s.touch_state().displays[0].reversion);
+    s.execute("sim.reset", json!({"start":{"kind":"runway"}}))
+        .unwrap();
+    assert!(!s.glass_state().settings.synthetic_vision);
+    assert!(s.touch_state().displays.iter().all(|d| !d.synthetic_vision));
+}

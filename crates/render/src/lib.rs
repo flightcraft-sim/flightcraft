@@ -3,6 +3,9 @@
 mod camera;
 mod gpu;
 mod mesh;
+mod vision;
+pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_vision_stats};
+pub use vision::{PFD_FOCAL_LENGTH, SyntheticVision, pfd_pitch_y};
 
 pub use camera::{CORVID_PILOT_EYE_M, VERTICAL_FOV_RAD, attitude_horizon};
 pub use gpu::initialize;
@@ -12,13 +15,15 @@ use flightcraft_sim::State;
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 
 /// Scene colours supplied by the UI's single theme module.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Palette {
     pub airspace_b: [f32; 4],
     pub airspace_c: [f32; 4],
     pub airspace_d: [f32; 4],
     pub airspace_e: [f32; 4],
     pub airspace_mode_c: [f32; 4],
+    pub terrain_caution: [f32; 4],
+    pub terrain_warning: [f32; 4],
     pub sky_top: [f32; 4],
     pub sky_horizon: [f32; 4],
     pub ground: [f32; 4],
@@ -194,6 +199,9 @@ impl Scene {
         let projection = Mat4::perspective_rh(camera::VERTICAL_FOV_RAD, aspect, 0.05, 16000.0);
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
         let uniform = gpu::Uniform {
+            vision: [0.; 4],
+            caution: palette.terrain_caution,
+            warning: palette.terrain_warning,
             view_projection: (projection * view).to_cols_array_2d(),
             aircraft: model.to_cols_array_2d(),
             world_from_clip: world_from_clip.to_cols_array_2d(),

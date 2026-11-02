@@ -189,6 +189,10 @@ fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
     };
     for item in &mut draw.items {
         match item {
+            DrawItem::SyntheticVision { min, max, .. } => {
+                point(min);
+                point(max);
+            }
             DrawItem::Circle { center, radius, .. } => {
                 point(center);
                 *radius *= factor;
@@ -297,6 +301,7 @@ pub(crate) fn paint_touch(
     shared.pfd_failed = false;
     shared.mfd_failed = false;
     shared.reversion = false;
+    shared.settings.synthetic_vision = display.synthetic_vision;
     let mut content = cell;
     if composition.top_data_bar {
         let bar = egui::Rect::from_min_size(cell.min, egui::vec2(cell.width(), cell.height() * 0.08));
@@ -450,3 +455,6 @@ pub(crate) fn paint_standby(ui: &egui::Ui, cell: egui::Rect, state: &GlassState,
         skin.paint(p, &draw)
     });
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod vision_preview;

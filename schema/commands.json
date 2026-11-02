@@ -464,6 +464,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "synthetic_vision",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "kind": {
                   "const": "layout",
                   "type": "string"
@@ -625,6 +642,23 @@
         },
         "GlassSetting": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "synthetic_vision",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -2057,12 +2091,16 @@
             },
             "reversion": {
               "type": "boolean"
+            },
+            "synthetic_vision": {
+              "type": "boolean"
             }
           },
           "required": [
             "id",
             "layout",
             "engine_strip",
+            "synthetic_vision",
             "failed",
             "powered",
             "reversion"
@@ -15280,6 +15318,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "synthetic_vision",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "heading_rad": {
                   "description": "Selected magnetic heading, radians.",
                   "format": "double",
@@ -16989,6 +17044,9 @@
               "format": "double",
               "type": "number"
             },
+            "synthetic_vision": {
+              "type": "boolean"
+            },
             "transponder_code": {
               "type": "string"
             },
@@ -17003,6 +17061,7 @@
             }
           },
           "required": [
+            "synthetic_vision",
             "heading_bug_rad",
             "course_rad",
             "course_manual",
@@ -18140,12 +18199,16 @@
             },
             "reversion": {
               "type": "boolean"
+            },
+            "synthetic_vision": {
+              "type": "boolean"
             }
           },
           "required": [
             "id",
             "layout",
             "engine_strip",
+            "synthetic_vision",
             "failed",
             "powered",
             "reversion"
@@ -19146,6 +19209,9 @@
               "format": "double",
               "type": "number"
             },
+            "synthetic_vision": {
+              "type": "boolean"
+            },
             "transponder_code": {
               "type": "string"
             },
@@ -19160,6 +19226,7 @@
             }
           },
           "required": [
+            "synthetic_vision",
             "heading_bug_rad",
             "course_rad",
             "course_manual",
@@ -20297,12 +20364,16 @@
             },
             "reversion": {
               "type": "boolean"
+            },
+            "synthetic_vision": {
+              "type": "boolean"
             }
           },
           "required": [
             "id",
             "layout",
             "engine_strip",
+            "synthetic_vision",
             "failed",
             "powered",
             "reversion"

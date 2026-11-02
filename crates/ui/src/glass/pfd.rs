@@ -59,7 +59,7 @@ pub(super) fn draw_composed(
     // The full-width attitude underlays both tapes, with a fixed viewport at every pitch and bank.
     rect(&mut d, [0., 30., 500., 190.], Ink::Sky);
     let horizon = |x, y| rotated([x, y], [250., 125.], -a.roll_rad);
-    let pitch = a.pitch_rad.to_degrees() as f32 * 2.5;
+    let pitch = flightcraft_render::pfd_pitch_y(a.pitch_rad);
     polygon(
         &mut d,
         clip_polygon(
@@ -73,9 +73,61 @@ pub(super) fn draw_composed(
         ),
         Ink::Earth,
     );
+    if s.settings.synthetic_vision
+        && a.attitude_valid
+        && a.air_data_valid
+        && a.powered
+        && let Some((world, state)) = input.vision
+        && let Some(view) =
+            flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, a.pitch_rad, a.altitude_msl_m)
+    {
+        d.items.push(DrawItem::SyntheticVision {
+            min: [0., 30.],
+            max: [500., 220.],
+            view: Box::new(view.clone()),
+        });
+        let inside = |[x, y]: [f32; 2]| (100. ..400.).contains(&x) && (50. ..195.).contains(&y);
+        let mut occupied = Vec::<[f32; 2]>::new();
+        for (at, text) in view.labels() {
+            let [x, y] = at;
+            if inside(at)
+                && occupied
+                    .iter()
+                    .all(|[px, py]| (x - px).abs() > 75. || (y - py).abs() > 16.)
+            {
+                line(&mut d, [x, y - 4.], [x, y - 9.], Ink::Text, 1.);
+                label(&mut d, [x, y], text, 9., Ink::Text);
+                occupied.push(at);
+            }
+        }
+        if let Some(at) = view.flight_path_marker().filter(|at| inside(*at)) {
+            let [x, y] = at;
+            // Open circle preserves terrain visibility through the velocity vector.
+            let mut vertices = Vec::with_capacity(48);
+            let mut indices = Vec::with_capacity(144);
+            for i in 0..24_u32 {
+                let angle = i as f32 * std::f32::consts::TAU / 24.;
+                for radius in [5.75, 4.25] {
+                    vertices.push((
+                        [x + radius * angle.cos(), y + radius * angle.sin()],
+                        Ink::Normal,
+                        Ink::Normal,
+                        0.,
+                    ));
+                }
+                let a = i * 2;
+                let b = ((i + 1) % 24) * 2;
+                indices.extend([a, b, a + 1, a + 1, b, b + 1]);
+            }
+            d.items.push(DrawItem::Mesh { vertices, indices });
+            line(&mut d, [x - 13., y], [x - 5., y], Ink::Normal, 1.5);
+            line(&mut d, [x + 5., y], [x + 13., y], Ink::Normal, 1.5);
+            line(&mut d, [x, y - 5.], [x, y - 10.], Ink::Normal, 1.5);
+        }
+    }
     if a.attitude_valid {
         for degrees in [-30_i32, -20, -10, -5, 0, 5, 10, 20, 30] {
-            let y = pitch - degrees as f32 * 2.5;
+            let y = flightcraft_render::pfd_pitch_y(a.pitch_rad - f64::from(degrees).to_radians());
             let width = if degrees % 10 == 0 { 35. } else { 20. };
             let p = horizon(-width, y);
             let q = horizon(width, y);
@@ -97,25 +149,25 @@ pub(super) fn draw_composed(
             let point = |r: f32| {
                 [
                     250. + r * libm::sin(deg.to_radians()) as f32,
-                    132. - r * libm::cos(deg.to_radians()) as f32,
+                    125. - r * libm::cos(deg.to_radians()) as f32,
                 ]
             };
             line(&mut d, point(85.), point(92.), Ink::Text, 1.);
         }
-        let roll = rotated([0., -79.], [250., 132.], -a.roll_rad);
+        let roll = rotated([0., -79.], [250., 125.], -a.roll_rad);
         let [rx, ry] = roll;
         polygon(
             &mut d,
             vec![roll, [rx - 4., ry + 7.], [rx + 4., ry + 7.]],
             Ink::Needle,
         );
-        line(&mut d, [211., 130.], [236., 130.], Ink::Needle, 3.);
-        line(&mut d, [264., 130.], [289., 130.], Ink::Needle, 3.);
-        line(&mut d, [236., 130.], [243., 137.], Ink::Needle, 3.);
-        line(&mut d, [257., 137.], [264., 130.], Ink::Needle, 3.);
-        circle(&mut d, [250., 132.], 2., Ink::Needle);
+        line(&mut d, [211., 123.], [236., 123.], Ink::Needle, 3.);
+        line(&mut d, [264., 123.], [289., 123.], Ink::Needle, 3.);
+        line(&mut d, [236., 123.], [243., 130.], Ink::Needle, 3.);
+        line(&mut d, [257., 130.], [264., 123.], Ink::Needle, 3.);
+        circle(&mut d, [250., 125.], 2., Ink::Needle);
         if let Some(ap) = input.autopilot {
-            crate::autopilot::command_bars(&mut d, ap, [250., 132.], a.roll_rad, a.pitch_rad, 1.0);
+            crate::autopilot::command_bars(&mut d, ap, [250., 125.], a.roll_rad, a.pitch_rad, 1.0);
         }
         line(&mut d, [219., 204.], [281., 204.], Ink::Text, 1.);
         circle(

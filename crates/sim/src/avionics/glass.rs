@@ -56,6 +56,9 @@ pub enum WaypointKind {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum GlassSetting {
+    SyntheticVision {
+        enabled: bool,
+    },
     HeadingBug {
         /// Selected magnetic heading, radians.
         #[schemars(range(min=0,max=core::f64::consts::TAU))]

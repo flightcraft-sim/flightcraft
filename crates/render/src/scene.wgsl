@@ -13,6 +13,9 @@ struct Uniforms {
     water: vec4<f32>,
     grid: vec4<f32>,
     eye: vec4<f32>,
+    vision: vec4<f32>,
+    caution: vec4<f32>,
+    warning: vec4<f32>,
 }
 @group(0) @binding(0) var<uniform> u: Uniforms;
 struct Sky { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32> }
@@ -26,7 +29,9 @@ struct Sky { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32> 
 @fragment fn sky_fragment(i: Sky) -> @location(0) vec4<f32> {
     let ray = normalize((u.world_from_clip * vec4<f32>(i.uv * 2.0 - 1.0, 1.0, 1.0)).xyz);
     let far_color = select(u.ground, u.sky_top, ray.y >= 0.0);
-    return mix(u.sky_horizon, far_color, smoothstep(0.0, 0.65, abs(ray.y)));
+    let sky = mix(u.sky_horizon, far_color, smoothstep(0.0, 0.65, abs(ray.y)));
+    let horizon = (1.0 - smoothstep(0.001, 0.004, abs(ray.y))) * u.vision.y;
+    return mix(sky, u.grid, horizon);
 }
 struct Surface {
     @builtin(position) position: vec4<f32>,
@@ -50,6 +55,15 @@ struct Surface {
     o.kind = kind;
     o.water_coverage = water_coverage;
     o.position = u.view_projection * world;
+    if kind == 10.0 {
+        // Expand outline edges in clip space to retain a legible width at PFD resolution.
+        let next = u.view_projection * vec4<f32>(position + normal, 1.0);
+        let delta = (next.xy / max(abs(next.w), 0.001) - o.position.xy / max(abs(o.position.w), 0.001)) * vec2<f32>(750.0, 285.0);
+        let side = vec2<f32>(-delta.y, delta.x) / max(length(delta), 0.00001);
+        o.position.x += side.x * 2.0 / 750.0 * o.position.w * water_coverage * 0.9;
+        o.position.y += side.y * 2.0 / 285.0 * o.position.w * water_coverage * 0.9;
+        o.normal = vec3<f32>(0.0, 1.0, 0.0);
+    }
     return o;
 }
 // Fixed world-space sunlight, with enough ambient fill to keep the unlit sides readable.
@@ -111,10 +125,19 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     }
     // Clear foreground preserves markings and cockpit sight lines. The far terrain converges
     // to the exact sky horizon token before the far clip, hiding the edge of the training field.
-    let haze_distance = max(distance - 180.0, 0.0) / 5800.0;
+    let visibility = select(5800.0, 24000.0, u.vision.y > 0.5);
+    let haze_distance = max(distance - 180.0, 0.0) / visibility;
     var fog = 1.0 - exp(-haze_distance * (1.0 + haze_distance * 0.4));
     if i.kind == 1.0 || i.kind == 2.0 {
         fog = 1.0 - exp(-distance / 6800.0);
+    }
+    if u.vision.y > 0.5 && (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0 || i.kind == 5.0) {
+        let clearance = u.vision.x - i.world.y;
+        let relief = 0.72 + 0.28 * max(dot(normal, sun), 0.0);
+        if clearance <= 304.8 { color = u.caution.rgb * relief; }
+        if clearance <= 30.48 { color = u.warning.rgb * relief; }
+        // Awareness bands stay readable in distant haze, as on the map.
+        if clearance <= 304.8 { fog = 0.0; }
     }
     if i.kind == 9.0 && fract(i.water_coverage / 300.0) > 0.55 { discard; }
     var alpha = select(1.0, i.color.a * u.eye.w, i.kind == 2.0);

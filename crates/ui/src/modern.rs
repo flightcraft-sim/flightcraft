@@ -28,7 +28,7 @@ fn text(ui: &egui::Ui, rect: Rect, label: &str, size: f32, color: egui::Color32)
         rect.center(),
         Align2::CENTER_CENTER,
         label,
-        FontId::monospace(size),
+        FontId::monospace(size.min((rect.width() - 4.).max(1.) / (label.len().max(1) as f32 * 0.61))),
         color,
     );
 }
@@ -149,7 +149,7 @@ impl PanelUi {
                             if button(
                                 ui,
                                 i,
-                                part(cell, 0.10 + i as f32 * 0.25, 0.89, 0.24, 0.09),
+                                part(cell, 0.075 + i as f32 * 0.175, 0.89, 0.168, 0.09),
                                 label,
                                 d.layout == layout,
                                 font,
@@ -165,7 +165,7 @@ impl PanelUi {
                         if button(
                             ui,
                             "strip",
-                            part(cell, 0.86, 0.89, 0.12, 0.09),
+                            part(cell, 0.775, 0.89, 0.15, 0.09),
                             "ENG",
                             d.engine_strip,
                             font,
@@ -176,6 +176,23 @@ impl PanelUi {
                                 id: e.id.clone(),
                                 action: DisplayAction::EngineStrip {
                                     visible: !d.engine_strip,
+                                },
+                            });
+                        }
+                        if button(
+                            ui,
+                            "vision",
+                            part(cell, 0.60, 0.89, 0.168, 0.09),
+                            "SVT",
+                            d.synthetic_vision,
+                            font,
+                        )
+                        .clicked()
+                        {
+                            self.commands.push(EquipmentSetting::Display {
+                                id: e.id.clone(),
+                                action: DisplayAction::SyntheticVision {
+                                    enabled: !d.synthetic_vision,
                                 },
                             });
                         }

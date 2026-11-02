@@ -136,7 +136,10 @@ Each inset has `corner` (`top_left`, `top_right`, `bottom_left`, or `bottom_righ
 and distance data. Round RPM/manifold dials and bar gauges share the engine model. Flight content
 fills its complete viewport; the soft-key row and corner knobs remain outside it. The installed
 autopilot uses the complete existing controller faceplate and encoder behaviour, scaled together
-with its pointer hit regions.
+with its pointer hit regions, with a seven-point minimum label size. Soft keys fit between the
+corner knobs. Below a 140-point short side, map insets omit airspace outlines,
+compass roses, and off-route fixes, space their small airport symbols, and retain the active route
+without changing the shared map settings. Recovery pin and pull labels fit their separate button rectangles.
 
 `equipment.set` has a tagged `setting`:
 
@@ -154,7 +157,8 @@ The same actions are accepted by `systems.set` under `kind: equipment`. Breaker 
 commands retain their existing names. Navigator actions include `page`, `tune`, `flip`,
 `knob_band`, `knob`, `direct_to` (`query`), `flight_plan` (`queries`), `avionics` (an existing
 `avionics.set` setting, including procedures and CDI source), and `shared` (a glass setting). Display actions include `layout`,
-`engine_strip`, and scenario `failure`.
+`engine_strip`, `synthetic_vision` (`enabled`), and scenario `failure`. Each display has its own
+SVT selection; see [synthetic vision](glass.md#synthetic-vision).
 
 `avionics.state.glass_suite.touch` reports navigator and per-installation display state;
 `sim.state.systems.modern` reports engine controls, active annunciations, master latches,

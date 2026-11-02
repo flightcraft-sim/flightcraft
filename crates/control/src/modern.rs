@@ -59,6 +59,7 @@ pub struct TouchDisplayState {
     pub id: String,
     pub layout: TouchLayout,
     pub engine_strip: bool,
+    pub synthetic_vision: bool,
     pub failed: bool,
     pub powered: bool,
     pub reversion: bool,
@@ -72,7 +73,7 @@ pub struct TouchState {
 pub(crate) struct TouchAvionics {
     pub generation: u64,
     pub navigator: NavigatorState,
-    pub displays: BTreeMap<String, (TouchLayout, bool, bool)>,
+    pub displays: BTreeMap<String, (TouchLayout, bool, bool, bool)>,
 }
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -113,6 +114,7 @@ pub enum NavigatorAction {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DisplayAction {
+    SyntheticVision { enabled: bool },
     Layout { layout: TouchLayout },
     EngineStrip { visible: bool },
     Failure { failed: bool },
@@ -187,16 +189,17 @@ impl Session {
                     engine_strip,
                     ..
                 } => {
-                    let (layout, engine_strip, failed) = if current {
+                    let (layout, engine_strip, failed, synthetic_vision) = if current {
                         self.touch.displays.get(&e.id).copied()
                     } else {
                         None
                     }
-                    .unwrap_or((*layout, *engine_strip, false));
+                    .unwrap_or((*layout, *engine_strip, false, false));
                     result.displays.push(TouchDisplayState {
                         id: e.id.clone(),
                         layout,
                         engine_strip,
+                        synthetic_vision,
                         failed,
                         powered: powered(load),
                         reversion: false,
@@ -282,8 +285,9 @@ impl Session {
                     .into_iter()
                     .find(|d| d.id == id)
                     .ok_or_else(|| invalid(NAME, "unknown display installation"))?;
-                let mut values = (d.layout, d.engine_strip, d.failed);
+                let mut values = (d.layout, d.engine_strip, d.failed, d.synthetic_vision);
                 match action {
+                    DisplayAction::SyntheticVision { enabled } => values.3 = enabled,
                     DisplayAction::Layout { layout } => values.0 = layout,
                     DisplayAction::EngineStrip { visible } => values.1 = visible,
                     DisplayAction::Failure { failed } => values.2 = failed,

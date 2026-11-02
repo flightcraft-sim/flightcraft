@@ -8,6 +8,7 @@ const NM: f64 = 1852.0;
 pub use flightcraft_sim::avionics::glass::*;
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 pub struct GlassSettings {
+    pub synthetic_vision: bool,
     pub heading_bug_rad: f64,
     pub course_rad: f64,
     pub course_manual: bool,
@@ -29,6 +30,7 @@ pub struct GlassSettings {
 impl Default for GlassSettings {
     fn default() -> Self {
         Self {
+            synthetic_vision: false,
             heading_bug_rad: 0.0,
             course_rad: 0.0,
             course_manual: false,
@@ -161,6 +163,7 @@ impl Session {
         self.reset_glass_generation();
         const NAME: &str = "avionics.set";
         match setting {
+            GlassSetting::SyntheticVision { enabled } => self.glass.synthetic_vision = enabled,
             GlassSetting::HeadingBug { heading_rad } => {
                 range(NAME, "heading_rad", heading_rad, 0.0, core::f64::consts::TAU)?;
                 self.sim

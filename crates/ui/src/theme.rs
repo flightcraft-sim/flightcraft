@@ -70,6 +70,8 @@ pub fn install(ctx: &egui::Context) {
 
 pub fn scene() -> Palette {
     Palette {
+        terrain_caution: AMBER.to_normalized_gamma_f32(),
+        terrain_warning: DANGER.to_normalized_gamma_f32(),
         airspace_b: [0.12, 0.40, 1.0, 0.82],
         airspace_c: [0.85, 0.12, 0.68, 0.82],
         airspace_d: [0.12, 0.40, 1.0, 0.70],

@@ -42,6 +42,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 21 | Cockpit view, conventional sensed flight instruments and runtime skins, readable engine cluster, unit preferences, momentary panel controls, and fuel-driven mass/CG/inertia (done; see docs/instruments.md) | 8 |
 | 21a | Corvid electronic standby pair: independent AHRS and batteries, GPS HSI and reversion, command controls, and pilot-visible MCP state (done; see docs/instruments.md) | 18, 21 |
 | 21b | Corvid integrated glass PFD, MFD, shared air data, regional GPS plan, smooth terrain map, failure reversion, shared sensors, and shared heading bug (done; see docs/glass.md) | 18, 18a, 21 |
+| 21c | Shared pilot-eye synthetic vision for glass and touch PFDs, perspective ladder, terrain bands, runway labels, and ground-relative flight path marker (implemented; see docs/glass.md) | 18, 21b |
 | 22 | SolidCraft export format agreed and specified | decision with SolidCraft |
 | 23 | Vortex-lattice coefficients from geometry | 15 |
 | 24 | An aircraft modelled in SolidCraft flies | 22, 23 |

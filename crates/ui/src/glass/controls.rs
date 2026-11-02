@@ -42,6 +42,10 @@ impl GlassControls {
                     },
                 });
             }
+            let mut vision = state.settings.synthetic_vision;
+            if ui.checkbox(&mut vision, "SVT").changed() {
+                commands.push(S::SyntheticVision { enabled: vision });
+            }
             if ui.button("PFD ↗").clicked() {
                 self.popout = Some("glass_pfd".into());
             }

@@ -192,3 +192,67 @@ fn display_units_zero_and_requested_pfd_readouts() {
         }
     }
 }
+
+#[test]
+fn synthetic_vision_is_inhibited_without_valid_sensors_and_on_standby() {
+    let session = flight();
+    let mut state = session.glass_state();
+    state.settings.synthetic_vision = true;
+    let draw = |state: &GlassState, standby| {
+        pfd::draw(
+            state,
+            InstrumentInput::new(session.sim().systems(), 0.)
+                .with_glass(state)
+                .with_vision(session.sim().world(), session.sim().state()),
+            standby,
+        )
+    };
+    let has_pass = |draw: DrawList| {
+        draw.items
+            .iter()
+            .any(|i| matches!(i, DrawItem::SyntheticVision { .. }))
+    };
+    assert!(has_pass(draw(&state, false)));
+    assert!(!has_pass(draw(&state, true)));
+    state.air_data.air_data_valid = false;
+    assert!(!has_pass(draw(&state, false)));
+    state.air_data.air_data_valid = true;
+    state.air_data.attitude_valid = false;
+    assert!(!has_pass(draw(&state, false)));
+    state.air_data.attitude_valid = true;
+    state.pfd_failed = true;
+    assert!(!has_pass(draw(&state, false)));
+    state.pfd_failed = false;
+    state.settings.synthetic_vision = false;
+    assert!(!has_pass(draw(&state, false)));
+}
+
+#[test]
+fn pfd_horizon_ladder_and_fixed_aircraft_symbol_share_the_camera_projection() {
+    let session = flight();
+    let mut state = session.glass_state();
+    state.settings.synthetic_vision = true;
+    state.air_data.roll_rad = 0.;
+    for degrees in [-10_f64, 0., 10.] {
+        state.air_data.pitch_rad = degrees.to_radians();
+        let draw = pfd::draw(
+            &state,
+            InstrumentInput::new(session.sim().systems(), 0.)
+                .with_glass(&state)
+                .with_vision(session.sim().world(), session.sim().state()),
+            false,
+        );
+        let expected = 125. + (2.5 * 180. / std::f64::consts::PI * degrees.to_radians().tan()) as f32;
+        assert!(draw.items.iter().any(|item| matches!(item,
+            DrawItem::Line { a:[215.,y], b:[285.,yy], ink:Ink::Text, width:2. }
+            if (*y-expected).abs() < 0.001 && (*yy-expected).abs() < 0.001)));
+        assert!(draw.items.iter().any(|item| matches!(
+            item,
+            DrawItem::Circle {
+                center: [250., 125.],
+                radius: 2.,
+                ink: Ink::Needle
+            }
+        )));
+    }
+}
