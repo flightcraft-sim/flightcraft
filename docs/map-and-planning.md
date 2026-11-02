@@ -115,6 +115,52 @@ centre.
   and export GPX and the common XML flight-plan format used by GPS units and planning apps, so
   plans move between FlightCraft and the tools pilots already use.
 
+## 6a. Base maps and overlays
+
+The planning map and the MFD map share one map engine with switchable base maps and stackable
+overlays. The picker sits on the map itself, so switching from "Aero" to "Sectional" is one tap.
+
+**Base maps** (one at a time):
+
+| Base map | What it is | Source |
+|---|---|---|
+| **Aero** | our own clean vector aeronautical map in our own style: terrain tint, water, airports with runway shapes, airspace with floors and ceilings, navaids with compass roses, fixes, and airways, all crisp at any zoom and in day and night colours | the region's own data |
+| **VFR sectional** | the FAA sectional chart | FAA GeoTIFF, public domain |
+| **Terminal area** | the FAA terminal area chart where one exists (New York, Philadelphia) | FAA GeoTIFF, public domain |
+| **IFR low** and **IFR high** | the FAA enroute charts | FAA GeoTIFF, public domain |
+| **Terrain** | shaded relief with elevation colours | the region's elevation data |
+| **Satellite** | aerial imagery | USGS National Map imagery (public domain), on demand, cached |
+| **Street** | roads, towns, and place names | rendered from OpenStreetMap data (© OpenStreetMap contributors, ODbL), not from the public OSM tile servers |
+
+**Overlays** (any combination, each with opacity):
+- the route and its vertical profile;
+- airspace;
+- TFRs;
+- obstacles from the FAA Digital Obstacle File;
+- plates and airport diagrams, georeferenced;
+- terrain warnings relative to the aircraft's altitude;
+- flight-category dots from METARs;
+- winds aloft;
+- weather radar (NOAA MRMS or NEXRAD mosaic, public);
+- satellite clouds (NOAA GOES, public);
+- user pins;
+- your location;
+- the aircraft and its track;
+- simulated traffic.
+
+**Map behaviour:**
+- **Orientation:** north-up, track-up, or heading-up.
+- **Range:** rings and a scale bar.
+- **Tap anything for details:** a card for an airport, navaid, fix, airspace, TFR, or obstacle, with
+  actions (direct to, add to plan, start here, open plates).
+- **Rubber-band routes:** drag a leg to insert a waypoint.
+- **Measure:** a distance and bearing tool between any two points.
+- **Night colours:** a night palette for every base map; raster charts are dimmed.
+
+Every live-data overlay is opt-in and shows its time and source (see
+[tablet apps, charts, plates, and procedures](efb-and-charts.md) section 5). The Aero map's look is
+FlightCraft's own design, not a copy of any app's styling.
+
 ## 7. Commands and MCP additions
 
 - **`search.query`:** text in; ranked results with kind, ident, name, coordinates, and details
@@ -128,6 +174,8 @@ centre.
   - `summary`, which returns legs, totals, and conflicts;
   - `profile`, which returns the vertical profile samples;
   - `save`, `load`, `import`, `export`, and `activate`, which hands the plan to the GPS.
+- **`map.set`:** base map, overlays and their opacity, orientation, range, and centre; `map.state`
+  reports them.
 - **`navdata.nearest`:** the nearest navaids, fixes, and airports to a point.
 
 ## 8. Phases
@@ -142,4 +190,5 @@ centre.
    and the geocoder providers.
 3. **The planning map:** layers, plan editing, leg math, the vertical profile, conflicts, plan
    files, and activation into the GPS.
-4. **Charts:** sectional chart base layers per region.
+4. **Base maps:** Aero (vector), sectional, terminal area, IFR low and high, terrain, satellite, and
+   street, plus the overlays above as their data arrives.
