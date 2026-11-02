@@ -1,8 +1,8 @@
 //! Native and browser transports install immutable, validated terrain before reset.
 use crate::{Command, CommandError, Session, WorldChoice};
+pub use flightcraft_world::MAX_AIRSPACE_BYTES;
 pub use flightcraft_world::{Airport, Airports, MAX_AIRPORT_BYTES, Region, World as TerrainWorld};
 use flightcraft_world::{HeightTile, TerrainError, World};
-pub use flightcraft_world::MAX_AIRSPACE_BYTES;
 pub use flightcraft_world::{MAX_REGION_BYTES, MAX_REGION_TILE_BYTES, MAX_REGIONS, MAX_TERRAIN_BYTES};
 
 /// Browser and native transports use the same bounded airspace reader.
