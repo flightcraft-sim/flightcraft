@@ -195,7 +195,108 @@ change once published; a renamed variable is a new name plus a deprecated alias.
    - Everything outside an opening can be masked black, to avoid light leaks.
    - Instrument lighting dims with a panel-lights variable, so the board can be lit at night.
 
-## 5. Commands and MCP additions
+## 5. Driver tiers and the shared device core
+
+Hardware support comes in three tiers. The cheapest tier is tried first, and every tier presents
+the same internal device interface to the simulator: named inputs, named outputs, declared limits,
+and a connection state.
+
+1. **Declarative device manifests (data only, no program).**
+   - **USB devices:** a HID device profile (section 2) is one kind of manifest.
+   - **Serial boards:** a serial manifest is the other. It gives a port match (USB vendor and
+     product id, or a name), the baud rate, line patterns that map to inputs (for example
+     `B(\d+) ([01])` to "button N"), and output formats (for example `L{index} {0|1}`).
+   - **Result:** a board running a ten-line sketch that prints its switch states works with no
+     driver program at all.
+   - **Where they come from:** manifests install from packs or from a file at runtime, and are
+     validated against their schema before use.
+2. **Device protocol (section 3).** For boards and programs that want subscriptions, displays, or
+   several kinds of control: any language, any transport listed above.
+3. **Built-in compiled drivers.** These cover only what data cannot express, such as a protocol
+   with binary framing or vendor-specific output reports. They also serve as reference
+   implementations of the internal interface.
+
+### Device families
+
+Device families sit on one shared device core. Each family is a data-only description of the
+inputs and outputs its devices usually have, plus its default bindings:
+
+- flight controls (yoke, stick, pedals, toe brakes);
+- throttle quadrants;
+- switch and annunciator panels;
+- radio and autopilot panels;
+- instrument outputs (servo and stepper gauges, segment and character displays);
+- screens and remote panels;
+- motion and force outputs.
+
+The shared core owns everything families have in common:
+
+- connection handling and discovery;
+- bounded queues and per-device fault isolation;
+- the binding engine and the variable catalogue;
+- permissions.
+
+Families never depend on each other. A new family adds no code to the core, and the simulator
+works with any subset of families present.
+
+### Capabilities are declared limits
+
+A device declares what it can do, not what it currently holds. For example:
+
+- an axis declares its raw range and resolution;
+- a display declares its digits or its pixel size;
+- a servo gauge declares its angular range and speed.
+
+The binding screen offers only bindings that fit those limits. For example, a 4-digit display is
+never offered a 6-character frequency without a declared format.
+
+### One owner per control and per output
+
+Each action or command has at most one active binding per input. Each output has exactly one
+source variable. The binding loader refuses conflicts and names both claimants, instead of letting
+two devices fight over the throttle or one light.
+
+### Isolation
+
+- **Per connection:** each device runs on its own task with its own limits and counters.
+- **One bad device stays contained:** a stalled, flooding, or malformed device is throttled,
+  then disconnected, and never delays the fixed step or another device.
+- **Devices are independent:** they never talk to each other. They compose only through
+  commands and variables.
+
+### Moving hardware needs consent, and stopping never waits
+
+- **Consent:** outputs that move something physical (motion platforms, force-feedback yokes,
+  motorised throttles, large servo gauges) are off until the user enables each device. Enabling
+  is tied to that device and that session.
+- **Stopping:** pause, a lost connection, a crash dialog, or the stop shortcut zeroes those
+  outputs at once. Stopping never requires a confirmation.
+
+### Versioning
+
+- **Version numbers:** the device protocol carries a major version, negotiated in hello; every
+  manifest, profile, binding file, and layout carries its own version.
+- **Changes:** schema changes are additive first, and old files are upgraded on load with a
+  notice. A breaking change takes two or more releases, with the old form accepted in between.
+- **Checks:** CI checks that a changed schema bumps its version, as it already checks schema
+  freshness.
+
+### Managed panel computers
+
+A Raspberry Pi or tablet behind a panel pairs once with the main simulator. After that it
+receives its layout, device manifests, and bindings from the main simulator, so it needs no
+hand-edited configuration. Its own local inputs (GPIO, I2C, serial) are declared by manifests
+that the main simulator pushes and the panel computer validates.
+
+### Testing without hardware
+
+- **Virtual devices:** a virtual device replays recorded or scripted input at a chosen pace.
+  Binding, calibration, output, and disconnect behaviour can therefore be tested in CI in
+  seconds.
+- **Device manifest checks:** every device manifest in a pack must come with a recorded sample
+  session that its tests replay.
+
+## 6. Commands and MCP additions
 
 - **Input:**
   - `input.devices` lists connected devices with live values.
@@ -210,9 +311,12 @@ change once published; a renamed variable is a new name plus a deprecated alias.
   - `layout.add`, `layout.move`, `layout.set`, `layout.remove`, and `layout.export_cut_template`;
   - `window.open`, `window.close`, and `window.set`.
 
-## 6. Phases
+## 7. Phases
 
 1. **HID and bindings:**
+   - the shared device core and its families;
+   - virtual devices for tests;
+   - declarative serial manifests;
    - the variable catalogue and device profiles;
    - bindings with bind-by-moving and per-aircraft sets;
    - outputs to quadrant lights;
@@ -234,10 +338,11 @@ Each phase ships with docs, a contributor guide ("write a driver", "add a device
 "build a panel"), and an agent skill. A coding agent asked to "make my Arduino panel work with
 FlightCraft" should then know exactly what to do.
 
-## 7. Open questions
+## 8. Open questions
 
 1. Device profiles that name commercial controllers: keep them in a separate community profile
-   pack, as with real aircraft, or allow them in the engine repo as plain compatibility data?
+   pack, as with real aircraft (current default), or allow them in the engine repo as plain
+   compatibility data?
 2. In-process driver plugins (sandboxed WebAssembly components) for drivers that need lower
    latency than a local socket: worth it later, or never?
 3. A compact binary form of the protocol for the smallest boards, or is the text form enough?
