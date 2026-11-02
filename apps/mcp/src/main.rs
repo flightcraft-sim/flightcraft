@@ -36,9 +36,22 @@ fn serve() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--connect is unavailable on wasm".into());
     }
     let mut session = Session::new()?;
+    // Regions from the working directory, else those shipped beside the executable.
     #[cfg(not(target_arch = "wasm32"))]
-    for error in session.load_regions_directory(std::path::Path::new("assets/terrain")) {
-        eprintln!("{error}");
+    {
+        let local = std::path::PathBuf::from("assets/terrain");
+        let directory = if local.is_dir() {
+            local
+        } else {
+            std::env::current_exe()
+                .ok()
+                .and_then(|exe| exe.parent().map(|dir| dir.join("assets/terrain")))
+                .filter(|dir| dir.is_dir())
+                .unwrap_or(local)
+        };
+        for error in session.load_regions_directory(&directory) {
+            eprintln!("{error}");
+        }
     }
     let mut execute = |name: &str, input| {
         #[cfg(not(target_arch = "wasm32"))]

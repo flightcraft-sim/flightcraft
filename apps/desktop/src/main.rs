@@ -80,6 +80,15 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         multisampling: 0,
         ..Default::default()
     };
+    // A downloaded build is started from anywhere (a double-click starts in `/` on macOS), so fall
+    // back to the regions shipped beside the executable when the working directory has none.
+    if regions_directory.is_none() && !std::path::Path::new("assets/terrain").is_dir() {
+        regions_directory = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|dir| dir.join("assets/terrain")))
+            .filter(|dir| dir.is_dir())
+            .and_then(|dir| dir.to_str().map(str::to_owned));
+    }
     eframe::run_native(
         "FlightCraft",
         options,

@@ -96,6 +96,41 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p flightcraft-sim
 
+  desktop:
+    name: Desktop build (${{ matrix.target }})
+    # Downloadable desktop builds from main, with the bundled regions beside the executable.
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, target: macos-arm64, exe: flightcraft }
+          - { os: windows-latest, target: windows-x64, exe: flightcraft.exe }
+          - { os: ubuntu-latest, target: linux-x64, exe: flightcraft }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p flightcraft-desktop -p flightcraft-mcp
+      - name: Package
+        shell: bash
+        run: |
+          out=flightcraft-${{ matrix.target }}
+          mkdir -p "$out/assets"
+          cp "target/release/${{ matrix.exe }}" "$out/"
+          mcp=flightcraft-mcp; [ "${{ runner.os }}" = Windows ] && mcp=flightcraft-mcp.exe
+          cp "target/release/$mcp" "$out/"
+          cp -R assets/terrain "$out/assets/"
+          cp LICENSE NOTICE ATTRIBUTION.md README.md "$out/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flightcraft-${{ matrix.target }}
+          path: flightcraft-${{ matrix.target }}
+          retention-days: 30
+
   golden-wasm:
     name: Golden trajectory (wasm32-wasip1)
     runs-on: ubuntu-24.04
