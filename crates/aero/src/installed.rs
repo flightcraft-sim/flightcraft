@@ -15,6 +15,11 @@ pub enum Bus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum LoadSwitch {
+    Beacon,
+    Nav,
+    Strobe,
+    Taxi,
+    Landing,
     Avionics,
     Lights,
     FuelPump,
@@ -32,6 +37,8 @@ pub enum Wing {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SystemsDefinition {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modern: Option<crate::modern::ModernSystems>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vacuum: Option<VacuumDefinition>,
     pub electrical: ElectricalDefinition,
@@ -124,6 +131,9 @@ impl SystemsDefinition {
             &serde_json::to_value(self).map_err(|e| crate::aircraft::error("systems", e.to_string()))?,
             "systems",
         )?;
+        if let Some(m) = &self.modern {
+            m.validate()?;
+        }
         let e = &self.electrical;
         for (name, value) in [
             ("battery_capacity_ah", e.battery_capacity_ah),

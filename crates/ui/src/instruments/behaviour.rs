@@ -301,7 +301,9 @@ impl Instrument for RoundGauge {
             "tachometer" => tachometer(
                 &mut d,
                 v,
-                input.aircraft.map_or(2800., |a| a.engine.propulsion.max_rpm),
+                input
+                    .aircraft
+                    .map_or(2800., |a| a.engine.propulsion.max_rpm * a.engine.gearbox_ratio),
             ),
             "airspeed" => airspeed(&mut d, v, input.aircraft.map(|a| &a.variant.v_speeds)),
             "attitude" => {

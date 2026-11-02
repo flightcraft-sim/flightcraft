@@ -303,3 +303,168 @@ fn render_glass_panel_preview() {
         .save(std::env::temp_dir().join("flightcraft-glass-panel.png"))
         .unwrap();
 }
+
+#[test]
+#[ignore = "manual touch equipment previews"]
+fn render_equipment_previews() {
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/equipment");
+    std::fs::create_dir_all(&directory).unwrap();
+    let pack_path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/packs/equipment-demo");
+    let mut session = Session::new().unwrap();
+    session
+        .install_pack(&flightcraft_control::read_pack(&pack_path).unwrap())
+        .unwrap();
+    session
+        .execute(
+            "aircraft.load",
+            serde_json::json!({"source":{"kind":"installed","id":"equipment-demonstrator"},"reset":true}),
+        )
+        .unwrap();
+    let terrain = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
+    session
+        .install_region(flightcraft_control::read_region(&terrain).unwrap())
+        .unwrap();
+    session.execute("sim.reset",serde_json::json!({"world":"new-york","start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":1.}})).unwrap();
+    session
+        .execute(
+            "assist.set",
+            serde_json::json!({"altitude_m":1200.,"airspeed_mps":45.,"heading_rad":1.}),
+        )
+        .unwrap();
+    session
+        .execute("sim.step", serde_json::json!({"steps":5500}))
+        .unwrap();
+    session
+        .execute(
+            "avionics.set",
+            serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"direct_to","airport":"KMMU"}}}),
+        )
+        .unwrap();
+    // Acknowledgement latches remain lit after a transient condition clears.
+    session
+        .execute(
+            "equipment.set",
+            serde_json::json!({"setting":{"kind":"systems","setting":{"kind":"door","open":true}}}),
+        )
+        .unwrap();
+    session.execute("equipment.set",serde_json::json!({"setting":{"kind":"systems","setting":{"kind":"light","light":"taxi","on":true}}})).unwrap();
+    session
+        .execute(
+            "systems.set",
+            serde_json::json!({"setting":{"kind":"load_multiplier","load":"taxi","value":8.}}),
+        )
+        .unwrap();
+    session
+        .execute("sim.step", serde_json::json!({"steps":120}))
+        .unwrap();
+    session
+        .execute(
+            "systems.set",
+            serde_json::json!({"setting":{"kind":"fuel_selector","position":"off"}}),
+        )
+        .unwrap();
+    session
+        .execute("sim.step", serde_json::json!({"steps":1}))
+        .unwrap();
+    session
+        .execute(
+            "systems.set",
+            serde_json::json!({"setting":{"kind":"fuel_selector","position":"left"}}),
+        )
+        .unwrap();
+    session
+        .execute(
+            "equipment.set",
+            serde_json::json!({"setting":{"kind":"systems","setting":{"kind":"key","position":"start"}}}),
+        )
+        .unwrap();
+    session
+        .execute("sim.step", serde_json::json!({"steps":250}))
+        .unwrap();
+    session
+        .execute(
+            "equipment.set",
+            serde_json::json!({"setting":{"kind":"systems","setting":{"kind":"key","position":"on"}}}),
+        )
+        .unwrap();
+    let configuration = session.aircraft_configuration().unwrap().clone();
+    for (suffix, width, height) in [("", 1600_u32, 900_u32), ("-compact", 1100, 620)] {
+        let state = session.glass_state();
+        let mut runtime = InstrumentPanel::default();
+        let image = rasterize(width, height, |ui| {
+            runtime
+                .show(
+                    ui,
+                    &configuration.panel,
+                    InstrumentInput::new(session.sim().systems(), session.sim().readout().time_s)
+                        .with_aircraft(&configuration)
+                        .with_glass(&state)
+                        .with_autopilot(session.sim().installed_autopilot()),
+                    session.flight_generation(),
+                )
+                .unwrap();
+            runtime.show_shared_hosts(ui, &mut session);
+        });
+        image.save(directory.join(format!("panel{suffix}.png"))).unwrap();
+        let panel = configuration.panel.equipment.as_ref().unwrap();
+        let [pw, ph] = panel.size;
+        let scale = ((width as f64 - 24.) / pw).min((height as f64 - 10.) / ph);
+        let (left, top) = (
+            (width as f64 - pw * scale) * 0.5,
+            (height as f64 - ph * scale) * 0.5,
+        );
+        for (name, id) in [("navigator", "navigator"), ("display", "left_display")] {
+            let e = panel.elements.iter().find(|e| e.id == id).unwrap();
+            let [x, y] = e.position;
+            let [w, h] = e.size;
+            image::imageops::crop_imm(
+                &image,
+                (left + x * scale).round() as u32,
+                (top + y * scale).round() as u32,
+                (w * scale).round() as u32,
+                (h * scale).round() as u32,
+            )
+            .to_image()
+            .save(directory.join(format!("{name}{suffix}.png")))
+            .unwrap();
+        }
+        if std::env::var_os("FLIGHTCRAFT_EXTENDED_PANEL_PREVIEWS").is_some() {
+            // Also capture full-height split composition, the procedures page, and the navigator map.
+            session.execute("equipment.set",serde_json::json!({"setting":{"kind":"display","id":"left_display","action":{"kind":"layout","layout":"pfd_map"}}})).unwrap();
+            for (page, name) in [("procedures", "procedures"), ("map", "navigator-map")] {
+                session
+                .execute(
+                    "equipment.set",
+                    serde_json::json!({"setting":{"kind":"navigator","action":{"kind":"page","page":page}}}),
+                )
+                .unwrap();
+                let state = session.glass_state();
+                let image = rasterize(width, height, |ui| {
+                    runtime
+                        .show(
+                            ui,
+                            &configuration.panel,
+                            InstrumentInput::new(session.sim().systems(), 0.)
+                                .with_aircraft(&configuration)
+                                .with_glass(&state)
+                                .with_autopilot(session.sim().installed_autopilot()),
+                            session.flight_generation(),
+                        )
+                        .unwrap();
+                    runtime.show_shared_hosts(ui, &mut session);
+                });
+                image
+                    .save(directory.join(format!("panel-{name}{suffix}.png")))
+                    .unwrap();
+            }
+            session.execute("equipment.set",serde_json::json!({"setting":{"kind":"display","id":"left_display","action":{"kind":"layout","layout":"full_pfd"}}})).unwrap();
+            session
+            .execute(
+                "equipment.set",
+                serde_json::json!({"setting":{"kind":"navigator","action":{"kind":"page","page":"home"}}}),
+            )
+            .unwrap();
+        }
+    }
+}

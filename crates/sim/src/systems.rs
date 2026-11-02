@@ -41,6 +41,9 @@ pub enum SystemSwitch {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SystemSetting {
+    Equipment {
+        setting: crate::modern::ModernSetting,
+    },
     Switch {
         switch: SystemSwitch,
         on: bool,
@@ -183,6 +186,7 @@ pub struct SensedInstruments {
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct SystemsState {
+    pub modern: Option<crate::modern::ModernState>,
     pub avionics: crate::avionics::AvionicsState,
     pub enabled: bool,
     pub vacuum_installed: bool,
@@ -219,6 +223,9 @@ pub struct SystemsState {
 #[derive(Clone, Debug)]
 pub(crate) struct SystemsModel {
     pub definition: SystemsDefinition,
+    pub engine_control: flightcraft_aero::modern::EngineControl,
+    pub gearbox_ratio: f64,
+    pub navigator_load: Option<String>,
     pub induction: Induction,
     pub fuel_flow: Table,
     pub idle_fraction: f64,
@@ -230,6 +237,7 @@ pub(crate) struct SystemsModel {
 impl Default for SystemsState {
     fn default() -> Self {
         Self {
+            modern: None,
             avionics: crate::avionics::AvionicsState::default(),
             enabled: false,
             vacuum_installed: false,
@@ -410,6 +418,11 @@ impl SystemsState {
             words.extend(t.id.bytes().map(u64::from));
             words.extend([t.capacity_kg, t.unusable_kg, t.quantity_kg, t.indicated_kg].map(f64::to_bits));
         }
+        if let Some(s) = &self.modern
+            && let Ok(bytes) = serde_json::to_vec(s)
+        {
+            words.extend(bytes.into_iter().map(u64::from));
+        }
         words
     }
 
@@ -426,16 +439,41 @@ impl SystemsState {
         // ResolvedAircraft is public: native callers can mutate metadata after resolution.
         // Validate every input consumed here before installing any runtime state.
         flightcraft_aero::LayerFile::Engine(r.engine.clone()).validate()?;
+        flightcraft_aero::modern::validate_installation(&r.engine, Some(d), &r.panel)?;
         r.variant.weight_balance(&r.load)?;
         let mut engine_model = r.aircraft.clone();
         engine_model.propulsion = r.engine.propulsion.clone();
         engine_model.validate()?;
         let mut s = Self {
+            modern: (d.modern.is_some()
+                || r.panel.equipment.is_some()
+                || !matches!(
+                    r.engine.control,
+                    flightcraft_aero::modern::EngineControl::Magnetos
+                ))
+            .then(|| crate::modern::ModernState::new(&r.engine.control, d.modern.as_ref())),
             enabled: true,
             vacuum_installed: d.vacuum.is_some(),
             carb_heat_installed: r.engine.induction == Induction::Carburettor,
             ..Self::default()
         };
+        if d.modern.as_ref().is_some_and(|m| !m.selector_both) {
+            s.controls.fuel_selector = FuelSelector::Left;
+        }
+        if let Some(modern) = &mut s.modern
+            && let Some(panel) = &r.panel.equipment
+        {
+            for e in &panel.elements {
+                modern.panel_controls.insert(e.id.clone(), 0.);
+                if matches!(
+                    e.element,
+                    flightcraft_aero::modern::PanelElement::Toggle { guarded: true, .. }
+                        | flightcraft_aero::modern::PanelElement::FuelSelector
+                ) {
+                    modern.panel_guards.insert(e.id.clone(), false);
+                }
+            }
+        }
         s.electrical.battery_capacity_ah = d.electrical.battery_capacity_ah;
         s.electrical.battery_voltage = d.electrical.battery_voltage;
         s.electrical.main_bus_voltage = d.electrical.alternator_voltage;
@@ -485,6 +523,17 @@ impl SystemsState {
         s.engine_rpm = readout.engine_rpm;
         let model = SystemsModel {
             definition: d.clone(),
+            engine_control: r.engine.control.clone(),
+            gearbox_ratio: r.engine.gearbox_ratio,
+            navigator_load: r.panel.equipment.as_ref().and_then(|p| {
+                p.elements.iter().find_map(|e| {
+                    if let flightcraft_aero::modern::PanelElement::Navigator { load, .. } = &e.element {
+                        Some(load.clone())
+                    } else {
+                        None
+                    }
+                })
+            }),
             induction: r.engine.induction,
             fuel_flow: r.engine.fuel_flow_kg_s.clone(),
             idle_fraction: r.engine.propulsion.idle_power_w / r.engine.propulsion.max_power_w,
@@ -498,6 +547,7 @@ impl SystemsState {
             load.powered = on;
             load.current_a = if on { definition.amps } else { 0.0 };
         }
+        s.refresh_electronic(&model, readout);
         s.engine_power_fraction = s.power(&model);
         Ok((s, Some(model)))
     }
@@ -509,7 +559,23 @@ impl SystemsState {
     ) -> Result<(), SimError> {
         let m = model.ok_or_else(|| invalid("aircraft has no operational systems definition"))?;
         match setting {
+            SystemSetting::Equipment { setting } => {
+                self.modern
+                    .as_mut()
+                    .ok_or_else(|| invalid("modern equipment not installed"))?
+                    .set(setting)?;
+                if let Some(s) = &self.modern
+                    && s.electronic
+                {
+                    self.controls.starter = s.key == crate::modern::KeyPosition::Start;
+                }
+            }
             SystemSetting::Switch { switch, on } => {
+                if self.modern.as_ref().is_some_and(|s| s.electronic)
+                    && matches!(switch, SystemSwitch::Starter | SystemSwitch::FuelPump)
+                {
+                    return Err(invalid("use electronic key or pump controls"));
+                }
                 if switch == SystemSwitch::CarbHeat && m.induction != Induction::Carburettor {
                     return Err(invalid("carb heat is not installed"));
                 }
@@ -525,9 +591,24 @@ impl SystemsState {
                     SystemSwitch::Starter => &mut self.controls.starter,
                 } = on;
             }
-            SystemSetting::Magnetos { position } => self.controls.magnetos = position,
-            SystemSetting::FuelSelector { position } => self.controls.fuel_selector = position,
+            SystemSetting::Magnetos { position } => {
+                if self.modern.as_ref().is_some_and(|s| s.electronic) {
+                    return Err(invalid("magnetos not installed"));
+                }
+                self.controls.magnetos = position;
+            }
+            SystemSetting::FuelSelector { position } => {
+                if position == FuelSelector::Both
+                    && m.definition.modern.as_ref().is_some_and(|s| !s.selector_both)
+                {
+                    return Err(invalid("BOTH not installed"));
+                }
+                self.controls.fuel_selector = position;
+            }
             SystemSetting::Mixture { value } => {
+                if self.modern.as_ref().is_some_and(|s| s.electronic) {
+                    return Err(invalid("mixture is electronically controlled"));
+                }
                 bounded(value, 0.0, 1.0)?;
                 self.controls.mixture = value;
             }
@@ -541,6 +622,9 @@ impl SystemsState {
                 self.sensed.altitude_msl_m = altitude(self.static_pressure_pa, pressure_pa);
             }
             SystemSetting::Primer { charge } => {
+                if m.induction == Induction::Injection {
+                    return Err(invalid("primer not installed"));
+                }
                 bounded(charge, 0.0, 1.0)?;
                 self.primer_charge = charge;
             }
@@ -588,6 +672,85 @@ impl SystemsState {
         Ok(())
     }
 
+    fn ignition_available(&self) -> bool {
+        self.modern
+            .as_ref()
+            .filter(|s| s.electronic)
+            .map_or(self.controls.magnetos != Magnetos::Off, |s| {
+                s.key != crate::modern::KeyPosition::Off && (s.lane_a.running || s.lane_b.running)
+            })
+    }
+    fn electronic_load_on(modern: Option<&crate::modern::ModernState>, m: &SystemsModel, id: &str) -> bool {
+        if let Some(state) = modern
+            && let Some(load) = m.definition.electrical.loads.iter().find(|l| l.id == id)
+            && let Some((_, on)) = state
+                .light_switches
+                .iter()
+                .find(|(light, _)| *light == load.switch)
+        {
+            return *on;
+        }
+        if let Some(s) = modern
+            && let flightcraft_aero::modern::EngineControl::ElectronicDualLane {
+                lane_a_load,
+                lane_b_load,
+                pump_1_load,
+                pump_2_load,
+                ..
+            } = &m.engine_control
+        {
+            if id == lane_a_load {
+                return s.lane_a.on;
+            }
+            if id == lane_b_load {
+                return s.lane_b.on;
+            }
+            if id == pump_1_load {
+                return s.pump_1.on;
+            }
+            if id == pump_2_load {
+                return s.pump_2.on;
+            }
+        }
+        true
+    }
+    fn refresh_electronic(&mut self, m: &SystemsModel, r: Readout) {
+        let fuel = self.fuel_available(m) > 0.;
+        let Some(s) = &mut self.modern else {
+            return;
+        };
+        s.propeller_rpm = r.engine_rpm / m.gearbox_ratio;
+        if let flightcraft_aero::modern::EngineControl::ElectronicDualLane {
+            lane_a_load,
+            lane_b_load,
+            pump_1_load,
+            pump_2_load,
+            fuel_pressure_pa,
+            manifold_pressure_fraction,
+            ..
+        } = &m.engine_control
+        {
+            let powered = |id: &str| self.electrical.loads.iter().any(|l| l.id == id && l.powered);
+            s.lane_a.running = s.lane_a.on && !s.lane_a.failed && powered(lane_a_load);
+            s.lane_b.running = s.lane_b.on && !s.lane_b.failed && powered(lane_b_load);
+            s.lane_a.light = !s.lane_a.running;
+            s.lane_b.light = !s.lane_b.running;
+            s.engine_control_warning = s.lane_a.light || s.lane_b.light;
+            s.pump_1.running = s.pump_1.on && !s.pump_1.failed && powered(pump_1_load);
+            s.pump_2.running = s.pump_2.on && !s.pump_2.failed && powered(pump_2_load);
+            s.fuel_pressure_pa = if fuel && (s.pump_1.running || s.pump_2.running) {
+                *fuel_pressure_pa
+            } else {
+                0.
+            };
+            s.manifold_pressure_pa = atmosphere(r.altitude_msl_m).pressure_pa
+                * if self.engine_running {
+                    interpolate(&manifold_pressure_fraction.points, r.controls.throttle)
+                } else {
+                    1.
+                };
+        }
+    }
     fn selected(&self, wing: Wing) -> bool {
         match self.controls.fuel_selector {
             FuelSelector::Off => false,
@@ -606,13 +769,31 @@ impl SystemsState {
     }
     fn power(&self, m: &SystemsModel) -> f64 {
         if !self.engine_running
-            || self.controls.magnetos == Magnetos::Off
+            || !self.ignition_available()
             || self.controls.mixture < 0.1
             || self.fuel_available(m) <= 0.0
+            || self
+                .modern
+                .as_ref()
+                .is_some_and(|s| s.electronic && s.fuel_pressure_pa <= 0.)
         {
             return 0.0;
         }
-        let mags = if self.controls.magnetos == Magnetos::Both {
+        let mags = if let Some(s) = &self.modern
+            && s.electronic
+        {
+            if s.lane_a.running && s.lane_b.running {
+                1.
+            } else if let flightcraft_aero::modern::EngineControl::ElectronicDualLane {
+                single_lane_power_fraction,
+                ..
+            } = &m.engine_control
+            {
+                *single_lane_power_fraction
+            } else {
+                0.
+            }
+        } else if self.controls.magnetos == Magnetos::Both {
             1.0
         } else {
             m.definition.engine.single_mag_power_fraction
@@ -635,11 +816,16 @@ impl SystemsState {
         self.failures = failures;
         self.engine_rpm = r.engine_rpm;
         self.electrical_step(m, r.engine_rpm, failures);
+        self.refresh_electronic(m, r);
         let op = &m.definition.engine;
         let ambient = self.controls.temperature_c + atmosphere(r.altitude_msl_m).temperature_k - 288.15;
-        self.fuel_starved = self.fuel_available(m) <= 0.0;
+        self.fuel_starved = self.fuel_available(m) <= 0.0
+            || self
+                .modern
+                .as_ref()
+                .is_some_and(|s| s.electronic && s.fuel_pressure_pa <= 0.);
         if self.fuel_starved
-            || self.controls.magnetos == Magnetos::Off
+            || !self.ignition_available()
             || self.controls.mixture < 0.1
             || failures.engine_power_fraction == 0.0
         {
@@ -652,7 +838,7 @@ impl SystemsState {
         if !self.engine_running
             && cranking
             && !self.fuel_starved
-            && self.controls.magnetos != Magnetos::Off
+            && self.ignition_available()
             && self.controls.mixture >= 0.2
             && (self.primer_charge > 0.05 || self.cht_c > 60.0 || m.induction == Induction::Injection)
             && failures.engine_power_fraction > 0.0
@@ -688,6 +874,23 @@ impl SystemsState {
                 &m.power_density.points,
                 atmosphere(r.altitude_msl_m).density_kg_m3 / SEA_LEVEL_DENSITY,
             );
+        if let Some(s) = &mut self.modern
+            && let flightcraft_aero::modern::EngineControl::ElectronicDualLane {
+                coolant_temperature_c,
+                coolant_lag_s,
+                ..
+            } = &m.engine_control
+        {
+            lag(
+                &mut s.coolant_temperature_c,
+                if self.engine_running {
+                    interpolate(&coolant_temperature_c.points, shaft.clamp(0., 1.))
+                } else {
+                    ambient
+                },
+                *coolant_lag_s,
+            );
+        }
         self.fuel_flow_kg_s = if self.engine_running {
             interpolate(&m.fuel_flow.points, shaft.clamp(0.0, 1.0)) * self.controls.mixture
         } else {
@@ -780,13 +983,24 @@ impl SystemsState {
         self.sensed.lateral_acceleration_g = r.lateral_acceleration_g;
         self.ports(&m.definition, r, false);
         self.gyro(&m.definition, r);
+        if let Some(s) = &mut self.modern {
+            s.recovery_step(m.definition.modern.as_ref());
+            s.annunciations_step(
+                m.definition.modern.as_ref(),
+                self.electrical.main_bus_voltage,
+                self.engine_running,
+            );
+        }
     }
 
     pub(crate) fn electrical_step(&mut self, m: &SystemsModel, rpm: f64, failures: Failures) {
-        let unit_on = |id: &str| match id {
-            "electronic_attitude" => self.avionics.electronic_attitude.power.switch_on,
-            "electronic_hsi" => self.avionics.electronic_hsi.reversion_attitude.power.switch_on,
-            _ => true,
+        let unit_on = |id: &str| {
+            Self::electronic_load_on(self.modern.as_ref(), m, id)
+                && match id {
+                    "electronic_attitude" => self.avionics.electronic_attitude.power.switch_on,
+                    "electronic_hsi" => self.avionics.electronic_hsi.reversion_attitude.power.switch_on,
+                    _ => true,
+                }
         };
         let d = &m.definition.electrical;
         let c = &self.controls;
@@ -811,7 +1025,12 @@ impl SystemsState {
                     LoadSwitch::Lights => c.lights,
                     LoadSwitch::FuelPump => c.fuel_pump,
                     LoadSwitch::PitotHeat => c.pitot_heat,
-                    LoadSwitch::Always => true,
+                    LoadSwitch::Always
+                    | LoadSwitch::Beacon
+                    | LoadSwitch::Nav
+                    | LoadSwitch::Strobe
+                    | LoadSwitch::Taxi
+                    | LoadSwitch::Landing => true,
                 };
             let amps = def.amps * l.multiplier;
             if l.breaker_closed && supply && switched && amps > def.breaker_amps {
@@ -878,7 +1097,12 @@ impl SystemsState {
                     LoadSwitch::Lights => c.lights,
                     LoadSwitch::FuelPump => c.fuel_pump,
                     LoadSwitch::PitotHeat => c.pitot_heat,
-                    LoadSwitch::Always => true,
+                    LoadSwitch::Always
+                    | LoadSwitch::Beacon
+                    | LoadSwitch::Nav
+                    | LoadSwitch::Strobe
+                    | LoadSwitch::Taxi
+                    | LoadSwitch::Landing => true,
                 };
             if bus < 9.0 {
                 l.current_a = 0.0;

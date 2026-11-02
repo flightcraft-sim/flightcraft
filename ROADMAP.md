@@ -68,3 +68,19 @@ Instrument procedures: regional FAA CIFP import, fixed-step procedure GPS, geome
 APR coupling, plate metadata links, WMM magnetic pilot references, and the PFD procedure preview are implemented. See
 [procedure coverage and limitations](docs/procedures.md). Automatic plate decision minima and
 turn anticipation remain open.
+
+
+## Optional electronic equipment
+
+- [x] Declarative dual-lane injected controls, two pumps, backup lane power, three-position key,
+  gearing, coolant, and manifold indications; existing engines retained.
+- [x] Placed breakers and rockers, latched master lights, floor fuel selector, and a deliberately
+  operated recovery parachute with fixed-step deployment, inflation, descent, and impact.
+- [x] Original touch navigator with shared GPS and COM/NAV tuning, independently arranged touch
+  displays, failure reversion, bounded panel backgrounds, and a fictional example pack.
+- [x] Shared NAV1 tuning and CDI selection, CIFP procedure controls, magnetic indications, and
+  planning-map hosts on the navigator and touch displays. COM audio remains future work.
+- [x] Millimetre shell artwork, placards, physical controls, guarded selectors, full controller
+  faceplates, and configurable display compositions, with previews at both sizes.
+
+See [equipment definitions, commands, and previews](docs/equipment.md).

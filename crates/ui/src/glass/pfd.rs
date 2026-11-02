@@ -3,6 +3,14 @@ use flightcraft_control::BearingPointer;
 const KNOTS: f64 = 1.9438444924406;
 const FEET: f64 = 1. / 0.3048;
 pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) -> DrawList {
+    draw_composed(s, input, standby, true)
+}
+pub(super) fn draw_composed(
+    s: &GlassState,
+    input: InstrumentInput<'_>,
+    standby: bool,
+    show_hsi: bool,
+) -> DrawList {
     if standby {
         return standby_draw(s, input);
     }
@@ -231,7 +239,9 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
     label(&mut d, [444., 253.], baro, 11., Ink::Needle);
     let cy = if s.reversion && !standby { 335. } else { 320. };
     let radius = if s.reversion && !standby { 55. } else { 64. };
-    hsi(&mut d, s, cy, radius, a.attitude_valid, a.heading_rad);
+    if show_hsi {
+        hsi(&mut d, s, cy, radius, a.attitude_valid, a.heading_rad);
+    }
     if !s.reversion || standby {
         label(
             &mut d,

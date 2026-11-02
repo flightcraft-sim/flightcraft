@@ -363,6 +363,7 @@ fn valid_item(item: &DrawItem) -> bool {
 
 #[derive(Default)]
 pub struct InstrumentPanel {
+    modern: crate::modern::PanelUi,
     pub registry: Registry,
     pub options: DisplayOptions,
     pub starter_key_held: bool,
@@ -377,8 +378,33 @@ pub struct InstrumentPanel {
     map_rect: Option<Rect>,
 }
 impl InstrumentPanel {
+    pub(crate) fn cancel_equipment_holds(
+        &mut self,
+        generation: u64,
+    ) -> Vec<flightcraft_control::EquipmentSetting> {
+        let commands = self.modern.cancel_holds();
+        if self.generation == Some(generation) {
+            commands
+        } else {
+            Vec::new()
+        }
+    }
     pub fn map_rect(&self) -> Option<Rect> {
         self.map_rect
+    }
+    pub fn show_shared_hosts(&mut self, ui: &mut egui::Ui, session: &mut flightcraft_control::Session) {
+        for (id, rect) in &self.modern.maps {
+            let map = self.modern.map_widgets.entry(id.clone()).or_default();
+            map.options = self.options;
+            ui.push_id(id, |ui| map.show_mfd(ui, *rect, session));
+        }
+        if let Some(rect) = self.modern.procedure_rect {
+            self.heading_commands
+                .extend(self.modern.procedures.show_inline(ui, rect, session));
+        }
+    }
+    pub fn take_equipment_commands(&mut self) -> Vec<flightcraft_control::EquipmentSetting> {
+        std::mem::take(&mut self.modern.commands)
     }
     pub fn take_heading_commands(&mut self) -> Vec<flightcraft_sim::avionics::AvionicsSetting> {
         std::mem::take(&mut self.heading_commands)
@@ -400,6 +426,7 @@ impl InstrumentPanel {
         generation: u64,
     ) -> Result<Vec<SystemSetting>, String> {
         let panel = Panel {
+            equipment: None,
             autopilot: None,
             format_version: 2,
             identity: flightcraft_aero::Identity {
@@ -445,7 +472,13 @@ impl InstrumentPanel {
         self.map_rect = None;
         if self.loaded.as_ref() != Some(panel) || self.generation != Some(generation) {
             self.load(panel)?;
+            self.modern = crate::modern::PanelUi::default();
             self.generation = Some(generation);
+        }
+        if let Some(equipment) = &panel.equipment {
+            let settings = self.modern.show(ui, equipment, input);
+            self.heading_commands.append(&mut self.modern.avionics);
+            return Ok(settings);
         }
         let mut settings = if input.systems.enabled {
             let (mut settings, pointer_held) = switches::show(ui, input.systems);

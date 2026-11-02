@@ -168,6 +168,11 @@ pub enum Induction {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Engine {
+    #[serde(default)]
+    pub control: crate::modern::EngineControl,
+    /// Engine revolutions per propeller revolution. Propulsion RPM limits remain propeller limits.
+    #[serde(default = "direct_drive")]
+    pub gearbox_ratio: f64,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
@@ -195,11 +200,13 @@ pub struct InstalledSystems {
 #[serde(deny_unknown_fields)]
 pub struct Panel {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub equipment: Option<crate::modern::EquipmentPanel>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub autopilot: Option<crate::autopilot::AutopilotInstallation>,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
-    #[schemars(length(min = 1, max = 64))]
+    #[schemars(length(max = 64))]
     pub instruments: Vec<InstrumentInstallation>,
 }
 
@@ -214,6 +221,10 @@ pub struct InstrumentInstallation {
     /// Panel grid position and size, in arbitrary panel units.
     pub position: [f64; 2],
     pub size: [f64; 2],
+}
+
+fn direct_drive() -> f64 {
+    1.0
 }
 
 fn default_skin() -> String {
@@ -368,11 +379,14 @@ impl LayerFile {
         match self {
             Self::Variant(v) => v.validate(),
             Self::Panel(p) => {
+                if let Some(e) = &p.equipment {
+                    e.validate()?;
+                }
                 if let Some(ap) = &p.autopilot {
                     ap.validate()?;
                 }
                 require(
-                    (1..=64).contains(&p.instruments.len()),
+                    p.instruments.len() <= 64 && (!p.instruments.is_empty() || p.equipment.is_some()),
                     "instruments",
                     "requires 1 to 64 installations",
                 )?;
@@ -417,6 +431,18 @@ impl LayerFile {
                 Ok(())
             }
             Self::Engine(e) => {
+                e.control.validate()?;
+                require(
+                    (1.0..=10.).contains(&e.gearbox_ratio),
+                    "gearbox_ratio",
+                    "requires 1..10",
+                )?;
+                require(
+                    matches!(e.control, crate::modern::EngineControl::Magnetos)
+                        || e.induction == Induction::Injection,
+                    "engine.control",
+                    "electronic control requires injection",
+                )?;
                 e.fuel_flow_kg_s.validate("fuel_flow_kg_s")?;
                 require(
                     e.fuel_flow_kg_s.points.first().map(|p| p.0) == Some(0.0)
@@ -746,6 +772,7 @@ impl AircraftCatalog {
         let LayerFile::Systems(s) = self.get(FileKind::Systems, &v.systems)? else {
             return Err(error("systems", "wrong file kind"));
         };
+        crate::modern::validate_installation(e, s.definition.as_ref(), p)?;
         let electronic = ["electronic_attitude", "electronic_hsi"];
         if p.instruments
             .iter()
@@ -947,6 +974,8 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         },
     };
     let engine = Engine {
+        control: crate::modern::EngineControl::default(),
+        gearbox_ratio: 1.0,
         format_version: 2,
         identity: make_identity("engine"),
         propulsion: a.propulsion.clone(),
@@ -968,6 +997,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         ],
     };
     let panel = Panel {
+        equipment: None,
         autopilot: None,
         format_version: 2,
         identity: make_identity("six"),

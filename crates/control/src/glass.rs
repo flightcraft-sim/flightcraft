@@ -132,6 +132,7 @@ pub struct EngineValue {
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 pub struct GlassState {
+    pub touch: crate::TouchState,
     pub settings: GlassSettings,
     pub air_data: flightcraft_sim::avionics::sensor::AirDataComputer,
     pub standby: flightcraft_sim::avionics::sensor::AirDataComputer,
@@ -586,6 +587,7 @@ impl Session {
         let mfd_failed = computers.mfd_failed || !installed_power("glass_mfd");
         let [wind_n, wind_e, _] = r.wind_ned_mps;
         GlassState {
+            touch: self.touch_state(),
             settings,
             air_data: computers.primary.clone(),
             standby: computers.standby.clone(),
@@ -715,7 +717,8 @@ fn gps(
 fn engine(session: &Session) -> Vec<EngineValue> {
     let s = session.sim.systems();
     let configuration = session.aircraft_configuration();
-    let max_rpm = session.sim.aircraft().propulsion.max_rpm;
+    let max_rpm =
+        session.sim.aircraft().propulsion.max_rpm * configuration.map_or(1., |c| c.engine.gearbox_ratio);
     let flow = configuration
         .and_then(|c| c.engine.fuel_flow_kg_s.points.last())
         .map_or(30.0, |(_, flow)| flow * 3600.0);
@@ -773,6 +776,37 @@ fn engine(session: &Session) -> Vec<EngineValue> {
             max,
             normal,
         });
+    }
+    if let Some(m) = &s.modern
+        && m.electronic
+    {
+        for (label, value, unit, max, normal) in [
+            ("COOLANT", m.coolant_temperature_c, "C", 150., [60., 110.]),
+            (
+                "MANIFOLD",
+                m.manifold_pressure_pa / 1000.,
+                "kPa",
+                120.,
+                [20., 105.],
+            ),
+            ("FUEL P", m.fuel_pressure_pa / 1000., "kPa", 500., [200., 400.]),
+            (
+                "PROP",
+                m.propeller_rpm,
+                "rpm",
+                session.sim.aircraft().propulsion.max_rpm,
+                [0., session.sim.aircraft().propulsion.max_rpm],
+            ),
+        ] {
+            values.push(EngineValue {
+                label: label.into(),
+                value,
+                unit: unit.into(),
+                min: 0.,
+                max,
+                normal,
+            });
+        }
     }
     for tank in &s.tanks {
         values.push(EngineValue {

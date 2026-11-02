@@ -1,0 +1,338 @@
+{
+  "kind": "systems",
+  "format_version": 2,
+  "identity": {
+    "id": "demo-electronic-systems",
+    "display_name": "Demo Electronic Systems",
+    "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "installed": [
+    "electrical",
+    "pitot_static",
+    "fuel",
+    "engine_operation",
+    "glass_suite"
+  ],
+  "definition": {
+    "electrical": {
+      "battery_capacity_ah": 24,
+      "battery_voltage": 12.6,
+      "alternator_voltage": 14.2,
+      "alternator_amps": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            600,
+            8
+          ],
+          [
+            1200,
+            40
+          ],
+          [
+            2800,
+            60
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "loads": [
+        {
+          "id": "avionics",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "pitot_heat",
+          "bus": "main",
+          "switch": "pitot_heat",
+          "amps": 8,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "turn_coordinator",
+          "bus": "main",
+          "switch": "always",
+          "amps": 0.8,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "glass_ahrs",
+          "bus": "essential",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "glass_standby",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 0.5,
+          "breaker_amps": 1,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "lane_a",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "lane_b",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "pump_1",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "pump_2",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "touch_left",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "touch_right",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "navigator",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "beacon",
+          "bus": "main",
+          "switch": "beacon",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "nav",
+          "bus": "main",
+          "switch": "nav",
+          "amps": 2,
+          "breaker_amps": 4,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "strobe",
+          "bus": "main",
+          "switch": "strobe",
+          "amps": 3,
+          "breaker_amps": 6,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "taxi",
+          "bus": "main",
+          "switch": "taxi",
+          "amps": 5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "landing",
+          "bus": "main",
+          "switch": "landing",
+          "amps": 5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        }
+      ]
+    },
+    "pitot_static": {
+      "position_error_pa": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0.5,
+            -15
+          ],
+          [
+            1,
+            -35
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "alternate_static_error_pa": -80,
+      "vsi_lag_s": 6
+    },
+    "tanks": [
+      {
+        "id": "left",
+        "wing": "left",
+        "station": "fuel",
+        "capacity_kg": 50.0,
+        "unusable_kg": 1,
+        "gauge_lag_s": 10,
+        "gauge_bias_kg": 0.4
+      },
+      {
+        "id": "right",
+        "wing": "right",
+        "station": "fuel",
+        "capacity_kg": 50.0,
+        "unusable_kg": 1,
+        "gauge_lag_s": 10,
+        "gauge_bias_kg": -0.3
+      }
+    ],
+    "engine": {
+      "single_mag_power_fraction": 0.85,
+      "carb_heat_power_fraction": 0.9,
+      "carb_ice_rate": {
+        "points": [
+          [
+            -20,
+            0
+          ],
+          [
+            -5,
+            0.0001
+          ],
+          [
+            5,
+            0.001
+          ],
+          [
+            15,
+            0.0012
+          ],
+          [
+            25,
+            0.0005
+          ],
+          [
+            35,
+            0
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "carb_ice_humidity": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0.6,
+            0
+          ],
+          [
+            0.8,
+            0.5
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "carb_heat_clear_rate": 0.006,
+      "egt_lag_s": 8,
+      "cht_lag_s": 90,
+      "start_time_s": 2,
+      "starter_amps": 120
+    },
+    "electric_gyro_load": "glass_standby",
+    "modern": {
+      "selector_both": false,
+      "parachute": {
+        "hold_s": 2,
+        "deployment_delay_s": 0.5,
+        "inflation_s": 2,
+        "descent_rate_mps": 7,
+        "hanging_pitch_rad": -0.3
+      },
+      "annunciations": [
+        {
+          "source": "low_voltage",
+          "severity": "caution",
+          "label": "LOW VOLTAGE",
+          "threshold": 12
+        },
+        {
+          "source": "low_fuel_pressure",
+          "severity": "warning",
+          "label": "FUEL PRESSURE",
+          "threshold": 200000
+        },
+        {
+          "source": "lane_fault",
+          "severity": "caution",
+          "label": "ENGINE CONTROL",
+          "threshold": 0
+        },
+        {
+          "source": "high_coolant_temperature",
+          "severity": "warning",
+          "label": "COOLANT HOT",
+          "threshold": 110
+        },
+        {
+          "source": "door_open",
+          "severity": "caution",
+          "label": "DOOR OPEN",
+          "threshold": 0
+        },
+        {
+          "source": "parachute_armed",
+          "severity": "caution",
+          "label": "RECOVERY ARMED",
+          "threshold": 0
+        },
+        {
+          "source": "engine_shutdown",
+          "severity": "warning",
+          "label": "SHUT DOWN ENGINE",
+          "threshold": 0
+        }
+      ]
+    }
+  }
+}

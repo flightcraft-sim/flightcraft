@@ -133,6 +133,12 @@
     {
       "type": "object",
       "properties": {
+        "control": {
+          "$ref": "#/$defs/EngineControl",
+          "default": {
+            "kind": "magnetos"
+          }
+        },
         "format_version": {
           "type": "integer",
           "format": "uint32",
@@ -142,6 +148,12 @@
         "fuel_flow_kg_s": {
           "description": "Fuel flow against normalised shaft power, kg/s. Metadata until fuel burn is implemented.",
           "$ref": "#/$defs/Table"
+        },
+        "gearbox_ratio": {
+          "description": "Engine revolutions per propeller revolution. Propulsion RPM limits remain propeller limits.",
+          "type": "number",
+          "format": "double",
+          "default": 1.0
         },
         "identity": {
           "$ref": "#/$defs/Identity"
@@ -224,6 +236,16 @@
             }
           ]
         },
+        "equipment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EquipmentPanel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "format_version": {
           "type": "integer",
           "format": "uint32",
@@ -238,8 +260,7 @@
           "items": {
             "$ref": "#/$defs/InstrumentInstallation"
           },
-          "maxItems": 64,
-          "minItems": 1
+          "maxItems": 64
         },
         "kind": {
           "type": "string",
@@ -485,6 +506,44 @@
         "lateral_friction"
       ]
     },
+    "AnnunciationDefinition": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "$ref": "#/$defs/AnnunciationSource"
+        },
+        "threshold": {
+          "description": "Volts, pascals, or degrees Celsius, for threshold sources; zero otherwise.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "severity",
+        "label",
+        "threshold"
+      ]
+    },
+    "AnnunciationSource": {
+      "type": "string",
+      "enum": [
+        "low_voltage",
+        "low_fuel_pressure",
+        "lane_fault",
+        "high_coolant_temperature",
+        "door_open",
+        "parachute_armed",
+        "engine_shutdown"
+      ]
+    },
     "AutopilotFamily": {
       "type": "string",
       "enum": [
@@ -653,6 +712,44 @@
         "cn_aileron"
       ]
     },
+    "DisplayComposition": {
+      "type": "object",
+      "properties": {
+        "engine_strip_fraction": {
+          "type": "number",
+          "format": "double",
+          "default": 0.18
+        },
+        "engine_style": {
+          "$ref": "#/$defs/EngineStripStyle",
+          "default": "bars"
+        },
+        "hsi": {
+          "type": "boolean",
+          "default": true
+        },
+        "insets": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/PfdInset"
+          }
+        },
+        "top_data_bar": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DisplayInset": {
+      "type": "string",
+      "enum": [
+        "map",
+        "engine",
+        "navigation"
+      ]
+    },
     "ElectricalDefinition": {
       "type": "object",
       "properties": {
@@ -725,6 +822,77 @@
         "backup_capacity_ah"
       ]
     },
+    "EngineControl": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "magnetos"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "coolant_lag_s": {
+              "type": "number",
+              "format": "double"
+            },
+            "coolant_temperature_c": {
+              "description": "Degrees Celsius against shaft-power fraction.",
+              "$ref": "#/$defs/Table"
+            },
+            "fuel_pressure_pa": {
+              "type": "number",
+              "format": "double"
+            },
+            "kind": {
+              "type": "string",
+              "const": "electronic_dual_lane"
+            },
+            "lane_a_load": {
+              "type": "string"
+            },
+            "lane_b_load": {
+              "type": "string"
+            },
+            "manifold_pressure_fraction": {
+              "description": "Absolute inlet pressure / ambient pressure against throttle demand.",
+              "$ref": "#/$defs/Table"
+            },
+            "pump_1_load": {
+              "type": "string"
+            },
+            "pump_2_load": {
+              "type": "string"
+            },
+            "single_lane_power_fraction": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "lane_a_load",
+            "lane_b_load",
+            "pump_1_load",
+            "pump_2_load",
+            "single_lane_power_fraction",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "coolant_lag_s",
+            "manifold_pressure_fraction"
+          ]
+        }
+      ]
+    },
     "EngineOperationDefinition": {
       "type": "object",
       "properties": {
@@ -776,6 +944,95 @@
         "cht_lag_s",
         "start_time_s",
         "starter_amps"
+      ]
+    },
+    "EngineStripStyle": {
+      "type": "string",
+      "enum": [
+        "bars",
+        "dials_and_bars"
+      ]
+    },
+    "EquipmentInstallation": {
+      "type": "object",
+      "properties": {
+        "element": {
+          "$ref": "#/$defs/PanelElement"
+        },
+        "id": {
+          "type": "string"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "position",
+        "size",
+        "element"
+      ]
+    },
+    "EquipmentPanel": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/PanelColor"
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EquipmentInstallation"
+          },
+          "maxItems": 128,
+          "minItems": 1
+        },
+        "shape": {
+          "$ref": "#/$defs/PanelShape"
+        },
+        "shell": {
+          "description": "Optional shell artwork. All coordinates and dimensions are millimetres.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PanelShell"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "size",
+        "color",
+        "shape",
+        "elements"
       ]
     },
     "FlapStage": {
@@ -1026,6 +1283,11 @@
     "LoadSwitch": {
       "type": "string",
       "enum": [
+        "beacon",
+        "nav",
+        "strobe",
+        "taxi",
+        "landing",
         "avionics",
         "lights",
         "fuel_pump",
@@ -1071,6 +1333,612 @@
         "mass_kg",
         "cg_m",
         "inertia_kg_m2"
+      ]
+    },
+    "ModernSystems": {
+      "type": "object",
+      "properties": {
+        "annunciations": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AnnunciationDefinition"
+          },
+          "maxItems": 32
+        },
+        "parachute": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ParachuteDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selector_both": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Outline": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "polygon"
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "points"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "curves": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "format": "double"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "maxItems": 4,
+                "minItems": 4
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "cubic"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "curves"
+          ]
+        }
+      ]
+    },
+    "PanelColor": {
+      "type": "string",
+      "enum": [
+        "panel",
+        "raised",
+        "dial"
+      ]
+    },
+    "PanelElement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "label"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "color": {
+              "$ref": "#/$defs/PanelInk"
+            },
+            "font_size_mm": {
+              "type": "number",
+              "format": "double"
+            },
+            "kind": {
+              "type": "string",
+              "const": "placard"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text",
+            "font_size_mm",
+            "color"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "guarded": {
+              "type": "boolean",
+              "default": false
+            },
+            "kind": {
+              "type": "string",
+              "const": "toggle"
+            },
+            "label": {
+              "type": "string"
+            },
+            "lamp": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "dimmer"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "push_pull"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "vent"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "elt"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pitch_wheel"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "color": {
+              "$ref": "#/$defs/PanelInk"
+            },
+            "kind": {
+              "type": "string",
+              "const": "lamp"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label",
+            "color"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "bracket"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "guard_bar"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "composition": {
+              "$ref": "#/$defs/DisplayComposition",
+              "default": {
+                "engine_strip_fraction": 0.18,
+                "engine_style": "bars",
+                "hsi": true,
+                "insets": [],
+                "top_data_bar": false
+              }
+            },
+            "engine_strip": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "touch_display"
+            },
+            "layout": {
+              "$ref": "#/$defs/TouchLayout"
+            },
+            "load": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "load",
+            "layout",
+            "engine_strip"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "navigator"
+            },
+            "load": {
+              "type": "string"
+            },
+            "transponder": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "load",
+            "transponder"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "standby"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "autopilot"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "breaker"
+            },
+            "label": {
+              "type": "string"
+            },
+            "load": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "load",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "backlit": {
+              "type": "boolean",
+              "default": false
+            },
+            "kind": {
+              "type": "string",
+              "const": "rocker"
+            },
+            "label": {
+              "type": "string"
+            },
+            "sublabel": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "switch": {
+              "$ref": "#/$defs/Rocker"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "switch",
+            "label"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "master_light"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "severity"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "key"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "fuel_selector"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "parachute"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        }
+      ]
+    },
+    "PanelInk": {
+      "type": "string",
+      "enum": [
+        "text",
+        "muted",
+        "amber",
+        "red",
+        "white",
+        "accent"
+      ]
+    },
+    "PanelShape": {
+      "type": "string",
+      "enum": [
+        "rectangle",
+        "rounded"
+      ]
+    },
+    "PanelShell": {
+      "type": "object",
+      "properties": {
+        "fill": {
+          "$ref": "#/$defs/PanelColor"
+        },
+        "glare_shield": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outline": {
+          "$ref": "#/$defs/Outline"
+        },
+        "screws": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "outline",
+        "fill"
+      ]
+    },
+    "ParachuteDefinition": {
+      "type": "object",
+      "properties": {
+        "deployment_delay_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "descent_rate_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "hanging_pitch_rad": {
+          "type": "number",
+          "format": "double"
+        },
+        "hold_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "inflation_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "hold_s",
+        "deployment_delay_s",
+        "inflation_s",
+        "descent_rate_mps",
+        "hanging_pitch_rad"
+      ]
+    },
+    "PfdCorner": {
+      "type": "string",
+      "enum": [
+        "top_left",
+        "top_right",
+        "bottom_left",
+        "bottom_right"
+      ]
+    },
+    "PfdInset": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/DisplayInset"
+        },
+        "corner": {
+          "$ref": "#/$defs/PfdCorner"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "corner",
+        "content"
       ]
     },
     "PitotStaticDefinition": {
@@ -1151,6 +2019,32 @@
         "power_density"
       ]
     },
+    "Rocker": {
+      "type": "string",
+      "enum": [
+        "beacon",
+        "nav",
+        "strobe",
+        "taxi",
+        "landing",
+        "master",
+        "avionics",
+        "alternator",
+        "lights",
+        "pitot_heat",
+        "lane_a",
+        "lane_b",
+        "pump1",
+        "pump2"
+      ]
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "caution",
+        "warning"
+      ]
+    },
     "StationKind": {
       "type": "string",
       "enum": [
@@ -1192,6 +2086,16 @@
         },
         "engine": {
           "$ref": "#/$defs/EngineOperationDefinition"
+        },
+        "modern": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModernSystems"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "pitot_static": {
           "$ref": "#/$defs/PitotStaticDefinition"
@@ -1296,6 +2200,14 @@
         "unusable_kg",
         "gauge_lag_s",
         "gauge_bias_kg"
+      ]
+    },
+    "TouchLayout": {
+      "type": "string",
+      "enum": [
+        "full_pfd",
+        "pfd_map",
+        "map_engine"
       ]
     },
     "VSpeeds": {

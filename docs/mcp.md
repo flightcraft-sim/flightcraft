@@ -421,3 +421,25 @@ horizontal viewport spans, defaulting to 15 and 20 NM. Route fixes bypass the fi
 Heading-up and track-up labels use WMM magnetic heading/track at the aircraft and simulation
 date. Their rotation accounts for variation and grid convergence; north-up remains true north.
 For example: `{"declutter":{"fixes_across_nm":15,"airway_labels_across_nm":20}}`.
+
+## Electronic and touch equipment
+
+`equipment.set` operates installed electronic engine controls, recovery controls, the shared
+navigator, and individual touch-display layouts and failures. Its tagged input and touch-state
+output are included in `commands.list` and the generated command schemas. For example:
+
+```json
+{"setting":{"kind":"systems","setting":{"kind":"parachute_pin","inserted":false}}}
+{"setting":{"kind":"systems","setting":{"kind":"parachute_deploy"}}}
+{"setting":{"kind":"navigator","action":{"kind":"flip","band":"com"}}}
+```
+
+Deployment requires a removed safety pin. `parachute_deploy` is an explicit pilot command;
+failures never trigger it. `systems.set` also accepts these systems actions under
+`setting.kind: equipment`. `avionics.state.glass_suite.touch` reports navigator tuning and
+per-display layouts and reversion; `sim.state.systems.modern` reports lanes, pumps, master
+lights, and recovery progress. State queries do not advance equipment. See
+[equipment](equipment.md) for the complete action catalogue. Navigator `avionics` actions reuse the procedure, NAV-radio,
+CDI-source, and magnetic setting conventions above. Navigator query actions resolve the shared
+offline search into the planning and GPS route; map hosts use `map.set` and `map.state`.
+Generic physical controls expose bounded `panel_control` and `panel_guard` systems actions.

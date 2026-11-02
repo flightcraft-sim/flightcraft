@@ -300,6 +300,36 @@ fn knob(ui: &egui::Ui, rect: Rect, dual: bool) {
     );
 }
 impl Controller {
+    /// Fit the complete existing controller, including encoder hit regions, to an installation.
+    pub fn show_in(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: Rect,
+        state: &EquipmentState,
+        heading_bug: f64,
+        cws_key: bool,
+    ) -> Vec<AvionicsSetting> {
+        let size = match state.installation.family {
+            AutopilotFamily::WingLeveler => egui::vec2(310., 105.),
+            AutopilotFamily::TwoAxisLegacy => egui::vec2(490., 144.),
+            AutopilotFamily::DigitalTwoAxis => egui::vec2(890., 148.),
+        };
+        let scale = (rect.width() / size.x).min(rect.height() / size.y);
+        let origin = rect.center() - size * scale * 0.5;
+        let layer = egui::LayerId::new(ui.layer_id().order, ui.id().with("installed-controller"));
+        ui.ctx()
+            .set_transform_layer(layer, egui::emath::TSTransform::new(origin.to_vec2(), scale));
+        ui.scope_builder(
+            egui::UiBuilder::new()
+                .layer_id(layer)
+                .max_rect(Rect::from_min_size(egui::Pos2::ZERO, size)),
+            |ui| {
+                ui.set_clip_rect(Rect::from_min_size(egui::Pos2::ZERO, size));
+                self.show(ui, state, heading_bug, cws_key)
+            },
+        )
+        .inner
+    }
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,

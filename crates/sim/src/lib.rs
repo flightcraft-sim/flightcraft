@@ -21,6 +21,9 @@ pub use avionics::navigation as glass_navigation;
 pub use avionics::sensor as glass_air_data;
 pub mod magnetic;
 mod math;
+pub mod modern;
+#[cfg(test)]
+mod modern_tests;
 pub mod nav_source;
 pub mod systems;
 #[cfg(test)]
@@ -453,7 +456,10 @@ impl Sim {
         &mut self,
         configuration: &flightcraft_aero::ResolvedAircraft,
     ) -> Result<(), SimError> {
-        let (state, model) = systems::SystemsState::configure(configuration, self.readout())?;
+        let mut readout = self.readout();
+        readout.engine_rpm = readout.engine_rpm / self.systems_model.as_ref().map_or(1., |m| m.gearbox_ratio)
+            * configuration.engine.gearbox_ratio;
+        let (state, model) = systems::SystemsState::configure(configuration, readout)?;
         let equipment = configuration
             .panel
             .autopilot
@@ -847,21 +853,42 @@ impl Sim {
         )
     }
     fn navigation_powered(&self) -> bool {
-        self.systems.controls.avionics && self.systems.electrical.main_bus_voltage > 9.0
+        if self
+            .systems_model
+            .as_ref()
+            .is_some_and(|m| m.navigator_load.is_some())
+        {
+            self.navigator_powered()
+        } else {
+            self.systems.controls.avionics && self.systems.electrical.main_bus_voltage > 9.0
+        }
+    }
+    fn navigator_powered(&self) -> bool {
+        self.systems_model
+            .as_ref()
+            .and_then(|m| m.navigator_load.as_ref())
+            .is_some_and(|id| {
+                self.systems
+                    .electrical
+                    .loads
+                    .iter()
+                    .any(|l| &l.id == id && l.powered)
+            })
     }
     fn procedure_powered(&self) -> bool {
-        self.systems.electrical.loads.iter().any(|l| {
-            (l.id == "glass_mfd" && !self.glass.mfd_failed
-                || l.id == "electronic_hsi"
-                    && self
-                        .systems
-                        .avionics
-                        .electronic_hsi
-                        .reversion_attitude
-                        .power
-                        .switch_on)
-                && l.powered
-        })
+        self.navigator_powered()
+            || self.systems.electrical.loads.iter().any(|l| {
+                (l.id == "glass_mfd" && !self.glass.mfd_failed
+                    || l.id == "electronic_hsi"
+                        && self
+                            .systems
+                            .avionics
+                            .electronic_hsi
+                            .reversion_attitude
+                            .power
+                            .switch_on)
+                    && l.powered
+            })
     }
     /// The flight-plan receiver supplies its active leg; geodesy remains in avionics.
     pub fn set_receiver_leg(&mut self, leg: Option<nav_source::ReceiverLeg>) {
@@ -980,7 +1007,7 @@ impl Sim {
                                 .loads
                                 .iter()
                                 .any(|l| l.id == "glass_mfd" && l.powered);
-                            if powered && !self.glass.mfd_failed {
+                            if self.navigator_powered() || (powered && !self.glass.mfd_failed) {
                                 self.receiver_leg
                                     .as_ref()
                                     .and_then(|leg| leg.guidance(north, east))
@@ -1019,14 +1046,17 @@ impl Sim {
                 self.crashed = true;
                 break;
             }
-            let Some(mut next) = dynamics::rk4(
-                &self.aircraft,
-                self.state,
-                self.controls,
-                &self.wind,
-                self.propulsion_failures(),
-                &self.world,
-            ) else {
+            let recovery_motion = self.recovery_motion();
+            let Some(mut next) = recovery_motion.or_else(|| {
+                dynamics::rk4(
+                    &self.aircraft,
+                    self.state,
+                    self.controls,
+                    &self.wind,
+                    self.propulsion_failures(),
+                    &self.world,
+                )
+            }) else {
                 self.crashed = true;
                 break;
             };
@@ -1038,6 +1068,14 @@ impl Sim {
             next.time_s = self.steps as f64 * DT_S;
             self.crashed = dynamics::crash(&self.aircraft, &next, &self.world)
                 || dynamics::hard_touchdown(&self.aircraft, &self.state, &next, &self.world);
+            if recovery_motion.is_some()
+                && self.crashed
+                && let Some(p) = self.systems.modern.as_mut().and_then(|s| s.recovery.as_mut())
+            {
+                p.phase = modern::RecoveryPhase::Impact;
+                let [_, _, down] = next.velocity_mps;
+                p.impact_vertical_speed_mps = Some(down);
+            }
             self.state = next;
             self.magnetism.refresh(&self.world, self.state);
             if let Some(model) = &self.systems_model {
@@ -1081,6 +1119,32 @@ impl Sim {
             }
             self.refresh_avionics(true);
         }
+    }
+
+    fn recovery_motion(&self) -> Option<State> {
+        let model = self.systems_model.as_ref()?;
+        let p = self.systems.modern.as_ref()?.recovery.as_ref()?;
+        let d = model.definition.modern.as_ref()?.parachute.as_ref()?;
+        if p.inflation <= 0. {
+            return None;
+        }
+        let mut next = self.state;
+        let f = p.inflation;
+        let blend = if f >= 1. {
+            1.
+        } else {
+            (DT_S / d.inflation_s).min(1.)
+        };
+        for (v, target) in next.velocity_mps.iter_mut().zip([0., 0., d.descent_rate_mps]) {
+            *v += (target - *v) * blend;
+        }
+        for (pos, v) in next.position_m.iter_mut().zip(next.velocity_mps) {
+            *pos += v * DT_S;
+        }
+        let [_, pitch, heading] = math::euler(self.state.attitude);
+        next.attitude = math::attitude(pitch + (d.hanging_pitch_rad - pitch) * blend, heading);
+        next.angular_rate_rps = [0.; 3];
+        Some(next)
     }
 
     #[must_use]
@@ -1150,7 +1214,7 @@ impl Sim {
                 0.0
             },
             load_factor_g: -fz / (self.aircraft.mass.mass_kg * world::GRAVITY_MPS2),
-            engine_rpm: loads.engine_rpm,
+            engine_rpm: loads.engine_rpm * self.systems_model.as_ref().map_or(1., |m| m.gearbox_ratio),
             on_ground: h <= 0.0,
             crashed: self.crashed,
             controls: self.controls,
@@ -1217,7 +1281,7 @@ impl Sim {
                 }
             }
         }
-        if self.systems_changed || self.systems.avionics.installed {
+        if self.systems_changed || self.systems.avionics.installed || self.systems.modern.is_some() {
             eat(0x7379_7374_656d_7301);
             for word in self
                 .systems

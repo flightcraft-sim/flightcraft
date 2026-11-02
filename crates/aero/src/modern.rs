@@ -1,0 +1,601 @@
+//! Declarative, fictional equipment; behaviour and public artwork are separate layers.
+use crate::aircraft::{positive, require};
+use crate::{AircraftError, Table};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum EngineControl {
+    #[default]
+    Magnetos,
+    ElectronicDualLane {
+        lane_a_load: String,
+        lane_b_load: String,
+        pump_1_load: String,
+        pump_2_load: String,
+        single_lane_power_fraction: f64,
+        fuel_pressure_pa: f64,
+        /// Degrees Celsius against shaft-power fraction.
+        coolant_temperature_c: Box<Table>,
+        coolant_lag_s: f64,
+        /// Absolute inlet pressure / ambient pressure against throttle demand.
+        manifold_pressure_fraction: Box<Table>,
+    },
+}
+impl EngineControl {
+    pub fn validate(&self) -> Result<(), AircraftError> {
+        if let Self::ElectronicDualLane {
+            lane_a_load,
+            lane_b_load,
+            pump_1_load,
+            pump_2_load,
+            single_lane_power_fraction,
+            fuel_pressure_pa,
+            coolant_temperature_c,
+            coolant_lag_s,
+            manifold_pressure_fraction,
+        } = self
+        {
+            let mut ids = BTreeSet::new();
+            for load in [lane_a_load, lane_b_load, pump_1_load, pump_2_load] {
+                crate::layers::id(load, "engine.control.load")?;
+                require(
+                    ids.insert(load),
+                    "engine.control",
+                    "four independent loads required",
+                )?;
+            }
+            require(
+                (0.5..1.0).contains(single_lane_power_fraction),
+                "single_lane_power_fraction",
+                "requires 0.5..1",
+            )?;
+            require(
+                (10000.0..=1_000_000.0).contains(fuel_pressure_pa),
+                "fuel_pressure_pa",
+                "requires 10..1000 kPa",
+            )?;
+            positive(*coolant_lag_s, "coolant_lag_s")?;
+            for (table, lo, hi) in [
+                (coolant_temperature_c, -60., 200.),
+                (manifold_pressure_fraction, 0.1, 1.),
+            ] {
+                table.validate("engine.control.table")?;
+                require(
+                    table.points.first().map(|p| p.0) == Some(0.)
+                        && table.points.last().map(|p| p.0) == Some(1.)
+                        && table.points.iter().all(|(_, y)| (lo..=hi).contains(y)),
+                    "engine.control.table",
+                    "requires 0..1 domain and bounded ordinates",
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AnnunciationSource {
+    LowVoltage,
+    LowFuelPressure,
+    LaneFault,
+    HighCoolantTemperature,
+    DoorOpen,
+    ParachuteArmed,
+    EngineShutdown,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    Caution,
+    Warning,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnunciationDefinition {
+    pub source: AnnunciationSource,
+    pub severity: Severity,
+    pub label: String,
+    /// Volts, pascals, or degrees Celsius, for threshold sources; zero otherwise.
+    pub threshold: f64,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ParachuteDefinition {
+    pub hold_s: f64,
+    pub deployment_delay_s: f64,
+    pub inflation_s: f64,
+    pub descent_rate_mps: f64,
+    pub hanging_pitch_rad: f64,
+}
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ModernSystems {
+    #[serde(default)]
+    pub selector_both: bool,
+    #[serde(default)]
+    #[schemars(length(max = 32))]
+    pub annunciations: Vec<AnnunciationDefinition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parachute: Option<ParachuteDefinition>,
+}
+impl ModernSystems {
+    pub fn validate(&self) -> Result<(), AircraftError> {
+        require(
+            self.annunciations.len() <= 32,
+            "annunciations",
+            "at most 32 lamps",
+        )?;
+        let mut sources = BTreeSet::new();
+        for a in &self.annunciations {
+            require(
+                sources.insert(a.source as u8),
+                "annunciations",
+                "duplicate source",
+            )?;
+            require(
+                !a.label.is_empty()
+                    && a.label.len() <= 64
+                    && !a.label.chars().any(char::is_control)
+                    && a.threshold.is_finite()
+                    && (0.0..=1_000_000.).contains(&a.threshold),
+                "annunciations",
+                "invalid label or threshold",
+            )?;
+        }
+        if let Some(p) = &self.parachute {
+            for value in [p.hold_s, p.deployment_delay_s, p.inflation_s] {
+                require(
+                    value.is_finite() && (0.1..=60.).contains(&value),
+                    "parachute.time",
+                    "requires 0.1..60 seconds",
+                )?;
+            }
+            require(
+                (1.0..=20.).contains(&p.descent_rate_mps) && (-1.2..=-0.05).contains(&p.hanging_pitch_rad),
+                "parachute",
+                "descent 1..20 m/s and nose-down pitch required",
+            )?;
+        }
+        Ok(())
+    }
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TouchLayout {
+    FullPfd,
+    #[default]
+    PfdMap,
+    MapEngine,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelColor {
+    Panel,
+    Raised,
+    Dial,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelShape {
+    Rectangle,
+    Rounded,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Rocker {
+    Beacon,
+    Nav,
+    Strobe,
+    Taxi,
+    Landing,
+    Master,
+    Avionics,
+    Alternator,
+    Lights,
+    PitotHeat,
+    LaneA,
+    LaneB,
+    Pump1,
+    Pump2,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelInk {
+    #[default]
+    Text,
+    Muted,
+    Amber,
+    Red,
+    White,
+    Accent,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Outline {
+    Polygon { points: Vec<[f64; 2]> },
+    Cubic { curves: Vec<[[f64; 2]; 4]> },
+}
+impl Outline {
+    fn validate(&self, [w, h]: [f64; 2]) -> Result<(), AircraftError> {
+        let points: Vec<_> = match self {
+            Self::Polygon { points } => {
+                require(
+                    (3..=128).contains(&points.len()),
+                    "outline",
+                    "requires 3..128 polygon vertices",
+                )?;
+                points.clone()
+            }
+            Self::Cubic { curves } => {
+                require(
+                    (1..=32).contains(&curves.len()),
+                    "outline",
+                    "requires 1..32 cubic curves",
+                )?;
+                for pair in curves.windows(2) {
+                    if let [a, b] = pair {
+                        let [_, _, _, end] = a;
+                        let [start, _, _, _] = b;
+                        require(end == start, "outline", "curves must join")?;
+                    }
+                }
+                if let (Some([start, _, _, _]), Some([_, _, _, end])) = (curves.first(), curves.last()) {
+                    require(start == end, "outline", "outline must close")?;
+                }
+                curves.iter().flatten().copied().collect()
+            }
+        };
+        require(
+            points.iter().all(|[x, y]| {
+                x.is_finite() && y.is_finite() && (0. ..=w).contains(x) && (0. ..=h).contains(y)
+            }),
+            "outline",
+            "control points must fit panel",
+        )
+    }
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PanelShell {
+    pub outline: Outline,
+    pub fill: PanelColor,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glare_shield: Option<Outline>,
+    #[serde(default)]
+    pub screws: Vec<[f64; 2]>,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum EngineStripStyle {
+    #[default]
+    Bars,
+    DialsAndBars,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayInset {
+    Map,
+    Engine,
+    Navigation,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PfdCorner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PfdInset {
+    pub corner: PfdCorner,
+    pub content: DisplayInset,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DisplayComposition {
+    #[serde(default)]
+    pub top_data_bar: bool,
+    #[serde(default = "strip_fraction")]
+    pub engine_strip_fraction: f64,
+    #[serde(default)]
+    pub engine_style: EngineStripStyle,
+    #[serde(default = "with_hsi")]
+    pub hsi: bool,
+    #[serde(default)]
+    pub insets: Vec<PfdInset>,
+}
+fn strip_fraction() -> f64 {
+    0.18
+}
+fn with_hsi() -> bool {
+    true
+}
+impl Default for DisplayComposition {
+    fn default() -> Self {
+        Self {
+            top_data_bar: false,
+            engine_strip_fraction: strip_fraction(),
+            engine_style: Default::default(),
+            hsi: true,
+            insets: Vec::new(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PanelElement {
+    Label {
+        text: String,
+    },
+    Placard {
+        text: String,
+        font_size_mm: f64,
+        color: PanelInk,
+    },
+    Toggle {
+        label: String,
+        #[serde(default)]
+        guarded: bool,
+        #[serde(default)]
+        lamp: bool,
+    },
+    Dimmer {
+        label: String,
+    },
+    PushPull {
+        label: String,
+    },
+    Vent,
+    Elt {
+        label: String,
+    },
+    PitchWheel {
+        label: String,
+    },
+    Lamp {
+        label: String,
+        color: PanelInk,
+    },
+    Bracket {
+        label: String,
+    },
+    GuardBar,
+    TouchDisplay {
+        load: String,
+        layout: TouchLayout,
+        engine_strip: bool,
+        #[serde(default)]
+        composition: DisplayComposition,
+    },
+    Navigator {
+        load: String,
+        transponder: bool,
+    },
+    Standby,
+    Autopilot,
+    Breaker {
+        load: String,
+        label: String,
+    },
+    Rocker {
+        switch: Rocker,
+        label: String,
+        #[serde(default)]
+        backlit: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        sublabel: Option<String>,
+    },
+    MasterLight {
+        severity: Severity,
+    },
+    Key,
+    FuelSelector,
+    Parachute,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EquipmentInstallation {
+    pub id: String,
+    pub position: [f64; 2],
+    pub size: [f64; 2],
+    pub element: PanelElement,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EquipmentPanel {
+    /// Optional shell artwork. All coordinates and dimensions are millimetres.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell: Option<PanelShell>,
+    pub size: [f64; 2],
+    pub color: PanelColor,
+    pub shape: PanelShape,
+    #[schemars(length(min = 1, max = 128))]
+    pub elements: Vec<EquipmentInstallation>,
+}
+impl EquipmentPanel {
+    pub fn validate(&self) -> Result<(), AircraftError> {
+        require(
+            self.size
+                .iter()
+                .all(|v| v.is_finite() && (1.0..=10000.).contains(v)),
+            "panel.size",
+            "requires 1..10000",
+        )?;
+        require(
+            (1..=128).contains(&self.elements.len()),
+            "panel.elements",
+            "requires 1..128 elements",
+        )?;
+        if let Some(shell) = &self.shell {
+            shell.outline.validate(self.size)?;
+            if let Some(glare) = &shell.glare_shield {
+                glare.validate(self.size)?;
+            }
+            require(shell.screws.len() <= 128, "shell.screws", "at most 128 screws")?;
+            let [w, h] = self.size;
+            require(
+                shell.screws.iter().all(|[x, y]| {
+                    x.is_finite() && y.is_finite() && (0. ..=w).contains(x) && (0. ..=h).contains(y)
+                }),
+                "shell.screws",
+                "must fit panel",
+            )?;
+        }
+        let mut ids = BTreeSet::new();
+        let [width, height] = self.size;
+        let mut navigators = 0;
+        for e in &self.elements {
+            crate::layers::id(&e.id, "panel.elements.id")?;
+            require(ids.insert(&e.id), "panel.elements.id", "duplicate installation")?;
+            let [x, y] = e.position;
+            let [w, h] = e.size;
+            require(
+                [x, y, w, h].iter().all(|v| v.is_finite())
+                    && x >= 0.
+                    && y >= 0.
+                    && w > 0.
+                    && h > 0.
+                    && x + w <= width
+                    && y + h <= height,
+                "panel.elements.bounds",
+                "equipment must fit panel",
+            )?;
+            let valid_text = |t: &str| !t.is_empty() && t.len() <= 128 && !t.chars().any(char::is_control);
+            match &e.element {
+                PanelElement::Placard {
+                    text, font_size_mm, ..
+                } => require(
+                    valid_text(text) && font_size_mm.is_finite() && (0.5..=30.).contains(font_size_mm),
+                    "placard",
+                    "invalid text or font size",
+                )?,
+                PanelElement::Label { text } => require(valid_text(text), "label", "invalid text")?,
+                PanelElement::Dimmer { label }
+                | PanelElement::PushPull { label }
+                | PanelElement::Elt { label }
+                | PanelElement::PitchWheel { label }
+                | PanelElement::Lamp { label, .. }
+                | PanelElement::Bracket { label }
+                | PanelElement::Toggle { label, .. } => {
+                    require(valid_text(label), "panel.label", "invalid label")?
+                }
+                PanelElement::TouchDisplay { composition, .. } => require(
+                    composition.insets.len() <= 4
+                        && composition
+                            .insets
+                            .iter()
+                            .map(|i| i.corner as u8)
+                            .collect::<BTreeSet<_>>()
+                            .len()
+                            == composition.insets.len()
+                        && composition.engine_strip_fraction.is_finite()
+                        && (0.1..=0.3).contains(&composition.engine_strip_fraction),
+                    "display.composition",
+                    "engine strip fraction requires 0.1..0.3",
+                )?,
+                _ => {}
+            }
+            match &e.element {
+                PanelElement::TouchDisplay { load, .. }
+                | PanelElement::Navigator { load, .. }
+                | PanelElement::Breaker { load, .. } => crate::layers::id(load, "panel.element.load")?,
+                _ => {}
+            }
+            if matches!(e.element, PanelElement::Navigator { .. }) {
+                navigators += 1;
+            }
+            if let PanelElement::Rocker {
+                sublabel: Some(label),
+                ..
+            } = &e.element
+            {
+                require(valid_text(label), "rocker.sublabel", "invalid text")?;
+            }
+            if let PanelElement::Rocker { label, .. } | PanelElement::Breaker { label, .. } = &e.element {
+                require(
+                    !label.is_empty() && label.len() <= 32 && !label.chars().any(char::is_control),
+                    "panel.label",
+                    "requires 1..32 printable bytes",
+                )?;
+            }
+        }
+        require(
+            navigators <= 1,
+            "panel.navigator",
+            "one shared navigator supported",
+        )
+    }
+}
+
+/// Validate cross-layer equipment references, including public native compositions.
+pub fn validate_installation(
+    e: &crate::Engine,
+    systems: Option<&crate::SystemsDefinition>,
+    p: &crate::Panel,
+) -> Result<(), AircraftError> {
+    use crate::aircraft::error;
+    if let Some(panel) = &p.equipment {
+        panel.validate()?;
+    }
+    if let EngineControl::ElectronicDualLane {
+        lane_a_load,
+        lane_b_load,
+        pump_1_load,
+        pump_2_load,
+        ..
+    } = &e.control
+    {
+        let d = systems.ok_or_else(|| error("engine.control", "operational systems required"))?;
+        for load in [lane_a_load, lane_b_load, pump_1_load, pump_2_load] {
+            require(
+                d.electrical
+                    .loads
+                    .iter()
+                    .any(|l| &l.id == load && l.switch == crate::LoadSwitch::Always),
+                "engine.control.load",
+                "requires independent always-connected loads controlled by lane and pump switches",
+            )?;
+        }
+        for load in [lane_a_load, lane_b_load] {
+            require(
+                d.electrical
+                    .loads
+                    .iter()
+                    .any(|l| &l.id == load && l.backup_capacity_ah > 0.),
+                "engine.control.backup",
+                "each lane needs backup power",
+            )?;
+        }
+    }
+    if let Some(panel) = &p.equipment {
+        let d = systems.ok_or_else(|| error("panel.equipment", "operational systems required"))?;
+        for element in &panel.elements {
+            match &element.element {
+                PanelElement::TouchDisplay { load, .. }
+                | PanelElement::Navigator { load, .. }
+                | PanelElement::Breaker { load, .. } => require(
+                    d.electrical.loads.iter().any(|l| &l.id == load),
+                    "panel.load",
+                    "unknown load",
+                )?,
+                PanelElement::Parachute => require(
+                    d.modern.as_ref().is_some_and(|m| m.parachute.is_some()),
+                    "panel.parachute",
+                    "not installed in systems",
+                )?,
+                PanelElement::Autopilot => {
+                    require(p.autopilot.is_some(), "panel.autopilot", "not installed")?
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(())
+}

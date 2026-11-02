@@ -4,6 +4,8 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+mod modern;
+pub use modern::*;
 pub mod glass;
 pub use glass::*;
 mod avionics;
@@ -88,6 +90,7 @@ pub struct Session {
     navigation: navigation::NavigationState,
     map: MapState,
     glass: GlassSettings,
+    touch: modern::TouchAvionics,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
     selected_configuration: Option<flightcraft_aero::ResolvedAircraft>,
@@ -118,6 +121,7 @@ impl Session {
             selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
             map: MapState::default(),
             glass: GlassSettings::default(),
+            touch: modern::TouchAvionics::default(),
             paused: true,
             rate: 1.0,
             camera: None,
@@ -707,6 +711,7 @@ macro_rules! registry {
 }
 
 registry!(
+    SetEquipment,
     SetSimulationDate,
     SearchQuery,
     NearestNavdata,

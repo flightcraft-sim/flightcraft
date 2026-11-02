@@ -1,5 +1,2110 @@
 [
   {
+    "name": "equipment.set",
+    "description": "Operate electronic engine controls, recovery, the touch navigator, or an installed touch display.",
+    "input_schema": {
+      "$defs": {
+        "AvionicsSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "load_procedure",
+                  "type": "string"
+                },
+                "procedure": {
+                  "type": "string"
+                },
+                "transition": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "vectors_to_final": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "procedure"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "activate_approach",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vectors_to_final",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "missed_approach",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exit": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "hold_options",
+                  "type": "string"
+                },
+                "suspend": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "suspend"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "clear_procedure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "sequence_leg",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "nav_radio",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/RadioSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "cdi_source",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/CdiSource"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "autopilot",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/PanelSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "east_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "direct_to_local",
+                  "type": "string"
+                },
+                "north_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "north_m",
+                "east_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "glass",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/GlassSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "detents": {
+                  "format": "int32",
+                  "maximum": 360,
+                  "minimum": -360,
+                  "type": "integer"
+                },
+                "interval_ms": {
+                  "default": null,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "kind": {
+                  "const": "heading_bug_step",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "detents"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "heading_bug_sync",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "description": "Selected magnetic heading.",
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "description": "Magnetic OBS/course selection.",
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "baro",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 105000,
+                  "minimum": 95000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "feet": {
+                  "format": "double",
+                  "maximum": 30000,
+                  "minimum": -1000,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "feet"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "power",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "ahrs_failure",
+                  "type": "string"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "air_data_failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "reversion",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "BearingPointer": {
+          "enum": [
+            "off",
+            "gps"
+          ],
+          "type": "string"
+        },
+        "CdiSource": {
+          "enum": [
+            "gps",
+            "nav1"
+          ],
+          "type": "string"
+        },
+        "Component": {
+          "enum": [
+            "lane_a",
+            "lane_b",
+            "pump1",
+            "pump2"
+          ],
+          "type": "string"
+        },
+        "DisplayAction": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "layout",
+                  "type": "string"
+                },
+                "layout": {
+                  "$ref": "#/$defs/TouchLayout"
+                }
+              },
+              "required": [
+                "kind",
+                "layout"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "engine_strip",
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "visible"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failed"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "EquipmentFailure": {
+          "enum": [
+            "roll_servo",
+            "pitch_servo",
+            "trim",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor"
+          ],
+          "type": "string"
+        },
+        "EquipmentSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "systems",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/ModernSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "$ref": "#/$defs/NavigatorAction"
+                },
+                "kind": {
+                  "const": "navigator",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "action"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "$ref": "#/$defs/DisplayAction"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "display",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "action"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GlassFailure": {
+          "enum": [
+            "ahrs",
+            "adc",
+            "pfd",
+            "mfd"
+          ],
+          "type": "string"
+        },
+        "GlassPage": {
+          "enum": [
+            "map",
+            "nearest",
+            "flight_plan"
+          ],
+          "type": "string"
+        },
+        "GlassSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "heading_rad": {
+                  "description": "Selected magnetic heading, radians.",
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "course_rad": {
+                  "description": "Magnetic CRS/OBS, radians.",
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "course_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 15000,
+                  "minimum": -500,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "baro",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 110000,
+                  "minimum": 80000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "hpa": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "pressure_units",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "hpa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "bearing_pointer",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/BearingPointer"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 4,
+                  "minLength": 4,
+                  "pattern": "^[0-7]{4}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "transponder",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/TransponderMode"
+                }
+              },
+              "required": [
+                "kind",
+                "code",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "map_range",
+                  "type": "string"
+                },
+                "range_nm": {
+                  "format": "double",
+                  "maximum": 200,
+                  "minimum": 1,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "range_nm"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "orientation",
+                  "type": "string"
+                },
+                "orientation": {
+                  "$ref": "#/$defs/MapOrientation"
+                }
+              },
+              "required": [
+                "kind",
+                "orientation"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "page",
+                  "type": "string"
+                },
+                "page": {
+                  "$ref": "#/$defs/GlassPage"
+                }
+              },
+              "required": [
+                "kind",
+                "page"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airports": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airports"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan_waypoints",
+                  "type": "string"
+                },
+                "waypoints": {
+                  "items": {
+                    "$ref": "#/$defs/GpsWaypoint"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "waypoints"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "direct_to_waypoint",
+                  "type": "string"
+                },
+                "waypoint": {
+                  "$ref": "#/$defs/GpsWaypoint"
+                }
+              },
+              "required": [
+                "kind",
+                "waypoint"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "active_leg",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/GlassFailure"
+                }
+              },
+              "required": [
+                "kind",
+                "target",
+                "failed"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "Lane": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LateralMode": {
+          "enum": [
+            "rol",
+            "hdg",
+            "trk",
+            "nav",
+            "apr",
+            "rev",
+            "loc_bc"
+          ],
+          "type": "string"
+        },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
+        "MapOrientation": {
+          "enum": [
+            "north_up",
+            "track_up",
+            "heading_up"
+          ],
+          "type": "string"
+        },
+        "ModernSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "panel_control",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "panel_guard",
+                  "type": "string"
+                },
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "light",
+                  "type": "string"
+                },
+                "light": {
+                  "$ref": "#/$defs/LoadSwitch"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "light",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "lane",
+                  "type": "string"
+                },
+                "lane": {
+                  "$ref": "#/$defs/Lane"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "lane",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pump",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "pump": {
+                  "$ref": "#/$defs/Pump"
+                }
+              },
+              "required": [
+                "kind",
+                "pump",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "component": {
+                  "$ref": "#/$defs/Component"
+                },
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "component",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "key",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/KeyPosition"
+                }
+              },
+              "required": [
+                "kind",
+                "position"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "acknowledge",
+                  "type": "string"
+                },
+                "severity": {
+                  "$ref": "#/$defs/Severity"
+                }
+              },
+              "required": [
+                "kind",
+                "severity"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "door",
+                  "type": "string"
+                },
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "inserted": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "parachute_pin",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "inserted"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "held": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "parachute_handle",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "held"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Explicit pilot command; bypasses the UI hold, but never the safety pin.",
+              "properties": {
+                "kind": {
+                  "const": "parachute_deploy",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "NavigatorAction": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "avionics",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/AvionicsSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                },
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "query"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                },
+                "queries": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "queries"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "page",
+                  "type": "string"
+                },
+                "page": {
+                  "$ref": "#/$defs/NavigatorPage"
+                }
+              },
+              "required": [
+                "kind",
+                "page"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "band": {
+                  "$ref": "#/$defs/RadioBand"
+                },
+                "frequency_khz": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "tune",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "band",
+                "frequency_khz"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "band": {
+                  "$ref": "#/$defs/RadioBand"
+                },
+                "kind": {
+                  "const": "flip",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "band"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "band": {
+                  "$ref": "#/$defs/RadioBand"
+                },
+                "kind": {
+                  "const": "knob_band",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "band"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "detents": {
+                  "format": "int32",
+                  "maximum": 100,
+                  "minimum": -100,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "knob",
+                  "type": "string"
+                },
+                "outer": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "outer",
+                "detents"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Uses the same plan, direct-to, transponder, map, and CDI as every display.",
+              "properties": {
+                "kind": {
+                  "const": "shared",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/GlassSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "NavigatorPage": {
+          "enum": [
+            "home",
+            "flight_plan",
+            "direct_to",
+            "procedures",
+            "nearest",
+            "map",
+            "waypoint_info",
+            "frequencies",
+            "transponder"
+          ],
+          "type": "string"
+        },
+        "PanelSetting": {
+          "description": "All controls are tagged actions, including momentary yoke buttons and knob pushes.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "engage",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "disconnect",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_director",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "lateral",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/LateralMode"
+                }
+              },
+              "required": [
+                "kind",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vertical",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/VerticalMode"
+                }
+              },
+              "required": [
+                "kind",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "level",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "turn",
+                  "type": "string"
+                },
+                "rate_rps": {
+                  "format": "double",
+                  "maximum": 0.05236,
+                  "minimum": -0.05236,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "rate_rps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "track",
+                  "type": "string"
+                },
+                "track_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0.0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "track_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 10000.0,
+                  "minimum": 2.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vertical_speed",
+                  "type": "string"
+                },
+                "vertical_speed_mps": {
+                  "format": "double",
+                  "maximum": 8.0,
+                  "minimum": -8.0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "vertical_speed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 90.0,
+                  "minimum": 20.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pitch",
+                  "type": "string"
+                },
+                "pitch_rad": {
+                  "format": "double",
+                  "maximum": 0.35,
+                  "minimum": -0.25,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pitch_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "yaw_damper",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "control_wheel_steering",
+                  "type": "string"
+                },
+                "pressed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "pressed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "failure": {
+                  "$ref": "#/$defs/EquipmentFailure"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failure",
+                "failed"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Pump": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "RadioBand": {
+          "enum": [
+            "com",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "RadioSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "frequency_hz": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "standby",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "frequency_hz"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "swap",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "back_course",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "class": {
+                  "$ref": "#/$defs/ServiceVolume"
+                },
+                "kind": {
+                  "const": "service_volume",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "class"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ServiceVolume": {
+          "enum": [
+            "terminal",
+            "low",
+            "high"
+          ],
+          "type": "string"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
+        },
+        "TouchLayout": {
+          "enum": [
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ],
+          "type": "string"
+        },
+        "TransponderMode": {
+          "enum": [
+            "off",
+            "standby",
+            "on",
+            "alt"
+          ],
+          "type": "string"
+        },
+        "Unit": {
+          "enum": [
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "string"
+        },
+        "VerticalMode": {
+          "enum": [
+            "pit",
+            "alt",
+            "vs",
+            "ias",
+            "gp",
+            "gs"
+          ],
+          "type": "string"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "setting": {
+          "$ref": "#/$defs/EquipmentSetting"
+        }
+      },
+      "required": [
+        "setting"
+      ],
+      "title": "SetEquipment",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CdiSource": {
+          "enum": [
+            "gps",
+            "nav1"
+          ],
+          "type": "string"
+        },
+        "NavigatorPage": {
+          "enum": [
+            "home",
+            "flight_plan",
+            "direct_to",
+            "procedures",
+            "nearest",
+            "map",
+            "waypoint_info",
+            "frequencies",
+            "transponder"
+          ],
+          "type": "string"
+        },
+        "NavigatorState": {
+          "properties": {
+            "cdi_source": {
+              "$ref": "#/$defs/CdiSource"
+            },
+            "com_active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "com_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "knob_band": {
+              "$ref": "#/$defs/RadioBand"
+            },
+            "nav_active_khz": {
+              "description": "The active frequency is the NAV receiver tuning boundary.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "nav_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "page": {
+              "$ref": "#/$defs/NavigatorPage"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "transponder": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "powered",
+            "page",
+            "com_active_khz",
+            "com_standby_khz",
+            "nav_active_khz",
+            "nav_standby_khz",
+            "knob_band",
+            "transponder",
+            "cdi_source"
+          ],
+          "type": "object"
+        },
+        "RadioBand": {
+          "enum": [
+            "com",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "TouchDisplayState": {
+          "properties": {
+            "engine_strip": {
+              "type": "boolean"
+            },
+            "failed": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "layout": {
+              "$ref": "#/$defs/TouchLayout"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "layout",
+            "engine_strip",
+            "failed",
+            "powered",
+            "reversion"
+          ],
+          "type": "object"
+        },
+        "TouchLayout": {
+          "enum": [
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "displays": {
+          "items": {
+            "$ref": "#/$defs/TouchDisplayState"
+          },
+          "type": "array"
+        },
+        "navigator": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NavigatorState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "displays"
+      ],
+      "title": "TouchState",
+      "type": "object"
+    }
+  },
+  {
     "name": "sim.set_date",
     "description": "Set the deterministic WMM simulation date (2025–2029); default 2026-01-01.",
     "input_schema": {
@@ -4550,6 +6655,41 @@
           ],
           "type": "string"
         },
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -4930,6 +7070,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -4977,6 +7148,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -4985,6 +7171,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -5013,6 +7315,25 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
           ],
           "type": "object"
         },
@@ -5206,6 +7527,57 @@
           ],
           "type": "object"
         },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -5262,6 +7634,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SimulationDate": {
           "additionalProperties": false,
@@ -5506,6 +7885,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -7979,6 +10368,41 @@
           ],
           "type": "string"
         },
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -8359,6 +10783,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -8406,6 +10861,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -8414,6 +10884,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -8442,6 +11028,25 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
           ],
           "type": "object"
         },
@@ -8635,6 +11240,57 @@
           ],
           "type": "object"
         },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -8691,6 +11347,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SimulationDate": {
           "additionalProperties": false,
@@ -8935,6 +11598,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -9291,6 +11964,41 @@
     },
     "output_schema": {
       "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -9627,6 +12335,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -9674,6 +12413,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -9682,6 +12436,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -9710,6 +12580,76 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
           ],
           "type": "object"
         },
@@ -9769,6 +12709,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SystemControls": {
           "properties": {
@@ -9926,6 +12873,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -10121,12 +13078,51 @@
     "description": "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.",
     "input_schema": {
       "$defs": {
+        "Component": {
+          "enum": [
+            "lane_a",
+            "lane_b",
+            "pump1",
+            "pump2"
+          ],
+          "type": "string"
+        },
         "FuelSelector": {
           "enum": [
             "off",
             "left",
             "right",
             "both"
+          ],
+          "type": "string"
+        },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "Lane": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
           ],
           "type": "string"
         },
@@ -10139,9 +13135,270 @@
           ],
           "type": "string"
         },
+        "ModernSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "panel_control",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "panel_guard",
+                  "type": "string"
+                },
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "light",
+                  "type": "string"
+                },
+                "light": {
+                  "$ref": "#/$defs/LoadSwitch"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "light",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "lane",
+                  "type": "string"
+                },
+                "lane": {
+                  "$ref": "#/$defs/Lane"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "lane",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pump",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "pump": {
+                  "$ref": "#/$defs/Pump"
+                }
+              },
+              "required": [
+                "kind",
+                "pump",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "component": {
+                  "$ref": "#/$defs/Component"
+                },
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "component",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "key",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/KeyPosition"
+                }
+              },
+              "required": [
+                "kind",
+                "position"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "acknowledge",
+                  "type": "string"
+                },
+                "severity": {
+                  "$ref": "#/$defs/Severity"
+                }
+              },
+              "required": [
+                "kind",
+                "severity"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "door",
+                  "type": "string"
+                },
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "inserted": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "parachute_pin",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "inserted"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "held": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "parachute_handle",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "held"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Explicit pilot command; bypasses the UI hold, but never the safety pin.",
+              "properties": {
+                "kind": {
+                  "const": "parachute_deploy",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Pump": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
+        },
         "SystemSetting": {
           "description": "One atomic panel action. Numeric values are validated before any state changes.",
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "equipment",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/ModernSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -10408,6 +13665,41 @@
     },
     "output_schema": {
       "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -10744,6 +14036,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -10791,6 +14114,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -10799,6 +14137,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -10827,6 +14281,76 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
           ],
           "type": "object"
         },
@@ -10886,6 +14410,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SystemControls": {
           "properties": {
@@ -11043,6 +14574,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -13559,6 +17100,9 @@
               "$ref": "#/$defs/TerrainRaster",
               "description": "Map coordinates are fractions of a square spanning twice the selected range."
             },
+            "touch": {
+              "$ref": "#/$defs/TouchState"
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -13569,6 +17113,7 @@
             }
           },
           "required": [
+            "touch",
             "settings",
             "air_data",
             "standby",
@@ -13991,6 +17536,72 @@
           ],
           "type": "object"
         },
+        "NavigatorPage": {
+          "enum": [
+            "home",
+            "flight_plan",
+            "direct_to",
+            "procedures",
+            "nearest",
+            "map",
+            "waypoint_info",
+            "frequencies",
+            "transponder"
+          ],
+          "type": "string"
+        },
+        "NavigatorState": {
+          "properties": {
+            "cdi_source": {
+              "$ref": "#/$defs/CdiSource"
+            },
+            "com_active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "com_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "knob_band": {
+              "$ref": "#/$defs/RadioBand"
+            },
+            "nav_active_khz": {
+              "description": "The active frequency is the NAV receiver tuning boundary.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "nav_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "page": {
+              "$ref": "#/$defs/NavigatorPage"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "transponder": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "powered",
+            "page",
+            "com_active_khz",
+            "com_standby_khz",
+            "nav_active_khz",
+            "nav_standby_khz",
+            "knob_band",
+            "transponder",
+            "cdi_source"
+          ],
+          "type": "object"
+        },
         "PathTerminator": {
           "enum": [
             "IF",
@@ -14355,6 +17966,13 @@
           ],
           "type": "object"
         },
+        "RadioBand": {
+          "enum": [
+            "com",
+            "nav"
+          ],
+          "type": "string"
+        },
         "RadioState": {
           "properties": {
             "cone_of_confusion": {
@@ -14502,6 +18120,69 @@
             "from"
           ],
           "type": "string"
+        },
+        "TouchDisplayState": {
+          "properties": {
+            "engine_strip": {
+              "type": "boolean"
+            },
+            "failed": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "layout": {
+              "$ref": "#/$defs/TouchLayout"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "layout",
+            "engine_strip",
+            "failed",
+            "powered",
+            "reversion"
+          ],
+          "type": "object"
+        },
+        "TouchLayout": {
+          "enum": [
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ],
+          "type": "string"
+        },
+        "TouchState": {
+          "properties": {
+            "displays": {
+              "items": {
+                "$ref": "#/$defs/TouchDisplayState"
+              },
+              "type": "array"
+            },
+            "navigator": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavigatorState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "displays"
+          ],
+          "type": "object"
         },
         "TransponderMode": {
           "enum": [
@@ -15576,6 +19257,9 @@
               "$ref": "#/$defs/TerrainRaster",
               "description": "Map coordinates are fractions of a square spanning twice the selected range."
             },
+            "touch": {
+              "$ref": "#/$defs/TouchState"
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -15586,6 +19270,7 @@
             }
           },
           "required": [
+            "touch",
             "settings",
             "air_data",
             "standby",
@@ -16008,6 +19693,72 @@
           ],
           "type": "object"
         },
+        "NavigatorPage": {
+          "enum": [
+            "home",
+            "flight_plan",
+            "direct_to",
+            "procedures",
+            "nearest",
+            "map",
+            "waypoint_info",
+            "frequencies",
+            "transponder"
+          ],
+          "type": "string"
+        },
+        "NavigatorState": {
+          "properties": {
+            "cdi_source": {
+              "$ref": "#/$defs/CdiSource"
+            },
+            "com_active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "com_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "knob_band": {
+              "$ref": "#/$defs/RadioBand"
+            },
+            "nav_active_khz": {
+              "description": "The active frequency is the NAV receiver tuning boundary.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "nav_standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "page": {
+              "$ref": "#/$defs/NavigatorPage"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "transponder": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "powered",
+            "page",
+            "com_active_khz",
+            "com_standby_khz",
+            "nav_active_khz",
+            "nav_standby_khz",
+            "knob_band",
+            "transponder",
+            "cdi_source"
+          ],
+          "type": "object"
+        },
         "PathTerminator": {
           "enum": [
             "IF",
@@ -16372,6 +20123,13 @@
           ],
           "type": "object"
         },
+        "RadioBand": {
+          "enum": [
+            "com",
+            "nav"
+          ],
+          "type": "string"
+        },
         "RadioState": {
           "properties": {
             "cone_of_confusion": {
@@ -16519,6 +20277,69 @@
             "from"
           ],
           "type": "string"
+        },
+        "TouchDisplayState": {
+          "properties": {
+            "engine_strip": {
+              "type": "boolean"
+            },
+            "failed": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "layout": {
+              "$ref": "#/$defs/TouchLayout"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "layout",
+            "engine_strip",
+            "failed",
+            "powered",
+            "reversion"
+          ],
+          "type": "object"
+        },
+        "TouchLayout": {
+          "enum": [
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ],
+          "type": "string"
+        },
+        "TouchState": {
+          "properties": {
+            "displays": {
+              "items": {
+                "$ref": "#/$defs/TouchDisplayState"
+              },
+              "type": "array"
+            },
+            "navigator": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavigatorState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "displays"
+          ],
+          "type": "object"
         },
         "TransponderMode": {
           "enum": [
@@ -16758,6 +20579,41 @@
     },
     "output_schema": {
       "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -17094,6 +20950,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -17141,6 +21028,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -17149,6 +21051,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -17177,6 +21195,76 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
           ],
           "type": "object"
         },
@@ -17236,6 +21324,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SystemControls": {
           "properties": {
@@ -17393,6 +21488,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -17616,6 +21721,41 @@
     },
     "output_schema": {
       "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -17952,6 +22092,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -17999,6 +22170,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -18007,6 +22193,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -18035,6 +22337,76 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
           ],
           "type": "object"
         },
@@ -18094,6 +22466,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SystemControls": {
           "properties": {
@@ -18251,6 +22630,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -19277,6 +23666,41 @@
           ],
           "type": "string"
         },
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
         "AvionicsState": {
           "properties": {
             "electronic_attitude": {
@@ -19657,6 +24081,37 @@
           ],
           "type": "string"
         },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
         "LoadState": {
           "properties": {
             "backup_remaining_ah": {
@@ -19704,6 +24159,21 @@
           ],
           "type": "object"
         },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
         "Magnetos": {
           "enum": [
             "off",
@@ -19712,6 +24182,122 @@
             "both"
           ],
           "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -19740,6 +24326,25 @@
             "on_battery",
             "battery_remaining_s",
             "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
           ],
           "type": "object"
         },
@@ -19933,6 +24538,57 @@
           ],
           "type": "object"
         },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -19989,6 +24645,13 @@
             "lateral_acceleration_g"
           ],
           "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
         },
         "SimulationDate": {
           "additionalProperties": false,
@@ -20233,6 +24896,16 @@
               "maxItems": 3,
               "minItems": 3,
               "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "oil_pressure_pa": {
               "format": "double",

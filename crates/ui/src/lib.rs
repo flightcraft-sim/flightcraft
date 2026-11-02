@@ -10,7 +10,9 @@ mod input;
 pub mod instruments;
 pub mod keymap;
 pub mod map;
+mod modern;
 mod navigation;
+mod panel_art;
 mod procedures;
 pub mod script;
 pub mod theme;
@@ -902,8 +904,23 @@ impl eframe::App for FlightCraftApp {
                     });
                 });
             });
+        if self.planning_map.open {
+            for setting in self
+                .instrument_panel
+                .cancel_equipment_holds(self.session.flight_generation())
+            {
+                if let Err(e) = self.session.run(flightcraft_control::SetEquipment { setting }) {
+                    self.error = Some(e.to_string());
+                }
+            }
+        }
         if !self.planning_map.open {
-            if let Some(state) = self.session.sim().installed_autopilot().cloned() {
+            if self
+                .session
+                .aircraft_configuration()
+                .is_none_or(|c| c.panel.equipment.is_none())
+                && let Some(state) = self.session.sim().installed_autopilot().cloned()
+            {
                 egui::TopBottomPanel::bottom("autopilot-controller").show(ctx, |ui| {
                     for setting in self.autopilot_controller.show(
                         ui,
@@ -918,10 +935,19 @@ impl eframe::App for FlightCraftApp {
                 });
             }
             egui::TopBottomPanel::bottom("instruments")
-                .exact_height(instruments::panel_height(
-                    ctx.content_rect().height(),
-                    self.compact_panel,
-                ))
+                .exact_height(
+                    if let Some(panel) = self
+                        .session
+                        .aircraft_configuration()
+                        .and_then(|c| c.panel.equipment.as_ref())
+                    {
+                        let [w, h] = panel.size;
+                        (ctx.content_rect().width() * (h / w) as f32)
+                            .min(ctx.content_rect().height() * if self.compact_panel { 0.55 } else { 0.80 })
+                    } else {
+                        instruments::panel_height(ctx.content_rect().height(), self.compact_panel)
+                    },
+                )
                 .frame(
                     egui::Frame::new()
                         .fill(theme::PANEL)
@@ -952,6 +978,7 @@ impl eframe::App for FlightCraftApp {
                             self.session.flight_generation(),
                         )
                     };
+                    self.instrument_panel.show_shared_hosts(ui, &mut self.session);
                     if let Some(rect) = self.instrument_panel.map_rect() {
                         self.mfd_map.options = self.instrument_panel.options;
                         self.mfd_map.show_mfd(ui, rect, &mut self.session);
@@ -963,6 +990,11 @@ impl eframe::App for FlightCraftApp {
                     }
                     for setting in self.instrument_panel.take_heading_commands() {
                         if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                            self.error = Some(e.to_string());
+                        }
+                    }
+                    for setting in self.instrument_panel.take_equipment_commands() {
+                        if let Err(e) = self.session.run(flightcraft_control::SetEquipment { setting }) {
                             self.error = Some(e.to_string());
                         }
                     }

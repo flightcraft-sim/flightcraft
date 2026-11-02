@@ -279,56 +279,58 @@ impl PlanningMap {
         }
         rings(&p, &view, &state);
         self.paint_measure(&p, &view, s);
-        let footer_height = if compact { 30. } else { 19. };
-        p.rect_filled(
-            Rect::from_min_size(
-                rect.left_bottom() - egui::vec2(0., footer_height),
-                egui::vec2(rect.width(), footer_height + 2.),
-            ),
-            0.,
-            theme::PANEL,
-        );
-        if compact {
-            let edition = notice.split(" · not for navigation").next().unwrap_or(&notice);
-            p.text(
-                rect.left_bottom() + egui::vec2(4., -16.),
-                Align2::LEFT_BOTTOM,
-                edition,
-                FontId::proportional(7.),
-                theme::MUTED,
+        if rect.width() >= 300. && rect.height() >= 180. {
+            let footer_height = if compact { 30. } else { 19. };
+            p.rect_filled(
+                Rect::from_min_size(
+                    rect.left_bottom() - egui::vec2(0., footer_height),
+                    egui::vec2(rect.width(), footer_height + 2.),
+                ),
+                0.,
+                theme::PANEL,
             );
+            if compact {
+                let edition = notice.split(" · not for navigation").next().unwrap_or(&notice);
+                p.text(
+                    rect.left_bottom() + egui::vec2(4., -16.),
+                    Align2::LEFT_BOTTOM,
+                    edition,
+                    FontId::proportional(7.),
+                    theme::MUTED,
+                );
+                p.text(
+                    rect.left_bottom() + egui::vec2(4., -3.),
+                    Align2::LEFT_BOTTOM,
+                    "NOT FOR NAVIGATION",
+                    FontId::proportional(8.),
+                    theme::AMBER,
+                );
+            } else {
+                p.text(
+                    rect.left_bottom() + egui::vec2(6., -4.),
+                    Align2::LEFT_BOTTOM,
+                    notice,
+                    FontId::proportional(11.),
+                    theme::MUTED,
+                );
+            }
             p.text(
-                rect.left_bottom() + egui::vec2(4., -3.),
-                Align2::LEFT_BOTTOM,
-                "NOT FOR NAVIGATION",
-                FontId::proportional(8.),
-                theme::AMBER,
-            );
-        } else {
-            p.text(
-                rect.left_bottom() + egui::vec2(6., -4.),
-                Align2::LEFT_BOTTOM,
-                notice,
-                FontId::proportional(11.),
-                theme::MUTED,
+                rect.right_top() - egui::vec2(8., -8.),
+                Align2::RIGHT_TOP,
+                format!(
+                    "{} · {} · {:.1} NM",
+                    orientation_name(state.orientation),
+                    view.magnetic_bearing_deg
+                        .map_or("N TRUE".into(), |bearing| format!(
+                            "{:03.0}° M",
+                            bearing.round().rem_euclid(360.)
+                        )),
+                    state.range_nm
+                ),
+                FontId::monospace(11.),
+                theme::ACCENT,
             );
         }
-        p.text(
-            rect.right_top() - egui::vec2(8., -8.),
-            Align2::RIGHT_TOP,
-            format!(
-                "{} · {} · {:.1} NM",
-                orientation_name(state.orientation),
-                view.magnetic_bearing_deg
-                    .map_or("N TRUE".into(), |bearing| format!(
-                        "{:03.0}° M",
-                        bearing.round().rem_euclid(360.)
-                    )),
-                state.range_nm
-            ),
-            FontId::monospace(11.),
-            theme::ACCENT,
-        );
         self.gestures(ui, s, &view, &response, &features, compact);
     }
     fn gestures(
@@ -779,7 +781,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
     } else {
         theme::MAP_DAY_TEXT
     };
-    let font = FontId::proportional(11.);
+    let font = FontId::proportional((v.rect.width() / 35.).clamp(5., 11.));
     let world = s.sim().world();
     let across_nm = f64::from(v.rect.width()) / v.pixels_per_m / 1852.0;
     if state.opacity(Overlay::Airspace) > 0.
@@ -1081,7 +1083,9 @@ fn route(
             && let (Some(a), Some(b)) = (v.point(a.waypoint.position), v.point(b.waypoint.position))
         {
             p.line_segment([a, b], Stroke::new(2.5, color));
-            if let Some(leg) = summary.as_ref().and_then(|s| s.legs.get(i)) {
+            if v.rect.width() >= 350.
+                && let Some(leg) = summary.as_ref().and_then(|s| s.legs.get(i))
+            {
                 let label = format!(
                     "{:03.0}° M · {:.1} NM · {} min",
                     leg.magnetic_course_deg,
@@ -1113,7 +1117,10 @@ fn route(
             );
         }
     }
-    if let Some(summary) = summary {
+    if v.rect.width() >= 400.
+        && v.rect.height() >= 250.
+        && let Some(summary) = summary
+    {
         let text = format!(
             "ROUTE {:.1} NM · {} min · fuel {} + {} reserve · {} · {} conflicts",
             summary.distance_m / 1852.,
@@ -1147,6 +1154,9 @@ fn rings(p: &egui::Painter, v: &View, state: &MapState) {
         for f in [0.25, 0.5, 0.75] {
             p.circle_stroke(v.rect.center(), radius * f, Stroke::new(0.7, color));
         }
+    }
+    if v.rect.width() < 200. || v.rect.height() < 150. {
+        return;
     }
     let length = (state.range_nm * 0.4).max(0.1);
     let pixels = (length * 1852. * v.pixels_per_m) as f32;

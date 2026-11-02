@@ -233,3 +233,17 @@ original reset mass, CG, inertia, geometry, controls, and tables. The Corvid gol
 with fuel-driven mass is `0xf228fce1a4055061`. CI also checks that trajectory on `wasm32-wasip1`
 with Wasmtime; the browser
 applications build for `wasm32-unknown-unknown`.
+
+## Electronic equipment extension
+
+Engine documents optionally declare `control` (`magnetos` or `electronic_dual_lane`) and
+`gearbox_ratio`. Propulsion RPM limits describe propeller RPM; the ratio converts this to
+engine RPM for indications. Systems definitions optionally declare `modern`, containing
+selector positions, master-annunciation sources, and recovery parameters. Panels optionally
+declare `equipment`, including a bounded background and individually placed equipment faces;
+these panels may omit conventional instruments with an empty `instruments` list.
+
+The [equipment specification](equipment.md) documents fields, load references, controls, and
+limitations. The [fictional equipment pack](../examples/packs/equipment-demo/pack.json) is a
+complete composable example. Optional fields default to the existing behaviour; built-in
+engine definitions and default flight dynamics are unchanged.

@@ -1,0 +1,32 @@
+{
+  "id": "equipment-demo",
+  "name": "Fictional electronic equipment demonstration",
+  "version": "1.0.0",
+  "licence": "Apache-2.0",
+  "authors": [
+    "FlightCraft contributors"
+  ],
+  "affiliation": "An original fictional design; not affiliated with or endorsed by any aircraft or equipment manufacturer.",
+  "files": [
+    {
+      "path": "engine.json",
+      "kind": "engine"
+    },
+    {
+      "path": "systems.json",
+      "kind": "systems"
+    },
+    {
+      "path": "variant.json",
+      "kind": "variant"
+    },
+    {
+      "path": "panel.json",
+      "kind": "panel"
+    },
+    {
+      "path": "aircraft.json",
+      "kind": "aircraft"
+    }
+  ]
+}
