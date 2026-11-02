@@ -43,3 +43,6 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 23 | Vortex-lattice coefficients from geometry | 15 |
 | 24 | An aircraft modelled in SolidCraft flies | 22, 23 |
 | 25 | Touch controls in the browser | 9 |
+| 26 | Real regions: New York area (1N7 to the JFK, EWR, and LGA Class B), then eastern Pennsylvania and New Jersey (KABE, KMPO, KAVP, KRDG) | 18 |
+| 27 | Contributor guides and agent skills: how to contribute an aircraft, a region, or an instrument skin, written so a coding agent told "contribute to FlightCraft" knows what to do | 26, instrument modules |
+| 28 | Issue claims: `/claim` and `/unclaim`, a draft PR referencing an issue claims it, the lowest-numbered PR wins, and a daily sweep frees stale claims | 27 |
