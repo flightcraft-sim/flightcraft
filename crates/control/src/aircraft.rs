@@ -190,6 +190,7 @@ impl Command for LoadAircraft {
             None
         };
         if let Some(mut sim) = replacement {
+            sim.set_simulation_date(session.simulation_date())?;
             if let Some(configuration) = &configuration {
                 sim.configure_systems(configuration)?;
             }

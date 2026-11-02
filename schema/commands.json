@@ -3565,6 +3565,7 @@
               "type": "number"
             },
             "bearing_deg": {
+              "description": "Magnetic bearing from the airport, clockwise in degrees.",
               "format": "double",
               "type": "number"
             },
@@ -3573,6 +3574,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Magnetic heading, radians clockwise from magnetic north.",
               "format": "double",
               "type": "number"
             },
@@ -3678,6 +3680,7 @@
                   "type": "number"
                 },
                 "bearing_deg": {
+                  "description": "Magnetic bearing from the airport, clockwise in degrees.",
                   "format": "double",
                   "type": "number"
                 },
@@ -3686,6 +3689,7 @@
                   "type": "number"
                 },
                 "heading_rad": {
+                  "description": "Magnetic heading, radians clockwise from magnetic north.",
                   "format": "double",
                   "type": "number"
                 },
@@ -3718,6 +3722,7 @@
                   "type": "number"
                 },
                 "heading_rad": {
+                  "description": "Magnetic heading, radians clockwise from magnetic north.",
                   "format": "double",
                   "type": "number"
                 },
@@ -3751,6 +3756,7 @@
                   "type": "number"
                 },
                 "heading_rad": {
+                  "description": "Magnetic heading, radians clockwise from magnetic north.",
                   "format": "double",
                   "maximum": 6.283185307179586,
                   "minimum": 0,
@@ -4427,6 +4433,10 @@
             "failures": {
               "$ref": "#/$defs/Failures"
             },
+            "grid_north_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
@@ -4441,8 +4451,17 @@
               "minItems": 3,
               "type": "array"
             },
+            "heading_grid_rad": {
+              "description": "Internal local-grid heading; use only for geometry and truth transports.",
+              "format": "double",
+              "type": "number"
+            },
             "heading_rad": {
-              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "description": "Pilot magnetic heading, radians, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_true_rad": {
               "format": "double",
               "type": "number"
             },
@@ -4480,6 +4499,10 @@
                 "null"
               ]
             },
+            "magnetic_declination_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
               "type": "boolean"
@@ -4512,7 +4535,8 @@
               "type": "number"
             },
             "weather": {
-              "$ref": "#/$defs/Weather"
+              "$ref": "#/$defs/Weather",
+              "description": "Pilot weather readout; wind-from direction is magnetic."
             },
             "wind_ned_mps": {
               "description": "Total moving-air velocity at the CG, NED m/s.",
@@ -4534,6 +4558,10 @@
             "height_agl_m",
             "vertical_speed_mps",
             "heading_rad",
+            "heading_grid_rad",
+            "heading_true_rad",
+            "magnetic_declination_rad",
+            "grid_north_true_rad",
             "pitch_rad",
             "roll_rad",
             "turn_rate_rps",
@@ -4837,6 +4865,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -4907,6 +4940,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -4989,6 +5023,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Selected magnetic heading, radians.",
               "format": "double",
               "type": [
                 "number",
@@ -5888,6 +5923,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Selected magnetic heading, radians.",
               "format": "double",
               "type": [
                 "number",
@@ -6008,6 +6044,10 @@
         "failures": {
           "$ref": "#/$defs/Failures"
         },
+        "grid_north_true_rad": {
+          "format": "double",
+          "type": "number"
+        },
         "ground_speed_mps": {
           "description": "Ground speed, m/s.",
           "format": "double",
@@ -6022,8 +6062,17 @@
           "minItems": 3,
           "type": "array"
         },
+        "heading_grid_rad": {
+          "description": "Internal local-grid heading; use only for geometry and truth transports.",
+          "format": "double",
+          "type": "number"
+        },
         "heading_rad": {
-          "description": "Heading, radians, 0 to 2π, clockwise from north.",
+          "description": "Pilot magnetic heading, radians, clockwise from magnetic north.",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_true_rad": {
           "format": "double",
           "type": "number"
         },
@@ -6061,6 +6110,10 @@
             "null"
           ]
         },
+        "magnetic_declination_rad": {
+          "format": "double",
+          "type": "number"
+        },
         "on_ground": {
           "description": "True while any wheel touches the ground.",
           "type": "boolean"
@@ -6093,7 +6146,8 @@
           "type": "number"
         },
         "weather": {
-          "$ref": "#/$defs/Weather"
+          "$ref": "#/$defs/Weather",
+          "description": "Pilot weather readout; wind-from direction is magnetic."
         },
         "wind_ned_mps": {
           "description": "Total moving-air velocity at the CG, NED m/s.",
@@ -6115,6 +6169,10 @@
         "height_agl_m",
         "vertical_speed_mps",
         "heading_rad",
+        "heading_grid_rad",
+        "heading_true_rad",
+        "magnetic_declination_rad",
+        "grid_north_true_rad",
         "pitch_rad",
         "roll_rad",
         "turn_rate_rps",
@@ -6256,6 +6314,7 @@
           "type": "number"
         },
         "heading_rad": {
+          "description": "Selected magnetic heading, radians.",
           "format": "double",
           "type": [
             "number",
@@ -6337,6 +6396,7 @@
           "type": "number"
         },
         "heading_rad": {
+          "description": "Selected magnetic heading, radians.",
           "format": "double",
           "type": [
             "number",
@@ -6709,6 +6769,10 @@
             "failures": {
               "$ref": "#/$defs/Failures"
             },
+            "grid_north_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
@@ -6723,8 +6787,17 @@
               "minItems": 3,
               "type": "array"
             },
+            "heading_grid_rad": {
+              "description": "Internal local-grid heading; use only for geometry and truth transports.",
+              "format": "double",
+              "type": "number"
+            },
             "heading_rad": {
-              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "description": "Pilot magnetic heading, radians, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_true_rad": {
               "format": "double",
               "type": "number"
             },
@@ -6762,6 +6835,10 @@
                 "null"
               ]
             },
+            "magnetic_declination_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
               "type": "boolean"
@@ -6794,7 +6871,8 @@
               "type": "number"
             },
             "weather": {
-              "$ref": "#/$defs/Weather"
+              "$ref": "#/$defs/Weather",
+              "description": "Pilot weather readout; wind-from direction is magnetic."
             },
             "wind_ned_mps": {
               "description": "Total moving-air velocity at the CG, NED m/s.",
@@ -6816,6 +6894,10 @@
             "height_agl_m",
             "vertical_speed_mps",
             "heading_rad",
+            "heading_grid_rad",
+            "heading_true_rad",
+            "magnetic_declination_rad",
+            "grid_north_true_rad",
             "pitch_rad",
             "roll_rad",
             "turn_rate_rps",
@@ -7116,6 +7198,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Selected magnetic heading, radians.",
               "format": "double",
               "type": [
                 "number",
@@ -7779,6 +7862,10 @@
             "failures": {
               "$ref": "#/$defs/Failures"
             },
+            "grid_north_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
@@ -7793,8 +7880,17 @@
               "minItems": 3,
               "type": "array"
             },
+            "heading_grid_rad": {
+              "description": "Internal local-grid heading; use only for geometry and truth transports.",
+              "format": "double",
+              "type": "number"
+            },
             "heading_rad": {
-              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "description": "Pilot magnetic heading, radians, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_true_rad": {
               "format": "double",
               "type": "number"
             },
@@ -7832,6 +7928,10 @@
                 "null"
               ]
             },
+            "magnetic_declination_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
               "type": "boolean"
@@ -7864,7 +7964,8 @@
               "type": "number"
             },
             "weather": {
-              "$ref": "#/$defs/Weather"
+              "$ref": "#/$defs/Weather",
+              "description": "Pilot weather readout; wind-from direction is magnetic."
             },
             "wind_ned_mps": {
               "description": "Total moving-air velocity at the CG, NED m/s.",
@@ -7886,6 +7987,10 @@
             "height_agl_m",
             "vertical_speed_mps",
             "heading_rad",
+            "heading_grid_rad",
+            "heading_true_rad",
+            "magnetic_declination_rad",
+            "grid_north_true_rad",
             "pitch_rad",
             "roll_rad",
             "turn_rate_rps",
@@ -8189,6 +8294,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -8259,6 +8369,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -8341,6 +8452,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Selected magnetic heading, radians.",
               "format": "double",
               "type": [
                 "number",
@@ -8501,7 +8613,7 @@
   },
   {
     "name": "weather.set",
-    "description": "Replace wind (from degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.",
+    "description": "Replace wind (from magnetic degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.",
     "input_schema": {
       "$defs": {
         "TurbulenceLevel": {
@@ -9173,6 +9285,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -9243,6 +9360,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -9479,6 +9597,7 @@
               "additionalProperties": false,
               "properties": {
                 "heading_rad": {
+                  "description": "Magnetic heading, radians clockwise from magnetic north.",
                   "format": "double",
                   "maximum": 6.283185307179586,
                   "minimum": 0,
@@ -10283,6 +10402,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -10353,6 +10477,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -10494,6 +10619,158 @@
             {
               "additionalProperties": false,
               "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "load_procedure",
+                  "type": "string"
+                },
+                "procedure": {
+                  "type": "string"
+                },
+                "transition": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "vectors_to_final": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "procedure"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "activate_approach",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vectors_to_final",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "missed_approach",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exit": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "hold_options",
+                  "type": "string"
+                },
+                "suspend": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "suspend"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "clear_procedure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "sequence_leg",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "nav_radio",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/RadioSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "cdi_source",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/CdiSource"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "kind": {
                   "const": "autopilot",
                   "type": "string"
@@ -10594,6 +10871,7 @@
               "additionalProperties": false,
               "properties": {
                 "degrees": {
+                  "description": "Selected magnetic heading.",
                   "format": "double",
                   "maximum": 360,
                   "minimum": 0,
@@ -10614,6 +10892,7 @@
               "additionalProperties": false,
               "properties": {
                 "degrees": {
+                  "description": "Magnetic OBS/course selection.",
                   "format": "double",
                   "maximum": 360,
                   "minimum": 0,
@@ -10774,6 +11053,13 @@
           ],
           "type": "string"
         },
+        "CdiSource": {
+          "enum": [
+            "gps",
+            "nav1"
+          ],
+          "type": "string"
+        },
         "EquipmentFailure": {
           "enum": [
             "roll_servo",
@@ -10830,6 +11116,7 @@
               "additionalProperties": false,
               "properties": {
                 "heading_rad": {
+                  "description": "Selected magnetic heading, radians.",
                   "format": "double",
                   "maximum": 6.283185307179586,
                   "minimum": 0,
@@ -10850,6 +11137,7 @@
               "additionalProperties": false,
               "properties": {
                 "course_rad": {
+                  "description": "Magnetic CRS/OBS, radians.",
                   "format": "double",
                   "maximum": 6.283185307179586,
                   "minimum": 0,
@@ -11174,7 +11462,8 @@
         "MapOrientation": {
           "enum": [
             "north_up",
-            "track_up"
+            "track_up",
+            "heading_up"
           ],
           "type": "string"
         },
@@ -11470,6 +11759,161 @@
             }
           ]
         },
+        "RadioSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "frequency_hz": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "standby",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "frequency_hz"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "swap",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "back_course",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "class": {
+                  "$ref": "#/$defs/ServiceVolume"
+                },
+                "kind": {
+                  "const": "service_volume",
+                  "type": "string"
+                },
+                "radio": {
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "radio",
+                "class"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ServiceVolume": {
+          "enum": [
+            "terminal",
+            "low",
+            "high"
+          ],
+          "type": "string"
+        },
         "TransponderMode": {
           "enum": [
             "off",
@@ -11627,6 +12071,26 @@
           ],
           "type": "string"
         },
+        "ApproachCapability": {
+          "enum": [
+            "LNAV",
+            "LNAV/VNAV",
+            "LPV"
+          ],
+          "type": "string"
+        },
+        "ApproachMode": {
+          "enum": [
+            "ENR",
+            "TERM",
+            "APR",
+            "LNAV",
+            "LNAV/VNAV",
+            "LPV",
+            "MISSED"
+          ],
+          "type": "string"
+        },
         "AutopilotFamily": {
           "enum": [
             "wing_leveler",
@@ -11729,6 +12193,13 @@
           "enum": [
             "off",
             "gps"
+          ],
+          "type": "string"
+        },
+        "CdiSource": {
+          "enum": [
+            "gps",
+            "nav1"
           ],
           "type": "string"
         },
@@ -12196,6 +12667,77 @@
           ],
           "type": "object"
         },
+        "FlightLeg": {
+          "properties": {
+            "center": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "course_magnetic_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_true_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "endpoint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fix_elevation_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/ProcedureLeg"
+            },
+            "navaid": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "procedure_kind": {
+              "$ref": "#/$defs/ProcedureKind"
+            },
+            "variation_deg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "leg",
+            "procedure_kind",
+            "variation_deg"
+          ],
+          "type": "object"
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -12433,6 +12975,9 @@
               "minimum": 0,
               "type": "integer"
             },
+            "annunciation": {
+              "type": "string"
+            },
             "bearing_rad": {
               "format": "double",
               "type": "number"
@@ -12464,6 +13009,9 @@
               "format": "double",
               "type": "number"
             },
+            "distance_valid": {
+              "type": "boolean"
+            },
             "ete_s": {
               "format": "double",
               "type": [
@@ -12477,7 +13025,23 @@
               },
               "type": "array"
             },
+            "source": {
+              "type": "string"
+            },
+            "suspended": {
+              "type": "boolean"
+            },
             "valid": {
+              "type": "boolean"
+            },
+            "vertical_dots": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_alert": {
               "type": "boolean"
             }
           },
@@ -12485,11 +13049,16 @@
             "valid",
             "active_leg",
             "distance_nm",
+            "distance_valid",
             "bearing_rad",
             "desired_track_rad",
             "cross_track_nm",
             "cdi_full_scale_nm",
             "cdi_deviation",
+            "source",
+            "annunciation",
+            "suspended",
+            "waypoint_alert",
             "legs"
           ],
           "type": "object"
@@ -12517,6 +13086,14 @@
           ],
           "type": "object"
         },
+        "HoldEntry": {
+          "enum": [
+            "direct",
+            "parallel",
+            "teardrop"
+          ],
+          "type": "string"
+        },
         "LateralMode": {
           "enum": [
             "rol",
@@ -12528,6 +13105,68 @@
             "loc_bc"
           ],
           "type": "string"
+        },
+        "LoadedProcedure": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "capabilities": {
+              "items": {
+                "$ref": "#/$defs/ApproachCapability"
+              },
+              "type": "array"
+            },
+            "ident": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/ProcedureKind"
+            },
+            "plate": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlateLink"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "transition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "airport",
+            "ident",
+            "kind",
+            "capabilities"
+          ],
+          "type": "object"
+        },
+        "MagneticCompass": {
+          "description": "Ideal passive whiskey compass; independent of AHRS, gyro power, and instrument failures.",
+          "properties": {
+            "declination_deg": {
+              "description": "East-positive WMM declination at the aircraft and simulation date.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "description": "Magnetic heading, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "heading_deg",
+            "declination_deg"
+          ],
+          "type": "object"
         },
         "MapAirport": {
           "properties": {
@@ -12571,7 +13210,8 @@
         "MapOrientation": {
           "enum": [
             "north_up",
-            "track_up"
+            "track_up",
+            "heading_up"
           ],
           "type": "string"
         },
@@ -12612,6 +13252,93 @@
           ],
           "type": "object"
         },
+        "NavGuidance": {
+          "additionalProperties": false,
+          "properties": {
+            "cross_track_m": {
+              "description": "Positive to the right of the desired course, in metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/NavKind"
+            },
+            "path_angle_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "to_from": {
+              "$ref": "#/$defs/ToFrom"
+            },
+            "vertical_deviation_m": {
+              "description": "Positive above path, metres; absent until a receiver supplies a path.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "desired_track_rad",
+            "cross_track_m",
+            "to_from",
+            "kind"
+          ],
+          "type": "object"
+        },
+        "NavKind": {
+          "enum": [
+            "gps",
+            "localizer",
+            "back_course"
+          ],
+          "type": "string"
+        },
+        "NavRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_hz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "back_course": {
+              "type": "boolean"
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "ident_enabled": {
+              "type": "boolean"
+            },
+            "service_volume": {
+              "$ref": "#/$defs/ServiceVolume"
+            },
+            "standby_hz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_hz",
+            "standby_hz",
+            "course_deg",
+            "back_course",
+            "ident_enabled",
+            "service_volume"
+          ],
+          "type": "object"
+        },
         "NavigationLeg": {
           "properties": {
             "airport": {
@@ -12637,6 +13364,50 @@
             "airport",
             "distance_nm",
             "bearing_rad"
+          ],
+          "type": "object"
+        },
+        "PathTerminator": {
+          "enum": [
+            "IF",
+            "TF",
+            "CF",
+            "DF",
+            "FA",
+            "FC",
+            "FD",
+            "FM",
+            "CA",
+            "CD",
+            "CI",
+            "CR",
+            "RF",
+            "AF",
+            "VA",
+            "VD",
+            "VI",
+            "VM",
+            "VR",
+            "PI",
+            "HA",
+            "HF",
+            "HM"
+          ],
+          "type": "string"
+        },
+        "PlateLink": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "pdf": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "pdf"
           ],
           "type": "object"
         },
@@ -12670,6 +13441,406 @@
           ],
           "type": "object"
         },
+        "ProcedureKind": {
+          "enum": [
+            "departure",
+            "arrival",
+            "approach"
+          ],
+          "type": "string"
+        },
+        "ProcedureLeg": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude1_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude2_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_descriptor": {
+              "type": "string"
+            },
+            "arc_radius_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "center_fix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_true": {
+              "type": "boolean"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "fix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "missed": {
+              "type": "boolean"
+            },
+            "path": {
+              "$ref": "#/$defs/PathTerminator"
+            },
+            "recommended_navaid": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rho_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sequence": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_limit_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "theta_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "time_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "turn": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Turn"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "vertical_angle_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sequence",
+            "waypoint_description",
+            "path",
+            "course_true",
+            "altitude_descriptor",
+            "missed"
+          ],
+          "type": "object"
+        },
+        "ProcedureReceiver": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "approach_active": {
+              "type": "boolean"
+            },
+            "cdi_full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "cross_track_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "description": "Magnetic track for pilot readouts.",
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "exit_hold": {
+              "type": "boolean"
+            },
+            "guidance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavGuidance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "hold_entered": {
+              "type": "boolean"
+            },
+            "hold_entry": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/HoldEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_laps": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "leg_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/FlightLeg"
+              },
+              "type": "array"
+            },
+            "loaded": {
+              "items": {
+                "$ref": "#/$defs/LoadedProcedure"
+              },
+              "type": "array"
+            },
+            "missed_approach": {
+              "type": "boolean"
+            },
+            "mode": {
+              "$ref": "#/$defs/ApproachMode"
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "path_angle_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "suspended": {
+              "type": "boolean"
+            },
+            "valid": {
+              "type": "boolean"
+            },
+            "vectors": {
+              "type": "boolean"
+            },
+            "vertical_deviation_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_alert": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "loaded",
+            "legs",
+            "active_leg",
+            "approach_active",
+            "mode",
+            "suspended",
+            "missed_approach",
+            "waypoint_alert",
+            "hold_laps",
+            "valid",
+            "desired_track_rad",
+            "desired_track_true_rad",
+            "cross_track_nm",
+            "distance_nm",
+            "cdi_full_scale_nm",
+            "leg_elapsed_s",
+            "hold_elapsed_s",
+            "hold_entered",
+            "exit_hold",
+            "vectors"
+          ],
+          "type": "object"
+        },
+        "RadioState": {
+          "properties": {
+            "cone_of_confusion": {
+              "type": "boolean"
+            },
+            "course_magnetic_deg": {
+              "description": "Published magnetic localizer course or the pilot's magnetic OBS selection.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "dme_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "guidance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavGuidance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ident": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ident_tone_requested": {
+              "type": "boolean"
+            },
+            "lateral_dots": {
+              "description": "Full scale is 2.5 dots. Positive needle displacement commands right/down.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "radial_magnetic_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "signal_valid": {
+              "type": "boolean"
+            },
+            "to_from": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ToFrom"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "vertical_dots": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "signal_valid",
+            "cone_of_confusion",
+            "ident_tone_requested"
+          ],
+          "type": "object"
+        },
+        "Radios": {
+          "properties": {
+            "receivers": {
+              "items": {
+                "$ref": "#/$defs/NavRadio"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "source": {
+              "$ref": "#/$defs/CdiSource"
+            }
+          },
+          "required": [
+            "source",
+            "receivers"
+          ],
+          "type": "object"
+        },
+        "ServiceVolume": {
+          "enum": [
+            "terminal",
+            "low",
+            "high"
+          ],
+          "type": "string"
+        },
         "TerrainRaster": {
           "properties": {
             "columns": {
@@ -12701,12 +13872,26 @@
           ],
           "type": "object"
         },
+        "ToFrom": {
+          "enum": [
+            "to",
+            "from"
+          ],
+          "type": "string"
+        },
         "TransponderMode": {
           "enum": [
             "off",
             "standby",
             "on",
             "alt"
+          ],
+          "type": "string"
+        },
+        "Turn": {
+          "enum": [
+            "L",
+            "R"
           ],
           "type": "string"
         },
@@ -12755,13 +13940,34 @@
         },
         "installed": {
           "type": "boolean"
+        },
+        "magnetic_compass": {
+          "$ref": "#/$defs/MagneticCompass"
+        },
+        "nav_radios": {
+          "$ref": "#/$defs/Radios"
+        },
+        "procedures": {
+          "$ref": "#/$defs/ProcedureReceiver"
+        },
+        "radio_signals": {
+          "items": {
+            "$ref": "#/$defs/RadioState"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
         }
       },
       "required": [
         "installed",
         "electronic_attitude",
         "electronic_hsi",
-        "glass_suite"
+        "glass_suite",
+        "magnetic_compass",
+        "procedures",
+        "nav_radios",
+        "radio_signals"
       ],
       "title": "AvionicsState",
       "type": "object"
@@ -12882,6 +14088,26 @@
           ],
           "type": "string"
         },
+        "ApproachCapability": {
+          "enum": [
+            "LNAV",
+            "LNAV/VNAV",
+            "LPV"
+          ],
+          "type": "string"
+        },
+        "ApproachMode": {
+          "enum": [
+            "ENR",
+            "TERM",
+            "APR",
+            "LNAV",
+            "LNAV/VNAV",
+            "LPV",
+            "MISSED"
+          ],
+          "type": "string"
+        },
         "AutopilotFamily": {
           "enum": [
             "wing_leveler",
@@ -12984,6 +14210,13 @@
           "enum": [
             "off",
             "gps"
+          ],
+          "type": "string"
+        },
+        "CdiSource": {
+          "enum": [
+            "gps",
+            "nav1"
           ],
           "type": "string"
         },
@@ -13451,6 +14684,77 @@
           ],
           "type": "object"
         },
+        "FlightLeg": {
+          "properties": {
+            "center": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "course_magnetic_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_true_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "endpoint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fix_elevation_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/ProcedureLeg"
+            },
+            "navaid": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "procedure_kind": {
+              "$ref": "#/$defs/ProcedureKind"
+            },
+            "variation_deg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "leg",
+            "procedure_kind",
+            "variation_deg"
+          ],
+          "type": "object"
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -13688,6 +14992,9 @@
               "minimum": 0,
               "type": "integer"
             },
+            "annunciation": {
+              "type": "string"
+            },
             "bearing_rad": {
               "format": "double",
               "type": "number"
@@ -13719,6 +15026,9 @@
               "format": "double",
               "type": "number"
             },
+            "distance_valid": {
+              "type": "boolean"
+            },
             "ete_s": {
               "format": "double",
               "type": [
@@ -13732,7 +15042,23 @@
               },
               "type": "array"
             },
+            "source": {
+              "type": "string"
+            },
+            "suspended": {
+              "type": "boolean"
+            },
             "valid": {
+              "type": "boolean"
+            },
+            "vertical_dots": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_alert": {
               "type": "boolean"
             }
           },
@@ -13740,11 +15066,16 @@
             "valid",
             "active_leg",
             "distance_nm",
+            "distance_valid",
             "bearing_rad",
             "desired_track_rad",
             "cross_track_nm",
             "cdi_full_scale_nm",
             "cdi_deviation",
+            "source",
+            "annunciation",
+            "suspended",
+            "waypoint_alert",
             "legs"
           ],
           "type": "object"
@@ -13772,6 +15103,14 @@
           ],
           "type": "object"
         },
+        "HoldEntry": {
+          "enum": [
+            "direct",
+            "parallel",
+            "teardrop"
+          ],
+          "type": "string"
+        },
         "LateralMode": {
           "enum": [
             "rol",
@@ -13783,6 +15122,68 @@
             "loc_bc"
           ],
           "type": "string"
+        },
+        "LoadedProcedure": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "capabilities": {
+              "items": {
+                "$ref": "#/$defs/ApproachCapability"
+              },
+              "type": "array"
+            },
+            "ident": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/ProcedureKind"
+            },
+            "plate": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PlateLink"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "transition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "airport",
+            "ident",
+            "kind",
+            "capabilities"
+          ],
+          "type": "object"
+        },
+        "MagneticCompass": {
+          "description": "Ideal passive whiskey compass; independent of AHRS, gyro power, and instrument failures.",
+          "properties": {
+            "declination_deg": {
+              "description": "East-positive WMM declination at the aircraft and simulation date.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "description": "Magnetic heading, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "heading_deg",
+            "declination_deg"
+          ],
+          "type": "object"
         },
         "MapAirport": {
           "properties": {
@@ -13826,7 +15227,8 @@
         "MapOrientation": {
           "enum": [
             "north_up",
-            "track_up"
+            "track_up",
+            "heading_up"
           ],
           "type": "string"
         },
@@ -13867,6 +15269,93 @@
           ],
           "type": "object"
         },
+        "NavGuidance": {
+          "additionalProperties": false,
+          "properties": {
+            "cross_track_m": {
+              "description": "Positive to the right of the desired course, in metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/NavKind"
+            },
+            "path_angle_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "to_from": {
+              "$ref": "#/$defs/ToFrom"
+            },
+            "vertical_deviation_m": {
+              "description": "Positive above path, metres; absent until a receiver supplies a path.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "desired_track_rad",
+            "cross_track_m",
+            "to_from",
+            "kind"
+          ],
+          "type": "object"
+        },
+        "NavKind": {
+          "enum": [
+            "gps",
+            "localizer",
+            "back_course"
+          ],
+          "type": "string"
+        },
+        "NavRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_hz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "back_course": {
+              "type": "boolean"
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "ident_enabled": {
+              "type": "boolean"
+            },
+            "service_volume": {
+              "$ref": "#/$defs/ServiceVolume"
+            },
+            "standby_hz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_hz",
+            "standby_hz",
+            "course_deg",
+            "back_course",
+            "ident_enabled",
+            "service_volume"
+          ],
+          "type": "object"
+        },
         "NavigationLeg": {
           "properties": {
             "airport": {
@@ -13892,6 +15381,50 @@
             "airport",
             "distance_nm",
             "bearing_rad"
+          ],
+          "type": "object"
+        },
+        "PathTerminator": {
+          "enum": [
+            "IF",
+            "TF",
+            "CF",
+            "DF",
+            "FA",
+            "FC",
+            "FD",
+            "FM",
+            "CA",
+            "CD",
+            "CI",
+            "CR",
+            "RF",
+            "AF",
+            "VA",
+            "VD",
+            "VI",
+            "VM",
+            "VR",
+            "PI",
+            "HA",
+            "HF",
+            "HM"
+          ],
+          "type": "string"
+        },
+        "PlateLink": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "pdf": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "pdf"
           ],
           "type": "object"
         },
@@ -13925,6 +15458,406 @@
           ],
           "type": "object"
         },
+        "ProcedureKind": {
+          "enum": [
+            "departure",
+            "arrival",
+            "approach"
+          ],
+          "type": "string"
+        },
+        "ProcedureLeg": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude1_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude2_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "altitude_descriptor": {
+              "type": "string"
+            },
+            "arc_radius_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "center_fix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_true": {
+              "type": "boolean"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "fix": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "missed": {
+              "type": "boolean"
+            },
+            "path": {
+              "$ref": "#/$defs/PathTerminator"
+            },
+            "recommended_navaid": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rho_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "sequence": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_limit_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "theta_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "time_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "turn": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Turn"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "vertical_angle_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sequence",
+            "waypoint_description",
+            "path",
+            "course_true",
+            "altitude_descriptor",
+            "missed"
+          ],
+          "type": "object"
+        },
+        "ProcedureReceiver": {
+          "properties": {
+            "active_leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "approach_active": {
+              "type": "boolean"
+            },
+            "cdi_full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "cross_track_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_rad": {
+              "description": "Magnetic track for pilot readouts.",
+              "format": "double",
+              "type": "number"
+            },
+            "desired_track_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "exit_hold": {
+              "type": "boolean"
+            },
+            "guidance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavGuidance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "hold_entered": {
+              "type": "boolean"
+            },
+            "hold_entry": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/HoldEntry"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_laps": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "leg_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/FlightLeg"
+              },
+              "type": "array"
+            },
+            "loaded": {
+              "items": {
+                "$ref": "#/$defs/LoadedProcedure"
+              },
+              "type": "array"
+            },
+            "missed_approach": {
+              "type": "boolean"
+            },
+            "mode": {
+              "$ref": "#/$defs/ApproachMode"
+            },
+            "origin": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "path_angle_rad": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "suspended": {
+              "type": "boolean"
+            },
+            "valid": {
+              "type": "boolean"
+            },
+            "vectors": {
+              "type": "boolean"
+            },
+            "vertical_deviation_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "waypoint_alert": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "loaded",
+            "legs",
+            "active_leg",
+            "approach_active",
+            "mode",
+            "suspended",
+            "missed_approach",
+            "waypoint_alert",
+            "hold_laps",
+            "valid",
+            "desired_track_rad",
+            "desired_track_true_rad",
+            "cross_track_nm",
+            "distance_nm",
+            "cdi_full_scale_nm",
+            "leg_elapsed_s",
+            "hold_elapsed_s",
+            "hold_entered",
+            "exit_hold",
+            "vectors"
+          ],
+          "type": "object"
+        },
+        "RadioState": {
+          "properties": {
+            "cone_of_confusion": {
+              "type": "boolean"
+            },
+            "course_magnetic_deg": {
+              "description": "Published magnetic localizer course or the pilot's magnetic OBS selection.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "dme_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "guidance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/NavGuidance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ident": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ident_tone_requested": {
+              "type": "boolean"
+            },
+            "lateral_dots": {
+              "description": "Full scale is 2.5 dots. Positive needle displacement commands right/down.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "radial_magnetic_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "signal_valid": {
+              "type": "boolean"
+            },
+            "to_from": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ToFrom"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "vertical_dots": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "signal_valid",
+            "cone_of_confusion",
+            "ident_tone_requested"
+          ],
+          "type": "object"
+        },
+        "Radios": {
+          "properties": {
+            "receivers": {
+              "items": {
+                "$ref": "#/$defs/NavRadio"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "source": {
+              "$ref": "#/$defs/CdiSource"
+            }
+          },
+          "required": [
+            "source",
+            "receivers"
+          ],
+          "type": "object"
+        },
+        "ServiceVolume": {
+          "enum": [
+            "terminal",
+            "low",
+            "high"
+          ],
+          "type": "string"
+        },
         "TerrainRaster": {
           "properties": {
             "columns": {
@@ -13956,12 +15889,26 @@
           ],
           "type": "object"
         },
+        "ToFrom": {
+          "enum": [
+            "to",
+            "from"
+          ],
+          "type": "string"
+        },
         "TransponderMode": {
           "enum": [
             "off",
             "standby",
             "on",
             "alt"
+          ],
+          "type": "string"
+        },
+        "Turn": {
+          "enum": [
+            "L",
+            "R"
           ],
           "type": "string"
         },
@@ -14010,13 +15957,34 @@
         },
         "installed": {
           "type": "boolean"
+        },
+        "magnetic_compass": {
+          "$ref": "#/$defs/MagneticCompass"
+        },
+        "nav_radios": {
+          "$ref": "#/$defs/Radios"
+        },
+        "procedures": {
+          "$ref": "#/$defs/ProcedureReceiver"
+        },
+        "radio_signals": {
+          "items": {
+            "$ref": "#/$defs/RadioState"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
         }
       },
       "required": [
         "installed",
         "electronic_attitude",
         "electronic_hsi",
-        "glass_suite"
+        "glass_suite",
+        "magnetic_compass",
+        "procedures",
+        "nav_radios",
+        "radio_signals"
       ],
       "title": "AvionicsState",
       "type": "object"
@@ -14784,6 +16752,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -14854,6 +16827,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -15636,6 +17610,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -15706,6 +17685,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -17180,6 +19160,10 @@
             "failures": {
               "$ref": "#/$defs/Failures"
             },
+            "grid_north_true_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "ground_speed_mps": {
               "description": "Ground speed, m/s.",
               "format": "double",
@@ -17194,8 +19178,17 @@
               "minItems": 3,
               "type": "array"
             },
+            "heading_grid_rad": {
+              "description": "Internal local-grid heading; use only for geometry and truth transports.",
+              "format": "double",
+              "type": "number"
+            },
             "heading_rad": {
-              "description": "Heading, radians, 0 to 2π, clockwise from north.",
+              "description": "Pilot magnetic heading, radians, clockwise from magnetic north.",
+              "format": "double",
+              "type": "number"
+            },
+            "heading_true_rad": {
               "format": "double",
               "type": "number"
             },
@@ -17233,6 +19226,10 @@
                 "null"
               ]
             },
+            "magnetic_declination_rad": {
+              "format": "double",
+              "type": "number"
+            },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
               "type": "boolean"
@@ -17265,7 +19262,8 @@
               "type": "number"
             },
             "weather": {
-              "$ref": "#/$defs/Weather"
+              "$ref": "#/$defs/Weather",
+              "description": "Pilot weather readout; wind-from direction is magnetic."
             },
             "wind_ned_mps": {
               "description": "Total moving-air velocity at the CG, NED m/s.",
@@ -17287,6 +19285,10 @@
             "height_agl_m",
             "vertical_speed_mps",
             "heading_rad",
+            "heading_grid_rad",
+            "heading_true_rad",
+            "magnetic_declination_rad",
+            "grid_north_true_rad",
             "pitch_rad",
             "roll_rad",
             "turn_rate_rps",
@@ -17590,6 +19592,11 @@
               "minItems": 3,
               "type": "array"
             },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
             "gyro_spin": {
               "format": "double",
               "type": "number"
@@ -17660,6 +19667,7 @@
             "gyro_spin",
             "gyro_error_rad",
             "gyro_truth_rad",
+            "gyro_heading_reference_rad",
             "pitot_total_pressure_pa",
             "static_pressure_pa",
             "pressure_altitude_m",
@@ -17742,6 +19750,7 @@
               "type": "number"
             },
             "heading_rad": {
+              "description": "Selected magnetic heading, radians.",
               "format": "double",
               "type": [
                 "number",
@@ -18469,6 +20478,7 @@
           "type": "number"
         },
         "heading_rad": {
+          "description": "Selected magnetic heading, radians.",
           "format": "double",
           "type": [
             "number",
@@ -18549,6 +20559,7 @@
           "type": "number"
         },
         "heading_rad": {
+          "description": "Selected magnetic heading, radians.",
           "format": "double",
           "type": [
             "number",

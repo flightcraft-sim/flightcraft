@@ -36,6 +36,7 @@ impl Command for SetSimulationDate {
     type Output = SimulationDate;
     fn run(self, s: &mut Session) -> Result<Self::Output, CommandError> {
         self.date.decimal_year().map_err(|e| failed(e.to_string()))?;
+        s.sim.set_simulation_date(self.date)?;
         s.navigation.date = self.date;
         Ok(self.date)
     }
@@ -517,21 +518,33 @@ impl Command for SearchQuery {
                 .navdata()
                 .and_then(|d| d.navaids.iter().find(|n| n.ident == ident))
         {
-            let variation = MagneticModel::wmm2025()
-                .and_then(|m| {
-                    m.declination(
-                        n.position.latitude_deg,
-                        n.position.longitude_deg,
-                        s.navigation.date,
-                    )
-                })
-                .map_err(|e| failed(e.to_string()))?;
+            let station_variation = n.components.iter().find_map(|c| c.magnetic_variation_deg);
+            let variation = if let Some(v) = station_variation {
+                v
+            } else {
+                MagneticModel::wmm2025()
+                    .and_then(|m| {
+                        m.declination(
+                            n.position.latitude_deg,
+                            n.position.longitude_deg,
+                            s.navigation.date,
+                        )
+                    })
+                    .map_err(|e| failed(e.to_string()))?
+            };
             rows.push(row(
                 SearchKind::Radial,
                 &q,
                 &format!("{ident} {radial}° magnetic / {distance} nm"),
                 n.position.destination(radial + variation, distance * 1852.0),
-                format!("WMM declination {variation:.2}°"),
+                format!(
+                    "{} declination {variation:.2}°",
+                    if station_variation.is_some() {
+                        "Station"
+                    } else {
+                        "WMM fallback"
+                    }
+                ),
             ));
         }
         for r in &mut rows {

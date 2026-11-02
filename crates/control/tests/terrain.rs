@@ -111,7 +111,13 @@ fn installed_region_reset_heading_elevation_attribution_and_atomic_failure() {
     assert_eq!(runway["height_msl_m"], 750.0);
     assert_eq!(runway["surface"], "pavement");
     assert!(session.sim().state().position_m[2] < -750.0);
-    assert!((session.sim().readout().heading_rad - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+    let r = session.sim().readout();
+    assert!((r.heading_grid_rad - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+    let magnetic = session
+        .sim()
+        .heading_reference()
+        .grid_to_magnetic(std::f64::consts::FRAC_PI_2);
+    assert!((r.heading_rad - magnetic).abs() < 1e-10);
     assert_eq!(session.sim().world().attribution(), SRTM_ATTRIBUTION);
     let before = *session.sim().state();
     assert!(

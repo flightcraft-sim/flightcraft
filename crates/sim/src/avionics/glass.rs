@@ -17,6 +17,7 @@ pub enum MapOrientation {
     #[default]
     NorthUp,
     TrackUp,
+    HeadingUp,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -56,10 +57,12 @@ pub enum WaypointKind {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum GlassSetting {
     HeadingBug {
+        /// Selected magnetic heading, radians.
         #[schemars(range(min=0,max=core::f64::consts::TAU))]
         heading_rad: f64,
     },
     Course {
+        /// Magnetic CRS/OBS, radians.
         #[schemars(range(min=0,max=core::f64::consts::TAU))]
         course_rad: f64,
     },

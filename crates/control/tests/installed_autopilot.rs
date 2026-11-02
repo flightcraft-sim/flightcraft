@@ -26,15 +26,19 @@ fn flight(panel: &str) -> Sim {
     let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
     let load = catalog.resolve_aircraft("corvid").unwrap().load;
     let configuration = catalog.resolve("corvid-standard", panel, &load).unwrap();
+    let world = world();
+    let heading = flightcraft_sim::magnetic::reference_at(&world, [0., 0., -1000.], Default::default())
+        .unwrap()
+        .magnetic_to_grid(0.);
     let mut sim = Sim::new_with_aircraft_weather_world(
         &Start::AirAt {
             position_m: [0.0, 0.0, -1000.0],
             airspeed_mps: 40.0,
-            heading_rad: 0.0,
+            heading_rad: heading,
         },
         configuration.aircraft.clone(),
         Default::default(),
-        world(),
+        world,
     )
     .unwrap();
     sim.configure_systems(&configuration).unwrap();

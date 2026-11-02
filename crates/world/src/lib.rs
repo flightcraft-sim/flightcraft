@@ -149,3 +149,6 @@ pub mod geomag;
 
 pub mod navdata;
 pub use navdata::{GeoPoint, MAX_NAVDATA_BYTES, Navdata};
+
+pub mod procedures;
+pub use procedures::{MAX_PROCEDURES_BYTES, Procedures};

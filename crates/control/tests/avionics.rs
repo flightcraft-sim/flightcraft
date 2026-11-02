@@ -183,7 +183,12 @@ fn new_york_direct_to_geodetic_distance_bearing_and_terminal_scaling() {
     .rem_euclid(360.);
     let h = &output["electronic_hsi"];
     assert!((h["distance_nm"].as_f64().unwrap() - nm).abs() < 0.1);
-    assert!((h["bearing_deg"].as_f64().unwrap() - brg).abs() < 1.);
+    assert!(
+        (h["bearing_deg"].as_f64().unwrap()
+            - (brg - from.magnetic_declination_rad.to_degrees()).rem_euclid(360.))
+        .abs()
+            < 1.
+    );
     assert_eq!(h["destination"], "MMU");
     assert_eq!(h["full_scale_nm"], if nm <= 30. { 1. } else { 5. });
     assert_eq!(h["cdi"], 0.);

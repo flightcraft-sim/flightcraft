@@ -25,6 +25,7 @@ pub struct Targets {
     pub pitch_rad: Option<f64>,
     pub altitude_m: Option<f64>,
     pub vertical_speed_mps: Option<f64>,
+    /// Selected magnetic heading, radians.
     pub heading_rad: Option<f64>,
     pub airspeed_mps: Option<f64>,
     pub wings_level: bool,

@@ -1,0 +1,525 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Procedures",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string"
+    },
+    "cycle": {
+      "type": "string",
+      "maxLength": 4,
+      "minLength": 4
+    },
+    "effective_date": {
+      "type": "string"
+    },
+    "localizers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Localizer"
+      },
+      "maxItems": 4096
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ProcedurePoint"
+      },
+      "maxItems": 30000
+    },
+    "procedures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Procedure"
+      },
+      "maxItems": 10000
+    },
+    "sbas": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SbasPathPoint"
+      },
+      "maxItems": 4096
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "cycle",
+    "effective_date",
+    "attribution",
+    "points",
+    "localizers",
+    "sbas",
+    "procedures"
+  ],
+  "$defs": {
+    "ApproachCapability": {
+      "type": "string",
+      "enum": [
+        "LNAV",
+        "LNAV/VNAV",
+        "LPV"
+      ]
+    },
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "Localizer": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "course_magnetic_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "course_width_deg": {
+          "description": "Full angular width, degrees.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "frequency_hz": {
+          "type": "number",
+          "format": "double"
+        },
+        "gs_angle_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "gs_elevation_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "gs_position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ident": {
+          "type": "string"
+        },
+        "magnetic_variation_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "runway": {
+          "type": "string"
+        },
+        "threshold_crossing_height_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "airport",
+        "ident",
+        "runway",
+        "frequency_hz",
+        "position",
+        "course_magnetic_deg",
+        "magnetic_variation_deg"
+      ]
+    },
+    "PathTerminator": {
+      "type": "string",
+      "enum": [
+        "IF",
+        "TF",
+        "CF",
+        "DF",
+        "FA",
+        "FC",
+        "FD",
+        "FM",
+        "CA",
+        "CD",
+        "CI",
+        "CR",
+        "RF",
+        "AF",
+        "VA",
+        "VD",
+        "VI",
+        "VM",
+        "VR",
+        "PI",
+        "HA",
+        "HF",
+        "HM"
+      ]
+    },
+    "PlateLink": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "pdf": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "pdf"
+      ]
+    },
+    "Procedure": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApproachCapability"
+          },
+          "maxItems": 3
+        },
+        "ident": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProcedureKind"
+        },
+        "plate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlateLink"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProcedureRoute"
+          },
+          "maxItems": 128,
+          "minItems": 1
+        },
+        "runway": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "airport",
+        "ident",
+        "kind",
+        "capabilities",
+        "routes"
+      ]
+    },
+    "ProcedureKind": {
+      "type": "string",
+      "enum": [
+        "departure",
+        "arrival",
+        "approach"
+      ]
+    },
+    "ProcedureLeg": {
+      "type": "object",
+      "properties": {
+        "altitude1_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "altitude2_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "altitude_descriptor": {
+          "type": "string"
+        },
+        "arc_radius_nm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "center_fix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "course_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "course_true": {
+          "type": "boolean"
+        },
+        "distance_nm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "fix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "path": {
+          "$ref": "#/$defs/PathTerminator"
+        },
+        "recommended_navaid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rho_nm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "sequence": {
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "speed_limit_kt": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "theta_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "time_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "turn": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Turn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vertical_angle_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "waypoint_description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "waypoint_description",
+        "path",
+        "course_true",
+        "altitude_descriptor",
+        "missed"
+      ]
+    },
+    "ProcedurePoint": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "elevation_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ident": {
+          "type": "string"
+        },
+        "magnetic_variation_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "section": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ident",
+        "section",
+        "position"
+      ]
+    },
+    "ProcedureRoute": {
+      "type": "object",
+      "properties": {
+        "legs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProcedureLeg"
+          },
+          "maxItems": 256,
+          "minItems": 1
+        },
+        "route_type": {
+          "type": "string"
+        },
+        "transition": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "route_type",
+        "transition",
+        "legs"
+      ]
+    },
+    "SbasPathPoint": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "angle_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "approach": {
+          "type": "string"
+        },
+        "flight_path_alignment": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "payload": {
+          "description": "Original PP payload, retained for service and integrity fields not used by this receiver.",
+          "type": "string"
+        },
+        "runway": {
+          "type": "string"
+        },
+        "threshold": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "airport",
+        "approach",
+        "runway",
+        "threshold",
+        "flight_path_alignment",
+        "angle_deg",
+        "payload"
+      ]
+    },
+    "Turn": {
+      "type": "string",
+      "enum": [
+        "L",
+        "R"
+      ]
+    }
+  }
+}

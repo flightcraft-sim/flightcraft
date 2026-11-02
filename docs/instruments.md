@@ -193,12 +193,13 @@ puts red Xs over the tapes. ALIGNING includes the remaining seconds.
 The HSI has its own AHRS and air-data channel for attitude reversion. An invalid primary attitude
 unit automatically selects reversion after alignment, and manual reversion is also available.
 The normal screen shows a compass rose, heading bug, course arrow, CDI, and GPS data bar with
-ground speed, true track, distance, true bearing, and wind. Wind is the ground/true-air-velocity
-triangle. Local grid headings and tracks are converted through the active world's geographic
-projection. No geographic position gives NO GPS, and unavailable data-bar values are dashes.
+ground speed, magnetic track, distance, magnetic bearing, and wind. Wind is the ground/true-air-velocity
+triangle, with its direction shown magnetic. Local grid headings and tracks are converted through
+the active world's geographic projection and WMM2025 at the simulation date. Built-in worlds use
+zero variation. No geographic position gives NO GPS, and unavailable data-bar values are dashes.
 
 Direct-to accepts any airport ident or ICAO alias in the active region. It captures the current
-geodetic position as the leg origin and selects the initial true course to the destination.
+geodetic position as the leg origin and selects the initial magnetic course to the destination.
 Distance and bearing use a bounded WGS84 inverse geodesic. CDI is signed great-circle cross-track
 distance from that origin along the selected course, positive to the right; the needle points
 toward the path. Full scale is 5 nm en route and 1 nm at or within 30 nm of the destination.

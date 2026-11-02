@@ -261,9 +261,23 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
         (
             0,
             if gps.valid {
-                format!("GPS {}", gps.destination.as_deref().unwrap_or(""))
+                format!(
+                    "{} {}{}",
+                    gps.source,
+                    gps.destination.as_deref().unwrap_or(""),
+                    if gps.waypoint_alert && gps.source == "GPS" {
+                        " WPT"
+                    } else {
+                        ""
+                    }
+                )
             } else {
-                "NO GPS LEG".into()
+                if gps.source == "GPS" {
+                    "NO GPS LEG"
+                } else {
+                    "NO NAV SIGNAL"
+                }
+                .into()
             },
             Ink::Gps,
         ),
@@ -272,9 +286,30 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
             format!("DTK {:03.0}", gps.desired_track_rad.to_degrees()),
             Ink::Gps,
         ),
-        (2, format!("DIS {:.1} NM", gps.distance_nm), Ink::Text),
+        (
+            2,
+            if gps.distance_valid {
+                format!("DIS {:.1} NM", gps.distance_nm)
+            } else {
+                "DIS —".into()
+            },
+            Ink::Text,
+        ),
         (3, format!("XTK {:+.2} NM", gps.cross_track_nm), Ink::Text),
-        (4, format!("CDI ±{:.0} NM", gps.cdi_full_scale_nm), Ink::Muted),
+        (
+            4,
+            if gps.source == "GPS" {
+                format!(
+                    "{} CDI ±{:.1} NM{}",
+                    gps.annunciation,
+                    gps.cdi_full_scale_nm,
+                    if gps.suspended { " SUSP" } else { "" }
+                )
+            } else {
+                format!("{} CDI ±2.5 DOT", gps.annunciation)
+            },
+            Ink::Muted,
+        ),
     ] {
         label(&mut d, [80., 267. + row as f32 * 18.], text, 11., ink);
     }
@@ -450,6 +485,20 @@ fn hsi(d: &mut DrawList, s: &GlassState, cy: f32, r: f32, valid: bool, heading: 
     if s.gps.valid {
         let x = s.gps.cdi_deviation as f32 * r * 0.5;
         line(d, point(x, -r * 0.35), point(x, r * 0.35), Ink::Gps, 3.);
+    }
+    if let Some(dots) = s.gps.vertical_dots {
+        let y = cy + ((dots / 2.5).clamp(-1., 1.) as f32) * r * 0.65;
+        line(
+            d,
+            [250. + r + 12., cy - r * 0.65],
+            [250. + r + 12., cy + r * 0.65],
+            Ink::Muted,
+            1.,
+        );
+        line(d, [250. + r + 6., y], [250. + r + 12., y - 5.], Ink::Gps, 2.);
+        line(d, [250. + r + 12., y - 5.], [250. + r + 18., y], Ink::Gps, 2.);
+        line(d, [250. + r + 18., y], [250. + r + 12., y + 5.], Ink::Gps, 2.);
+        line(d, [250. + r + 12., y + 5.], [250. + r + 6., y], Ink::Gps, 2.);
     }
     if s.settings.bearing_pointer == BearingPointer::Gps && s.gps.valid {
         line(

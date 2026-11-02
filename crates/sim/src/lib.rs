@@ -19,6 +19,7 @@ mod dynamics;
 pub mod equipment;
 pub use avionics::navigation as glass_navigation;
 pub use avionics::sensor as glass_air_data;
+pub mod magnetic;
 mod math;
 pub mod nav_source;
 pub mod systems;
@@ -114,8 +115,13 @@ pub struct Readout {
     pub height_agl_m: f64,
     /// Climb rate, m/s (positive up).
     pub vertical_speed_mps: f64,
-    /// Heading, radians, 0 to 2π, clockwise from north.
+    /// Pilot magnetic heading, radians, clockwise from magnetic north.
     pub heading_rad: f64,
+    /// Internal local-grid heading; use only for geometry and truth transports.
+    pub heading_grid_rad: f64,
+    pub heading_true_rad: f64,
+    pub magnetic_declination_rad: f64,
+    pub grid_north_true_rad: f64,
     pub pitch_rad: f64,
     pub roll_rad: f64,
     /// Heading rate about the local vertical, rad/s, positive right.
@@ -139,6 +145,7 @@ pub struct Readout {
     pub controls: Controls,
     /// Engaged holds and their SI targets.
     pub autopilot: autopilot::Targets,
+    /// Pilot weather readout; wind-from direction is magnetic.
     pub weather: Weather,
     /// Total moving-air velocity at the CG, NED m/s.
     pub wind_ned_mps: [f64; 3],
@@ -197,6 +204,7 @@ pub enum SimError {
 pub struct Sim {
     aircraft: Aircraft,
     world: World,
+    magnetism: magnetic::Magnetism,
     state: State,
     controls: Controls,
     steps: u64,
@@ -207,6 +215,8 @@ pub struct Sim {
     navigation: Option<nav_source::DirectTo>,
     nav_guidance: Option<nav_source::NavGuidance>,
     receiver_leg: Option<nav_source::ReceiverLeg>,
+    procedures: avionics::procedures::ProcedureReceiver,
+    radios: avionics::radio::Radios,
     wind: world::Wind,
     failures: Failures,
     systems: systems::SystemsState,
@@ -344,9 +354,11 @@ impl Sim {
                 "aircraft initialization outside finite simulation envelope".into(),
             ));
         }
+        let magnetism = magnetic::Magnetism::new(&world, state)?;
         let mut sim = Self {
             aircraft,
             world,
+            magnetism,
             wind,
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
@@ -363,6 +375,8 @@ impl Sim {
             navigation: None,
             nav_guidance: None,
             receiver_leg: None,
+            procedures: Default::default(),
+            radios: Default::default(),
         };
         sim.controls = sim.limit_controls(sim.controls);
         sim.configure_builtin_systems()?;
@@ -392,9 +406,11 @@ impl Sim {
         state.time_s = steps as f64 * DT_S;
         let aircraft = Aircraft::corvid()?;
         let crashed = dynamics::crash(&aircraft, &state, &world);
+        let magnetism = magnetic::Magnetism::new(&world, state)?;
         let mut sim = Self {
             aircraft,
             world,
+            magnetism,
             wind: world::Wind::new(Weather::default())?,
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
@@ -411,6 +427,8 @@ impl Sim {
             navigation: None,
             nav_guidance: None,
             receiver_leg: None,
+            procedures: Default::default(),
+            radios: Default::default(),
         };
         sim.configure_builtin_systems()?;
         Ok(sim)
@@ -447,6 +465,8 @@ impl Sim {
         self.navigation = None;
         self.nav_guidance = None;
         self.receiver_leg = None;
+        self.procedures = Default::default();
+        self.radios = Default::default();
         self.systems = state;
         self.systems.avionics = avionics::AvionicsState::configure(configuration);
         self.systems_model = model;
@@ -480,7 +500,40 @@ impl Sim {
 
     /// Set a unit control through the same typed path used by the command registry.
     pub fn set_avionics(&mut self, setting: avionics::AvionicsSetting) -> Result<(), SimError> {
+        let declination_rad = self.heading_reference().declination_rad;
+        let clear_procedure = matches!(&setting, avionics::AvionicsSetting::DirectTo { .. });
         match setting {
+            avionics::AvionicsSetting::LoadProcedure {
+                airport,
+                procedure,
+                transition,
+                vectors_to_final,
+            } => {
+                self.procedures.load(
+                    &self.world,
+                    self.state,
+                    &airport,
+                    &procedure,
+                    transition.as_deref(),
+                    vectors_to_final,
+                )?;
+                self.navigation = None;
+                self.nav_guidance = None;
+            }
+            avionics::AvionicsSetting::ActivateApproach {} => self.procedures.activate(false)?,
+            avionics::AvionicsSetting::VectorsToFinal {} => self.procedures.activate(true)?,
+            avionics::AvionicsSetting::MissedApproach {} => self.procedures.missed()?,
+            avionics::AvionicsSetting::HoldOptions { suspend, exit } => {
+                self.procedures.hold(suspend, exit)?
+            }
+            avionics::AvionicsSetting::ClearProcedure {} => self.procedures.clear(),
+            avionics::AvionicsSetting::SequenceLeg {} => self.procedures.sequence()?,
+            avionics::AvionicsSetting::NavRadio { setting } => self.radios.set(setting)?,
+            avionics::AvionicsSetting::CdiSource { source } => {
+                self.radios.source = source;
+                self.navigation = None;
+                self.nav_guidance = None;
+            }
             avionics::AvionicsSetting::Autopilot { setting } => {
                 return self.set_autopilot_panel(setting);
             }
@@ -513,7 +566,13 @@ impl Sim {
                     "glass settings require the session command handler".into(),
                 ));
             }
-            setting => self.systems.avionics.set(setting, &self.world, self.state)?,
+            setting => self
+                .systems
+                .avionics
+                .set(setting, &self.world, self.state, declination_rad)?,
+        }
+        if clear_procedure {
+            self.procedures.clear();
         }
         self.refresh_avionics(false);
         self.systems_changed = true;
@@ -551,6 +610,37 @@ impl Sim {
     fn refresh_avionics(&mut self, advance: bool) {
         let mut avionics = std::mem::take(&mut self.systems.avionics);
         avionics.update(self.state, self.readout(), &self.systems, &self.world, advance);
+        if avionics.installed && !self.procedures.loaded.is_empty() {
+            let h = &mut avionics.electronic_hsi;
+            h.gps_fix = self.procedures.valid;
+            h.full_scale_nm = self.procedures.cdi_full_scale_nm;
+            h.course_deg = self.procedures.desired_track_rad.to_degrees();
+            h.lateral_deviation_nm = self.procedures.valid.then_some(self.procedures.cross_track_nm);
+            h.cdi = self.procedures.valid.then_some(
+                (self.procedures.cross_track_nm / self.procedures.cdi_full_scale_nm.max(0.001))
+                    .clamp(-1., 1.),
+            );
+            h.distance_nm = self.procedures.valid.then_some(self.procedures.distance_nm);
+            h.destination = self
+                .procedures
+                .legs
+                .get(self.procedures.active_leg)
+                .and_then(|l| l.leg.fix.as_deref())
+                .and_then(|id| self.world.procedures()?.point(id))
+                .map(|p| p.ident.clone());
+        }
+        if avionics.installed
+            && self.radios.source == avionics::radio::CdiSource::Nav1
+            && let Some(signal) = self.radio_state().first()
+        {
+            let h = &mut avionics.electronic_hsi;
+            h.gps_fix = signal.signal_valid;
+            h.destination = signal.ident.clone();
+            h.distance_nm = signal.dme_nm;
+            h.course_deg = self.radios.receivers.first().map_or(0., |r| r.course_deg);
+            h.lateral_deviation_nm = signal.guidance.map(|g| g.cross_track_m / 1852.);
+            h.cdi = signal.lateral_dots.map(|dots| -dots / 2.5);
+        }
         self.systems.avionics = avionics;
     }
 
@@ -563,6 +653,21 @@ impl Sim {
     }
 
     #[must_use]
+    pub fn heading_reference(&self) -> magnetic::HeadingReference {
+        self.magnetism.reference
+    }
+    pub fn simulation_date(&self) -> world::geomag::SimulationDate {
+        self.magnetism.date
+    }
+    /// Update WMM without advancing sensors or simulation time. The free gyro is not reslaved.
+    pub fn set_simulation_date(&mut self, date: world::geomag::SimulationDate) -> Result<(), SimError> {
+        date.decimal_year()?;
+        self.magnetism.date = date;
+        self.magnetism.refresh(&self.world, self.state);
+        self.refresh_glass_computers();
+        self.refresh_avionics(false);
+        Ok(())
+    }
     pub fn aircraft(&self) -> &Aircraft {
         &self.aircraft
     }
@@ -722,10 +827,42 @@ impl Sim {
         let [n, e, _] = self.state.position_m;
         let source = nav_source::DirectTo::new([n, e], destination)?;
         self.navigation = Some(source);
+        self.procedures.clear();
         self.nav_guidance = None;
         Ok(())
     }
 
+    pub fn procedure_receiver(&self) -> &avionics::procedures::ProcedureReceiver {
+        &self.procedures
+    }
+    pub fn radios(&self) -> &avionics::radio::Radios {
+        &self.radios
+    }
+    pub fn radio_state(&self) -> [avionics::radio::RadioState; 2] {
+        self.radios.sample_on_date(
+            &self.world,
+            self.state,
+            self.navigation_powered(),
+            self.simulation_date(),
+        )
+    }
+    fn navigation_powered(&self) -> bool {
+        self.systems.controls.avionics && self.systems.electrical.main_bus_voltage > 9.0
+    }
+    fn procedure_powered(&self) -> bool {
+        self.systems.electrical.loads.iter().any(|l| {
+            (l.id == "glass_mfd" && !self.glass.mfd_failed
+                || l.id == "electronic_hsi"
+                    && self
+                        .systems
+                        .avionics
+                        .electronic_hsi
+                        .reversion_attitude
+                        .power
+                        .switch_on)
+                && l.powered
+        })
+    }
     /// The flight-plan receiver supplies its active leg; geodesy remains in avionics.
     pub fn set_receiver_leg(&mut self, leg: Option<nav_source::ReceiverLeg>) {
         self.receiver_leg = leg;
@@ -815,43 +952,60 @@ impl Sim {
                     .autopilot
                     .update(&self.aircraft, readout, self.state.angular_rate_rps);
             }
+            let procedure_powered = self.procedure_powered();
+            let [wn, we, _] = self.readout().wind_ned_mps;
+            let reference = self.heading_reference();
+            self.procedures
+                .step_in_wind(&self.world, self.state, procedure_powered, [wn, we], reference);
             self.refresh_equipment_sensors();
             if self.equipment.is_some() && !self.autopilot.targets().engaged() {
                 use nav_source::NavSource;
                 let [north, east, _] = self.state.position_m;
                 let [vn, ve, _] = self.state.velocity_mps;
-                let nav = self
-                    .navigation
-                    .as_ref()
-                    .and_then(|n| n.guidance(north, east))
-                    .or(self.nav_guidance)
-                    .or_else(|| {
-                        let powered = self
-                            .systems
-                            .electrical
-                            .loads
-                            .iter()
-                            .any(|l| l.id == "glass_mfd" && l.powered);
-                        if powered && !self.glass.mfd_failed {
-                            self.receiver_leg
-                                .as_ref()
-                                .and_then(|leg| leg.guidance(north, east))
-                        } else {
-                            None
-                        }
-                    })
-                    .or_else(|| {
-                        self.systems
-                            .avionics
-                            .electronic_hsi
-                            .nav_guidance(&self.world, self.state)
-                    });
+                let radio_selected = self.radios.source == avionics::radio::CdiSource::Nav1;
+                let procedure_selected = !self.procedures.loaded.is_empty();
+                let nav = if radio_selected {
+                    self.radio_state().first().and_then(|r| r.guidance)
+                } else if procedure_selected {
+                    self.procedures.guidance
+                } else {
+                    self.navigation
+                        .as_ref()
+                        .and_then(|n| n.guidance(north, east))
+                        .or(self.nav_guidance)
+                        .or_else(|| {
+                            let powered = self
+                                .systems
+                                .electrical
+                                .loads
+                                .iter()
+                                .any(|l| l.id == "glass_mfd" && l.powered);
+                            if powered && !self.glass.mfd_failed {
+                                self.receiver_leg
+                                    .as_ref()
+                                    .and_then(|leg| leg.guidance(north, east))
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| {
+                            self.systems
+                                .avionics
+                                .electronic_hsi
+                                .nav_guidance(&self.world, self.state)
+                        })
+                };
+                let reference = self.heading_reference();
+                let nav = nav.map(|mut n| {
+                    n.desired_track_rad = reference.grid_to_magnetic(n.desired_track_rad);
+                    n
+                });
                 let r = self.readout();
                 if let Some(equipment) = &mut self.equipment {
                     self.controls = equipment.update(
                         &self.systems,
                         self.pilot_controls,
-                        libm::atan2(ve, vn).rem_euclid(core::f64::consts::TAU),
+                        reference.grid_to_magnetic(libm::atan2(ve, vn)),
                         r.ground_speed_mps,
                         r.load_factor_g,
                         nav,
@@ -885,6 +1039,7 @@ impl Sim {
             self.crashed = dynamics::crash(&self.aircraft, &next, &self.world)
                 || dynamics::hard_touchdown(&self.aircraft, &self.state, &next, &self.world);
             self.state = next;
+            self.magnetism.refresh(&self.world, self.state);
             if let Some(model) = &self.systems_model {
                 let readout = self.readout();
                 self.systems.step(model, readout, self.failures);
@@ -958,6 +1113,11 @@ impl Sim {
         let cos_pitch = libm::cos(pitch);
         let h = dynamics::height(&self.aircraft, s, &self.world);
         let geodetic = self.world.geodetic(s.position_m[0], s.position_m[1]);
+        let mut weather = self.weather();
+        weather.wind_from_deg = self
+            .heading_reference()
+            .grid_to_magnetic(weather.wind_from_deg.to_radians())
+            .to_degrees();
         Readout {
             latitude_deg: geodetic.map(|[lat, _]| lat),
             longitude_deg: geodetic.map(|[_, lon]| lon),
@@ -969,7 +1129,12 @@ impl Sim {
             altitude_msl_m: -z,
             height_agl_m: h.max(0.0),
             vertical_speed_mps: -vd,
-            heading_rad: heading,
+            heading_rad: self.heading_reference().grid_to_magnetic(heading),
+            heading_grid_rad: heading,
+            heading_true_rad: (heading + self.heading_reference().grid_north_true_rad)
+                .rem_euclid(core::f64::consts::TAU),
+            magnetic_declination_rad: self.heading_reference().declination_rad,
+            grid_north_true_rad: self.heading_reference().grid_north_true_rad,
             pitch_rad: pitch,
             roll_rad: roll,
             turn_rate_rps: if cos_pitch.abs() > 1e-6 {
@@ -990,7 +1155,7 @@ impl Sim {
             crashed: self.crashed,
             controls: self.controls,
             autopilot: self.autopilot.targets(),
-            weather: self.weather(),
+            weather,
             wind_ned_mps: self.wind.velocity_mps(s.position_m),
             gust_ned_mps: self.wind.gust_mps(),
             failures: self.failures,
@@ -1081,12 +1246,22 @@ impl Sim {
                 self.navigation,
                 self.nav_guidance,
                 self.receiver_leg,
+                &self.procedures,
+                &self.radios,
             )) {
                 eat(bytes.len() as u64);
                 for byte in bytes {
                     eat(u64::from(byte));
                 }
             }
+        }
+        if self.world.region().is_some() || self.simulation_date() != world::geomag::SimulationDate::default()
+        {
+            eat(0x6d61_676e_6574_6963);
+            let date = self.simulation_date();
+            eat(u64::from(date.year));
+            eat(u64::from(date.month));
+            eat(u64::from(date.day));
         }
         if !self.world.tiles().is_empty() {
             eat(0x7465_7272_6169_6e01);

@@ -33,12 +33,12 @@ impl GlassControls {
                     range_nm: (state.settings.range_nm * 1.5).min(200.),
                 });
             }
-            if ui.button("N/TRK").clicked() {
+            if ui.button("N/TRK/HDG").clicked() {
                 commands.push(S::Orientation {
-                    orientation: if state.settings.orientation == MapOrientation::NorthUp {
-                        MapOrientation::TrackUp
-                    } else {
-                        MapOrientation::NorthUp
+                    orientation: match state.settings.orientation {
+                        MapOrientation::NorthUp => MapOrientation::TrackUp,
+                        MapOrientation::TrackUp => MapOrientation::HeadingUp,
+                        MapOrientation::HeadingUp => MapOrientation::NorthUp,
                     },
                 });
             }
@@ -219,10 +219,10 @@ pub fn shortcut(action: Action, s: &GlassState) -> Option<S> {
             },
         },
         Action::GlassOrientation => S::Orientation {
-            orientation: if s.settings.orientation == MapOrientation::NorthUp {
-                MapOrientation::TrackUp
-            } else {
-                MapOrientation::NorthUp
+            orientation: match s.settings.orientation {
+                MapOrientation::NorthUp => MapOrientation::TrackUp,
+                MapOrientation::TrackUp => MapOrientation::HeadingUp,
+                MapOrientation::HeadingUp => MapOrientation::NorthUp,
             },
         },
         Action::HeadingBugLeft | Action::HeadingBugRight => S::HeadingBug {

@@ -221,8 +221,9 @@ and shows the airport catalogue attribution. These selections use `sim.reset`:
 {"world":"new-york","start":{"runway":{"airport":"1N7","end":"07"}},"paused":true}
 ```
 
-An airport-relative air start uses true bearing clockwise from north, horizontal distance in
-metres, and height above airport elevation. The heading is a local grid heading in radians:
+An airport-relative air start uses magnetic bearing clockwise from north, horizontal distance in
+metres, and height above airport elevation. The heading is magnetic in radians; WMM2025 at the
+simulation date converts pilot commands to the local simulation grid:
 
 ```json
 {"world":"new-york","start":{"air":{"airport":"JFK","distance_m":5000,"bearing_deg":220,"height_m":600,"airspeed_mps":45,"heading_rad":0.7}}}

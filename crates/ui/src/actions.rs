@@ -42,7 +42,7 @@ pub fn reset(session: &mut Session) -> Result<(), CommandError> {
         world: session.sim().world().choice(),
         start: ResetStart::Runway {},
         paused: Some(false),
-        weather: Some(session.sim().weather()),
+        weather: Some(session.pilot_weather()),
     })?;
     Ok(())
 }
@@ -100,13 +100,13 @@ mod tests {
         session
             .execute("sim.set_rate", serde_json::json!({"rate":2.0}))
             .unwrap();
-        let weather = session.sim().weather();
+        let weather = session.pilot_weather();
         let generation = session.flight_generation();
         select_aircraft(&mut session, "larrow").unwrap();
         assert_eq!(session.sim().aircraft().identity.id, "larrow");
         assert_eq!(session.sim().state().time_s, 0.0);
         assert_eq!(session.flight_generation(), generation + 1);
-        assert_eq!(session.sim().weather(), weather);
+        assert_eq!(session.pilot_weather(), weather);
         assert_eq!(session.rate(), 2.0);
         assert!(!session.paused());
         let before = session.sim().state_hash();

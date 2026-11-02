@@ -13,12 +13,34 @@ pub struct Systems {
 
 fn current(session: &Session) -> Systems {
     Systems {
-        weather: session.sim().weather(),
+        weather: session.pilot_weather(),
         failures: session.sim().failures(),
         systems: session.sim().systems().clone(),
     }
 }
 
+impl Session {
+    /// Pilot meteorological wind direction is magnetic; the simulator's wind field is grid based.
+    pub fn pilot_weather(&self) -> Weather {
+        let mut weather = self.sim().weather();
+        weather.wind_from_deg = self
+            .sim()
+            .heading_reference()
+            .grid_to_magnetic(weather.wind_from_deg.to_radians())
+            .to_degrees();
+        weather
+    }
+    pub fn set_pilot_weather(&mut self, mut weather: Weather) -> Result<(), CommandError> {
+        weather.validate().map_err(flightcraft_sim::SimError::from)?;
+        weather.wind_from_deg = self
+            .sim()
+            .heading_reference()
+            .magnetic_to_grid(weather.wind_from_deg.to_radians())
+            .to_degrees();
+        self.sim_mut().set_weather(weather)?;
+        Ok(())
+    }
+}
 /// Full weather replacement; restarts the gust filter at this seed without changing velocity.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -30,10 +52,10 @@ pub struct SetWeather {
 impl Command for SetWeather {
     const NAME: &'static str = "weather.set";
     const DESCRIPTION: &'static str =
-        "Replace wind (from degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.";
+        "Replace wind (from magnetic degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
-        session.sim_mut().set_weather(self.weather)?;
+        session.set_pilot_weather(self.weather)?;
         Ok(current(session))
     }
 }

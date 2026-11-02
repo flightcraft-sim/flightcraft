@@ -607,12 +607,27 @@ impl Equipment {
             return self.stabilize(systems, output).clamped();
         }
         let nav = nav.filter(|n| n.validate().is_ok());
+        if (self.state.armed_lateral == Some(LateralMode::Apr)
+            || self.state.active_lateral == Some(LateralMode::Apr))
+            && self.state.armed_vertical.is_none()
+            && !matches!(
+                self.state.active_vertical,
+                Some(VerticalMode::Gs | VerticalMode::Gp)
+            )
+            && let Some(n) = nav
+        {
+            self.state.armed_vertical = match n.kind {
+                NavKind::Localizer => Some(VerticalMode::Gs),
+                NavKind::Gps if !legacy && n.path_angle_rad.is_some() => Some(VerticalMode::Gp),
+                _ => None,
+            };
+        }
         if let (Some(mode), Some(n)) = (self.state.armed_lateral, nav) {
             let compatible = match mode {
                 LateralMode::Rev | LateralMode::LocBc => n.kind == NavKind::BackCourse,
                 _ => n.kind != NavKind::BackCourse,
             };
-            if compatible && n.cross_track_m.abs() < if mode == LateralMode::Apr { 1000.0 } else { 5000.0 } {
+            if compatible && n.cross_track_m.abs() < if mode == LateralMode::Apr { 100.0 } else { 5000.0 } {
                 self.state.active_lateral = Some(mode);
                 self.state.armed_lateral = None;
             }

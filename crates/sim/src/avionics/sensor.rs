@@ -196,7 +196,8 @@ impl AirDataComputer {
         if let Some([roll, pitch, heading]) = angles {
             self.roll_rad = roll;
             self.pitch_rad = pitch;
-            self.heading_rad = heading;
+            self.heading_rad = (heading + truth.grid_north_true_rad - truth.magnetic_declination_rad)
+                .rem_euclid(core::f64::consts::TAU);
         }
         self.slip_g = truth.lateral_acceleration_g;
         let s = systems.sensed;

@@ -98,7 +98,13 @@ impl ElectronicHsi {
         }
         words
     }
-    pub(crate) fn direct_to(&mut self, ident: &str, world: &World, state: State) -> Result<(), SimError> {
+    pub(crate) fn direct_to(
+        &mut self,
+        ident: &str,
+        world: &World,
+        state: State,
+        declination_rad: f64,
+    ) -> Result<(), SimError> {
         if ident.is_empty() || ident.len() > 8 || !ident.bytes().all(|b| b.is_ascii_alphanumeric()) {
             return Err(invalid("invalid airport ident"));
         }
@@ -114,7 +120,7 @@ impl ElectronicHsi {
         let [n, e, _] = state.position_m;
         let origin = world.geodetic(n, e).ok_or_else(|| invalid("NO GPS"))?;
         let position = [airport.latitude_deg, airport.longitude_deg];
-        self.course_deg = inverse(origin, position).1;
+        self.course_deg = (inverse(origin, position).1 - declination_rad.to_degrees()).rem_euclid(360.);
         self.destination = Some(airport.ident.clone());
         self.destination_position = Some(position);
         self.leg_origin = Some(origin);
@@ -157,7 +163,7 @@ impl ElectronicHsi {
                 .map(|(to, from)| inverse(from, to).1)
         };
         self.track_deg = if truth.ground_speed_mps > 0.1 {
-            true_bearing(vn, ve)
+            true_bearing(vn, ve).map(|d| (d - truth.magnetic_declination_rad.to_degrees()).rem_euclid(360.))
         } else {
             None
         };
@@ -172,15 +178,11 @@ impl ElectronicHsi {
         );
         let [an, ae, _] = air;
         let (wn, we) = (vn - an, ve - ae);
-        if self.reversion_attitude.attitude_valid {
-            let heading = self.reversion_attitude.heading_deg.to_radians();
-            if let Some(degrees) = true_bearing(10. * libm::cos(heading), 10. * libm::sin(heading)) {
-                self.reversion_attitude.heading_deg = degrees;
-            }
-        }
         self.wind_speed_kt = Some(libm::hypot(wn, we) * 1.94384449);
         self.wind_from_deg = Some(if libm::hypot(wn, we) > 0.1 {
-            true_bearing(-wn, -we).unwrap_or(0.)
+            true_bearing(-wn, -we)
+                .map(|d| (d - truth.magnetic_declination_rad.to_degrees()).rem_euclid(360.))
+                .unwrap_or(0.)
         } else {
             0.
         });
@@ -188,9 +190,13 @@ impl ElectronicHsi {
         {
             let (distance, bearing) = inverse(pos, dest);
             self.distance_nm = Some(distance);
-            self.bearing_deg = Some(bearing);
+            self.bearing_deg = Some((bearing - truth.magnetic_declination_rad.to_degrees()).rem_euclid(360.));
             self.full_scale_nm = if distance <= 30. { 1. } else { 5. };
-            let cross = cross_track(origin, pos, self.course_deg);
+            let cross = cross_track(
+                origin,
+                pos,
+                self.course_deg + truth.magnetic_declination_rad.to_degrees(),
+            );
             self.lateral_deviation_nm = Some(cross);
             self.cdi = Some((cross / self.full_scale_nm).clamp(-1., 1.));
         }
@@ -265,7 +271,7 @@ mod tests {
                 position_m: [n, e, -1000.],
                 ..State::default()
             };
-            h.direct_to(ident, &world, origin).unwrap();
+            h.direct_to(ident, &world, origin, 0.).unwrap();
             // A northbound path: one nm right, and 6 nm along, gives 0.2 en-route scale.
             let east = dest[1] + 1. / (60. * libm::cos(dest[0].to_radians()));
             let [n, e] = projection.project(dest[0] - 0.6, east).unwrap();

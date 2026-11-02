@@ -79,7 +79,12 @@ fn new_york_leg_math_scaling_airspace_and_snapshot_schema() {
     let state = s.glass_state();
     let leg = state.gps.legs.get(1).unwrap();
     assert!((leg.distance_nm - expected.0).abs() < 0.1);
-    assert!((leg.bearing_rad - expected.1).to_degrees().abs() < 1.);
+    assert!(
+        (leg.bearing_rad - s.sim.heading_reference().true_to_magnetic(expected.1))
+            .to_degrees()
+            .abs()
+            < 1.
+    );
     assert!(state.outlines.iter().any(
         |o| o.class == Some(flightcraft_world::AirspaceClass::B) && o.rings.iter().any(|r| r.len() > 10)
     ));

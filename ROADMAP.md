@@ -62,4 +62,9 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | Panel-installed wing leveler, legacy two-axis autopilot, and digital two-axis autopilot | Behaviour modules, command controls, original skins, FD bars, shared HDG bug, servo and trim limits, failures, and New York acceptance flights implemented; [reference](docs/autopilot.md) | Systems, instrument modules, panel layers |
 | Electronic-suite autopilot attachment | Digital equipment installed on Corvid glass and standby panels; shared AHRS/air-data, GPS guidance, PFD mode strip, and FD bars implemented | Standby and glass suites |
 | Autopilot aural warning playback | Original two-tone synthesis, optional CPAL desktop output, Web Audio browser output, and persisted mute/volume implemented | Application audio output |
-| Localizer/back-course and GP/GS receiver capture | Equipment modes and typed guidance boundary ready; operational receiver and approach data remain needed | Navaids and approaches |
+| Localizer/back-course and GP/GS receiver capture | Geometric NAV receivers, procedure GP, and APR coupling implemented | Navaids and approaches |
+
+Instrument procedures: regional FAA CIFP import, fixed-step procedure GPS, geometric NAV radios,
+APR coupling, plate metadata links, WMM magnetic pilot references, and the PFD procedure preview are implemented. See
+[procedure coverage and limitations](docs/procedures.md). Automatic plate decision minima and
+turn anticipation remain open.

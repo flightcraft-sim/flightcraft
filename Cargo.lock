@@ -4579,6 +4579,7 @@ dependencies = [
  "flightcraft-control",
  "flightcraft-world",
  "libm",
+ "roxmltree",
  "schemars",
  "serde_json",
  "syn 2.0.119",

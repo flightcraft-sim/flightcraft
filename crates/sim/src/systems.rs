@@ -56,6 +56,7 @@ pub enum SystemSetting {
         value: f64,
     },
     HeadingBug {
+        /// Magnetic heading, radians clockwise from magnetic north.
         #[schemars(range(min = 0, max = core::f64::consts::TAU))]
         heading_rad: f64,
     },
@@ -194,6 +195,8 @@ pub struct SystemsState {
     pub gyro_spin: f64,
     pub gyro_error_rad: [f64; 3],
     pub gyro_truth_rad: [f64; 3],
+    /// Free heading gyro is aligned to the compass at reset, then retains this reference.
+    pub gyro_heading_reference_rad: f64,
     pub pitot_total_pressure_pa: f64,
     pub static_pressure_pa: f64,
     pub pressure_altitude_m: f64,
@@ -248,6 +251,7 @@ impl Default for SystemsState {
             gyro_spin: 1.0,
             gyro_error_rad: [0.0; 3],
             gyro_truth_rad: [0.0; 3],
+            gyro_heading_reference_rad: 0.,
             pitot_total_pressure_pa: 101325.0,
             static_pressure_pa: 101325.0,
             pressure_altitude_m: 0.0,
@@ -391,6 +395,10 @@ impl SystemsState {
             .chain(self.gyro_truth_rad)
             .map(f64::to_bits),
         );
+        if self.gyro_heading_reference_rad != 0. {
+            words.push(0x6d61676e65746963);
+            words.push(self.gyro_heading_reference_rad.to_bits());
+        }
         for l in &e.loads {
             words.push(l.id.len() as u64);
             words.extend(l.id.bytes().map(u64::from));
@@ -472,7 +480,8 @@ impl SystemsState {
             });
         }
         s.ports(d, readout, true);
-        s.gyro_truth_rad = [readout.roll_rad, readout.pitch_rad, readout.heading_rad];
+        s.gyro_truth_rad = [readout.roll_rad, readout.pitch_rad, readout.heading_grid_rad];
+        s.gyro_heading_reference_rad = readout.grid_north_true_rad - readout.magnetic_declination_rad;
         s.engine_rpm = readout.engine_rpm;
         let model = SystemsModel {
             definition: d.clone(),
@@ -965,7 +974,7 @@ impl SystemsState {
         let spin_time = if drive > self.gyro_spin { up } else { down };
         lag(&mut self.gyro_spin, drive, spin_time);
         let loss = 1.0 - self.gyro_spin;
-        let truth = [r.roll_rad, r.pitch_rad, r.heading_rad];
+        let truth = [r.roll_rad, r.pitch_rad, r.heading_grid_rad];
         for ((error, previous), current) in self
             .gyro_error_rad
             .iter_mut()
@@ -1002,7 +1011,8 @@ impl SystemsState {
             - core::f64::consts::PI;
         self.sensed.pitch_rad =
             (r.pitch_rad + pitch).clamp(-core::f64::consts::FRAC_PI_2, core::f64::consts::FRAC_PI_2);
-        self.sensed.heading_rad = (r.heading_rad + heading).rem_euclid(core::f64::consts::TAU);
+        self.sensed.heading_rad = (r.heading_grid_rad + heading + self.gyro_heading_reference_rad)
+            .rem_euclid(core::f64::consts::TAU);
         self.sensed.attitude_valid = self.gyro_spin > 0.7;
     }
 }

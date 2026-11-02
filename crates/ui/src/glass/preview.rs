@@ -179,3 +179,83 @@ fn capture(
     }
     image::imageops::resize(&image, width, height, image::imageops::FilterType::Lanczos3)
 }
+
+#[test]
+#[ignore = "manual KMMU ILS 23 captured APR/GS PFD preview"]
+fn render_procedure_ils_preview() {
+    use flightcraft_control::{Session, Step, read_region};
+    use serde_json::json;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let world = read_region(&root.join("assets/terrain/new-york")).unwrap();
+    let loc = world
+        .procedures()
+        .unwrap()
+        .localizers
+        .iter()
+        .find(|l| l.airport == "KMMU" && l.runway == "RW23")
+        .unwrap();
+    let inbound = loc.course_magnetic_deg + loc.magnetic_variation_deg;
+    let start = loc.gs_position.unwrap().destination(inbound + 180., 9. * 1852.);
+    let r = world.region().unwrap();
+    let projection =
+        flightcraft_world::geo::LocalProjection::new(r.origin.latitude_deg, r.origin.longitude_deg).unwrap();
+    let [n, e] = projection
+        .project(start.latitude_deg, start.longitude_deg)
+        .unwrap();
+    let convergence = flightcraft_sim::avionics::navigation::inverse(
+        [start.latitude_deg, start.longitude_deg],
+        projection.unproject(n + 10., e).unwrap(),
+    )
+    .1;
+    let heading = (inbound.to_radians() - convergence).rem_euclid(core::f64::consts::TAU);
+    let altitude = loc.gs_elevation_m.unwrap()
+        + (9. * 1852. - 46. * 40.) * libm::tan(loc.gs_angle_deg.unwrap().to_radians());
+    let heading = flightcraft_sim::magnetic::reference_at(&world, [n, e, -altitude], Default::default())
+        .unwrap()
+        .grid_to_magnetic(heading);
+    let height = altitude - world.ground(n, e).height_msl_m;
+    let mut session = Session::new().unwrap();
+    session
+        .execute(
+            "aircraft.load",
+            json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+        )
+        .unwrap();
+    session.install_region(world).unwrap();
+    session.execute("sim.reset",json!({"world":"new-york","start":{"kind":"geographic_air","position":start,"height_agl_m":height,"airspeed_mps":40.,"heading_rad":heading}})).unwrap();
+    session
+        .execute(
+            "assist.set",
+            json!({"altitude_m":altitude,"heading_rad":heading,"airspeed_mps":40.}),
+        )
+        .unwrap();
+    session.run(Step { steps: 5520 }).unwrap();
+    session.execute("assist.off", json!({})).unwrap();
+    for setting in [
+        json!({"kind":"load_procedure","airport":"KMMU","procedure":"I23-Y","vectors_to_final":true}),
+        json!({"kind":"vectors_to_final"}),
+        json!({"kind":"cdi_source","source":"nav1"}),
+        json!({"kind":"autopilot","setting":{"kind":"engage","on":true}}),
+        json!({"kind":"autopilot","setting":{"kind":"vertical","mode":"alt"}}),
+        json!({"kind":"autopilot","setting":{"kind":"lateral","mode":"apr"}}),
+    ] {
+        session
+            .execute("avionics.set", json!({"setting":setting}))
+            .unwrap();
+    }
+    session.run(Step { steps: 3600 }).unwrap();
+    let ap = session.sim().installed_autopilot().unwrap();
+    assert_eq!(
+        ap.active_lateral,
+        Some(flightcraft_sim::equipment::LateralMode::Apr)
+    );
+    assert_eq!(
+        ap.active_vertical,
+        Some(flightcraft_sim::equipment::VerticalMode::Gs)
+    );
+    let directory = root.join("out/procedures");
+    std::fs::create_dir_all(&directory).unwrap();
+    capture(&session, &session.glass_state(), "glass_pfd", 1000, 880)
+        .save(directory.join("kmmu-ils23-pfd.png"))
+        .unwrap();
+}

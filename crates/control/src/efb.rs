@@ -159,7 +159,7 @@ fn aircraft(session: &Session) -> Option<encode::Aircraft> {
                 .rem_euclid(360.0),
         )
     };
-    let heading = bearing(r.heading_rad.cos(), r.heading_rad.sin())?;
+    let heading = bearing(r.heading_grid_rad.cos(), r.heading_grid_rad.sin())?;
     let [vn, ve, _] = sim.state().velocity_mps;
     let track = if r.ground_speed_mps > 0.01 {
         bearing(vn / r.ground_speed_mps, ve / r.ground_speed_mps)?
@@ -230,8 +230,15 @@ mod truth_tests {
             let a = aircraft(&session).unwrap();
             assert!((a.pressure_altitude_m.unwrap() - height).abs() < 1e-8);
             assert!((a.altitude_msl_m - height).abs() < 1e-8);
-            assert!(a.heading_deg < 1e-5 || a.heading_deg > 359.99999);
-            assert!((a.track_deg - (10.0_f64 / 40.0).atan().to_degrees()).abs() < 1e-5);
+            let true_heading = session
+                .sim()
+                .heading_reference()
+                .magnetic_to_true(0.0)
+                .to_degrees();
+            let angle_error = |a: f64, b: f64| (a - b + 180.0).rem_euclid(360.0) - 180.0;
+            assert!(angle_error(a.heading_deg, true_heading).abs() < 1e-5);
+            let true_track = true_heading + (10.0_f64 / 40.0).atan().to_degrees();
+            assert!(angle_error(a.track_deg, true_track).abs() < 1e-5);
             assert!((a.ground_speed_mps - 1700.0_f64.sqrt()).abs() < 1e-8);
             session
                 .execute("failure.set", json!({"failure":{"kind":"static_blocked"}}))

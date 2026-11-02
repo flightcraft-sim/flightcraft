@@ -96,9 +96,18 @@ fn search_ranking_radial_nearest_and_opt_in_actions() {
         serde_json::from_value(a["results"][0]["position"].clone()).unwrap();
     let (distance, bearing) = origin.inverse(dest);
     assert!((distance - 15.0 * 1852.0).abs() < 0.01);
-    let variation = flightcraft_world::geomag::MagneticModel::wmm2025()
+    let variation = s
+        .sim()
+        .world()
+        .navdata()
         .unwrap()
-        .declination(origin.latitude_deg, origin.longitude_deg, Default::default())
+        .navaids
+        .iter()
+        .find(|n| n.ident == "SBJ")
+        .unwrap()
+        .components
+        .iter()
+        .find_map(|c| c.magnetic_variation_deg)
         .unwrap();
     assert!((bearing - 270.0 - variation).abs() < 0.001);
     let near = s

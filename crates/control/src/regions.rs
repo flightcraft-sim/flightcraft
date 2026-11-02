@@ -171,6 +171,15 @@ pub fn read_region(directory: &std::path::Path) -> Result<World, String> {
                 .map_err(|e| e.to_string())?
         }
     };
+    let world = match std::fs::symlink_metadata(directory.join("procedures.json")) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => world,
+        Err(e) => return Err(e.to_string()),
+        Ok(_) => {
+            let bytes = bounded(&directory.join("procedures.json"), MAX_PROCEDURES_BYTES)?;
+            attach_region_procedures(world, std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
+        }
+    };
     let path = directory.join("airspace.json");
     match std::fs::symlink_metadata(&path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(world),
@@ -340,10 +349,12 @@ pub struct AirportRunwayStart {
 pub struct AirportAirStart {
     pub airport: String,
     pub distance_m: f64,
+    /// Magnetic bearing from the airport, clockwise in degrees.
     pub bearing_deg: f64,
     /// Height above airport elevation.
     pub height_m: f64,
     pub airspeed_mps: f64,
+    /// Magnetic heading, radians clockwise from magnetic north.
     pub heading_rad: f64,
 }
 pub(crate) fn airport<'a>(world: &'a World, ident: &str) -> Result<&'a Airport, CommandError> {
@@ -386,6 +397,7 @@ pub(crate) fn runway_start(
 pub(crate) fn air_start(
     world: &World,
     start: AirportAirStart,
+    date: flightcraft_world::geomag::SimulationDate,
 ) -> Result<flightcraft_sim::Start, CommandError> {
     let airport = airport(world, &start.airport)?;
     crate::range("sim.reset", "distance_m", start.distance_m, 0.0, 250000.0)?;
@@ -406,7 +418,9 @@ pub(crate) fn air_start(
     let [nn, ne] = p
         .project(airport.latitude_deg + 0.00001, airport.longitude_deg)
         .map_err(|e| CommandError::Failed(e.to_string()))?;
-    let bearing = start.bearing_deg.to_radians() + libm::atan2(ne - e, nn - n);
+    let reference = flightcraft_sim::magnetic::reference_at(world, [n, e, -airport.elevation_m], date)
+        .map_err(flightcraft_sim::SimError::from)?;
+    let bearing = reference.magnetic_to_true(start.bearing_deg.to_radians()) + libm::atan2(ne - e, nn - n);
     let (n, e) = (
         n + start.distance_m * libm::cos(bearing),
         e + start.distance_m * libm::sin(bearing),
@@ -430,3 +444,9 @@ pub fn attach_region_navdata(world: World, text: &str) -> Result<World, TerrainE
     world.with_navdata(flightcraft_world::Navdata::from_json(text)?)
 }
 pub use flightcraft_world::MAX_NAVDATA_BYTES;
+
+/// Shared strict procedure sidecar loader for native and browser transports.
+pub fn attach_region_procedures(world: World, text: &str) -> Result<World, TerrainError> {
+    world.with_procedures(flightcraft_world::Procedures::from_json(text)?)
+}
+pub use flightcraft_world::MAX_PROCEDURES_BYTES;

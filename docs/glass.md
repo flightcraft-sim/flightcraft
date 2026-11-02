@@ -64,16 +64,17 @@ units by default (gal/h, psi, °F, and US gal), with SI available. OAT follows t
 preference and includes its degree sign. Rounded zero has no minus sign.
 
 The nearest page lists eight airports with distance, bearing, and ETE. The flight-plan page
-shows the first eight airport legs with distance, initial true bearing, and ETE; plans accept
+shows the first eight airport legs with distance, initial magnetic bearing, and ETE; plans accept
 up to 64 airports. The active leg is highlighted. Activate a later leg through the editor.
 Automatic sequencing occurs within 0.3 nm of a waypoint. Direct-to captures the present
-position as the leg origin. All headings and bearings are true, with no magnetic variation.
+position as the leg origin. All pilot headings, courses, desired tracks, bearings, ground tracks, and wind directions are magnetic.
 
 `sim::avionics::navigation` provides the shared WGS84 inverse distance and bearing,
 great-circle cross-track and along-track distance, and local desired-track tangent using
 `libm`. Its bounded WGS84 iteration has a spherical fallback; great-circle tracking uses
-a mean Earth radius of 6,371,008.8 m. No turn anticipation or approach procedures are
-modelled. GPS CDI full scale is 2 nm en route and 1 nm within 30 nm of the destination.
+a mean Earth radius of 6,371,008.8 m. Turn anticipation is not modelled. Regional procedures, NAV receivers, and approach coupling are
+described in [instrument procedures](procedures.md). Ordinary GPS CDI full scale is 2 nm en route
+and 1 nm within 30 nm of the destination.
 Right-of-track displacement produces a left needle correction. A world without a geographic
 region has no GPS leg. ETE is unavailable below 1 m/s ground speed.
 
@@ -167,5 +168,24 @@ resolves by leg index. Automatic sequencing, desired track, CDI, and the MFD fli
 use these resolved positions. The legacy `NavigationLeg.airport` field is retained for compatibility
 and now carries the waypoint ident for every kind.
 
-The GPS continues to report true bearings. Planning summaries additionally report magnetic courses
-using WMM2025 and the deterministic simulation date; see [map and planning](map-and-planning.md).
+The GPS and planning leg labels report magnetic courses using WMM2025 and the deterministic
+simulation date; planning summaries also expose explicitly named true courses. See
+[map and planning](map-and-planning.md).
+
+
+## Magnetic reference
+
+AHRS headings and the standby and glass HSI roses use WMM2025 declination at the aircraft's
+position, altitude, and simulation date. Built-in worlds use zero variation. The independent
+`avionics.state.magnetic_compass` is an ideal passive whiskey compass, without turning or
+acceleration errors. The conventional free heading gyro is set to the compass at reset and
+then retains its existing drift; it is not slaved when the date or position changes.
+
+Heading bugs, HDG and TRK targets, OBS/CRS, GPS bearings, desired tracks, nearest-airport bearings,
+and indicated wind directions are magnetic. LOC and VOR course selections retain published
+station references. Procedure leg labels retain published CIFP magnetic courses and variation;
+live geometric GPS tracks use current WMM, so older published variation can differ slightly.
+
+Track-up rotates map geometry by the grid ground track; heading-up converts the magnetic AHRS
+heading back into the grid before rotating. Numeric heading/track readouts stay magnetic.
+North-up follows true geographic north. This avoids rotating the map twice by the declination.

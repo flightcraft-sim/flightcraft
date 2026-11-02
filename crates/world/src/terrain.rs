@@ -232,6 +232,7 @@ pub struct World {
     airspace: Option<Arc<crate::Airspace>>,
     airports: Option<Arc<crate::Airports>>,
     navdata: Option<Arc<crate::Navdata>>,
+    procedures: Option<Arc<crate::Procedures>>,
     strips: Arc<[crate::RunwayStrip]>,
 }
 impl Default for World {
@@ -242,6 +243,7 @@ impl Default for World {
             airspace: None,
             airports: None,
             navdata: None,
+            procedures: None,
             strips: Arc::from([]),
             tiles: Arc::from([]),
             fingerprint: 0xcbf2_9ce4_8422_2325,
@@ -335,6 +337,7 @@ impl World {
             airspace: None,
             airports: None,
             navdata: None,
+            procedures: None,
             strips: Arc::from([]),
         })
     }
@@ -387,6 +390,15 @@ impl World {
         data.validate()?;
         self.navdata = Some(Arc::new(data));
         Ok(self)
+    }
+    pub fn with_procedures(mut self, data: crate::Procedures) -> Result<Self, TerrainError> {
+        self.region().ok_or(TerrainError("procedures require a region"))?;
+        data.validate()?;
+        self.procedures = Some(Arc::new(data));
+        Ok(self)
+    }
+    pub fn procedures(&self) -> Option<&crate::Procedures> {
+        self.procedures.as_deref()
     }
     pub fn navdata(&self) -> Option<&crate::Navdata> {
         self.navdata.as_deref()

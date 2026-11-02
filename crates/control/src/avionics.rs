@@ -12,11 +12,23 @@ pub struct SetAvionics {
 #[serde(deny_unknown_fields)]
 pub struct GetAvionics {}
 pub type GetAvionicsState = GetAvionics;
+/// Ideal passive whiskey compass; independent of AHRS, gyro power, and instrument failures.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct MagneticCompass {
+    /// Magnetic heading, clockwise from magnetic north.
+    pub heading_deg: f64,
+    /// East-positive WMM declination at the aircraft and simulation date.
+    pub declination_deg: f64,
+}
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct AvionicsState {
     #[serde(flatten)]
     pub standby: flightcraft_sim::avionics::AvionicsState,
     pub glass_suite: GlassState,
+    pub magnetic_compass: MagneticCompass,
+    pub procedures: flightcraft_sim::avionics::procedures::ProcedureReceiver,
+    pub nav_radios: flightcraft_sim::avionics::radio::Radios,
+    pub radio_signals: [flightcraft_sim::avionics::radio::RadioState; 2],
     pub autopilot: Option<flightcraft_sim::equipment::EquipmentState>,
 }
 impl Session {
@@ -24,6 +36,13 @@ impl Session {
         AvionicsState {
             standby: self.sim().systems().avionics.clone(),
             glass_suite: self.glass_state(),
+            magnetic_compass: MagneticCompass {
+                heading_deg: self.sim().readout().heading_rad.to_degrees(),
+                declination_deg: self.sim().heading_reference().declination_rad.to_degrees(),
+            },
+            procedures: self.sim().procedure_receiver().clone(),
+            nav_radios: self.sim().radios().clone(),
+            radio_signals: self.sim().radio_state(),
             autopilot: self.sim().installed_autopilot().cloned(),
         }
     }

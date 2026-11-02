@@ -3,6 +3,8 @@ pub mod electronic_attitude;
 pub mod electronic_hsi;
 pub mod glass;
 pub mod navigation;
+pub mod procedures;
+pub mod radio;
 pub mod sensor;
 use crate::{Readout, SimError, State, systems::SystemsState};
 use flightcraft_world::World;
@@ -20,6 +22,30 @@ pub enum Unit {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AvionicsSetting {
+    LoadProcedure {
+        airport: String,
+        procedure: String,
+        #[serde(default)]
+        transition: Option<String>,
+        #[serde(default)]
+        vectors_to_final: bool,
+    },
+    ActivateApproach {},
+    VectorsToFinal {},
+    MissedApproach {},
+    HoldOptions {
+        suspend: bool,
+        #[serde(default)]
+        exit: bool,
+    },
+    ClearProcedure {},
+    SequenceLeg {},
+    NavRadio {
+        setting: radio::RadioSetting,
+    },
+    CdiSource {
+        source: radio::CdiSource,
+    },
     Autopilot {
         setting: crate::equipment::PanelSetting,
     },
@@ -38,10 +64,12 @@ pub enum AvionicsSetting {
     },
     HeadingBugSync {},
     HeadingBug {
+        /// Selected magnetic heading.
         #[schemars(range(min = 0, max = 360))]
         degrees: f64,
     },
     Course {
+        /// Magnetic OBS/course selection.
         #[schemars(range(min = 0, max = 360))]
         degrees: f64,
     },
@@ -121,6 +149,7 @@ impl AvionicsState {
         setting: AvionicsSetting,
         world: &World,
         state: State,
+        declination_rad: f64,
     ) -> Result<(), SimError> {
         if !self.installed {
             return Err(invalid("standby pair is not installed"));
@@ -128,7 +157,16 @@ impl AvionicsState {
         let a = &mut self.electronic_attitude;
         let h = &mut self.electronic_hsi;
         match setting {
-            AvionicsSetting::Autopilot { .. }
+            AvionicsSetting::LoadProcedure { .. }
+            | AvionicsSetting::ActivateApproach {}
+            | AvionicsSetting::VectorsToFinal {}
+            | AvionicsSetting::MissedApproach {}
+            | AvionicsSetting::HoldOptions { .. }
+            | AvionicsSetting::SequenceLeg {}
+            | AvionicsSetting::ClearProcedure {}
+            | AvionicsSetting::NavRadio { .. }
+            | AvionicsSetting::CdiSource { .. }
+            | AvionicsSetting::Autopilot { .. }
             | AvionicsSetting::DirectToLocal { .. }
             | AvionicsSetting::Glass { .. }
             | AvionicsSetting::HeadingBugStep { .. }
@@ -153,7 +191,7 @@ impl AvionicsState {
                 a.selected_altitude_ft = feet;
                 h.reversion_attitude.selected_altitude_ft = feet;
             }
-            AvionicsSetting::DirectTo { ident } => h.direct_to(&ident, world, state)?,
+            AvionicsSetting::DirectTo { ident } => h.direct_to(&ident, world, state, declination_rad)?,
             AvionicsSetting::Power { unit, on } => match unit {
                 Unit::ElectronicAttitude => a.power.switch_on = on,
                 Unit::ElectronicHsi => h.reversion_attitude.power.switch_on = on,

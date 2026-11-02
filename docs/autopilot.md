@@ -136,9 +136,9 @@ true track in radians, signed cross-track in nautical miles, To/From, and the tr
 north at the aircraft. The adapter converts cross-track to metres and subtracts meridian
 convergence from the true track. Use the shared geodesy module to obtain grid-north bearing;
 receiver geodesy remains responsible for calculating great-circle desired track and deviation.
-For a glass receiver these are `GpsState.valid`, `desired_track_rad`, and `cross_track_nm`;
-for an electronic HSI, use `gps_fix`, the desired course converted from degrees, and
-`lateral_deviation_nm`. Refresh the adapter from receiver output at every fixed step, and pass
+For pilot-facing glass or standby output, first convert its magnetic desired track back to true
+with `Sim::heading_reference().magnetic_to_true`. Use the receiver validity and signed cross-track
+values, preserving their units. Refresh the adapter from receiver output at every fixed step, and pass
 an invalid fix on loss of navigation power or signal. The adapter does not recompute geodesy or
 read display CDI deflection, whose sign and full-scale scaling differ between skins.
 
@@ -181,3 +181,18 @@ into `out/autopilot/{leveler,legacy,digital}.png`. The companion test
 `render_autopilot_glass_preview` captures the glass PFD with HDG, ALT, the mode strip, and FD bars
 into `out/autopilot/glass-pfd.png`. Additional integration flights exercise both installed
 electronic suites, their shared GPS guidance, heading bug, selected altitude, and sensor failures.
+
+
+## Magnetic convention
+
+The shared heading bug, HDG, TRK, heading sync, and script-assist heading targets are magnetic.
+AHRS and the compass use WMM2025 at the simulation date and aircraft position, with zero
+variation in built-in worlds. The conventional heading gyro is initially set to that compass
+and then drifts. Sensors and mode targets share this reference, so HDG 090 in New Jersey flies
+about 077–078° true, rather than 090° true.
+
+Navigation geometry and `NavSource` remain true/grid based. The simulation converts desired
+track and measured ground track to magnetic before the installed controller compares them.
+VOR radials and LOC courses retain their published station declination. Magnetic and true
+angles must not be mixed in adapters or display pointer rotations. `Readout.heading_rad` is
+magnetic; `heading_true_rad` and `heading_grid_rad` explicitly expose truth for geometry.

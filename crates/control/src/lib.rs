@@ -285,6 +285,7 @@ pub enum ResetStart {
         position: flightcraft_world::GeoPoint,
         height_agl_m: f64,
         airspeed_mps: f64,
+        /// Magnetic heading, radians clockwise from magnetic north.
         heading_rad: f64,
     },
     Air {
@@ -293,6 +294,7 @@ pub enum ResetStart {
         #[schemars(range(min = 0))]
         airspeed_mps: f64,
         #[schemars(range(min = 0, max = std::f64::consts::TAU))]
+        /// Magnetic heading, radians clockwise from magnetic north.
         heading_rad: f64,
     },
 }
@@ -355,7 +357,7 @@ impl Command for Reset {
             ResetStart::AirportRunway { airport, end } => {
                 regions::runway_start(&world, AirportRunwayStart { airport, end })?
             }
-            ResetStart::AirportAir(s) => regions::air_start(&world, s)?,
+            ResetStart::AirportAir(s) => regions::air_start(&world, s, session.simulation_date())?,
             ResetStart::GeographicAir {
                 position,
                 height_agl_m,
@@ -414,12 +416,57 @@ impl Command for Reset {
                 }
             }
         };
-        let mut replacement = Sim::new_with_aircraft_weather_world(
-            &start,
-            session.selected_aircraft.clone(),
-            self.weather.unwrap_or_default(),
-            world,
-        )?;
+        let start = match start {
+            Start::Air {
+                height_m,
+                airspeed_mps,
+                heading_rad,
+            } => {
+                let reference = flightcraft_sim::magnetic::reference_at(
+                    &world,
+                    [0., 0., -height_m],
+                    session.simulation_date(),
+                )
+                .map_err(SimError::from)?;
+                Start::Air {
+                    height_m,
+                    airspeed_mps,
+                    heading_rad: reference.magnetic_to_grid(heading_rad),
+                }
+            }
+            Start::AirAt {
+                position_m,
+                airspeed_mps,
+                heading_rad,
+            } => {
+                let reference =
+                    flightcraft_sim::magnetic::reference_at(&world, position_m, session.simulation_date())
+                        .map_err(SimError::from)?;
+                Start::AirAt {
+                    position_m,
+                    airspeed_mps,
+                    heading_rad: reference.magnetic_to_grid(heading_rad),
+                }
+            }
+            other => other,
+        };
+        let weather_position = match &start {
+            Start::Air { height_m, .. } => [0., 0., -*height_m],
+            Start::AirAt { position_m, .. } => *position_m,
+            Start::RunwayAt { threshold_ned_m, .. } => *threshold_ned_m,
+            Start::Runway => [0., 0., 0.],
+        };
+        let reference =
+            flightcraft_sim::magnetic::reference_at(&world, weather_position, session.simulation_date())
+                .map_err(SimError::from)?;
+        let mut weather = self.weather.unwrap_or_default();
+        weather.validate().map_err(SimError::from)?;
+        weather.wind_from_deg = reference
+            .magnetic_to_grid(weather.wind_from_deg.to_radians())
+            .to_degrees();
+        let mut replacement =
+            Sim::new_with_aircraft_weather_world(&start, session.selected_aircraft.clone(), weather, world)?;
+        replacement.set_simulation_date(session.simulation_date())?;
         if let Some(configuration) = &session.selected_configuration {
             replacement.configure_systems(configuration)?;
         }

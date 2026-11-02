@@ -81,6 +81,22 @@ async fn load_one(
     } else {
         world
     };
+    let procedures_url = web_sys::Url::new_with_base("procedures.json", &url.href())?;
+    let world = if let Some(bytes) = crate::packs::fetch_optional_bytes(
+        window,
+        &procedures_url.href(),
+        flightcraft_control::MAX_PROCEDURES_BYTES,
+    )
+    .await?
+    {
+        flightcraft_control::attach_region_procedures(
+            world,
+            std::str::from_utf8(&bytes).map_err(|e| JsValue::from_str(&e.to_string()))?,
+        )
+        .map_err(|e| JsValue::from_str(&e.to_string()))?
+    } else {
+        world
+    };
     let airspace_url = web_sys::Url::new_with_base("airspace.json", &url.href())?;
     if let Some(bytes) =
         crate::packs::fetch_optional_bytes(window, &airspace_url.href(), MAX_AIRSPACE_BYTES).await?

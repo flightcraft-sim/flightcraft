@@ -243,8 +243,8 @@ and true headings. Built-in worlds return an empty catalogue.
 This parks at the selected threshold and aligns with its centreline. For an airport-relative air
 start, use `{"world":"new-york","start":{"air":{"airport":"JFK","distance_m":5000,
 "bearing_deg":220,"height_m":600,"airspeed_mps":45,"heading_rad":0.7}}}`. Distance is horizontal,
-bearing is true degrees clockwise from north, height is metres above airport elevation, and
-heading is a local grid heading in radians. Airport identifiers may be FAA or ICAO idents.
+bearing is magnetic degrees clockwise from north, height is metres above airport elevation, and
+heading is magnetic radians. Airport identifiers may be FAA or ICAO idents.
 Existing `kind` starts remain supported, including the air start's absolute MSL altitude.
 Invalid starts leave the active flight intact. `sim_state` and its readout include optional
 `latitude_deg` and `longitude_deg`, null without an active geographic position. The state output
@@ -342,3 +342,52 @@ error asking the caller to retry later.
 
 See [map and planning](map-and-planning.md#implementation-reference) for storage limits, date
 provenance, profile sampling limitations, cruise estimates, and the implemented GPX/FPL subset.
+
+## Instrument procedures and radio navigation
+
+`avionics.set` additionally accepts these top-level settings:
+
+| Kind | Fields and result |
+|---|---|
+| `load_procedure` | `airport`, `procedure`, optional `transition`, and optional `vectors_to_final` (false). Load a regional CIFP departure, arrival, or approach. Store its plate name and PDF basename. |
+| `activate_approach` | No fields. Enable approach CDI scaling and published vertical guidance when available. |
+| `vectors_to_final` | No fields. Activate the published final segment. |
+| `missed_approach` | No fields. Select the first missed leg and inhibit the approach glidepath. |
+| `hold_options` | Required `suspend`, optional `exit` (false). Control the active published hold. |
+| `sequence_leg` | No fields. Manually select the next leg, without implicitly activating a missed approach. |
+| `clear_procedure` | No fields. Clear the loaded procedure receiver. |
+| `nav_radio` | Nested `setting`: `standby` with `radio` and `frequency_hz`; `swap` with `radio`; `course` with `radio` and `degrees`; `back_course` or `ident` with `radio` and `on`; `service_volume` with `radio` and `class`. Radios are numbered 1 and 2. |
+| `cdi_source` | `source`: `gps` or `nav1`. Select the receiver driving the CDI and installed autopilot. |
+
+`avionics.state` adds `procedures`, `nav_radios`, and `radio_signals`. Loaded procedure identities,
+transitions, plate links, active leg, hold entry, suspension, deviations, CDI scale, published
+capabilities, and approach annunciations are observable without advancing time. Radio signals expose
+validity, TO/FROM, magnetic radial, DME slant range, cone status, lateral/vertical dots, an ident
+stub, and the guidance delivered to the autopilot. Unknown procedures, transitions, radio channels,
+and unsupported actions return errors. All operations are offline and open no dialogs.
+See [instrument procedures](procedures.md) for columns, limits, signal sectors, and limitations.
+
+
+## Magnetic command and readout convention
+
+All pilot-facing heading, track, course, and bearing settings are magnetic: `sim.reset` air-start
+`heading_rad` and airport-relative `bearing_deg`, `assist.set.heading_rad`,
+`sim.run_until.heading_within`, both heading-bug commands, installed HDG/TRK targets, standby
+and glass CRS/OBS, NAV-radio courses, and `weather.set.wind_from_deg`. Reset weather directions
+are also magnetic. `Session::pilot_weather` is the magnetic frontend view; the low-level wind
+field remains in the simulation grid. Bounds and SI units are unchanged.
+
+WMM2025 is evaluated at the simulation date, aircraft position, and altitude; built-in worlds
+use zero variation. `sim.set_date` updates WMM and electronic readouts without advancing time,
+and the date survives reset and aircraft selection. The free heading gyro is set to the compass
+at reset and then drifts. `avionics.state.magnetic_compass` returns `heading_deg` and east-positive
+`declination_deg`, independently of AHRS alignment, failures, or power.
+
+`readout.heading_rad`, electronic headings, GPS desired track and bearings, nearest-airport
+bearings, and indicated wind are magnetic. Explicit `heading_true_rad`, `heading_grid_rad`,
+`magnetic_declination_rad`, and `grid_north_true_rad` expose truth and reference metadata.
+Raw attitude, position, velocity, `NavGuidance`, and static source catalogues retain their
+geometric frames. Published CIFP/LOC course labels and VOR radials retain their station/database
+magnetic reference; VOR radials use published station declination rather than WMM. Planning
+leg labels are magnetic, with explicitly named true courses also available. Map track-up and
+heading-up convert magnetic indications back to grid angles for geometry.

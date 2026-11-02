@@ -10,6 +10,7 @@ mod input;
 pub mod instruments;
 pub mod keymap;
 mod navigation;
+mod procedures;
 pub mod script;
 pub mod theme;
 
@@ -96,6 +97,7 @@ pub struct FlightCraftApp {
     compact_panel: bool,
     instrument_panel: instruments::InstrumentPanel,
     glass_controls: glass::GlassControls,
+    procedure_controls: procedures::Controls,
     glass_popout_knob: instruments::heading::Knob,
     bindings_json: String,
     airport_search: String,
@@ -265,6 +267,7 @@ impl FlightCraftApp {
                 .as_deref()
                 == Some("true"),
             glass_controls: glass::GlassControls::default(),
+            procedure_controls: procedures::Controls::default(),
             glass_popout_knob: Default::default(),
             instrument_panel: instruments::InstrumentPanel::with_options(
                 cc.storage
@@ -677,6 +680,9 @@ impl eframe::App for FlightCraftApp {
                     );
                     ui.label(RichText::new("FlightCraft").size(23.0).strong());
                     self.navigation.show(ui, &mut self.session);
+                    for setting in self.procedure_controls.show(ui,&self.session){
+                        if let Err(error)=self.session.run(flightcraft_control::SetAvionics{setting}){self.error=Some(error.to_string());}
+                    }
                     ui.add_space(12.0);
                     let identity = self.session.sim().aircraft().identity.clone();
                     ui.menu_button(
@@ -726,7 +732,7 @@ impl eframe::App for FlightCraftApp {
                                         match self.session.run(flightcraft_control::Reset {
                                             world: world.id,
                                             start: flightcraft_control::ResetStart::Runway {},
-                                            weather: Some(self.session.sim().weather()),
+                                            weather: Some(self.session.pilot_weather()),
                                             paused: Some(self.paused),
                                         }) {
                                             Ok(_) => {
@@ -769,7 +775,7 @@ impl eframe::App for FlightCraftApp {
                                                             match self.session.run(flightcraft_control::Reset {
                                                                 world: self.session.sim().world().choice(),
                                                                 start: flightcraft_control::ResetStart::AirportRunway { airport: airport.ident.clone(), end: end.ident.clone() },
-                                                                weather: Some(self.session.sim().weather()), paused: Some(self.paused),
+                                                                weather: Some(self.session.pilot_weather()), paused: Some(self.paused),
                                                             }) {
                                                                 Ok(_) => { self.clock.reset(); self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
                                                                 Err(e) => self.error = Some(e.to_string()),
