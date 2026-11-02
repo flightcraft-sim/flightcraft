@@ -205,9 +205,13 @@ fn render_panel_fidelity_previews() {
         .equipment
         .as_ref()
         .unwrap();
-    let [w, h] = panel.size;
-    let scale = (1728. / w).min(968. / h);
-    let (left, top) = ((1728. - w * scale) * 0.5, (968. - h * scale) * 0.5);
+    let [w, _] = panel.size;
+    let fit = crate::panel_preview::equipment_rect(
+        panel,
+        Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1728., 968.)),
+    );
+    let scale = f64::from(fit.width()) / w;
+    let (left, top) = (f64::from(fit.left()), f64::from(fit.top()));
     for id in ["left_display", "navigator", "autopilot"] {
         let e = panel.elements.iter().find(|e| e.id == id).unwrap();
         let [x, y] = e.position;
@@ -350,7 +354,7 @@ fn declared_controller_buttons_and_knob_pushes_emit_existing_commands() {
 }
 
 /// Original analytic terrain makes captures independent of downloaded regional assets.
-fn geographic_session() -> Session {
+pub(crate) fn geographic_session() -> Session {
     use flightcraft_world::{HeightTile, Region, RegionOrigin, Surface, World};
     let mut s = session("panel-fidelity-demo", "equipment-fidelity-demonstrator");
     let mut samples = Vec::new();
@@ -421,6 +425,7 @@ fn whole_panel_captions_do_not_overlap() {
             egui::vec2(1250., 700.),
             egui::vec2(1728., 968.),
             egui::vec2(1100., 620.),
+            egui::vec2(1920., 1080.),
         ] {
             let state = s.glass_state();
             let mut panel = InstrumentPanel::default();
@@ -512,12 +517,16 @@ fn inset_crops(s: &Session, image: &image::RgbaImage) -> Vec<image::RgbaImage> {
         .equipment
         .as_ref()
         .unwrap();
-    let [pw, ph] = panel.size;
-    let scale = (f64::from(image.width()) / pw).min(f64::from(image.height()) / ph);
-    let (left, top) = (
-        (f64::from(image.width()) - pw * scale) * 0.5,
-        (f64::from(image.height()) - ph * scale) * 0.5,
+    let [pw, _] = panel.size;
+    let fit = crate::panel_preview::equipment_rect(
+        panel,
+        Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(image.width() as f32, image.height() as f32),
+        ),
     );
+    let scale = f64::from(fit.width()) / pw;
+    let (left, top) = (f64::from(fit.left()), f64::from(fit.top()));
     let mut crops = Vec::new();
     for e in &panel.elements {
         if !matches!(
@@ -541,7 +550,7 @@ fn inset_crops(s: &Session, image: &image::RgbaImage) -> Vec<image::RgbaImage> {
                     ix.ceil() as u32 + 2,
                     iy.ceil() as u32 + 2,
                     (sw * 0.8 * 0.27 * scale).floor() as u32 - 4,
-                    (sh * 0.25 * scale).floor() as u32 - 4,
+                    (sh * 0.21 * scale).floor() as u32 - 4,
                 )
                 .to_image(),
             );
@@ -560,6 +569,8 @@ fn integrated_insets_have_real_map_content_in_geographic_and_local_worlds() {
         if !geographic {
             s.execute("sim.reset",serde_json::json!({"start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":0.5}})).unwrap();
         }
+        s.execute("map.set", serde_json::json!({"range_nm":4.,"night":true}))
+            .unwrap();
         let before = s.map_state().clone();
         let image = crate::panel_preview::render_equipment_panel(&mut s, 1250, 700).unwrap();
         let crops = inset_crops(&s, &image);
@@ -582,8 +593,11 @@ fn integrated_insets_have_real_map_content_in_geographic_and_local_worlds() {
         s.execute("sim.step", serde_json::json!({"steps":1200})).unwrap();
         let next = crate::panel_preview::render_equipment_panel(&mut s, 1250, 700).unwrap();
         let next_crops = inset_crops(&s, &next);
-        for (a, b) in crops.iter().zip(&next_crops) {
-            assert_ne!(a.as_raw(), b.as_raw(), "moving map must follow aircraft position");
+        for (i, (a, b)) in crops.iter().zip(&next_crops).enumerate() {
+            assert!(
+                a.as_raw() != b.as_raw(),
+                "moving map inset {i} must follow aircraft position (geographic={geographic})"
+            );
         }
         audit.push(
             serde_json::json!({"geographic":geographic,"inset_interior_color_counts":counts,"moving":true}),

@@ -39,6 +39,7 @@ pub struct SyntheticVision {
     attitude: Quat,
     velocity: Vec3,
     altitude_m: f32,
+    viewport: [f32; 4],
 }
 impl SyntheticVision {
     /// Sensor attitude drives the view; indicated altitude drives awareness bands.
@@ -73,7 +74,17 @@ impl SyntheticVision {
             attitude,
             velocity,
             altitude_m: altitude_m as f32,
+            viewport: [0., 30., 500., 190.],
         })
+    }
+    /// Extend the PFD background without moving its optical centre or changing its focal scale.
+    /// Invalid bounds retain the previous viewport.
+    pub fn with_pfd_viewport(mut self, viewport: [f32; 4]) -> Self {
+        let [_, _, w, h] = viewport;
+        if viewport.iter().all(|v| v.is_finite() && v.abs() <= 10000.) && w > 0. && h > 0. {
+            self.viewport = viewport;
+        }
+        self
     }
     fn eye(&self) -> Vec3 {
         self.position + self.attitude * CORVID_PILOT_EYE_M
@@ -148,8 +159,11 @@ impl SyntheticVision {
         let position = drawing(self.position);
         let eye = drawing(self.eye());
         let view = crate::camera::cockpit_view(position, self.attitude, 0., 0., CORVID_PILOT_EYE_M);
-        let fov = 2. * (95. / PFD_FOCAL_LENGTH).atan();
-        let projection = Mat4::perspective_rh(fov, 500. / 190., 0.5, 24000.);
+        let [x, y, w, h] = self.viewport;
+        let fov = 2. * (h * 0.5 / PFD_FOCAL_LENGTH).atan();
+        let mut projection = Mat4::perspective_rh(fov, w / h, 0.5, 24000.);
+        projection.z_axis.x = 1. - 2. * (250. - x) / w;
+        projection.z_axis.y = 2. * (125. - y) / h - 1.;
         gpu::Uniform {
             view_projection: (projection * view).to_cols_array_2d(),
             aircraft: Mat4::IDENTITY.to_cols_array_2d(),
@@ -224,17 +238,24 @@ mod tests {
                     1000.,
                 )
                 .unwrap();
-                let u = view.uniform(crate::mesh::terrain_tests::palette());
-                let matrix = Mat4::from_cols_array_2d(&u.view_projection);
-                let clip = matrix * drawing(Vec3::X).extend(0.);
-                let actual = [250. + 250. * clip.x / clip.w, 125. - 95. * clip.y / clip.w];
-                let y = pfd_pitch_y(pitch.to_radians());
-                let expected = [
-                    250. + y * (bank as f32).to_radians().sin(),
-                    125. + y * (bank as f32).to_radians().cos(),
-                ];
-                assert!((actual[0] - expected[0]).abs() < 0.001);
-                assert!((actual[1] - expected[1]).abs() < 0.001);
+                for viewport in [[0., 30., 500., 190.], [0., 0., 500., 440.]] {
+                    let view = view.clone().with_pfd_viewport(viewport);
+                    let u = view.uniform(crate::mesh::terrain_tests::palette());
+                    let matrix = Mat4::from_cols_array_2d(&u.view_projection);
+                    let clip = matrix * drawing(Vec3::X).extend(0.);
+                    let [x, y, w, h] = viewport;
+                    let actual = [
+                        x + w * 0.5 * (1. + clip.x / clip.w),
+                        y + h * 0.5 * (1. - clip.y / clip.w),
+                    ];
+                    let y = pfd_pitch_y(pitch.to_radians());
+                    let expected = [
+                        250. + y * (bank as f32).to_radians().sin(),
+                        125. + y * (bank as f32).to_radians().cos(),
+                    ];
+                    assert!((actual[0] - expected[0]).abs() < 0.001);
+                    assert!((actual[1] - expected[1]).abs() < 0.001);
+                }
             }
         }
     }

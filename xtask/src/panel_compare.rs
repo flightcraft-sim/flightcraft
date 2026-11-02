@@ -185,12 +185,8 @@ fn compare(pack: &Path, reference: &Path, out: &Path) -> Result<(), String> {
         .equipment
         .as_ref()
         .ok_or("no equipment panel")?;
-    let [pw, ph] = panel.size;
-    let scale = (f64::from(render.width()) / pw).min(f64::from(render.height()) / ph);
-    let (left, top) = (
-        (f64::from(render.width()) - pw * scale) * 0.5,
-        (f64::from(render.height()) - ph * scale) * 0.5,
-    );
+    let [left, top, scale] =
+        flightcraft_ui::panel_preview::equipment_transform(panel, render.width(), render.height())?;
     let (a, b) = (edges(&reference), edges(&render));
     let scores: Vec<_> = panel
         .elements

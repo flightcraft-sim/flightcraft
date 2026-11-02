@@ -65,7 +65,7 @@ fn failure_flags_and_reversion_strip_are_visible() {
     );
     for expected in ["AHRS FAIL", "HDG FAIL"] {
         assert!(
-            d.items
+            d.flat_items()
                 .iter()
                 .any(|i| matches!(i,DrawItem::Label{text,..} if text==expected))
         );
@@ -105,7 +105,7 @@ fn labels_fit_canvas_without_overlap_at_both_window_sizes() {
                             let [canvas_width, _] = draw.size;
                             let factor = fit.width() / canvas_width;
                             let mut labels = Vec::new();
-                            for item in &draw.items {
+                            for item in draw.flat_items() {
                                 if let DrawItem::Label { at, text, size, .. } = item {
                                     let galley = ctx.fonts_mut(|fonts| {
                                         fonts.layout_no_wrap(
@@ -193,9 +193,25 @@ fn display_units_zero_and_requested_pfd_readouts() {
     }
 }
 
+fn local_flight() -> Session {
+    let mut s = crate::panel_fidelity_tests::geographic_session();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    s.execute("sim.reset",serde_json::json!({"world":"panel-preview","start":{"kind":"air","height_m":1000.,"airspeed_mps":50.,"heading_rad":0.}})).unwrap();
+    s.execute(
+        "assist.set",
+        serde_json::json!({"altitude_m":1000.,"heading_rad":0.,"airspeed_mps":50.}),
+    )
+    .unwrap();
+    s.run(flightcraft_control::Step { steps: 5401 }).unwrap();
+    s
+}
 #[test]
 fn synthetic_vision_is_inhibited_without_valid_sensors_and_on_standby() {
-    let session = flight();
+    let session = local_flight();
     let mut state = session.glass_state();
     state.settings.synthetic_vision = true;
     let draw = |state: &GlassState, standby| {
@@ -208,9 +224,16 @@ fn synthetic_vision_is_inhibited_without_valid_sensors_and_on_standby() {
         )
     };
     let has_pass = |draw: DrawList| {
-        draw.items
-            .iter()
-            .any(|i| matches!(i, DrawItem::SyntheticVision { .. }))
+        draw.items.iter().any(|i| {
+            matches!(
+                i,
+                DrawItem::SyntheticVision {
+                    min: [0., 0.],
+                    max: [500., 440.],
+                    ..
+                }
+            )
+        })
     };
     assert!(has_pass(draw(&state, false)));
     assert!(!has_pass(draw(&state, true)));
@@ -229,7 +252,7 @@ fn synthetic_vision_is_inhibited_without_valid_sensors_and_on_standby() {
 
 #[test]
 fn pfd_horizon_ladder_and_fixed_aircraft_symbol_share_the_camera_projection() {
-    let session = flight();
+    let session = local_flight();
     let mut state = session.glass_state();
     state.settings.synthetic_vision = true;
     state.air_data.roll_rad = 0.;

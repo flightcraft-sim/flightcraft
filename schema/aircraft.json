@@ -1297,6 +1297,19 @@
           "maxItems": 128,
           "minItems": 1
         },
+        "essential": {
+          "description": "Optional essential rectangle [left, top, width, height], in panel millimetres.\nShort viewports anchor cropping around this area without distorting the panel.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        },
         "shape": {
           "$ref": "#/$defs/PanelShape"
         },

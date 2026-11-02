@@ -937,23 +937,20 @@ impl eframe::App for FlightCraftApp {
                 });
             }
             egui::TopBottomPanel::bottom("instruments")
-                .exact_height(
-                    if let Some(panel) = self
-                        .session
-                        .aircraft_configuration()
-                        .and_then(|c| c.panel.equipment.as_ref())
-                    {
-                        let [w, h] = panel.size;
-                        (ctx.content_rect().width() * (h / w) as f32)
-                            .min(ctx.content_rect().height() * if self.compact_panel { 0.55 } else { 0.80 })
-                    } else {
-                        instruments::panel_height(ctx.content_rect().height(), self.compact_panel)
+                .exact_height(self.session.aircraft_configuration().map_or_else(
+                    || instruments::panel_height(ctx.content_rect().height(), self.compact_panel),
+                    |c| {
+                        instruments::view_panel_height(
+                            &c.panel,
+                            ctx.content_rect().size(),
+                            self.compact_panel,
+                        )
                     },
-                )
+                ))
                 .frame(
                     egui::Frame::new()
-                        .fill(theme::PANEL)
-                        .inner_margin(egui::Margin::symmetric(12, 5)),
+                        .fill(egui::Color32::TRANSPARENT)
+                        .inner_margin(egui::Margin::symmetric(0, 5)),
                 )
                 .show(ctx, |ui| {
                     let state = self.session.glass_state();
@@ -1033,7 +1030,6 @@ impl eframe::App for FlightCraftApp {
                 .open(&mut open)
                 .default_size(egui::vec2(650., 510.))
                 .show(ctx, |ui| {
-                    use instruments::Skin;
                     if let Ok(mut display) = glass::create(&id) {
                         let mut input =
                             instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
@@ -1044,38 +1040,25 @@ impl eframe::App for FlightCraftApp {
                         input.options = self.instrument_panel.options;
                         let draw = display.update(input);
                         let (rect, _) = ui.allocate_exact_size(ui.available_size(), egui::Sense::hover());
-                        instruments::scaled(
-                            ui.painter(),
-                            instruments::fit_size(rect, draw.size),
-                            draw.size,
-                            |p| {
-                                instruments::SkinPack {
-                                    id: "original".into(),
-                                    colors: Vec::new(),
-                                    face: Vec::new(),
-                                }
-                                .paint(p, &draw);
-                            },
-                        );
+                        let [canvas_width, canvas_height] = draw.size;
+                        let sx = rect.width() / canvas_width;
+                        let sy = rect.height() / canvas_height;
+                        glass::paint_fill(ui, rect, draw);
                         if id == "glass_mfd"
                             && !state.mfd_failed
                             && state.settings.page == flightcraft_control::GlassPage::Map
                         {
-                            let fitted = instruments::fit_size(rect, draw.size);
-                            let factor = fitted.width() / 500.;
-                            let map_rect = egui::Rect::from_min_size(
-                                fitted.min + egui::vec2(151., 40.) * factor,
-                                egui::vec2(300., 300.) * factor,
+                            let map_rect = egui::Rect::from_min_max(
+                                rect.min + egui::vec2(110. * sx, 28. * sy),
+                                rect.max,
                             );
                             self.mfd_map.options = self.instrument_panel.options;
                             self.mfd_map.show_mfd(ui, map_rect, &mut self.session);
                         }
                         if id == "glass_pfd" {
-                            let fitted = instruments::fit_size(rect, draw.size);
-                            let factor = fitted.width() / 500.;
                             let knob_rect = egui::Rect::from_center_size(
-                                fitted.min + egui::vec2(359., 404.) * factor,
-                                egui::vec2(26., 26.) * factor,
+                                rect.min + egui::vec2(359. * sx, 404. * sy),
+                                egui::vec2(26., 26.) * sx.min(sy),
                             );
                             knob_commands.extend(self.glass_popout_knob.show(
                                 ui,
@@ -1095,7 +1078,7 @@ impl eframe::App for FlightCraftApp {
             }
         }
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(theme::BACKGROUND))
+            .frame(egui::Frame::NONE)
             .show(ctx, |ui| {
                 if self.planning_map.open {
                     self.planning_map.options = self.instrument_panel.options;
@@ -1123,8 +1106,21 @@ impl eframe::App for FlightCraftApp {
                 );
                 self.scene
                     .set_aircraft(&self.session.sim().aircraft().identity.id);
-                self.scene
-                    .show(ui, self.session.sim().state(), elapsed as f32, theme::scene());
+                let layer = egui::LayerId::new(egui::Order::Background, egui::Id::new("outside-world"));
+                let mut outside = egui::Ui::new(
+                    ctx.clone(),
+                    egui::Id::new("outside-world-ui"),
+                    egui::UiBuilder::new()
+                        .layer_id(layer)
+                        .max_rect(ctx.content_rect()),
+                );
+                self.scene.show(
+                    &mut outside,
+                    self.session.sim().state(),
+                    elapsed as f32,
+                    theme::scene(),
+                );
+                ctx.set_sublayer(layer, egui::LayerId::background());
                 let rect = ui.max_rect().shrink(24.0);
                 let painter = ui.painter();
                 painter.text(
@@ -1317,5 +1313,7 @@ fn runway_label(world: &flightcraft_control::TerrainWorld, [n, e, _]: [f64; 3]) 
     )
 }
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod panel_fidelity_tests;

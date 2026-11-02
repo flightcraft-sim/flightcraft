@@ -89,6 +89,7 @@ pub enum Ink {
     Earth,
     Normal,
     Inactive,
+    Overlay,
     Gps,
     AirspaceBlue,
     TerrainHigh,
@@ -132,6 +133,12 @@ impl Token {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DrawItem {
+    /// A uniformly scaled symbol cluster anchored within a resizable display.
+    #[serde(skip)]
+    Group {
+        center: [f32; 2],
+        items: Vec<DrawItem>,
+    },
     #[serde(skip)]
     SyntheticVision {
         min: [f32; 2],
@@ -174,6 +181,22 @@ pub struct DrawList {
     pub valid: bool,
 }
 impl DrawList {
+    #[cfg(test)]
+    pub(crate) fn flat_items(&self) -> Vec<&DrawItem> {
+        fn collect<'a>(items: &'a [DrawItem], out: &mut Vec<&'a DrawItem>) {
+            for item in items {
+                if let DrawItem::Group { items, .. } = item {
+                    collect(items, out);
+                } else {
+                    out.push(item);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        collect(&self.items, &mut out);
+        out
+    }
+
     fn circle(&mut self, center: [f32; 2], radius: f32, ink: Ink) {
         self.items.push(DrawItem::Circle { center, radius, ink });
     }
@@ -221,6 +244,7 @@ impl Skin for SkinPack {
                     Ink::Earth => t::EARTH,
                     Ink::Normal => t::GREEN,
                     Ink::Inactive => t::BORDER,
+                    Ink::Overlay => t::DIAL.gamma_multiply(0.72),
                     Ink::Gps => t::GLASS_GPS,
                     Ink::AirspaceBlue => t::AIRSPACE_BLUE,
                     Ink::TerrainHigh => t::TERRAIN_HIGH,
@@ -229,12 +253,13 @@ impl Skin for SkinPack {
                 |(_, token)| token.color(),
             )
         };
-        for item in
-            self.face.iter().chain(draw.items.iter().filter(|item| {
-                self.face.is_empty() || !matches!(item, DrawItem::Circle { ink: Ink::Face, .. })
-            }))
-        {
+        fn paint_item(p: &Painter, item: &DrawItem, color: &impl Fn(Ink) -> egui::Color32) {
             match item {
+                DrawItem::Group { items, .. } => {
+                    for child in items {
+                        paint_item(p, child, color);
+                    }
+                }
                 DrawItem::SyntheticVision { min, max, view } => {
                     view.paint(p, Rect::from_min_max((*min).into(), (*max).into()))
                 }
@@ -269,6 +294,13 @@ impl Skin for SkinPack {
                     );
                 }
             }
+        }
+        for item in
+            self.face.iter().chain(draw.items.iter().filter(|item| {
+                self.face.is_empty() || !matches!(item, DrawItem::Circle { ink: Ink::Face, .. })
+            }))
+        {
+            paint_item(p, item, &color);
         }
     }
 }
@@ -413,7 +445,7 @@ fn valid_item(item: &DrawItem) -> bool {
         x.is_finite() && y.is_finite() && (0. ..=320.).contains(&x) && (0. ..=180.).contains(&y)
     };
     match item {
-        DrawItem::Mesh { .. } | DrawItem::SyntheticVision { .. } => false,
+        DrawItem::Group { .. } | DrawItem::Mesh { .. } | DrawItem::SyntheticVision { .. } => false,
         DrawItem::Circle { center, radius, .. } => {
             let [x, y] = *center;
             point(center)
@@ -591,8 +623,8 @@ impl InstrumentPanel {
             {
                 let factor = local.width() / 500.;
                 self.map_rect = Some(Rect::from_min_size(
-                    local.min + egui::vec2(151., 40.) * factor,
-                    egui::vec2(300., 300.) * factor,
+                    local.min + egui::vec2(110., 28.) * factor,
+                    egui::vec2(390., 352.) * factor,
                 ));
             }
             let knob = match installation.module.as_str() {
@@ -666,12 +698,24 @@ impl InstrumentPanel {
     }
 }
 
-fn layout(panel: &Panel, rect: Rect) -> Vec<Rect> {
-    let [width, height] = panel.instruments.iter().fold([1_f64, 1_f64], |[w, h], i| {
+fn panel_dimensions(panel: &Panel) -> [f64; 2] {
+    panel.instruments.iter().fold([1_f64, 1_f64], |[w, h], i| {
         let [x, y] = i.position;
         let [iw, ih] = i.size;
         [w.max(x + iw), h.max(y + ih)]
-    });
+    })
+}
+pub(crate) fn view_panel_height(panel: &Panel, window: egui::Vec2, compact: bool) -> f32 {
+    let [w, h] = panel
+        .equipment
+        .as_ref()
+        .map_or_else(|| panel_dimensions(panel), |p| p.size);
+    let controls = if panel.equipment.is_some() { 10. } else { 65. };
+    (window.x * (h / w) as f32 + controls).min(window.y * if compact { 0.55 } else { 0.80 })
+}
+pub(crate) fn layout(panel: &Panel, rect: Rect) -> Vec<Rect> {
+    let [width, height] = panel_dimensions(panel);
+    let rect = panel_fit(rect, [width as f32, height as f32], None);
     panel
         .instruments
         .iter()
@@ -703,6 +747,18 @@ fn fit(cell: Rect) -> Rect {
 pub(crate) fn fit_size(cell: Rect, [width, height]: [f32; 2]) -> Rect {
     let scale = (cell.width() / width).min(cell.height() / height);
     Rect::from_center_size(cell.center(), egui::vec2(width, height) * scale)
+}
+/// Preserve panel proportions and width; crop around essential instruments in short views.
+pub(crate) fn panel_fit(available: Rect, [width, height]: [f32; 2], essential: Option<[f32; 4]>) -> Rect {
+    let scale = available.width() / width;
+    let size = egui::vec2(width, height) * scale;
+    let top = if size.y <= available.height() {
+        available.bottom() - size.y
+    } else {
+        let [_, y, _, h] = essential.unwrap_or([0., 0., width, height * 0.65]);
+        (available.center().y - (y + h * 0.5) * scale).clamp(available.bottom() - size.y, available.top())
+    };
+    Rect::from_min_size(egui::pos2(available.left(), top), size)
 }
 pub(crate) fn scaled(p: &Painter, cell: Rect, size: [f32; 2], draw: impl FnOnce(&Painter)) {
     let [width, _] = size;

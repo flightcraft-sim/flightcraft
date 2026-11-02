@@ -16,15 +16,6 @@ pub(super) fn draw_composed(
     }
     let mut d = canvas();
     d.size = [500., 440.];
-    header(
-        &mut d,
-        if standby {
-            "STANDBY ATTITUDE"
-        } else {
-            "PRIMARY FLIGHT"
-        },
-    );
-    rect(&mut d, [0., 380., 500., 60.], Ink::Face);
     let a = if standby { &s.standby } else { &s.air_data };
     d.valid = a.attitude_valid && a.air_data_valid;
     d.indicated = a.indicated_airspeed_mps;
@@ -32,32 +23,8 @@ pub(super) fn draw_composed(
         flag(&mut d, [5., 34., 490., 338.], "PFD FAIL");
         return d;
     }
-    if let Some(ap) = input.autopilot {
-        crate::autopilot::strip_draw(&mut d, ap, [0., 0., 500., 28.]);
-    } else {
-        label(
-            &mut d,
-            [68., 14.],
-            format!(
-                "HDG {}",
-                crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
-            ),
-            11.,
-            Ink::Needle,
-        );
-        label(
-            &mut d,
-            [434., 14.],
-            format!(
-                "SEL {}",
-                crate::instruments::formatting::selected_feet(s.settings.selected_altitude_m)
-            ),
-            11.,
-            Ink::Needle,
-        );
-    }
     // The full-width attitude underlays both tapes, with a fixed viewport at every pitch and bank.
-    rect(&mut d, [0., 30., 500., 190.], Ink::Sky);
+    rect(&mut d, [0., 0., 500., 440.], Ink::Sky);
     let horizon = |x, y| rotated([x, y], [250., 125.], -a.roll_rad);
     let pitch = flightcraft_render::pfd_pitch_y(a.pitch_rad);
     polygon(
@@ -69,7 +36,7 @@ pub(super) fn draw_composed(
                 horizon(900., 1000.),
                 horizon(-900., 1000.),
             ],
-            [0., 30., 500., 190.],
+            [0., 0., 500., 440.],
         ),
         Ink::Earth,
     );
@@ -82,9 +49,9 @@ pub(super) fn draw_composed(
             flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, a.pitch_rad, a.altitude_msl_m)
     {
         d.items.push(DrawItem::SyntheticVision {
-            min: [0., 30.],
-            max: [500., 220.],
-            view: Box::new(view.clone()),
+            min: [0., 0.],
+            max: [500., 440.],
+            view: Box::new(view.clone().with_pfd_viewport([0., 0., 500., 440.])),
         });
         let inside = |[x, y]: [f32; 2]| (100. ..400.).contains(&x) && (50. ..195.).contains(&y);
         let mut occupied = Vec::<[f32; 2]>::new();
@@ -124,6 +91,32 @@ pub(super) fn draw_composed(
             line(&mut d, [x + 5., y], [x + 13., y], Ink::Normal, 1.5);
             line(&mut d, [x, y - 5.], [x, y - 10.], Ink::Normal, 1.5);
         }
+    }
+    if let Some(ap) = input.autopilot {
+        crate::autopilot::strip_draw(&mut d, ap, [0., 0., 500., 28.]);
+    } else {
+        rect(&mut d, [0., 0., 136., 28.], Ink::Face);
+        rect(&mut d, [368., 0., 132., 28.], Ink::Face);
+        label(
+            &mut d,
+            [68., 14.],
+            format!(
+                "HDG {}",
+                crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
+            ),
+            11.,
+            Ink::Needle,
+        );
+        label(
+            &mut d,
+            [434., 14.],
+            format!(
+                "SEL {}",
+                crate::instruments::formatting::selected_feet(s.settings.selected_altitude_m)
+            ),
+            11.,
+            Ink::Needle,
+        );
     }
     if a.attitude_valid {
         for degrees in [-30_i32, -20, -10, -5, 0, 5, 10, 20, 30] {
@@ -223,20 +216,6 @@ pub(super) fn draw_composed(
                     polygon(&mut d, vec![[75., y], [82., y - 3.], [82., y + 3.]], ink);
                 }
             }
-            if !s.reversion || standby {
-                label(
-                    &mut d,
-                    [151., 233.],
-                    format!(
-                        "Vr {:.0}  Vx {:.0}  Vy {:.0}",
-                        v.vr_mps * KNOTS,
-                        v.vx_mps * KNOTS,
-                        v.vy_mps * KNOTS
-                    ),
-                    9.,
-                    Ink::Needle,
-                );
-            }
         }
         trend(&mut d, 83., a.airspeed_trend_mps * KNOTS * 2.);
         trend(&mut d, 395., a.altitude_trend_m * FEET * 0.2);
@@ -253,16 +232,6 @@ pub(super) fn draw_composed(
             crate::instruments::formatting::selected_feet(s.settings.selected_altitude_m),
             11.,
             Ink::Needle,
-        );
-        label(
-            &mut d,
-            [454., 232.],
-            format!(
-                "VS {}",
-                crate::instruments::formatting::vertical_speed(a.vertical_speed_mps)
-            ),
-            10.,
-            Ink::Text,
         );
         rect(&mut d, [472., 37., 28., 181.], Ink::Face);
         for tick in -8..=8 {
@@ -288,131 +257,124 @@ pub(super) fn draw_composed(
     } else {
         format!("{:.2} inHg", s.baro_pa / 3386.389)
     };
-    label(&mut d, [444., 253.], baro, 11., Ink::Needle);
-    let cy = if s.reversion && !standby { 335. } else { 320. };
-    let radius = if s.reversion && !standby { 55. } else { 64. };
-    if show_hsi {
-        hsi(&mut d, s, cy, radius, a.attitude_valid, a.heading_rad);
-    }
-    if !s.reversion || standby {
-        label(
-            &mut d,
-            [250., 225.],
-            if a.attitude_valid {
-                format!("{}°", crate::instruments::heading::degrees_text(a.heading_rad))
-            } else {
-                "---°".into()
-            },
-            12.,
-            Ink::Text,
-        );
-    }
-    crate::instruments::heading::knob_art(&mut d, [359., 404.], 11.);
-    label(
-        &mut d,
-        [421., 404.],
-        format!(
-            "HDG {}",
-            crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
-        ),
-        11.,
-        Ink::Needle,
-    );
-    let gps = &s.gps;
-    for (row, text, ink) in [
-        (
-            0,
-            if gps.valid {
-                format!(
-                    "{} {}{}",
-                    gps.source,
-                    gps.destination.as_deref().unwrap_or(""),
-                    if gps.waypoint_alert && gps.source == "GPS" {
-                        " WPT"
-                    } else {
-                        ""
-                    }
-                )
-            } else {
-                if gps.source == "GPS" {
-                    "NO GPS LEG"
+    if !s.reversion {
+        // Corner boxes stay above the bottom insets; only the rose has a translucent backing.
+        rect(&mut d, [0., 222., 168., 70.], Ink::Face);
+        rect(&mut d, [368., 222., 132., 70.], Ink::Face);
+        let gps = &s.gps;
+        for (row, text, ink) in [
+            (
+                0,
+                if gps.valid {
+                    format!(
+                        "{} {}{}",
+                        gps.source,
+                        gps.destination.as_deref().unwrap_or(""),
+                        if gps.waypoint_alert && gps.source == "GPS" {
+                            " WPT"
+                        } else {
+                            ""
+                        }
+                    )
+                } else if gps.source == "GPS" {
+                    "NO GPS LEG".into()
                 } else {
-                    "NO NAV SIGNAL"
-                }
-                .into()
-            },
-            Ink::Gps,
-        ),
-        (
-            1,
-            format!("DTK {:03.0}", gps.desired_track_rad.to_degrees()),
-            Ink::Gps,
-        ),
-        (
-            2,
-            if gps.distance_valid {
-                format!("DIS {:.1} NM", gps.distance_nm)
-            } else {
-                "DIS —".into()
-            },
-            Ink::Text,
-        ),
-        (3, format!("XTK {:+.2} NM", gps.cross_track_nm), Ink::Text),
-        (
-            4,
-            if gps.source == "GPS" {
+                    "NO NAV SIGNAL".into()
+                },
+                Ink::Gps,
+            ),
+            (
+                1,
+                format!("DTK {:03.0}", gps.desired_track_rad.to_degrees()),
+                Ink::Gps,
+            ),
+            (
+                2,
+                if gps.distance_valid {
+                    format!("DIS {:.1} NM", gps.distance_nm)
+                } else {
+                    "DIS —".into()
+                },
+                Ink::Text,
+            ),
+            (3, format!("XTK {:+.2} NM", gps.cross_track_nm), Ink::Text),
+            (
+                4,
+                if gps.source == "GPS" {
+                    format!(
+                        "{} CDI ±{:.1} NM{}",
+                        gps.annunciation,
+                        gps.cdi_full_scale_nm,
+                        if gps.suspended { " SUSP" } else { "" }
+                    )
+                } else {
+                    format!("{} CDI ±2.5 DOT", gps.annunciation)
+                },
+                Ink::Muted,
+            ),
+        ] {
+            label(&mut d, [84., 229. + row as f32 * 13.], text, 10., ink);
+        }
+        for (y, text, ink) in [
+            (231., baro, Ink::Needle),
+            (
+                248.,
                 format!(
-                    "{} CDI ±{:.1} NM{}",
-                    gps.annunciation,
-                    gps.cdi_full_scale_nm,
-                    if gps.suspended { " SUSP" } else { "" }
-                )
-            } else {
-                format!("{} CDI ±2.5 DOT", gps.annunciation)
-            },
-            Ink::Muted,
-        ),
-    ] {
-        label(&mut d, [80., 267. + row as f32 * 18.], text, 11., ink);
+                    "VS {}",
+                    crate::instruments::formatting::vertical_speed(a.vertical_speed_mps)
+                ),
+                Ink::Text,
+            ),
+            (
+                265.,
+                format!(
+                    "WIND {:03.0}/{:.0}",
+                    s.wind_from_rad.to_degrees(),
+                    s.wind_speed_mps * KNOTS
+                ),
+                Ink::Text,
+            ),
+            (
+                282.,
+                format!(
+                    "OAT {}",
+                    if input.options.engine == crate::instruments::EngineUnits::Us {
+                        format!("{:.0} °F", a.outside_temperature_c * 1.8 + 32.)
+                    } else {
+                        format!("{:.0} °C", a.outside_temperature_c)
+                    }
+                ),
+                Ink::Text,
+            ),
+        ] {
+            label(&mut d, [434., y], text, 11., ink);
+        }
     }
+    if show_hsi {
+        let start = d.items.len();
+        hsi(&mut d, s, 350., 56., a.attitude_valid, a.heading_rad);
+        let items = d.items.drain(start..).collect();
+        d.items.push(DrawItem::Group {
+            center: [250., 350.],
+            items,
+        });
+    }
+    rect(&mut d, [208., 256., 84., 24.], Ink::Face);
     label(
         &mut d,
-        [422., 294.],
-        format!(
-            "WIND {:03.0}/{:.0}",
-            s.wind_from_rad.to_degrees(),
-            s.wind_speed_mps * KNOTS
-        ),
-        11.,
+        [250., 268.],
+        if a.attitude_valid {
+            format!("{}°", crate::instruments::heading::degrees_text(a.heading_rad))
+        } else {
+            "---°".into()
+        },
+        16.,
         Ink::Text,
     );
-    let wind = |len| rotated([0., len], [422., 319.], s.wind_from_rad - a.heading_rad);
-    line(&mut d, wind(-9.), wind(9.), Ink::Text, 2.);
-    let tip = wind(9.);
-    line(
-        &mut d,
-        tip,
-        rotated([-4., 4.], [422., 319.], s.wind_from_rad - a.heading_rad),
-        Ink::Text,
-        2.,
-    );
+    rect(&mut d, [0., 394., 168., 22.], Ink::Face);
     label(
         &mut d,
-        [422., 350.],
-        format!(
-            "OAT {}",
-            if input.options.engine == crate::instruments::EngineUnits::Us {
-                format!("{:.0} °F", a.outside_temperature_c * 1.8 + 32.)
-            } else {
-                format!("{:.0} °C", a.outside_temperature_c)
-            }
-        ),
-        11.,
-        Ink::Text,
-    );
-    label(
-        &mut d,
-        [421., 378.],
+        [84., 405.],
         format!(
             "XPDR {} {:?}",
             s.settings.transponder_code, s.settings.transponder_mode
@@ -421,47 +383,53 @@ pub(super) fn draw_composed(
         11.,
         Ink::Text,
     );
-    if s.reversion && !standby {
-        rect(&mut d, [3., 221., 407., 37.], Ink::Face);
+    rect(&mut d, [344., 392., 156., 24.], Ink::Face);
+    crate::instruments::heading::knob_art(&mut d, [359., 404.], 11.);
+    label(
+        &mut d,
+        [429., 404.],
+        format!(
+            "HDG {}",
+            crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
+        ),
+        11.,
+        Ink::Needle,
+    );
+    if s.reversion {
+        rect(&mut d, [93., 222., 314., 37.], Ink::Face);
         for (i, v) in s.engine.iter().take(10).enumerate() {
-            let x = 43. + (i % 5) as f32 * 81.;
-            let y = 230. + (i / 5) as f32 * 17.;
             label(
                 &mut d,
-                [x, y],
+                [124. + (i % 5) as f32 * 62., 230. + (i / 5) as f32 * 17.],
                 format!("{} {:.0}", v.label, v.value),
-                8.,
+                7.,
                 Ink::Warning,
             );
         }
     }
-    label(
-        &mut d,
-        [91., 427.],
-        if a.air_data_valid {
-            format!("TAS {:.0} KT", a.true_airspeed_mps * KNOTS)
-        } else {
-            "TAS ---".into()
-        },
-        11.,
-        Ink::Text,
-    );
-    label(
-        &mut d,
-        [251., 427.],
-        format!("GS {:.0} KT", s.ground_speed_mps * KNOTS),
-        11.,
-        Ink::Text,
-    );
-    label(
-        &mut d,
-        [421., 427.],
-        format!("TRK {:03.0}", s.ground_track_rad.to_degrees()),
-        11.,
-        Ink::Text,
-    );
+    for (x, w, text) in [
+        (
+            0.,
+            166.,
+            if a.air_data_valid {
+                format!("TAS {:.0} KT", a.true_airspeed_mps * KNOTS)
+            } else {
+                "TAS ---".into()
+            },
+        ),
+        (167., 166., format!("GS {:.0} KT", s.ground_speed_mps * KNOTS)),
+        (
+            334.,
+            166.,
+            format!("TRK {:03.0}", s.ground_track_rad.to_degrees()),
+        ),
+    ] {
+        rect(&mut d, [x, 418., w, 22.], Ink::Face);
+        label(&mut d, [x + w * 0.5, 429.], text, 12., Ink::Text);
+    }
     d
 }
+
 fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, scale: f32, altitude: bool) {
     rect(d, [x, 37., 68., 181.], Ink::Face);
     for tick in -6..=6 {
@@ -472,12 +440,12 @@ fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, scale: f32, altitude: b
             continue;
         }
         line(d, [x + 56., y], [x + 65., y], Ink::Text, 1.);
-        if (y - 128.).abs() > 16. {
+        if (y - 128.).abs() > 22. {
             label(
                 d,
                 [x + 34., y],
                 crate::instruments::formatting::integer(v),
-                12.,
+                14.,
                 Ink::Text,
             );
         }
@@ -487,7 +455,7 @@ fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, scale: f32, altitude: b
         d,
         [x + 34., 128.],
         crate::instruments::formatting::integer(value),
-        16.,
+        19.,
         Ink::Text,
     );
 }
@@ -501,6 +469,7 @@ fn hsi(d: &mut DrawList, s: &GlassState, cy: f32, r: f32, valid: bool, heading: 
         flag(d, [183., cy - r - 4., 134., r * 2. + 8.], "HDG FAIL");
         return;
     }
+    circle(d, [250., cy], r + 18., Ink::Overlay);
     for deg in (0..360).step_by(10) {
         let angle = f64::from(deg).to_radians() - heading;
         let point = |rad: f32| {
@@ -583,9 +552,7 @@ fn standby_draw(s: &GlassState, input: InstrumentInput<'_>) -> DrawList {
         indicated: a.indicated_airspeed_mps,
         valid: a.attitude_valid,
     };
-    rect(&mut d, [0., 0., 200., 180.], Ink::Face);
-    label(&mut d, [100., 11.], "STANDBY", 11., Ink::Text);
-    rect(&mut d, [4., 23., 192., 110.], Ink::Sky);
+    rect(&mut d, [0., 0., 200., 180.], Ink::Sky);
     let horizon = |x, y| rotated([x, y], [100., 78.], -a.roll_rad);
     let pitch = a.pitch_rad.to_degrees() as f32 * 1.5;
     polygon(
@@ -597,7 +564,7 @@ fn standby_draw(s: &GlassState, input: InstrumentInput<'_>) -> DrawList {
                 horizon(500., 500.),
                 horizon(-500., 500.),
             ],
-            [4., 23., 192., 110.],
+            [0., 0., 200., 180.],
         ),
         Ink::Earth,
     );
@@ -631,6 +598,12 @@ fn standby_draw(s: &GlassState, input: InstrumentInput<'_>) -> DrawList {
             [5., 26., 190., 100.],
             if a.powered { "ALIGNING" } else { "OFF" },
         );
+    }
+    rect(&mut d, [58., 0., 84., 20.], Ink::Face);
+    label(&mut d, [100., 10.], "STANDBY", 11., Ink::Text);
+    rect(&mut d, [0., 135., 200., 24.], Ink::Face);
+    if s.standby_on_backup {
+        rect(&mut d, [40., 158., 120., 22.], Ink::Face);
     }
     label(
         &mut d,

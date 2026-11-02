@@ -231,7 +231,7 @@ fn skins_and_panels_load_atomically_and_reject_hostile_art() {
 }
 
 #[test]
-fn both_aircraft_layouts_fit_both_panel_sizes_and_paint_within_bounds() {
+fn both_aircraft_layouts_keep_aspect_and_paint_valid_geometry_when_cropped() {
     let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
     let ctx = egui::Context::default();
     t::install(&ctx);
@@ -244,7 +244,7 @@ fn both_aircraft_layouts_fit_both_panel_sizes_and_paint_within_bounds() {
                 let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(width - 24., panel_height - 55.));
                 let cells = layout(&panel, rect);
                 for (i, a) in cells.iter().enumerate() {
-                    assert!(rect.expand(0.001).contains_rect(*a));
+                    assert!(a.is_positive());
                     assert!(a.expand(0.001).contains_rect(fit(*a)));
                     for b in cells.iter().skip(i + 1) {
                         let overlap = a.intersect(*b);
@@ -272,11 +272,7 @@ fn both_aircraft_layouts_fit_both_panel_sizes_and_paint_within_bounds() {
                 for shape in output.shapes {
                     let bounds = shape.shape.visual_bounding_rect();
                     if bounds.is_positive() {
-                        assert!(
-                            shape.clip_rect.expand(1.).contains_rect(bounds),
-                            "{name}: {bounds:?} outside {:?}",
-                            shape.clip_rect
-                        );
+                        assert!(bounds.is_finite(), "{name}: invalid cropped shape {bounds:?}");
                     }
                 }
             }

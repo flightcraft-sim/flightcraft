@@ -9,13 +9,15 @@ pub(super) fn draw(s: &GlassState, options: crate::instruments::DisplayOptions) 
     }
     engine_strip(&mut d, s, options);
     line(&mut d, [109., 32.], [109., 352.], Ink::Inactive, 1.);
-    label(
-        &mut d,
-        [306., 368.],
-        s.region.as_deref().unwrap_or("NO REGION / NO GPS"),
-        11.,
-        Ink::Muted,
-    );
+    if s.settings.page != GlassPage::Map {
+        label(
+            &mut d,
+            [306., 368.],
+            s.region.as_deref().unwrap_or("NO REGION / NO GPS"),
+            11.,
+            Ink::Muted,
+        );
+    }
     match s.settings.page {
         GlassPage::Map => map(&mut d, s),
         GlassPage::Nearest | GlassPage::FlightPlan => {
@@ -70,9 +72,9 @@ pub(super) fn draw(s: &GlassState, options: crate::instruments::DisplayOptions) 
     d
 }
 fn map(d: &mut DrawList, s: &GlassState) {
-    // Square plotting area keeps range rings and true bearings geometrically correct.
-    let point = |[x, y]: [f64; 2]| [151. + x as f32 * 300., 40. + y as f32 * 300.];
-    let bounds = [151., 40., 300., 300.];
+    // Equal horizontal and vertical scales preserve range rings; clip to the full content area.
+    let point = |[x, y]: [f64; 2]| [110. + x as f32 * 390., 9. + y as f32 * 390.];
+    let bounds = [110., 28., 390., 352.];
     rect(d, bounds, Ink::Inactive);
     let raster = &s.terrain;
     if raster.columns > 1 && raster.rows > 1 {
@@ -89,7 +91,8 @@ fn map(d: &mut DrawList, s: &GlassState) {
             } else {
                 (Ink::Inactive, Ink::Inactive, 0.)
             };
-            vertices.push((point([x, y]), ink, other, blend));
+            let [px, py] = point([x, y]);
+            vertices.push(([px, py.clamp(28., 380.)], ink, other, blend));
         }
         let mut indices = Vec::new();
         for row in 0..raster.rows - 1 {
@@ -157,7 +160,7 @@ fn map(d: &mut DrawList, s: &GlassState) {
             clipped_line(d, point(*a), point(*b), bounds, Ink::Text, 2.);
         }
         let [x, y] = point(airport.position);
-        if (163. ..439.).contains(&x) && (57. ..322.).contains(&y) {
+        if (124. ..486.).contains(&x) && (45. ..330.).contains(&y) {
             circle(d, [x, y], 2., Ink::Text);
             if labels
                 .iter()
@@ -175,10 +178,10 @@ fn map(d: &mut DrawList, s: &GlassState) {
         vec![nose(0., -10.), nose(6., 8.), nose(0., 4.), nose(-6., 8.)],
         Ink::Needle,
     );
-    rect(d, [155., 321., 292., 18.], Ink::Face);
+    rect(d, [110., 340., 390., 40.], Ink::Face);
     label(
         d,
-        [301., 330.],
+        [305., 350.],
         format!(
             "{:?}   {:.0} NM   RING {:.0}",
             s.settings.orientation,
@@ -191,7 +194,7 @@ fn map(d: &mut DrawList, s: &GlassState) {
     );
     label(
         d,
-        [302., 350.],
+        [305., 369.],
         if s.air_data.air_data_valid {
             "MAP SETTINGS SHARED WITH PLANNING"
         } else {

@@ -174,13 +174,10 @@ impl PanelUi {
         self.maps.clear();
         self.procedure_rect = None;
         let (available, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
-        let [width, height] = panel.size;
-        let scale = (available.width() / width as f32).min(available.height() / height as f32);
-        let rect = Rect::from_center_size(
-            available.center(),
-            egui::vec2(width as f32, height as f32) * scale,
-        );
-        if panel.shell.as_ref().is_none_or(|s| s.palette.face.is_none()) {
+        let [width, _] = panel.size;
+        let rect = crate::panel_preview::equipment_rect(panel, available);
+        let scale = rect.width() / width as f32;
+        if panel.shell.is_none() {
             ui.painter().rect(
                 rect,
                 if panel.shape == PanelShape::Rounded {
@@ -1439,9 +1436,13 @@ mod tests {
             .with_glass(&glass);
         let mut runtime = PanelUi::default();
         let switch = panel.elements.iter().find(|e| e.id == "switch_master").unwrap();
-        let [w, h] = panel.size;
-        let scale = (1600_f32 / w as f32).min(800_f32 / h as f32);
-        let origin = egui::pos2((1600. - w as f32 * scale) * 0.5, (800. - h as f32 * scale) * 0.5);
+        let fit = crate::panel_preview::equipment_rect(
+            panel,
+            Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1600., 800.)),
+        );
+        let [w, _] = panel.size;
+        let scale = fit.width() / w as f32;
+        let origin = fit.min;
         let [x, y] = switch.position;
         let [sw, sh] = switch.size;
         let position = origin + egui::vec2((x + sw * 0.5) as f32, (y + sh * 0.5) as f32) * scale;

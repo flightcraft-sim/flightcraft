@@ -6,6 +6,35 @@ use flightcraft_control::Session;
 use image::{Rgba, RgbaImage};
 use std::collections::BTreeMap;
 
+/// The same width fit used by equipment artwork, controls, maps, and comparison crops.
+pub(crate) fn equipment_rect(panel: &flightcraft_aero::modern::EquipmentPanel, available: Rect) -> Rect {
+    crate::instruments::panel_fit(
+        available,
+        panel.size.map(|v| v as f32),
+        panel.essential.map(|r| r.map(|v| v as f32)),
+    )
+}
+/// Pixel-space [left, top, scale] for crops of a full-window equipment capture.
+pub fn equipment_transform(
+    panel: &flightcraft_aero::modern::EquipmentPanel,
+    width: u32,
+    height: u32,
+) -> Result<[f64; 3], String> {
+    panel.validate().map_err(|e| e.to_string())?;
+    if width == 0 || height == 0 {
+        return Err("preview dimensions must be positive".into());
+    }
+    let rect = equipment_rect(
+        panel,
+        Rect::from_min_size(Pos2::ZERO, egui::vec2(width as f32, height as f32)),
+    );
+    Ok([
+        f64::from(rect.left()),
+        f64::from(rect.top()),
+        f64::from(rect.width()) / panel.size.first().copied().unwrap_or(1.),
+    ])
+}
+
 /// Capture installed equipment without advancing simulation time. Bounded to 16 megapixels.
 pub fn render_equipment_panel(session: &mut Session, width: u32, height: u32) -> Result<RgbaImage, String> {
     if width == 0
@@ -45,7 +74,11 @@ pub fn render_equipment_panel(session: &mut Session, width: u32, height: u32) ->
     }
     Ok(image)
 }
-fn rasterize(width: u32, height: u32, mut paint: impl FnMut(&mut egui::Ui)) -> Result<RgbaImage, String> {
+pub(crate) fn rasterize(
+    width: u32,
+    height: u32,
+    mut paint: impl FnMut(&mut egui::Ui),
+) -> Result<RgbaImage, String> {
     let ctx = egui::Context::default();
     t::install(&ctx);
     ctx.set_pixels_per_point(1.);
@@ -62,7 +95,7 @@ fn rasterize(width: u32, height: u32, mut paint: impl FnMut(&mut egui::Ui)) -> R
             },
             |ctx| {
                 egui::CentralPanel::default()
-                    .frame(egui::Frame::new().fill(t::BACKGROUND))
+                    .frame(egui::Frame::new().fill(t::BACKGROUND).inner_margin(0.))
                     .show(ctx, |ui| paint(ui));
             },
         );

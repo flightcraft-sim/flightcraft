@@ -463,6 +463,10 @@ pub struct EquipmentPanel {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shell: Option<PanelShell>,
     pub size: [f64; 2],
+    /// Optional essential rectangle [left, top, width, height], in panel millimetres.
+    /// Short viewports anchor cropping around this area without distorting the panel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub essential: Option<[f64; 4]>,
     pub color: PanelColor,
     pub shape: PanelShape,
     #[schemars(length(min = 1, max = 128))]
@@ -477,6 +481,20 @@ impl EquipmentPanel {
             "panel.size",
             "requires 1..10000",
         )?;
+        if let Some([x, y, w, h]) = self.essential {
+            let [pw, ph] = self.size;
+            require(
+                [x, y, w, h].iter().all(|v| v.is_finite())
+                    && x >= 0.
+                    && y >= 0.
+                    && w > 0.
+                    && h > 0.
+                    && x + w <= pw
+                    && y + h <= ph,
+                "panel.essential",
+                "requires a positive rectangle within the panel",
+            )?;
+        }
         require(
             (1..=128).contains(&self.elements.len()),
             "panel.elements",

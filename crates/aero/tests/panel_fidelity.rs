@@ -11,6 +11,26 @@ fn panel() -> EquipmentPanel {
     p.equipment.unwrap()
 }
 #[test]
+fn essential_panel_region_rejects_invalid_and_outside_bounds() {
+    let mut p = panel();
+    assert!(p.essential.is_none());
+    for region in [
+        [0., 0., 0., 10.],
+        [-1., 0., 10., 10.],
+        [0., 0., 1251., 700.],
+        [0., 699., 10., 2.],
+        [f64::NAN, 0., 10., 10.],
+        [0., 0., f64::INFINITY, 10.],
+    ] {
+        p.essential = Some(region);
+        assert!(p.validate().is_err(), "accepted {region:?}");
+    }
+    p.essential = Some([80., 90., 1120., 430.]);
+    p.validate().unwrap();
+    let encoded = serde_json::to_string(&p).unwrap();
+    assert_eq!(serde_json::from_str::<EquipmentPanel>(&encoded).unwrap(), p);
+}
+#[test]
 fn old_pack_defaults_and_all_optional_artwork_fields_round_trip() {
     let mut p = panel();
     assert!(

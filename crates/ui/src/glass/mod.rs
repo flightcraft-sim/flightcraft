@@ -178,7 +178,7 @@ fn engine_display(
 }
 
 /// Fill the installation viewport while keeping circular symbols and text undistorted.
-fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
+pub(crate) fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
     use crate::instruments::{Skin, SkinPack};
     let [w, h] = draw.size;
     let (sx, sy) = (area.width() / w, area.height() / h);
@@ -187,8 +187,20 @@ fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
         *x = area.left() + *x * sx;
         *y = area.top() + *y * sy;
     };
-    for item in &mut draw.items {
+    fn transform(item: &mut DrawItem, point: &dyn Fn(&mut [f32; 2]), factor: f32) {
         match item {
+            DrawItem::Group { center, items } => {
+                let [cx, cy] = *center;
+                point(center);
+                let [mx, my] = *center;
+                let uniform = |[x, y]: &mut [f32; 2]| {
+                    *x = mx + (*x - cx) * factor;
+                    *y = my + (*y - cy) * factor;
+                };
+                for child in items {
+                    transform(child, &uniform, factor);
+                }
+            }
             DrawItem::SyntheticVision { min, max, .. } => {
                 point(min);
                 point(max);
@@ -199,7 +211,8 @@ fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
             }
             DrawItem::Label { at, size, .. } => {
                 point(at);
-                *size = (*size * factor).max(5.);
+                // Typography must scale with its reserved box to preserve caption separation.
+                *size = (*size * factor).max(0.01);
             }
             DrawItem::Line { a, b, width, .. } => {
                 point(a);
@@ -217,6 +230,9 @@ fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
                 }
             }
         }
+    }
+    for item in &mut draw.items {
+        transform(item, &point, factor);
     }
     SkinPack {
         id: "original".into(),
@@ -459,9 +475,13 @@ pub(crate) fn paint_touch(
             Some(left)
         }
         TouchLayout::MapEngine => {
-            let (map, engine) = main.split_left_right_at_fraction(0.68);
-            maps.push(MapViewport::shared(map));
-            touch_engine(ui, engine, &shared, input, composition.engine_style);
+            maps.push(MapViewport::shared(main));
+            if strip == 0. {
+                let (engine, map) = content.split_left_right_at_fraction(0.20);
+                maps.clear();
+                maps.push(MapViewport::shared(map));
+                touch_engine(ui, engine, &shared, input, composition.engine_style);
+            }
             None
         }
     };
@@ -496,7 +516,7 @@ pub(crate) fn paint_touch(
                                 0.68
                             },
                     ),
-                egui::vec2(primary.width() * 0.27, primary.height() * 0.25),
+                egui::vec2(primary.width() * 0.27, primary.height() * 0.21),
             );
             match inset.content {
                 DisplayInset::Map => maps.push(MapViewport::shared(rect)),
@@ -532,16 +552,8 @@ pub(crate) fn paint_touch(
 }
 
 pub(crate) fn paint_standby(ui: &egui::Ui, cell: egui::Rect, state: &GlassState, input: InstrumentInput<'_>) {
-    use crate::instruments::{Skin, SkinPack, fit_size, scaled};
     let draw = pfd::draw(state, input, true);
-    let skin = SkinPack {
-        id: "original".into(),
-        colors: Vec::new(),
-        face: Vec::new(),
-    };
-    scaled(ui.painter(), fit_size(cell, draw.size), draw.size, |p| {
-        skin.paint(p, &draw)
-    });
+    paint_fill(ui, cell, draw);
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

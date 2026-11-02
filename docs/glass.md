@@ -243,3 +243,24 @@ live geometric GPS tracks use current WMM, so older published variation can diff
 Track-up rotates map geometry by the grid ground track; heading-up converts the magnetic AHRS
 heading back into the grid before rotating. Numeric heading/track readouts stay magnetic.
 North-up follows true geographic north. This avoids rotating the map twice by the declination.
+
+## Display layout
+
+The attitude viewport covers the entire PFD, including the space beneath the tapes, HSI,
+corner data boxes, and insets. The HSI has a translucent backing confined to its rose.
+Standby attitude uses the full face, with compact readout boxes along the lower edge.
+Touch PFD and integrated PFD pages share this composition; their insets overlay the bottom
+corners. Tape readouts use larger type than secondary data. Map pages fill their content
+rectangle beside a narrow engine column, with map information overlaid at the bottom.
+
+The layout regression tests measure uncovered background across Corvid, standby, and touch
+PFD content and verify panel width at desktop and phone viewport sizes. The ignored
+`render_layout_previews` UI test writes 1920×1080 captures under `out/layout/after/`;
+set `FLIGHTCRAFT_LAYOUT_STAGE=before` to capture the baseline before changing layouts.
+An optional `FLIGHTCRAFT_LAYOUT_PACK` directory includes a local external pack in the capture.
+CPU captures show the analytic attitude background; synthetic terrain requires the GPU preview.
+
+The HSI symbol cluster scales uniformly within wide touch and pop-out displays, so the rose,
+CDI, heading bug, and translucent disk remain circular while the attitude background fills
+the rectangle. The extended synthetic-vision viewport preserves the optical centre and
+focal scale used by the pitch ladder and flight-path marker.

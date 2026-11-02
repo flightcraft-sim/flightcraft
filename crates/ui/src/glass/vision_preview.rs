@@ -483,3 +483,80 @@ fn pfd_disabled(capture: &mut Capture, session: &Session, pose: &State, glass: &
     capture.draw(|ui| pfd(ui, session, pose, glass));
     assert_eq!(synthetic_vision_stats(&capture.state).terrain_passes, 0);
 }
+
+#[test]
+#[ignore = "requires a graphics adapter; full HD cockpit layout previews"]
+fn render_layout_cockpit_previews() {
+    pollster::block_on(async {
+        let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/layout/after");
+        std::fs::create_dir_all(&out).unwrap();
+        let external = std::env::var_os("FLIGHTCRAFT_LAYOUT_PACK");
+        for (name, id) in [
+            ("equipment-demo", "equipment-demonstrator"),
+            ("panel-fidelity-demo", "equipment-fidelity-demonstrator"),
+            ("sling", "sling2"),
+        ] {
+            let mut session = crate::panel_fidelity_tests::geographic_session();
+            if name == "sling" {
+                let Some(path) = external.as_ref() else { continue };
+                session
+                    .install_pack(&flightcraft_control::read_pack(std::path::Path::new(path)).unwrap())
+                    .unwrap();
+            } else if name == "equipment-demo" {
+                let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../examples/packs/equipment-demo");
+                session
+                    .install_pack(&flightcraft_control::read_pack(&path).unwrap())
+                    .unwrap();
+            }
+            session
+                .execute(
+                    "aircraft.load",
+                    serde_json::json!({"source":{"kind":"installed","id":id},"reset":true}),
+                )
+                .unwrap();
+            session.execute("sim.reset",serde_json::json!({"world":"panel-preview","start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":0.5}})).unwrap();
+            session
+                .execute(
+                    "assist.set",
+                    serde_json::json!({"altitude_m":1200.,"airspeed_mps":45.,"heading_rad":0.5}),
+                )
+                .unwrap();
+            session
+                .execute("sim.step", serde_json::json!({"steps":7200}))
+                .unwrap();
+            let config = session.aircraft_configuration().unwrap().clone();
+            let state = session.glass_state();
+            let mut scene = flightcraft_render::Scene::default();
+            scene.camera = flightcraft_render::CameraMode::Cockpit;
+            scene.set_world(session.sim().world());
+            let mut panel = crate::instruments::InstrumentPanel::default();
+            let mut capture = Capture::new([1920, 1080]).await;
+            for _ in 0..3 {
+                capture.draw(|ui| {
+                    scene.show(ui, session.sim().state(), 0., crate::theme::scene());
+                    panel
+                        .show(
+                            ui,
+                            &config.panel,
+                            InstrumentInput::new(session.sim().systems(), session.sim().state().time_s)
+                                .with_aircraft(&config)
+                                .with_glass(&state)
+                                .with_vision(session.sim().world(), session.sim().state())
+                                .with_autopilot(session.sim().installed_autopilot()),
+                            session.flight_generation(),
+                        )
+                        .unwrap();
+                    panel.show_shared_hosts(ui, &mut session);
+                });
+            }
+            let image = capture.image();
+            // The open area above the glare shield must show the outside scene.
+            let sky = image.get_pixel(960, 20).0;
+            assert_ne!(sky, crate::theme::BACKGROUND.to_array());
+            assert_ne!(sky, crate::theme::PANEL.to_array());
+            image.save(out.join(format!("{name}-cockpit.png"))).unwrap();
+            capture.validate().await;
+        }
+    });
+}
