@@ -328,6 +328,25 @@
           ],
           "type": "string"
         },
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -419,6 +438,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -554,6 +763,36 @@
             "both"
           ],
           "type": "string"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -910,6 +1149,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -1026,6 +1268,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -3397,6 +3640,25 @@
           ],
           "type": "string"
         },
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -3488,6 +3750,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -3623,6 +4075,36 @@
             "both"
           ],
           "type": "string"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -3979,6 +4461,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -4095,6 +4580,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -4398,6 +4884,25 @@
     },
     "output_schema": {
       "$defs": {
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -4445,6 +4950,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -4581,6 +5276,36 @@
           ],
           "type": "string"
         },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -4710,6 +5435,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -4826,6 +5554,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -5259,6 +5988,25 @@
     },
     "output_schema": {
       "$defs": {
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -5306,6 +6054,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -5442,6 +6380,36 @@
           ],
           "type": "string"
         },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -5571,6 +6539,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -5687,6 +6658,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -5973,6 +6945,25 @@
     },
     "output_schema": {
       "$defs": {
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -6020,6 +7011,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -6156,6 +7337,36 @@
           ],
           "type": "string"
         },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -6285,6 +7496,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -6401,6 +7615,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -6576,6 +7791,25 @@
     },
     "output_schema": {
       "$defs": {
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -6623,6 +7857,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -6759,6 +8183,36 @@
           ],
           "type": "string"
         },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
         "SensedInstruments": {
           "properties": {
             "altitude_msl_m": {
@@ -6888,6 +8342,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -7004,6 +8461,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -7982,6 +9440,25 @@
           ],
           "type": "string"
         },
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -8073,6 +9550,196 @@
             "main_bus_voltage",
             "essential_bus_voltage",
             "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
           ],
           "type": "object"
         },
@@ -8208,6 +9875,36 @@
             "both"
           ],
           "type": "string"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -8564,6 +10261,9 @@
         },
         "SystemsState": {
           "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
             "carb_heat_installed": {
               "type": "boolean"
             },
@@ -8680,6 +10380,7 @@
             }
           },
           "required": [
+            "avionics",
             "enabled",
             "vacuum_installed",
             "carb_heat_installed",
@@ -9178,6 +10879,708 @@
         "longitude_deg"
       ],
       "title": "Coordinate",
+      "type": "object"
+    }
+  },
+  {
+    "name": "avionics.set",
+    "description": "Set a standby unit's heading bug, course, baro, altitude, direct-to airport, power, reversion, or sensor failure.",
+    "input_schema": {
+      "$defs": {
+        "AvionicsSetting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 360,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "course",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "baro",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 105000,
+                  "minimum": 95000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "feet": {
+                  "format": "double",
+                  "maximum": 30000,
+                  "minimum": -1000,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "feet"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "maxLength": 8,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "direct_to",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "power",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "ahrs_failure",
+                  "type": "string"
+                },
+                "unit": {
+                  "$ref": "#/$defs/Unit"
+                }
+              },
+              "required": [
+                "kind",
+                "unit",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "air_data_failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "reversion",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "enabled"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Unit": {
+          "enum": [
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "setting": {
+          "$ref": "#/$defs/AvionicsSetting"
+        }
+      },
+      "required": [
+        "setting"
+      ],
+      "title": "SetAvionics",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "electronic_attitude": {
+          "$ref": "#/$defs/ElectronicAttitude"
+        },
+        "electronic_hsi": {
+          "$ref": "#/$defs/ElectronicHsi"
+        },
+        "installed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "installed",
+        "electronic_attitude",
+        "electronic_hsi"
+      ],
+      "title": "AvionicsState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "avionics.state",
+    "description": "Read the displayed standby values, power, alignment, validity flags, GPS guidance, and reversion state without advancing time.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetAvionics",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "electronic_attitude": {
+          "$ref": "#/$defs/ElectronicAttitude"
+        },
+        "electronic_hsi": {
+          "$ref": "#/$defs/ElectronicHsi"
+        },
+        "installed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "installed",
+        "electronic_attitude",
+        "electronic_hsi"
+      ],
+      "title": "AvionicsState",
       "type": "object"
     }
   }

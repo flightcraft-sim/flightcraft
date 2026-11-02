@@ -1,6 +1,8 @@
 //! Instrument modules emit draw lists in local coordinates, with explicit canvas dimensions.
 //! Skins consume only that list and theme tokens; panel actions return command inputs.
+mod avionics_controls;
 mod behaviour;
+mod electronic;
 mod options;
 pub use options::{DisplayOptions, EngineUnits, PressureUnit};
 mod switches;
@@ -12,6 +14,9 @@ use flightcraft_sim::systems::{SystemSetting, SystemsState};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
+pub use avionics_controls::{
+    shortcut as avionics_shortcut, shortcut_with_options as avionics_shortcut_with_options,
+};
 pub use switches::{shortcut, shortcut_with_options};
 
 #[derive(Clone, Copy)]
@@ -20,6 +25,7 @@ pub struct InstrumentInput<'a> {
     /// Simulation time only: paused redraws consume no needle time.
     pub time_s: f64,
     pub options: DisplayOptions,
+    pub airports: Option<&'a flightcraft_world::Airports>,
     pub aircraft: Option<&'a flightcraft_aero::ResolvedAircraft>,
 }
 impl<'a> InstrumentInput<'a> {
@@ -29,7 +35,12 @@ impl<'a> InstrumentInput<'a> {
             time_s,
             options: DisplayOptions::default(),
             aircraft: None,
+            airports: None,
         }
+    }
+    pub fn with_airports(mut self, airports: Option<&'a flightcraft_world::Airports>) -> Self {
+        self.airports = airports;
+        self
     }
     pub fn with_aircraft(mut self, aircraft: &'a flightcraft_aero::ResolvedAircraft) -> Self {
         self.aircraft = Some(aircraft);
@@ -220,7 +231,14 @@ impl Default for Registry {
             skins: BTreeMap::new(),
         };
         for id in flightcraft_aero::INSTRUMENT_MODULES {
-            r.modules.insert((*id).into(), behaviour::create);
+            r.modules.insert(
+                (*id).into(),
+                if id.starts_with("electronic_") {
+                    electronic::create
+                } else {
+                    behaviour::create
+                },
+            );
         }
         r.skins.insert(
             "original".into(),
@@ -311,6 +329,7 @@ pub struct InstrumentPanel {
     pub options: DisplayOptions,
     pub starter_key_held: bool,
     starter_hold: switches::StarterHold,
+    pub avionics_controls: avionics_controls::Controls,
     loaded: Option<Panel>,
     modules: Vec<Box<dyn Instrument>>,
     generation: Option<u64>,
@@ -389,6 +408,14 @@ impl InstrumentPanel {
         let cells = layout(panel, rect);
         for ((installation, module), cell) in panel.instruments.iter().zip(&mut self.modules).zip(cells) {
             let draw = module.update(input);
+            if installation.module.starts_with("electronic_")
+                && ui
+                    .interact(cell, ui.id().with(&installation.id), Sense::click())
+                    .on_hover_text("Click for heading, course, baro, altitude, and direct-to controls")
+                    .clicked()
+            {
+                self.avionics_controls.open = true;
+            }
             let skin = self
                 .registry
                 .skins
@@ -436,6 +463,7 @@ impl InstrumentPanel {
                 }
             }
         }
+        self.avionics_controls.show(ui.ctx(), input);
         Ok(settings)
     }
 }

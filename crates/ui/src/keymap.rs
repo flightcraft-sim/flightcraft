@@ -43,10 +43,18 @@ pub enum Action {
     AltimeterDown,
     HeadingBugLeft,
     HeadingBugRight,
+    StandbyCourseLeft,
+    StandbyCourseRight,
+    StandbyAltitudeUp,
+    StandbyAltitudeDown,
+    StandbyAttitudePower,
+    StandbyHsiPower,
+    StandbyReversion,
+    StandbyDirectTo,
 }
 
 impl Action {
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 45] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -84,6 +92,14 @@ impl Action {
         Self::AltimeterDown,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
+        Self::StandbyCourseLeft,
+        Self::StandbyCourseRight,
+        Self::StandbyAltitudeUp,
+        Self::StandbyAltitudeDown,
+        Self::StandbyAttitudePower,
+        Self::StandbyHsiPower,
+        Self::StandbyReversion,
+        Self::StandbyDirectTo,
     ];
     /// Systems shortcuts are optional, and can be bound in the same persisted keymap.
     pub const SYSTEMS: [Self; 18] = [
@@ -105,6 +121,21 @@ impl Action {
         Self::AltimeterDown,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
+    ];
+
+    pub const AVIONICS: [Self; 12] = [
+        Self::HeadingBugLeft,
+        Self::HeadingBugRight,
+        Self::AltimeterUp,
+        Self::AltimeterDown,
+        Self::StandbyCourseLeft,
+        Self::StandbyCourseRight,
+        Self::StandbyAltitudeUp,
+        Self::StandbyAltitudeDown,
+        Self::StandbyAttitudePower,
+        Self::StandbyHsiPower,
+        Self::StandbyReversion,
+        Self::StandbyDirectTo,
     ];
 
     pub fn label(self) -> &'static str {
@@ -145,6 +176,14 @@ impl Action {
             Self::AltimeterUp => "Altimeter setting up",
             Self::AltimeterDown => "Altimeter setting down",
             Self::HeadingBugLeft => "Heading bug left",
+            Self::StandbyCourseLeft => "Standby course left",
+            Self::StandbyCourseRight => "Standby course right",
+            Self::StandbyAltitudeUp => "Selected altitude up",
+            Self::StandbyAltitudeDown => "Selected altitude down",
+            Self::StandbyAttitudePower => "Toggle attitude power",
+            Self::StandbyHsiPower => "Toggle navigation power",
+            Self::StandbyReversion => "Toggle attitude reversion",
+            Self::StandbyDirectTo => "Open direct to",
             Self::HeadingBugRight => "Heading bug right",
         }
     }
@@ -183,7 +222,12 @@ impl Default for Keymap {
                 (LookUp, vec![Key::I]),
             ]
             .into_iter()
-            .chain(Action::SYSTEMS.into_iter().map(|action| (action, Vec::new())))
+            .chain(
+                Action::SYSTEMS
+                    .into_iter()
+                    .chain(Action::AVIONICS)
+                    .map(|action| (action, Vec::new())),
+            )
             .collect(),
             gamepad_bindings: default_gamepad_bindings(),
         }
@@ -259,7 +303,7 @@ impl Keymap {
                 .ok_or("Assign a key for airspace")?;
             value.bindings.insert(Action::Airspace, vec![key]);
         }
-        for action in Action::SYSTEMS {
+        for action in Action::SYSTEMS.into_iter().chain(Action::AVIONICS) {
             value.bindings.entry(action).or_default();
         }
         let mut buttons = Vec::new();
@@ -277,7 +321,7 @@ impl Keymap {
                 .bindings
                 .get(&action)
                 .ok_or_else(|| format!("Missing {}", action.label()))?;
-            if keys.is_empty() && !Action::SYSTEMS.contains(&action) {
+            if keys.is_empty() && !Action::SYSTEMS.contains(&action) && !Action::AVIONICS.contains(&action) {
                 return Err(format!("{} needs a key", action.label()));
             }
             for key in keys {

@@ -164,3 +164,78 @@ The ignored `render_panel_preview` test captures the actual egui meshes and font
 supersampling. It writes `flightcraft-panels.png` and `flightcraft-panels-compact.png` to the
 temporary directory, showing both aircraft at both window sizes. Run it through the build queue
 with `cargo test -p flightcraft-ui render_panel_preview -- --ignored`.
+
+
+## Electronic standby pair
+
+Select **Corvid · standby pair** (`corvid-standby`) in the aircraft picker. Its `standby-pair`
+panel uses the `corvid-standby` variant and `corvid-standby-systems` installation. It keeps round
+airspeed, altitude, and VSI backups, removes vacuum equipment, and declares independent 1 A and
+1.5 A essential-bus loads for `electronic_attitude` and `electronic_hsi`. Each screen uses the
+same `Instrument` and `Skin` interface as the round gauges, with an original rectangular face.
+
+The two units have independent AHRS quaternion integrations driven by body rates, independent
+seeded integer sensor-noise streams, and a 45 s power-up alignment. Alignment follows initial
+attitude; subsequent indications integrate the sensed rates. Loss of the aircraft bus retains
+alignment through each unit's internal battery: 60 min for the attitude unit and 30 min for the
+HSI at continuous rated demand. The display reports BUS, BAT percentage, OFF, or NO POWER.
+Switching a unit off removes its bus demand and preserves its backup charge. Bus power recharges
+the internal battery at one tenth of the discharge rate. These are original engineering estimates.
+
+The attitude display reads the installed pitot-static pressures and VSI, independently of the
+vacuum gyro. It shows pitch and bank, roll marks, variant V-speed tape bands, six-second speed
+and altitude trends, a selected altitude bug, VSI, slip, turn rate, and baro (inHg by default,
+following the pressure-unit preference). A detected forced pitot obstruction holds the electronic
+unit's last speed sample and zeroes its trend; round backups retain the physical trapped-pressure
+response described above. An AHRS failure puts a red X over attitude, and an air-data failure
+puts red Xs over the tapes. ALIGNING includes the remaining seconds.
+
+The HSI has its own AHRS and air-data channel for attitude reversion. An invalid primary attitude
+unit automatically selects reversion after alignment, and manual reversion is also available.
+The normal screen shows a compass rose, heading bug, course arrow, CDI, and GPS data bar with
+ground speed, true track, distance, true bearing, and wind. Wind is the ground/true-air-velocity
+triangle. Local grid headings and tracks are converted through the active world's geographic
+projection. No geographic position gives NO GPS, and unavailable data-bar values are dashes.
+
+Direct-to accepts any airport ident or ICAO alias in the active region. It captures the current
+geodetic position as the leg origin and selects the initial true course to the destination.
+Distance and bearing use a bounded WGS84 inverse geodesic. CDI is signed great-circle cross-track
+distance from that origin along the selected course, positive to the right; the needle points
+toward the path. Full scale is 5 nm en route and 1 nm at or within 30 nm of the destination.
+Selecting a new course rotates the reference through the captured leg origin. Selecting a new
+direct-to captures a new origin. Reset clears the destination and restarts alignment.
+
+Click either screen to open its shared controls and searchable airport list. Heading, course,
+baro, selected altitude, direct-to, power, and reversion changes produce `avionics.set` commands.
+The corresponding actions are bindable in the persisted keymap and initially unassigned. On this
+panel the existing heading-bug and baro shortcuts address the electronic units; round backup knobs
+continue through `systems.set`. The direct-to shortcut opens the entry window.
+
+Example command inputs:
+
+```json
+{"setting":{"kind":"direct_to","ident":"KMMU"}}
+{"setting":{"kind":"heading_bug","degrees":90}}
+{"setting":{"kind":"course","degrees":75}}
+{"setting":{"kind":"baro","pressure_pa":101325}}
+{"setting":{"kind":"selected_altitude","feet":3500}}
+{"setting":{"kind":"power","unit":"electronic_attitude","on":false}}
+{"setting":{"kind":"reversion","enabled":true}}
+{"setting":{"kind":"ahrs_failure","unit":"electronic_attitude","failed":true}}
+{"setting":{"kind":"air_data_failure","failed":true}}
+```
+
+`avionics.state` takes `{}` and returns `installed`, `electronic_attitude`, and `electronic_hsi`.
+It is also included in `systems.avionics` in ordinary simulation snapshots. Outputs use pilot
+units (degrees, knots, feet, ft/min, nm, and inHg), include every validity, alignment, power, and
+reversion flag used by the skin, and retain flagged values beneath failure crosses. HSI
+`reversion_attitude` contains that unit's own standby attitude channel and battery. No UI filter
+or truth readout substitutes for these values. Reads and knob changes consume no simulated time,
+noise samples, or battery energy. The commands are available over MCP as `avionics_state` and
+`avionics_set`, with generated input and output schemas.
+
+Rust integrations use `Sim::set_avionics(AvionicsSetting)` and `systems().avionics`.
+`InstrumentInput::with_airports` supplies the immutable active catalogue for search, and
+`InstrumentPanel::avionics_controls.take_settings` drains command requests after drawing.
+The simulation includes both displayed and hidden avionics state in standby replay hashes;
+conventional-panel trajectories keep their existing baseline.

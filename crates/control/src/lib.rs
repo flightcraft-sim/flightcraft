@@ -5,6 +5,8 @@
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
 mod aircraft;
+mod avionics;
+pub use avionics::*;
 mod airspace;
 pub use airspace::*;
 mod regions;
@@ -612,7 +614,9 @@ registry!(
     AppScreenshot,
     Wait,
     AirportQuery,
-    Geodetic
+    Geodetic,
+    SetAvionics,
+    GetAvionics
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.

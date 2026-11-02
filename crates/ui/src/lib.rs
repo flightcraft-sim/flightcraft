@@ -394,7 +394,33 @@ impl eframe::App for FlightCraftApp {
                 self.error = Some(e.to_string());
             }
         }
+        for action in Action::AVIONICS {
+            if frame.pressed(action) {
+                if action == Action::StandbyDirectTo && self.session.sim().systems().avionics.installed {
+                    self.instrument_panel.avionics_controls.open_direct_to();
+                }
+                if let Some(setting) = instruments::avionics_shortcut_with_options(
+                    action,
+                    &self.session.sim().systems().avionics,
+                    self.instrument_panel.options,
+                ) && let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting })
+                {
+                    self.error = Some(e.to_string());
+                }
+            }
+        }
         for action in Action::SYSTEMS {
+            if self.session.sim().systems().avionics.installed
+                && matches!(
+                    action,
+                    Action::HeadingBugLeft
+                        | Action::HeadingBugRight
+                        | Action::AltimeterUp
+                        | Action::AltimeterDown
+                )
+            {
+                continue;
+            }
             if frame.pressed(action)
                 && let Some(setting) = instruments::shortcut_with_options(
                     action,
@@ -689,7 +715,8 @@ impl eframe::App for FlightCraftApp {
                         ui,
                         &configuration.panel,
                         instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
-                            .with_aircraft(configuration),
+                            .with_aircraft(configuration)
+                            .with_airports(self.session.sim().world().airports()),
                         self.session.flight_generation(),
                     )
                 } else {
@@ -699,6 +726,11 @@ impl eframe::App for FlightCraftApp {
                         self.session.flight_generation(),
                     )
                 };
+                for setting in self.instrument_panel.avionics_controls.take_settings() {
+                    if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                        self.error = Some(e.to_string());
+                    }
+                }
                 match result {
                     Ok(settings) => {
                         for setting in settings {

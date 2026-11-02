@@ -33,6 +33,36 @@ fn render_panel_preview() {
     }
 }
 
+#[test]
+#[ignore = "manual standby panel preview"]
+fn render_standby_preview() {
+    let mut panels = Vec::new();
+    for compact in [false, true] {
+        for (width, height) in [(1280, 800.), (1000, 640.)] {
+            panels.push(capture(
+                "corvid-standby",
+                width,
+                panel_height(height, compact) as u32,
+            ));
+        }
+    }
+    let mut combined = image::RgbaImage::from_pixel(
+        1280,
+        panels.iter().map(image::RgbaImage::height).sum(),
+        image::Rgba(t::BACKGROUND.to_array()),
+    );
+    let mut top = 0;
+    for panel in panels {
+        for (x, y, p) in panel.enumerate_pixels() {
+            combined.put_pixel(x, top + y, *p);
+        }
+        top += panel.height();
+    }
+    combined
+        .save(std::env::temp_dir().join("flightcraft-standby-pair.png"))
+        .unwrap();
+}
+
 fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
     let mut session = Session::new().unwrap();
     session
@@ -41,6 +71,29 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
             serde_json::json!({"source":{"kind":"installed","id":name},"reset":true}),
         )
         .unwrap();
+    if name == "corvid-standby" {
+        let directory =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
+        session
+            .install_region(flightcraft_control::read_region(&directory).unwrap())
+            .unwrap();
+        session.execute("sim.reset",serde_json::json!({"world":"new-york","start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":1.}})).unwrap();
+        session
+            .execute(
+                "autopilot.set",
+                serde_json::json!({"altitude_m":1200.,"airspeed_mps":45.,"heading_rad":1.}),
+            )
+            .unwrap();
+        session
+            .execute("sim.step", serde_json::json!({"steps":5500}))
+            .unwrap();
+        session
+            .execute(
+                "avionics.set",
+                serde_json::json!({"setting":{"kind":"direct_to","ident":"KMMU"}}),
+            )
+            .unwrap();
+    }
     let configuration = session.aircraft_configuration().unwrap();
     let panel = &configuration.panel;
     let ctx = egui::Context::default();

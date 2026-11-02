@@ -256,7 +256,7 @@ fn hostile_pack_files_are_rejected_atomically_even_when_unused() {
     for files in cases {
         let mut catalog = AircraftCatalog::builtins().unwrap();
         assert!(catalog.install_pack(&manifest, &files).is_err());
-        assert_eq!(catalog.aircraft_definitions().count(), 2);
+        assert_eq!(catalog.aircraft_definitions().count(), 3);
         assert!(catalog.get(FileKind::Engine, "tourer-injection").is_err());
     }
     let mut catalog = AircraftCatalog::builtins().unwrap();

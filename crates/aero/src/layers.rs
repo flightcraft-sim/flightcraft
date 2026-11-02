@@ -25,6 +25,8 @@ pub const INSTRUMENT_MODULES: &[&str] = &[
     "volts",
     "suction",
     "annunciators",
+    "electronic_attitude",
+    "electronic_hsi",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -736,6 +738,30 @@ impl AircraftCatalog {
         let LayerFile::Systems(s) = self.get(FileKind::Systems, &v.systems)? else {
             return Err(error("systems", "wrong file kind"));
         };
+        let electronic = ["electronic_attitude", "electronic_hsi"];
+        if p.instruments
+            .iter()
+            .any(|i| electronic.contains(&i.module.as_str()))
+        {
+            let d = s
+                .definition
+                .as_ref()
+                .ok_or_else(|| error("panel", "electronic instruments require operational systems"))?;
+            for module in electronic {
+                require(
+                    p.instruments.iter().any(|i| i.module == module),
+                    "panel",
+                    "install both electronic standby modules",
+                )?;
+                require(
+                    d.electrical.loads.iter().any(|l| {
+                        l.id == module && l.bus == crate::Bus::Essential && l.backup_capacity_ah == 0.
+                    }),
+                    "panel",
+                    "standby modules require individual essential-bus loads; backup batteries belong to the units",
+                )?;
+            }
+        }
         Ok(ResolvedAircraft {
             aircraft,
             variant: v.clone(),
@@ -973,6 +999,10 @@ const BUILTIN_LAYERS: &[&str] = &[
     include_str!("../../../aircraft/corvid/systems.json"),
     include_str!("../../../aircraft/corvid/panel.json"),
     include_str!("../../../aircraft/corvid/aircraft.json"),
+    include_str!("../../../aircraft/corvid/standby-systems.json"),
+    include_str!("../../../aircraft/corvid/standby-variant.json"),
+    include_str!("../../../aircraft/corvid/standby-pair.json"),
+    include_str!("../../../aircraft/corvid/standby-aircraft.json"),
     include_str!("../../../aircraft/larrow/family.json"),
     include_str!("../../../aircraft/larrow/variant.json"),
     include_str!("../../../aircraft/larrow/engine.json"),

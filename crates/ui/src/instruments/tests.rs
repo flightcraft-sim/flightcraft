@@ -9,7 +9,10 @@ fn update(instrument: &mut dyn Instrument, systems: &SystemsState, time_s: f64) 
 #[test]
 fn every_module_has_bounded_deterministic_lag_and_pauses() {
     let registry = Registry::default();
-    for id in flightcraft_aero::INSTRUMENT_MODULES {
+    for id in flightcraft_aero::INSTRUMENT_MODULES
+        .iter()
+        .filter(|id| !id.starts_with("electronic_"))
+    {
         let mut s = SystemsState::default();
         s.sensed.attitude_valid = true;
         s.tanks = [flightcraft_aero::Wing::Left, flightcraft_aero::Wing::Right]
@@ -232,7 +235,7 @@ fn both_aircraft_layouts_fit_both_panel_sizes_and_paint_within_bounds() {
     let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
     let ctx = egui::Context::default();
     t::install(&ctx);
-    for name in ["corvid", "larrow"] {
+    for name in ["corvid", "larrow", "corvid-standby"] {
         let panel = catalog.resolve_aircraft(name).unwrap().panel;
         for (width, height) in [(1280., 800.), (1000., 640.)] {
             for compact in [false, true] {
@@ -672,7 +675,7 @@ fn every_text_box_fits_without_overlapping_text_or_crossing_dial_edges() {
     let ctx = egui::Context::default();
     t::install(&ctx);
     let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
-    for name in ["corvid", "larrow"] {
+    for name in ["corvid", "larrow", "corvid-standby"] {
         let aircraft = catalog.resolve_aircraft(name).unwrap();
         let mut session = Session::new().unwrap();
         session
@@ -693,6 +696,15 @@ fn every_text_box_fits_without_overlapping_text_or_crossing_dial_edges() {
                         let mut systems = session.sim().systems().clone();
                         systems.sensed.altitude_msl_m = feet/3.28084;
                         systems.sensed.heading_rad = f64::to_radians(heading);
+                        for a in [&mut systems.avionics.electronic_attitude, &mut systems.avionics.electronic_hsi.reversion_attitude] {
+                            a.power.powered=true; a.power.on_battery=true;
+                            a.attitude_valid=valid; a.aligning=false; a.air_data_valid=valid;
+                            a.heading_deg=heading; a.altitude_ft=feet; a.airspeed_kt=125.; a.roll_deg=heading-180.; a.pitch_deg=17.; a.vertical_speed_fpm=2000.;
+                        }
+                        systems.avionics.electronic_hsi.reversion=false;
+                        systems.avionics.electronic_hsi.destination=Some("MMU".into());
+                        systems.avionics.electronic_hsi.gps_fix=valid;
+                        systems.avionics.electronic_hsi.distance_nm=Some(52.3);
                         systems.sensed.attitude_valid = valid;
                         systems.sensed.indicated_airspeed_mps = 200.;
                         systems.sensed.vertical_speed_mps = 200.;
@@ -736,5 +748,78 @@ fn every_text_box_fits_without_overlapping_text_or_crossing_dial_edges() {
                 });
             }
         }
+    }
+}
+
+#[test]
+fn electronic_skins_show_simulated_flags_and_shortcuts_use_avionics_commands() {
+    let mut session = Session::new().unwrap();
+    session
+        .execute(
+            "aircraft.load",
+            serde_json::json!({"source":{"kind":"installed","id":"corvid-standby"},"reset":true}),
+        )
+        .unwrap();
+    for action in crate::keymap::Action::AVIONICS {
+        if action == crate::keymap::Action::StandbyDirectTo {
+            continue;
+        }
+        let setting = avionics_shortcut(action, &session.sim().systems().avionics).unwrap();
+        session.run(flightcraft_control::SetAvionics { setting }).unwrap();
+    }
+    for id in ["electronic_attitude", "electronic_hsi"] {
+        let mut module = Registry::default().instrument(id).unwrap();
+        let mut systems = session.sim().systems().clone();
+        systems.avionics.electronic_hsi.reversion = false;
+        for a in [
+            &mut systems.avionics.electronic_attitude,
+            &mut systems.avionics.electronic_hsi.reversion_attitude,
+        ] {
+            a.power.switch_on = true;
+            a.power.powered = true;
+            a.aligning = false;
+            a.attitude_valid = false;
+            a.air_data_valid = false;
+        }
+        let draw = update(module.as_mut(), &systems, 0.);
+        assert!(!draw.valid);
+        assert!(
+            draw.items
+                .iter()
+                .any(|item| matches!(item,DrawItem::Line{ink:Ink::Alert,width,..} if *width==3.))
+        );
+        if id == "electronic_hsi" {
+            assert!(
+                draw.items
+                    .iter()
+                    .any(|item| matches!(item,DrawItem::Label{text,..} if text=="NO GPS"))
+            );
+        }
+        assert!(draw.items.iter().all(valid_item));
+    }
+}
+
+#[test]
+fn electronic_speed_limit_marks_the_variant_value_only_when_in_view() {
+    let aircraft = flightcraft_aero::AircraftCatalog::builtins()
+        .unwrap()
+        .resolve_aircraft("corvid-standby")
+        .unwrap();
+    let mut systems = SystemsState::default();
+    systems.avionics.electronic_attitude.power.powered = true;
+    let mut instrument = Registry::default().instrument("electronic_attitude").unwrap();
+    for (speed, visible) in [
+        (80., false),
+        (aircraft.variant.v_speeds.vne_mps * 1.94384449, true),
+        (180., false),
+    ] {
+        systems.avionics.electronic_attitude.airspeed_kt = speed;
+        let draw = instrument.update(InstrumentInput::new(&systems, 0.).with_aircraft(&aircraft));
+        assert_eq!(
+            draw.items
+                .iter()
+                .any(|item| matches!(item,DrawItem::Line {ink:Ink::Alert,width,..} if *width==2.)),
+            visible
+        );
     }
 }

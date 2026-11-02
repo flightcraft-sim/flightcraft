@@ -1,0 +1,220 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "standby-pair",
+    "display_name": "Electronic standby pair",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [
+    {
+      "id": "airspeed",
+      "module": "airspeed",
+      "skin": "original",
+      "position": [
+        0,
+        0.0
+      ],
+      "size": [
+        0.85,
+        0.6666666666666666
+      ]
+    },
+    {
+      "id": "electronic_attitude",
+      "module": "electronic_attitude",
+      "skin": "original",
+      "position": [
+        0.9,
+        0
+      ],
+      "size": [
+        1.9,
+        2
+      ]
+    },
+    {
+      "id": "altimeter",
+      "module": "altimeter",
+      "skin": "original",
+      "position": [
+        0,
+        0.6666666666666666
+      ],
+      "size": [
+        0.85,
+        0.6666666666666666
+      ]
+    },
+    {
+      "id": "electronic_hsi",
+      "module": "electronic_hsi",
+      "skin": "original",
+      "position": [
+        2.85,
+        0
+      ],
+      "size": [
+        1.9,
+        2
+      ]
+    },
+    {
+      "id": "vertical_speed",
+      "module": "vertical_speed",
+      "skin": "original",
+      "position": [
+        0,
+        1.3333333333333333
+      ],
+      "size": [
+        0.85,
+        0.6666666666666666
+      ]
+    },
+    {
+      "id": "tachometer",
+      "module": "tachometer",
+      "skin": "original",
+      "position": [
+        4.8,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "annunciators",
+      "module": "annunciators",
+      "skin": "original",
+      "position": [
+        4.8,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "oil_temperature",
+      "module": "oil_temperature",
+      "skin": "original",
+      "position": [
+        5.8,
+        0.0
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "oil_pressure",
+      "module": "oil_pressure",
+      "skin": "original",
+      "position": [
+        5.8,
+        0.2
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "egt",
+      "module": "egt",
+      "skin": "original",
+      "position": [
+        5.8,
+        0.4
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "cht",
+      "module": "cht",
+      "skin": "original",
+      "position": [
+        5.8,
+        0.6
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_left",
+      "module": "fuel_left",
+      "skin": "original",
+      "position": [
+        5.8,
+        0.8
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_right",
+      "module": "fuel_right",
+      "skin": "original",
+      "position": [
+        5.8,
+        1.0
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_flow",
+      "module": "fuel_flow",
+      "skin": "original",
+      "position": [
+        5.8,
+        1.2
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "ammeter",
+      "module": "ammeter",
+      "skin": "original",
+      "position": [
+        5.8,
+        1.4
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "volts",
+      "module": "volts",
+      "skin": "original",
+      "position": [
+        5.8,
+        1.6
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    }
+  ]
+}

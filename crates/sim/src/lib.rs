@@ -14,6 +14,7 @@
 #![deny(clippy::disallowed_methods)]
 
 pub mod autopilot;
+pub mod avionics;
 mod dynamics;
 mod math;
 pub mod systems;
@@ -414,8 +415,10 @@ impl Sim {
     ) -> Result<(), SimError> {
         let (state, model) = systems::SystemsState::configure(configuration, self.readout())?;
         self.systems = state;
+        self.systems.avionics = avionics::AvionicsState::configure(configuration);
         self.systems_model = model;
         self.systems_changed = false;
+        self.refresh_avionics(false);
         Ok(())
     }
 
@@ -429,6 +432,20 @@ impl Sim {
         self.systems.set(setting, self.systems_model.as_ref())?;
         self.systems_changed |= self.systems != previous;
         Ok(())
+    }
+
+    /// Set a unit control through the same typed path used by the command registry.
+    pub fn set_avionics(&mut self, setting: avionics::AvionicsSetting) -> Result<(), SimError> {
+        self.systems.avionics.set(setting, &self.world, self.state)?;
+        self.refresh_avionics(false);
+        self.systems_changed = true;
+        Ok(())
+    }
+
+    fn refresh_avionics(&mut self, advance: bool) {
+        let mut avionics = std::mem::take(&mut self.systems.avionics);
+        avionics.update(self.state, self.readout(), &self.systems, &self.world, advance);
+        self.systems.avionics = avionics;
     }
 
     fn propulsion_failures(&self) -> Failures {
@@ -604,6 +621,7 @@ impl Sim {
             } else {
                 self.systems.ideal_sensors(self.readout());
             }
+            self.refresh_avionics(true);
         }
     }
 
@@ -731,9 +749,18 @@ impl Sim {
                 }
             }
         }
-        if self.systems_changed {
+        if self.systems_changed || self.systems.avionics.installed {
             eat(0x7379_7374_656d_7301);
-            for word in self.systems.hash_words() {
+            for word in self
+                .systems
+                .hash_words()
+                .into_iter()
+                .chain(if self.systems.avionics.installed {
+                    self.systems.avionics.hash_words()
+                } else {
+                    Vec::new()
+                })
+            {
                 eat(word);
             }
         }

@@ -180,6 +180,7 @@ pub struct SensedInstruments {
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct SystemsState {
+    pub avionics: crate::avionics::AvionicsState,
     pub enabled: bool,
     pub vacuum_installed: bool,
     pub carb_heat_installed: bool,
@@ -224,6 +225,7 @@ pub(crate) struct SystemsModel {
 impl Default for SystemsState {
     fn default() -> Self {
         Self {
+            avionics: crate::avionics::AvionicsState::default(),
             enabled: false,
             vacuum_installed: false,
             carb_heat_installed: false,
@@ -278,7 +280,7 @@ fn bounded(value: f64, lo: f64, hi: f64) -> Result<(), SimError> {
 fn lag(value: &mut f64, target: f64, seconds: f64) {
     *value += (target - *value) * (DT_S / seconds).min(1.0);
 }
-fn altitude(pressure: f64, setting: f64) -> f64 {
+pub(crate) fn altitude(pressure: f64, setting: f64) -> f64 {
     // Inverse of the same ISA layers as world::atmosphere; extended below sea level.
     let p11 = atmosphere(11000.0).pressure_pa * setting / 101325.0;
     if pressure >= p11 {
@@ -757,6 +759,11 @@ impl SystemsState {
     }
 
     pub(crate) fn electrical_step(&mut self, m: &SystemsModel, rpm: f64, failures: Failures) {
+        let unit_on = |id: &str| match id {
+            "electronic_attitude" => self.avionics.electronic_attitude.power.switch_on,
+            "electronic_hsi" => self.avionics.electronic_hsi.reversion_attitude.power.switch_on,
+            _ => true,
+        };
         let d = &m.definition.electrical;
         let c = &self.controls;
         let e = &mut self.electrical;
@@ -774,13 +781,14 @@ impl SystemsState {
         };
         let mut essential_demand = 0.0;
         for (l, def) in e.loads.iter_mut().zip(&d.loads) {
-            let switched = match def.switch {
-                LoadSwitch::Avionics => c.avionics,
-                LoadSwitch::Lights => c.lights,
-                LoadSwitch::FuelPump => c.fuel_pump,
-                LoadSwitch::PitotHeat => c.pitot_heat,
-                LoadSwitch::Always => true,
-            };
+            let switched = unit_on(&def.id)
+                && match def.switch {
+                    LoadSwitch::Avionics => c.avionics,
+                    LoadSwitch::Lights => c.lights,
+                    LoadSwitch::FuelPump => c.fuel_pump,
+                    LoadSwitch::PitotHeat => c.pitot_heat,
+                    LoadSwitch::Always => true,
+                };
             let amps = def.amps * l.multiplier;
             if l.breaker_closed && supply && switched && amps > def.breaker_amps {
                 l.overload_s += DT_S * ((amps / def.breaker_amps) * (amps / def.breaker_amps) - 1.0);
@@ -840,13 +848,14 @@ impl SystemsState {
                 Bus::Main => e.main_bus_voltage,
                 Bus::Essential => e.essential_bus_voltage,
             };
-            let switched = match def.switch {
-                LoadSwitch::Avionics => c.avionics,
-                LoadSwitch::Lights => c.lights,
-                LoadSwitch::FuelPump => c.fuel_pump,
-                LoadSwitch::PitotHeat => c.pitot_heat,
-                LoadSwitch::Always => true,
-            };
+            let switched = unit_on(&def.id)
+                && match def.switch {
+                    LoadSwitch::Avionics => c.avionics,
+                    LoadSwitch::Lights => c.lights,
+                    LoadSwitch::FuelPump => c.fuel_pump,
+                    LoadSwitch::PitotHeat => c.pitot_heat,
+                    LoadSwitch::Always => true,
+                };
             if bus < 9.0 {
                 l.current_a = 0.0;
             }
