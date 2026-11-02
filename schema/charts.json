@@ -53,8 +53,8 @@
     "version": {
       "type": "integer",
       "format": "uint8",
-      "maximum": 255,
-      "minimum": 0
+      "maximum": 2,
+      "minimum": 1
     }
   },
   "additionalProperties": false,

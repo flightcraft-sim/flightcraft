@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Report",
+  "type": "object",
+  "properties": {
+    "bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "checks": {
+      "type": "array",
+      "items": true
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0
+      }
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "procedure_parse_failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "dataset",
+    "counts",
+    "bytes",
+    "checks",
+    "procedure_parse_failures",
+    "warnings"
+  ]
+}

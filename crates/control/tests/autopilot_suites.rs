@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, Step, read_region};
 use flightcraft_sim::{
     autopilot::wrap,
@@ -48,6 +50,7 @@ fn step(s: &mut Session, seconds: u32) {
 }
 #[test]
 fn glass_and_standby_share_bug_and_fly_hdg_alt_after_alignment() {
+    require_region_data!();
     for aircraft in ["corvid-glass", "corvid-standby"] {
         let mut s = flight(aircraft);
         panel(&mut s, json!({"kind":"lateral","mode":"hdg"}));
@@ -88,6 +91,7 @@ fn glass_and_standby_share_bug_and_fly_hdg_alt_after_alignment() {
 }
 #[test]
 fn installed_sensors_disconnect_with_shared_suite_failures() {
+    require_region_data!();
     for aircraft in ["corvid-glass", "corvid-standby"] {
         for air_data in [false, true] {
             let mut s = flight(aircraft);
@@ -115,6 +119,7 @@ fn installed_sensors_disconnect_with_shared_suite_failures() {
 }
 #[test]
 fn nav_reads_glass_plan_and_standby_receiver_and_loses_signal() {
+    require_region_data!();
     for aircraft in ["corvid-glass", "corvid-standby"] {
         let mut s = flight(aircraft);
         let direct = if aircraft == "corvid-glass" {

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CellIndex",
+  "type": "object",
+  "properties": {
+    "cells": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/CellEntry"
+      }
+    },
+    "grid_degrees": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "grid_degrees",
+    "cells"
+  ],
+  "$defs": {
+    "CellEntry": {
+      "type": "object",
+      "properties": {
+        "bounds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        },
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "content_sha256": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/RegionOrigin"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "bounds",
+        "origin",
+        "manifest",
+        "manifest_sha256",
+        "content_sha256",
+        "bytes"
+      ]
+    },
+    "RegionOrigin": {
+      "type": "object",
+      "properties": {
+        "field_elevation_m": {
+          "description": "SRTM and the simulator use MSL heights, not ellipsoidal heights.",
+          "type": "number",
+          "format": "double"
+        },
+        "latitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_heading_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_length_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_width_m": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg",
+        "field_elevation_m",
+        "runway_heading_deg",
+        "runway_length_m",
+        "runway_width_m"
+      ]
+    }
+  }
+}

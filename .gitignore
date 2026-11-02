@@ -2,3 +2,7 @@
 /dist
 /out
 *.pid
+/.cache
+/assets/terrain/**/*.fcht
+/assets/terrain/**/charts/**/*.png
+/assets/terrain/**/charts/**/*.webp

@@ -325,6 +325,7 @@ pub struct ChartIndex {
     #[serde(default)]
     #[schemars(range(min = 0, max = 80))]
     pub coverage_margin_nm: f64,
+    #[schemars(range(min = 1, max = 2))]
     pub version: u8,
     pub kind: BaseMap,
     pub edition: String,
@@ -337,6 +338,14 @@ pub struct ChartIndex {
     pub bytes: u64,
 }
 impl ChartIndex {
+    /// Version 2 uses lossless WebP; version 1 PNG indexes remain supported.
+    pub fn tile_path(&self, tile: ChartTile) -> String {
+        if self.version == 2 {
+            format!("{}/{}/{}.webp", tile.z, tile.x, tile.y)
+        } else {
+            tile.path()
+        }
+    }
     pub fn from_json(bytes: &[u8]) -> Result<Self, String> {
         if bytes.len() > 4 * 1024 * 1024 {
             return Err("chart index exceeds 4 MiB".into());
@@ -344,7 +353,7 @@ impl ChartIndex {
         let index: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
         if !index.coverage_margin_nm.is_finite()
             || !(0.0..=80.0).contains(&index.coverage_margin_nm)
-            || index.version != 1
+            || !matches!(index.version, 1 | 2)
             || !matches!(index.kind, BaseMap::Sectional | BaseMap::Tac)
             || index.min_zoom > index.max_zoom
             || index.max_zoom > 16

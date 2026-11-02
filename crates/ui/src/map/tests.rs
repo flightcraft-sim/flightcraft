@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 pub(super) fn session() -> Session {
     let mut s = Session::new().unwrap();
@@ -38,6 +40,7 @@ pub(super) fn planned_session() -> Session {
 }
 #[test]
 fn region_view_round_trips_rotations_and_aspect_ratios() {
+    require_region_data!();
     let s = session();
     for size in [
         egui::vec2(600., 300.),
@@ -59,6 +62,7 @@ fn region_view_round_trips_rotations_and_aspect_ratios() {
 }
 #[test]
 fn cards_hit_points_and_route_legs() {
+    require_region_data!();
     let mut s = planned_session();
     let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(800., 600.));
     let v = View::new(&s, s.map_state(), rect).unwrap();
@@ -133,6 +137,7 @@ fn drag(ctx: &egui::Context, widget: &mut PlanningMap, s: &mut Session, from: Po
 }
 #[test]
 fn simulated_drags_move_and_insert_through_commands() {
+    require_region_data!();
     let mut s = planned_session();
     let ctx = egui::Context::default();
     crate::theme::install(&ctx);
@@ -192,6 +197,7 @@ fn simulated_drags_move_and_insert_through_commands() {
 }
 #[test]
 fn widget_paints_within_its_rectangle() {
+    require_region_data!();
     let mut s = planned_session();
     for size in [
         egui::vec2(320., 240.),
@@ -235,6 +241,7 @@ fn widget_paints_within_its_rectangle() {
 
 #[test]
 fn magnetic_orientation_keeps_aircraft_up_and_true_north_up() {
+    require_region_data!();
     let mut s = session();
     let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(800., 600.));
     let mut state = s.map_state().clone();
@@ -273,6 +280,7 @@ fn magnetic_orientation_keeps_aircraft_up_and_true_north_up() {
 }
 #[test]
 fn declutter_preserves_route_fixes_and_pilot_units() {
+    require_region_data!();
     let mut s = session();
     let ctx = egui::Context::default();
     crate::theme::install(&ctx);
@@ -313,6 +321,7 @@ fn declutter_preserves_route_fixes_and_pilot_units() {
 }
 #[test]
 fn terrain_vertices_end_at_grid_boundary_without_unknown_colour_blending() {
+    require_region_data!();
     let s = session();
     let ctx = egui::Context::default();
     crate::theme::install(&ctx);

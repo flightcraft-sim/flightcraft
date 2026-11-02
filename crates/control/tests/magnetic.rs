@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, Step, read_region};
 use flightcraft_sim::autopilot::wrap;
 use flightcraft_world::{
@@ -28,6 +30,7 @@ fn flight(aircraft: &str) -> Session {
 }
 #[test]
 fn wmm_sensor_compass_date_and_free_gyro_references() {
+    require_region_data!();
     let mut s = flight("corvid-glass");
     // Commands use radians, with degrees reserved for explicit degrees fields.
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":core::f64::consts::FRAC_PI_2}})).unwrap();
@@ -87,6 +90,7 @@ fn wmm_sensor_compass_date_and_free_gyro_references() {
 }
 #[test]
 fn hdg_and_trk_fly_magnetic_and_map_rotation_stays_in_the_grid() {
+    require_region_data!();
     let mut s = flight("corvid-glass");
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":80_f64.to_radians()}})).unwrap();
     s.execute(
@@ -125,6 +129,7 @@ fn hdg_and_trk_fly_magnetic_and_map_rotation_stays_in_the_grid() {
 }
 #[test]
 fn rnav07_final_track_and_leg_labels_are_magnetic() {
+    require_region_data!();
     let w = world();
     let d = w.procedures().unwrap();
     let p = d
@@ -196,6 +201,7 @@ fn rnav07_final_track_and_leg_labels_are_magnetic() {
 }
 #[test]
 fn sbj_radials_use_station_declination_instead_of_wmm() {
+    require_region_data!();
     let w = world();
     let n = w
         .navdata()
@@ -232,6 +238,7 @@ fn sbj_radials_use_station_declination_instead_of_wmm() {
 
 #[test]
 fn wind_commands_and_readouts_are_magnetic() {
+    require_region_data!();
     let mut s = flight("corvid-glass");
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":1.}})).unwrap();
     let out = s

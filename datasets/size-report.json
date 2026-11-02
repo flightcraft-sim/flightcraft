@@ -1,0 +1,38 @@
+{
+  "assumptions": {
+    "area_m2": 9830000000000.0,
+    "chart_max_zoom": 11,
+    "overlap_factor": 1,
+    "representative_latitude_deg": 40,
+    "spacing_m": 60
+  },
+  "caveat": "Regional extrapolation, not a national inventory; excludes duplicate chart coverage, navigation, and archive overhead. Alaska, islands, relief, source coverage, and latitude change the result. Pages ships only showcase regions, with a hard 1 GB site cap.",
+  "chart_ratio": 0.6136020775384731,
+  "projected_chart_bytes": 3821421150.969856,
+  "projected_terrain_bytes": 3043545766.17872,
+  "projected_total_bytes": 6864966917.148576,
+  "regions": [
+    {
+      "chart_pixels": 43450368,
+      "chart_png": 66142300,
+      "chart_webp": 41149212,
+      "region": "new-york",
+      "terrain_v1": 29019232,
+      "terrain_v2": 5496129
+    },
+    {
+      "chart_pixels": 35586048,
+      "chart_png": 63124909,
+      "chart_webp": 38169416,
+      "region": "eastern-pa",
+      "terrain_v1": 36274040,
+      "terrain_v2": 9059375
+    }
+  ],
+  "target_bytes": [
+    5000000000,
+    8000000000
+  ],
+  "terrain_ratio": 0.22292502051359903,
+  "version": 1
+}

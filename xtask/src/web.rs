@@ -4,6 +4,57 @@ use std::process::Command;
 
 pub fn build() -> Result<(), String> {
     let root = super::root()?;
+    let check = match (std::env::args().nth(2).as_deref(), std::env::args().nth(3)) {
+        (None, None) => false,
+        (Some("--check"), None) => true,
+        _ => return Err("usage: cargo xtask web [--check]".into()),
+    };
+    super::data::fetch(
+        false,
+        &root.join(".cache/data"),
+        std::env::var("FLIGHTCRAFT_DATA_URL").ok().as_deref(),
+    )?;
+    if check {
+        super::cargo(&[
+            "check",
+            "--locked",
+            "--target",
+            "wasm32-unknown-unknown",
+            "-p",
+            "flightcraft-web",
+        ])?;
+        let stage = root.join(".cache/web-check");
+        if stage.exists() {
+            std::fs::remove_dir_all(&stage).map_err(|e| e.to_string())?;
+        }
+        for id in ["new-york", "eastern-pa"] {
+            let source = root.join("assets/terrain").join(id);
+            flightcraft_control::read_region(&source)?;
+            copy_tree(&source, &stage.join("terrain").join(id))?;
+            for kind in ["sectional", "tac"] {
+                let path = source.join("charts").join(kind).join("index.json");
+                if path.exists() {
+                    flightcraft_control::ChartIndex::from_json(&super::download::read(
+                        &path,
+                        4 * 1024 * 1024,
+                    )?)?;
+                }
+            }
+        }
+        let bytes: u64 = super::data::files(&stage)?
+            .iter()
+            .map(|p| std::fs::metadata(p).map(|m| m.len()).map_err(|e| e.to_string()))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .sum();
+        if bytes >= 1_000_000_000 {
+            return Err("showcase data reaches the 1 GB Pages budget".into());
+        }
+        eprintln!(
+            "xtask: web compile and showcase packaging check passed ({bytes} data bytes; full packaging also checks the complete site)"
+        );
+        return Ok(());
+    }
     let lock = std::fs::read_to_string(root.join("Cargo.lock")).map_err(|e| e.to_string())?;
     let version = bindgen_version(&lock)?;
     let bindgen = std::env::var_os("WASM_BINDGEN")
@@ -88,7 +139,20 @@ pub fn build() -> Result<(), String> {
             }
         }
     }
-    eprintln!("xtask: static web build ready in dist/");
+    let bytes: u64 = super::data::files(&dist)?
+        .iter()
+        .map(|path| {
+            std::fs::metadata(path)
+                .map(|m| m.len())
+                .map_err(|e| e.to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum();
+    if bytes >= 1_000_000_000 {
+        return Err("showcase site reaches the 1 GB Pages budget".into());
+    }
+    eprintln!("xtask: static web build ready in dist/ ({bytes} bytes)");
     Ok(())
 }
 

@@ -1,0 +1,922 @@
+{
+  "version": 1,
+  "dataset": "eastern-pa",
+  "counts": {
+    "airports": 43,
+    "fixes": 760,
+    "holds": 15,
+    "ils": 3,
+    "navaids": 20,
+    "points": 592,
+    "procedures": 125,
+    "routes": 378,
+    "runways": 61,
+    "terrain_tiles": 110,
+    "volumes": 27
+  },
+  "bytes": 49671412,
+  "checks": [
+    {
+      "airport": "06N",
+      "check": "airport_elevation",
+      "difference_m": 4.1968025267077,
+      "faa_m": 159.31896000000003,
+      "pass": true,
+      "terrain_m": 155.12215747329233,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "12N",
+      "check": "airport_elevation",
+      "difference_m": 0.1531446793735256,
+      "faa_m": 177.60696000000002,
+      "pass": true,
+      "terrain_m": 177.76010467937354,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "14N",
+      "check": "airport_elevation",
+      "difference_m": 2.995046004217045,
+      "faa_m": 274.0152,
+      "pass": true,
+      "terrain_m": 271.02015399578295,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "1N7",
+      "check": "airport_elevation",
+      "difference_m": 1.7991313784838923,
+      "faa_m": 113.23320000000001,
+      "pass": true,
+      "terrain_m": 111.43406862151612,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "22N",
+      "check": "airport_elevation",
+      "difference_m": 4.716691747992741,
+      "faa_m": 162.7632,
+      "pass": true,
+      "terrain_m": 158.04650825200727,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "39N",
+      "check": "airport_elevation",
+      "difference_m": 1.8059401000840225,
+      "faa_m": 39.075359999999996,
+      "pass": true,
+      "terrain_m": 37.269419899915974,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "3N6",
+      "check": "airport_elevation",
+      "difference_m": 5.625726362314531,
+      "faa_m": 26.5176,
+      "pass": true,
+      "terrain_m": 20.89187363768547,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "47N",
+      "check": "airport_elevation",
+      "difference_m": 3.8742694688091994,
+      "faa_m": 26.182320000000004,
+      "pass": true,
+      "terrain_m": 22.308050531190805,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "4N1",
+      "check": "airport_elevation",
+      "difference_m": 1.5739192057444882,
+      "faa_m": 240.67008,
+      "pass": true,
+      "terrain_m": 239.09616079425552,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "69N",
+      "check": "airport_elevation",
+      "difference_m": 2.6863342785362363,
+      "faa_m": 115.82400000000001,
+      "pass": true,
+      "terrain_m": 113.13766572146378,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "76N",
+      "check": "airport_elevation",
+      "difference_m": 1.1858202368218542,
+      "faa_m": 194.7672,
+      "pass": true,
+      "terrain_m": 193.58137976317815,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "7N8",
+      "check": "airport_elevation",
+      "difference_m": 17.002374335032982,
+      "faa_m": 152.4,
+      "pass": false,
+      "terrain_m": 135.39762566496702,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "8N4",
+      "check": "airport_elevation",
+      "difference_m": 14.636103923391488,
+      "faa_m": 435.86400000000003,
+      "pass": true,
+      "terrain_m": 421.22789607660854,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "9N1",
+      "check": "airport_elevation",
+      "difference_m": 8.333024384062554,
+      "faa_m": 118.872,
+      "pass": true,
+      "terrain_m": 110.53897561593745,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "ABE",
+      "check": "airport_elevation",
+      "difference_m": 1.9313112539588388,
+      "faa_m": 119.99976000000001,
+      "pass": true,
+      "terrain_m": 118.06844874604117,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "AVP",
+      "check": "airport_elevation",
+      "difference_m": 8.880343490077053,
+      "faa_m": 293.12616,
+      "pass": true,
+      "terrain_m": 284.245816509923,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "CDW",
+      "check": "airport_elevation",
+      "difference_m": 0.5122732267750933,
+      "faa_m": 52.51704000000001,
+      "pass": true,
+      "terrain_m": 52.004766773224915,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "CKZ",
+      "check": "airport_elevation",
+      "difference_m": 8.911907807689346,
+      "faa_m": 173.00448000000003,
+      "pass": true,
+      "terrain_m": 164.09257219231068,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "DYL",
+      "check": "airport_elevation",
+      "difference_m": 0.6512578195239058,
+      "faa_m": 119.9388,
+      "pass": true,
+      "terrain_m": 119.2875421804761,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "FWN",
+      "check": "airport_elevation",
+      "difference_m": 3.4711115881764556,
+      "faa_m": 128.50368,
+      "pass": true,
+      "terrain_m": 125.03256841182355,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "HZL",
+      "check": "airport_elevation",
+      "difference_m": 3.2620346158230973,
+      "faa_m": 488.71632000000005,
+      "pass": true,
+      "terrain_m": 485.45428538417696,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "LDJ",
+      "check": "airport_elevation",
+      "difference_m": 0.8718330878087555,
+      "faa_m": 6.7056000000000004,
+      "pass": true,
+      "terrain_m": 5.833766912191245,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "MGJ",
+      "check": "airport_elevation",
+      "difference_m": 3.37414417631625,
+      "faa_m": 112.74552000000001,
+      "pass": true,
+      "terrain_m": 109.37137582368376,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "MMU",
+      "check": "airport_elevation",
+      "difference_m": 1.7158905753124571,
+      "faa_m": 56.87568,
+      "pass": true,
+      "terrain_m": 55.159789424687546,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "MPO",
+      "check": "airport_elevation",
+      "difference_m": 9.505457890580033,
+      "faa_m": 583.75296,
+      "pass": true,
+      "terrain_m": 574.24750210942,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N05",
+      "check": "airport_elevation",
+      "difference_m": 9.468494865988077,
+      "faa_m": 204.216,
+      "pass": true,
+      "terrain_m": 194.74750513401193,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N07",
+      "check": "airport_elevation",
+      "difference_m": 0.6698891672269554,
+      "faa_m": 55.168800000000005,
+      "pass": true,
+      "terrain_m": 54.49891083277305,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N30",
+      "check": "airport_elevation",
+      "difference_m": 8.86772750743171,
+      "faa_m": 413.6136,
+      "pass": true,
+      "terrain_m": 404.7458724925683,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N40",
+      "check": "airport_elevation",
+      "difference_m": 2.8316491126529115,
+      "faa_m": 170.68800000000002,
+      "pass": true,
+      "terrain_m": 167.8563508873471,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N43",
+      "check": "airport_elevation",
+      "difference_m": 2.9522645782702597,
+      "faa_m": 120.94464,
+      "pass": true,
+      "terrain_m": 117.99237542172975,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N47",
+      "check": "airport_elevation",
+      "difference_m": 2.818074167767506,
+      "faa_m": 77.90688,
+      "pass": true,
+      "terrain_m": 75.0888058322325,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "N51",
+      "check": "airport_elevation",
+      "difference_m": 3.341738972012365,
+      "faa_m": 57.79008,
+      "pass": true,
+      "terrain_m": 54.44834102798764,
+      "tolerance_m": 15
+    },
+    {
+      "airport": "06N",
+      "check": "runway_length",
+      "difference_fraction": 0.00016775547753478115,
+      "pass": true,
+      "polygon_m": 856.631680553443,
+      "published_m": 856.488,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "12N",
+      "check": "runway_length",
+      "difference_fraction": 0.00006471115831452323,
+      "pass": true,
+      "polygon_m": 603.8478731668486,
+      "published_m": 603.8088,
+      "runway": "03/21",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "14N",
+      "check": "runway_length",
+      "difference_fraction": 0.000029951826198582054,
+      "pass": true,
+      "polygon_m": 615.10482296095,
+      "published_m": 615.0864,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "1N7",
+      "check": "runway_length",
+      "difference_fraction": 0.00007590157685855026,
+      "pass": true,
+      "polygon_m": 948.4656045004504,
+      "published_m": 948.5376,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "22N",
+      "check": "runway_length",
+      "difference_fraction": 0.00015755013409157748,
+      "pass": true,
+      "polygon_m": 914.5440638426134,
+      "published_m": 914.4000000000001,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "39N",
+      "check": "runway_length",
+      "difference_fraction": 0.00010083226638313292,
+      "pass": true,
+      "polygon_m": 1066.6027371281027,
+      "published_m": 1066.4952,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "3N6",
+      "check": "runway_length",
+      "difference_fraction": 0.000034990826415004506,
+      "pass": true,
+      "polygon_m": 1095.4128692572147,
+      "published_m": 1095.4512,
+      "runway": "06/24",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "47N",
+      "check": "runway_length",
+      "difference_fraction": 0.00006709806342386493,
+      "pass": true,
+      "polygon_m": 1069.0053233744889,
+      "published_m": 1068.9336,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "4N1",
+      "check": "runway_length",
+      "difference_fraction": 0.00013178458328066966,
+      "pass": true,
+      "polygon_m": 1058.1002229231553,
+      "published_m": 1057.9608,
+      "runway": "06/24",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "69N",
+      "check": "runway_length",
+      "difference_fraction": 0.00006853658313998867,
+      "pass": true,
+      "polygon_m": 748.2327151714217,
+      "published_m": 748.284,
+      "runway": "01/19",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "76N",
+      "check": "runway_length",
+      "difference_fraction": 0.0000871810461819944,
+      "pass": true,
+      "polygon_m": 611.7869315752326,
+      "published_m": 611.7336,
+      "runway": "01/19",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "7N8",
+      "check": "runway_length",
+      "difference_fraction": 0.000028147663247546362,
+      "pass": true,
+      "polygon_m": 737.636762166774,
+      "published_m": 737.616,
+      "runway": "16/34",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "8N4",
+      "check": "runway_length",
+      "difference_fraction": 0.000022535307381277292,
+      "pass": true,
+      "polygon_m": 733.027480628136,
+      "published_m": 733.044,
+      "runway": "02/20",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "9N1",
+      "check": "runway_length",
+      "difference_fraction": 1.1388821203883737e-6,
+      "pass": true,
+      "polygon_m": 408.4324651559022,
+      "published_m": 408.432,
+      "runway": "05G/23G",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "9N1",
+      "check": "runway_length",
+      "difference_fraction": 9.99078834329481e-7,
+      "pass": true,
+      "polygon_m": 932.0793312198015,
+      "published_m": 932.0784000000001,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "ABE",
+      "check": "runway_length",
+      "difference_fraction": 5.5858431562416655e-6,
+      "pass": true,
+      "polygon_m": 2316.1881377913896,
+      "published_m": 2316.1752,
+      "runway": "06/24",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "ABE",
+      "check": "runway_length",
+      "difference_fraction": 0.000050541191056852064,
+      "pass": true,
+      "polygon_m": 1767.7506512608022,
+      "published_m": 1767.8400000000001,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "AVP",
+      "check": "runway_length",
+      "difference_fraction": 0.00002498650051818707,
+      "pass": true,
+      "polygon_m": 2286.552465628045,
+      "published_m": 2286.6096000000002,
+      "runway": "04/22",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "AVP",
+      "check": "runway_length",
+      "difference_fraction": 0.00007892609275228502,
+      "pass": true,
+      "polygon_m": 1310.743443694205,
+      "published_m": 1310.64,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "CDW",
+      "check": "runway_length",
+      "difference_fraction": 0.00012858021857486968,
+      "pass": true,
+      "polygon_m": 1387.6279985728297,
+      "published_m": 1387.4496000000001,
+      "runway": "04/22",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "CDW",
+      "check": "runway_length",
+      "difference_fraction": 0.000010691584395816633,
+      "pass": true,
+      "polygon_m": 1133.563319458322,
+      "published_m": 1133.5512,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "CKZ",
+      "check": "runway_length",
+      "difference_fraction": 0.00018807690477506966,
+      "pass": true,
+      "polygon_m": 1283.2714008853368,
+      "published_m": 1283.5128,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "DYL",
+      "check": "runway_length",
+      "difference_fraction": 0.00011952199252351914,
+      "pass": true,
+      "polygon_m": 915.5097633688233,
+      "published_m": 915.6192000000001,
+      "runway": "05/23",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "FWN",
+      "check": "runway_length",
+      "difference_fraction": 0.00003086602722679466,
+      "pass": true,
+      "polygon_m": 1068.661784325636,
+      "published_m": 1068.6288,
+      "runway": "03/21",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "HZL",
+      "check": "runway_length",
+      "difference_fraction": 0.00003210165928724251,
+      "pass": true,
+      "polygon_m": 1524.3537327133397,
+      "published_m": 1524.3048000000001,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "LDJ",
+      "check": "runway_length",
+      "difference_fraction": 0.000042677522251732825,
+      "pass": true,
+      "polygon_m": 1261.8181464296413,
+      "published_m": 1261.872,
+      "runway": "09/27",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MGJ",
+      "check": "runway_length",
+      "difference_fraction": 0.00006119354411993072,
+      "pass": true,
+      "polygon_m": 1525.9221708719924,
+      "published_m": 1525.8288,
+      "runway": "04/22",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MGJ",
+      "check": "runway_length",
+      "difference_fraction": 0.000058049383741654026,
+      "pass": true,
+      "polygon_m": 1116.8520288087307,
+      "published_m": 1116.7872,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MMU",
+      "check": "runway_length",
+      "difference_fraction": 0.00010235095877364486,
+      "pass": true,
+      "polygon_m": 1828.377517040261,
+      "published_m": 1828.1904000000002,
+      "runway": "05/23",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MMU",
+      "check": "runway_length",
+      "difference_fraction": 0.00013760167635457066,
+      "pass": true,
+      "polygon_m": 1218.4532381408387,
+      "published_m": 1218.2856000000002,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MPO",
+      "check": "runway_length",
+      "difference_fraction": 0.00012020026607584278,
+      "pass": true,
+      "polygon_m": 1218.7486884726416,
+      "published_m": 1218.8952000000002,
+      "runway": "05/23",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "MPO",
+      "check": "runway_length",
+      "difference_fraction": 0.00006698306664587594,
+      "pass": true,
+      "polygon_m": 1524.202697389993,
+      "published_m": 1524.3048000000001,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N05",
+      "check": "runway_length",
+      "difference_fraction": 2.102585945573665e-6,
+      "pass": true,
+      "polygon_m": 670.5614099100318,
+      "published_m": 670.5600000000001,
+      "runway": "05/23",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N07",
+      "check": "runway_length",
+      "difference_fraction": 0.0000764728730133779,
+      "pass": true,
+      "polygon_m": 843.4460958139987,
+      "published_m": 843.3816,
+      "runway": "01/19",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N30",
+      "check": "runway_length",
+      "difference_fraction": 0.0000821801269115241,
+      "pass": true,
+      "polygon_m": 910.2075948290104,
+      "published_m": 910.1328000000001,
+      "runway": "18/36",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N40",
+      "check": "runway_length",
+      "difference_fraction": 0.0003365095229193038,
+      "pass": true,
+      "polygon_m": 884.2174474974989,
+      "published_m": 883.9200000000001,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N43",
+      "check": "runway_length",
+      "difference_fraction": 0.00008176514777602506,
+      "pass": true,
+      "polygon_m": 596.2375474653344,
+      "published_m": 596.1888,
+      "runway": "18/36",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N47",
+      "check": "runway_length",
+      "difference_fraction": 0.000018847265238930433,
+      "pass": true,
+      "polygon_m": 824.1947335239868,
+      "published_m": 824.1792,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N51",
+      "check": "runway_length",
+      "difference_fraction": 0.000010187458382882042,
+      "pass": true,
+      "polygon_m": 1706.28778255869,
+      "published_m": 1706.2704,
+      "runway": "04/22",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N51",
+      "check": "runway_length",
+      "difference_fraction": 0.00010300709779453854,
+      "pass": true,
+      "polygon_m": 612.7111070924497,
+      "published_m": 612.648,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N51",
+      "check": "runway_length",
+      "difference_fraction": 0.00012940959096807703,
+      "pass": true,
+      "polygon_m": 1049.5953547147815,
+      "published_m": 1049.7312,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N72",
+      "check": "runway_length",
+      "difference_fraction": 0.0000444470623577331,
+      "pass": true,
+      "polygon_m": 640.108449675674,
+      "published_m": 640.08,
+      "runway": "03L/21R",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N72",
+      "check": "runway_length",
+      "difference_fraction": 0.00004431512445224328,
+      "pass": true,
+      "polygon_m": 655.3490405873561,
+      "published_m": 655.32,
+      "runway": "03R/21L",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N72",
+      "check": "runway_length",
+      "difference_fraction": 0.000044389594023863665,
+      "pass": true,
+      "polygon_m": 685.8304423835816,
+      "published_m": 685.8000000000001,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N85",
+      "check": "runway_length",
+      "difference_fraction": 0.00004565929935185231,
+      "pass": true,
+      "polygon_m": 777.2045117661718,
+      "published_m": 777.24,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N85",
+      "check": "runway_length",
+      "difference_fraction": 0.00016185843426341773,
+      "pass": true,
+      "polygon_m": 549.7702006508226,
+      "published_m": 549.8592,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "N87",
+      "check": "runway_length",
+      "difference_fraction": 0.000035361149451906826,
+      "pass": true,
+      "polygon_m": 1302.973923715041,
+      "published_m": 1303.02,
+      "runway": "11/29",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "P91",
+      "check": "runway_length",
+      "difference_fraction": 0.00010632292375900576,
+      "pass": true,
+      "polygon_m": 725.5011292006451,
+      "published_m": 725.4240000000001,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "PTW",
+      "check": "runway_length",
+      "difference_fraction": 0.00006374064780034772,
+      "pass": true,
+      "polygon_m": 1027.5462922917945,
+      "published_m": 1027.4808,
+      "runway": "10/28",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "RDG",
+      "check": "runway_length",
+      "difference_fraction": 0.000016978352786245487,
+      "pass": true,
+      "polygon_m": 1935.4471387377494,
+      "published_m": 1935.48,
+      "runway": "13/31",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "RDG",
+      "check": "runway_length",
+      "difference_fraction": 8.676526145334762e-7,
+      "pass": true,
+      "polygon_m": 1570.0234377638776,
+      "published_m": 1570.0248000000001,
+      "runway": "18/36",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "SMQ",
+      "check": "runway_length",
+      "difference_fraction": 0.0002534413726302809,
+      "pass": true,
+      "polygon_m": 585.9818503068836,
+      "published_m": 586.1304,
+      "runway": "08/26",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "SMQ",
+      "check": "runway_length",
+      "difference_fraction": 0.00016988143010110424,
+      "pass": true,
+      "polygon_m": 834.7053749637481,
+      "published_m": 834.8472,
+      "runway": "12/30",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "SMQ",
+      "check": "runway_length",
+      "difference_fraction": 0.00010895508399832998,
+      "pass": true,
+      "polygon_m": 518.2164561663246,
+      "published_m": 518.1600000000001,
+      "runway": "17/35",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "TTN",
+      "check": "runway_length",
+      "difference_fraction": 7.484529619405933e-6,
+      "pass": true,
+      "polygon_m": 1830.6150986045245,
+      "published_m": 1830.6288000000002,
+      "runway": "06/24",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "TTN",
+      "check": "runway_length",
+      "difference_fraction": 1.99987484772457e-6,
+      "pass": true,
+      "polygon_m": 1463.0429258968973,
+      "published_m": 1463.04,
+      "runway": "16/34",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "UKT",
+      "check": "runway_length",
+      "difference_fraction": 0.00003606875565909107,
+      "pass": true,
+      "polygon_m": 978.443289959087,
+      "published_m": 978.408,
+      "runway": "11/29",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "WBW",
+      "check": "runway_length",
+      "difference_fraction": 0.0001464754532496393,
+      "pass": true,
+      "polygon_m": 1028.850679298758,
+      "published_m": 1028.7,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "WBW",
+      "check": "runway_length",
+      "difference_fraction": 0.00005133432627690837,
+      "pass": true,
+      "polygon_m": 668.4607132189097,
+      "published_m": 668.4264000000001,
+      "runway": "09/27",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "XLL",
+      "check": "runway_length",
+      "difference_fraction": 0.00002872616610338774,
+      "pass": true,
+      "polygon_m": 1203.9254148450582,
+      "published_m": 1203.96,
+      "runway": "07/25",
+      "tolerance_fraction": 0.05
+    },
+    {
+      "airport": "XLL",
+      "check": "runway_length",
+      "difference_fraction": 7.504253893175772e-6,
+      "pass": true,
+      "polygon_m": 963.1752278572137,
+      "published_m": 963.168,
+      "runway": "15/33",
+      "tolerance_fraction": 0.05
+    }
+  ],
+  "procedure_parse_failures": [],
+  "warnings": [
+    "7N8: FAA elevation and terrain differ by 17.00 m"
+  ]
+}

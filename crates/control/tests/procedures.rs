@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, Step, read_region};
 use flightcraft_sim::{
     State,
@@ -104,6 +106,7 @@ fn ils_flight_for(legacy: bool) -> Session {
 }
 #[test]
 fn kmmu_ils_captures_and_descends_on_the_published_localizer_and_glideslope() {
+    require_region_data!();
     let mut s = ils_flight();
     let ap = s.sim().installed_autopilot().unwrap();
     let signal = &s.sim().radio_state()[0];
@@ -144,6 +147,7 @@ fn kmmu_ils_captures_and_descends_on_the_published_localizer_and_glideslope() {
 }
 #[test]
 fn rnav_transition_cdi_and_missed_approach_are_shared_and_observational() {
+    require_region_data!();
     let mut s = flight();
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1200.,"airspeed_mps":40.,"heading_rad":1.}})).unwrap();
     set(
@@ -173,6 +177,7 @@ fn rnav_transition_cdi_and_missed_approach_are_shared_and_observational() {
 }
 #[test]
 fn published_hold_enters_and_hm_suspends() {
+    require_region_data!();
     let w = world();
     let d = w.procedures().unwrap();
     let p = d
@@ -207,6 +212,7 @@ fn published_hold_enters_and_hm_suspends() {
 }
 #[test]
 fn sbj_radials_slant_range_cone_and_to_from() {
+    require_region_data!();
     let w = world();
     let station = w
         .navdata()
@@ -247,6 +253,7 @@ fn sbj_radials_slant_range_cone_and_to_from() {
 
 #[test]
 fn autopilot_intercepts_the_sbj_obs_radial() {
+    require_region_data!();
     let mut s = flight();
     let w = world();
     let station = w
@@ -342,6 +349,7 @@ fn catalogues_match_the_published_schema_and_reject_hostile_edits() {
 }
 #[test]
 fn invalid_receiver_commands_leave_the_flight_unchanged() {
+    require_region_data!();
     let mut s = flight();
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1200.,"airspeed_mps":40.,"heading_rad":1.}})).unwrap();
     set(
@@ -362,6 +370,7 @@ fn invalid_receiver_commands_leave_the_flight_unchanged() {
 
 #[test]
 fn published_lpv_glidepath_drives_the_digital_autopilot() {
+    require_region_data!();
     let mut s = flight();
     let w = world();
     let d = w.procedures().unwrap();
@@ -431,6 +440,7 @@ fn published_lpv_glidepath_drives_the_digital_autopilot() {
 
 #[test]
 fn legacy_apr_couples_the_same_published_ils_glideslope() {
+    require_region_data!();
     let mut s = ils_flight_for(true);
     s.run(Step { steps: 3600 }).unwrap();
     let ap = s.sim().installed_autopilot().unwrap();
@@ -441,6 +451,7 @@ fn legacy_apr_couples_the_same_published_ils_glideslope() {
 }
 #[test]
 fn localizer_sectors_back_course_and_glideslope_lobes() {
+    require_region_data!();
     let w = world();
     let l = w
         .procedures()
@@ -497,6 +508,7 @@ fn localizer_sectors_back_course_and_glideslope_lobes() {
 
 #[test]
 fn standby_hsi_uses_the_shared_procedure_and_loses_it_with_receiver_power() {
+    require_region_data!();
     let mut s = Session::new().unwrap();
     s.execute(
         "aircraft.load",

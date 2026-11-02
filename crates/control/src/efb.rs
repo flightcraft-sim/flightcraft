@@ -1,4 +1,6 @@
 //! Tablet broadcast commands, with platform IO isolated from the deterministic simulation.
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 pub mod encode;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod sender;
@@ -203,6 +205,7 @@ mod truth_tests {
     use serde_json::json;
     #[test]
     fn truth_uses_ambient_pressure_true_bearings_and_ignores_sensor_failures() {
+        require_region_data!();
         let mut session = Session::new().unwrap();
         assert!(aircraft(&session).is_none());
         let directory =

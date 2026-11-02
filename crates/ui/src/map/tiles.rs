@@ -94,9 +94,14 @@ impl Tiles {
             .log2()
             .round();
         let zoom = (desired as u8).clamp(index.min_zoom, index.max_zoom);
-        let tiles: Vec<_> = index.tiles.iter().filter(|t| t.z == zoom).copied().collect();
+        let tiles: Vec<_> = index
+            .tiles
+            .iter()
+            .filter(|t| t.z == zoom)
+            .map(|t| (*t, index.tile_path(*t)))
+            .collect();
         let mut loads = 0;
-        for tile in tiles {
+        for (tile, path) in tiles {
             let Some(corners) = tile_corners(tile, view) else {
                 continue;
             };
@@ -104,7 +109,7 @@ impl Tiles {
             if !view.rect.intersects(bounds) {
                 continue;
             }
-            let key = format!("{base}/{}", tile.path());
+            let key = format!("{base}/{path}");
             if !self.textures.contains_key(&key) && !self.failures.contains(&key) && loads < 4 {
                 loads += 1;
                 if let Some(result) = self.read(&key, ui.ctx()) {
@@ -114,7 +119,11 @@ impl Tiles {
                         }
                         let mut reader = image::ImageReader::with_format(
                             std::io::Cursor::new(bytes),
-                            image::ImageFormat::Png,
+                            if key.ends_with(".webp") {
+                                image::ImageFormat::WebP
+                            } else {
+                                image::ImageFormat::Png
+                            },
                         );
                         let mut limits = image::Limits::default();
                         limits.max_image_width = Some(256);

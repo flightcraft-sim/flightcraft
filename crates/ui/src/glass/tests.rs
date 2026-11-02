@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 use eframe::egui::{self, Align2, FontId, Pos2, Rect};
 use flightcraft_control::{GlassFailure, GlassSetting, Session};
@@ -33,6 +35,7 @@ fn tape_ticks_trends_and_bugs_share_scale() {
 }
 #[test]
 fn failure_flags_and_reversion_strip_are_visible() {
+    require_region_data!();
     let mut s = flight();
     s.set_glass(GlassSetting::Failure {
         target: GlassFailure::Mfd,
@@ -70,6 +73,7 @@ fn failure_flags_and_reversion_strip_are_visible() {
 }
 #[test]
 fn labels_fit_canvas_without_overlap_at_both_window_sizes() {
+    require_region_data!();
     let s = flight();
     let mut state = s.glass_state();
     let ctx = egui::Context::default();
@@ -137,6 +141,7 @@ fn labels_fit_canvas_without_overlap_at_both_window_sizes() {
 
 #[test]
 fn display_units_zero_and_requested_pfd_readouts() {
+    require_region_data!();
     let s = flight();
     let state = s.glass_state();
     for units in [

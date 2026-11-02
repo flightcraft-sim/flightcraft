@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Index",
+  "type": "object",
+  "properties": {
+    "coordinates": {
+      "type": "string"
+    },
+    "cycle": {
+      "type": "string"
+    },
+    "effective_date": {
+      "type": "string"
+    },
+    "shards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Shard"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "coordinates",
+    "cycle",
+    "effective_date",
+    "shards"
+  ],
+  "$defs": {
+    "Shard": {
+      "type": "object",
+      "properties": {
+        "bounds": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        },
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "state",
+        "path",
+        "count",
+        "bytes",
+        "sha256"
+      ]
+    }
+  }
+}

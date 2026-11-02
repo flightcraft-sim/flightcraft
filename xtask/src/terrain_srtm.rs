@@ -57,13 +57,23 @@ fn decode(name: &str, bytes: &[u8]) -> Result<HgtTile, String> {
             .read_to_end(&mut data)
             .map_err(|e| e.to_string())?;
         HgtTile::read(hgt_name, &data).map_err(|e| e.to_string())
+    } else if let Some(hgt_name) = name.strip_suffix(".gz") {
+        let mut data = Vec::new();
+        flate2::read::GzDecoder::new(bytes)
+            .take(MAX_HGT_BYTES as u64 + 1)
+            .read_to_end(&mut data)
+            .map_err(|e| e.to_string())?;
+        HgtTile::read(hgt_name, &data).map_err(|e| e.to_string())
     } else {
         HgtTile::read(name, bytes).map_err(|e| e.to_string())
     }
 }
 
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let (mut region_path, mut hgt, mut out) = (None, None, None);
     while let Some(arg) = args.next() {
         let slot = match arg.as_str() { "--region" => &mut region_path, "--hgt" => &mut hgt, "--out" => &mut out,
@@ -94,7 +104,7 @@ pub fn run() -> Result<(), String> {
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or("HGT filename requires UTF-8")?;
-        if !name.ends_with(".hgt") && !name.ends_with(".hgt.zip") {
+        if !name.ends_with(".hgt") && !name.ends_with(".hgt.zip") && !name.ends_with(".hgt.gz") {
             continue;
         }
         let bytes = bounded(&path, MAX_ARCHIVE_BYTES).map_err(|e| format!("{name}: {e}"))?;

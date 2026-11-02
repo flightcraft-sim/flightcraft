@@ -1,0 +1,83 @@
+[
+  {
+    "id": "new-york",
+    "origin": "1N7",
+    "bbox": [
+      -75.2,
+      40.25,
+      -73.25,
+      41.3
+    ],
+    "charts": [
+      "sectional",
+      "tac"
+    ],
+    "grid": {
+      "id": "new-york",
+      "name": "New York area",
+      "origin": {
+        "latitude_deg": 40.96905613156273,
+        "longitude_deg": -75.00242278301268,
+        "field_elevation_m": 111.83305867511855,
+        "runway_heading_deg": 60.76659070034455,
+        "runway_length_m": 948.5376,
+        "runway_width_m": 21.336000000000002
+      },
+      "southwest_m": [
+        -82000.0,
+        -18000.0
+      ],
+      "tiles_north": 8,
+      "tiles_east": 11,
+      "spacing_m": 60.0,
+      "tile_size": 257,
+      "runway_blend_m": 200.0,
+      "source": "Terrain Tiles (USGS 3DEP and NASA SRTM)",
+      "licence": "public domain",
+      "attribution": "Elevation: USGS 3DEP and NASA SRTM, public domain, via the Terrain Tiles open dataset",
+      "tiles": [],
+      "airports": "airports.json"
+    },
+    "snapshot_date": "2026-11-01"
+  },
+  {
+    "id": "eastern-pa",
+    "origin": "1N7",
+    "bbox": [
+      -76.2,
+      40.2,
+      -74.3,
+      41.5
+    ],
+    "charts": [
+      "sectional"
+    ],
+    "grid": {
+      "id": "eastern-pa",
+      "name": "Eastern Pennsylvania and New Jersey",
+      "origin": {
+        "latitude_deg": 40.96905613156273,
+        "longitude_deg": -75.00242278301268,
+        "field_elevation_m": 111.64070468476237,
+        "runway_heading_deg": 60.76659070034455,
+        "runway_length_m": 948.5376,
+        "runway_width_m": 21.336000000000002
+      },
+      "southwest_m": [
+        -87040.0,
+        -104000.0
+      ],
+      "tiles_north": 10,
+      "tiles_east": 11,
+      "spacing_m": 60.0,
+      "tile_size": 257,
+      "runway_blend_m": 200.0,
+      "source": "Terrain Tiles (USGS 3DEP and NASA SRTM)",
+      "licence": "public domain",
+      "attribution": "Elevation: USGS 3DEP and NASA SRTM, public domain, via the Terrain Tiles open dataset",
+      "tiles": [],
+      "airports": "airports.json"
+    },
+    "snapshot_date": "2026-11-01"
+  }
+]

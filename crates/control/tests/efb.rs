@@ -1,5 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::Session;
 use serde_json::json;
 
@@ -55,6 +57,7 @@ fn commands_have_schemas_and_validate_atomically_without_opening_network() {
 
 #[test]
 fn region_can_be_selected_while_broadcast_is_disabled() {
+    require_region_data!();
     let mut session = Session::new().unwrap();
     session.initialize_efb(42).unwrap();
     let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");

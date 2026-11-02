@@ -9,10 +9,16 @@ use syn::visit::Visit;
 
 mod airspace_faa;
 mod charts_faa;
+mod data;
+mod download;
+mod national;
 mod navdata_faa;
 mod navigation_faa;
 mod procedures_faa;
+mod refresh;
+mod region;
 mod terrain_srtm;
+mod validation;
 mod web;
 
 /// Each workspace crate and the workspace crates it may depend on.
@@ -82,6 +88,8 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     let result = match task.as_str() {
         "layers" => layers(),
+        "region" => region::run(),
+        "data" => data::run(),
         "terrain" => terrain(),
         "terrain-srtm" => terrain_srtm::run(),
         "charts-faa" => charts_faa::run(),
@@ -124,6 +132,11 @@ fn cargo(args: &[&str]) -> Result<(), String> {
 
 fn ci() -> Result<(), String> {
     cargo(&["fmt", "--all", "--check"])?;
+    data::fetch(
+        false,
+        &root()?.join(".cache/data"),
+        std::env::var("FLIGHTCRAFT_DATA_URL").ok().as_deref(),
+    )?;
     layers()?;
     schemas(true)?;
     determinism()?;
@@ -157,6 +170,30 @@ fn root() -> Result<PathBuf, String> {
 
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
+        (
+            "cell-index.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(region::CellIndex)),
+        ),
+        (
+            "region-build.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(region::Request)),
+        ),
+        (
+            "sources.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(region::Sources)),
+        ),
+        (
+            "data-lock.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(data::Lock)),
+        ),
+        (
+            "navigation-index.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(national::Index)),
+        ),
+        (
+            "validation.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(validation::Report)),
+        ),
         (
             "procedures.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Procedures)),

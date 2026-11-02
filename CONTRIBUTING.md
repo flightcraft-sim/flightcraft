@@ -29,3 +29,14 @@ cargo xtask ci
 
 One topic per pull request. Describe what changed and how you checked it; show visible changes with a
 screenshot.
+
+## Region data
+
+Build or refresh geographic data with `cargo xtask region build`; do not hand-edit generated
+sidecars or add terrain/chart binaries to git. See [Build a region](docs/terrain.md#build-a-region)
+for the online and offline layouts, national navigation, cells, validation, and release procedure.
+Run `cargo xtask data fetch` before local region-dependent tests or packaging. Use
+`cargo xtask data fetch --offline` to restore a populated cache without network access. CI requires
+all locked showcase tiles. Review `validation.json`, `validation.md`, source receipts, attribution,
+and the release manifest before publishing data. The first data release must exist before the
+binary-removal change is merged.

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Request",
+  "type": "object",
+  "properties": {
+    "bbox": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 4,
+      "minItems": 4
+    },
+    "cache": {
+      "type": "string"
+    },
+    "cell": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "charts": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "keep_v1": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "national": {
+      "type": "boolean"
+    },
+    "national_data": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "offline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "origin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "out": {
+      "type": "string"
+    },
+    "spacing": {
+      "type": "number",
+      "format": "float"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "national",
+    "spacing",
+    "out",
+    "cache",
+    "keep_v1"
+  ]
+}

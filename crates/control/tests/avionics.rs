@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, read_region};
 use flightcraft_sim::avionics::{AvionicsSetting, Unit};
 use serde_json::{Value, json};
@@ -148,6 +150,7 @@ fn alignment_bus_switchover_pitot_hold_and_independent_reversion() {
 }
 #[test]
 fn new_york_direct_to_geodetic_distance_bearing_and_terminal_scaling() {
+    require_region_data!();
     let mut s = standby();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
     s.install_region(read_region(&dir).unwrap()).unwrap();

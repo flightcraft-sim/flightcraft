@@ -1,0 +1,28 @@
+[
+  {
+    "region": "new-york",
+    "tiles_identical": true,
+    "tile_count": 88,
+    "sidecars_identical": {
+      "region.json": true,
+      "airports.json": true,
+      "navdata.json": true,
+      "procedures.json": true
+    },
+    "airspace_before": 34,
+    "airspace_after": 32
+  },
+  {
+    "region": "eastern-pa",
+    "tiles_identical": true,
+    "tile_count": 110,
+    "sidecars_identical": {
+      "region.json": true,
+      "airports.json": true,
+      "navdata.json": true,
+      "procedures.json": true
+    },
+    "airspace_before": 29,
+    "airspace_after": 27
+  }
+]

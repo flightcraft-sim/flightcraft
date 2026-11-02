@@ -84,10 +84,11 @@ impl HeightTile {
             *cursor = tail;
             head.try_into().map_err(|_| TerrainError("truncated field"))
         }
-        if &take::<4>(&mut cursor)? != MAGIC
-            || u16::from_le_bytes(take(&mut cursor)?) != 1
-            || u16::from_le_bytes(take(&mut cursor)?) != 0
-        {
+        if &take::<4>(&mut cursor)? != MAGIC {
+            return Err(TerrainError("magic"));
+        }
+        let version = u16::from_le_bytes(take(&mut cursor)?);
+        if !matches!(version, 1 | 2) || u16::from_le_bytes(take(&mut cursor)?) != 0 {
             return Err(TerrainError("magic, version, or reserved field"));
         }
         let origin = [
@@ -100,6 +101,48 @@ impl HeightTile {
             return Err(TerrainError("sample width"));
         }
         let width = size as usize;
+        if version == 2 {
+            use std::io::Read;
+            let offset = f32::from_le_bytes(take(&mut cursor)?);
+            let packed_len = u32::from_le_bytes(take(&mut cursor)?) as usize;
+            let decoded_len = width * width * 2 + (width - 1) * (width - 1);
+            if !offset.is_finite()
+                || offset.abs() > 20_000.0
+                || packed_len != cursor.len()
+                || packed_len > decoded_len + 1024
+            {
+                return Err(TerrainError("compact header or length"));
+            }
+            let mut decoder = flate2::read::ZlibDecoder::new(cursor);
+            let mut decoded = Vec::new();
+            (&mut decoder)
+                .take(decoded_len as u64 + 1)
+                .read_to_end(&mut decoded)
+                .map_err(|_| TerrainError("compact deflate stream"))?;
+            if decoded.len() != decoded_len || decoder.total_in() != packed_len as u64 {
+                return Err(TerrainError("compact decoded length or trailing bytes"));
+            }
+            let (heights, cells) = decoded
+                .split_at_checked(width * width * 2)
+                .ok_or(TerrainError("compact sample bytes"))?;
+            let samples = heights
+                .chunks_exact(2)
+                .map(|pair| {
+                    let value: [u8; 2] = pair.try_into().map_err(|_| TerrainError("compact sample"))?;
+                    Ok(offset + f32::from(i16::from_le_bytes(value)) * 0.25)
+                })
+                .collect::<Result<Vec<_>, TerrainError>>()?;
+            let surfaces = cells
+                .iter()
+                .map(|b| match b {
+                    0 => Ok(Surface::Grass),
+                    1 => Ok(Surface::Pavement),
+                    2 => Ok(Surface::Water),
+                    _ => Err(TerrainError("unknown surface")),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            return Self::new(origin, spacing, size, samples, surfaces);
+        }
         if bytes.len() != HEADER + width * width * 4 + (width - 1) * (width - 1) {
             return Err(TerrainError("byte length"));
         }
@@ -140,6 +183,45 @@ impl HeightTile {
         }));
         out
     }
+    /// Version 2 stores quarter-metre i16 heights around a quarter-metre offset,
+    /// followed by cell surfaces in one bounded zlib stream. Version 1 remains readable.
+    pub fn write_compact(&self) -> Result<Vec<u8>, TerrainError> {
+        use std::io::Write;
+        let min = self.samples.iter().copied().fold(f32::INFINITY, f32::min);
+        let max = self.samples.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        let offset = (libm::round(f64::from((min + max) * 2.0)) * 0.25) as f32;
+        let mut raw = Vec::with_capacity(self.samples.len() * 2 + self.surfaces.len());
+        for value in &self.samples {
+            let q = libm::round(f64::from((*value - offset) * 4.0));
+            if !(-32768.0..=32767.0).contains(&q) {
+                return Err(TerrainError("height range exceeds compact representation"));
+            }
+            raw.extend_from_slice(&(q as i16).to_le_bytes());
+        }
+        raw.extend(self.surfaces.iter().map(|s| match s {
+            Surface::Grass => 0,
+            Surface::Pavement => 1,
+            Surface::Water => 2,
+        }));
+        let mut encoder = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+        encoder
+            .write_all(&raw)
+            .map_err(|_| TerrainError("compact compression"))?;
+        let packed = encoder
+            .finish()
+            .map_err(|_| TerrainError("compact compression"))?;
+        let mut out = self.write();
+        out.truncate(HEADER);
+        let version = out.get_mut(4..6).ok_or(TerrainError("compact header"))?;
+        version.copy_from_slice(&2_u16.to_le_bytes());
+        out.extend_from_slice(&offset.to_le_bytes());
+        out.extend_from_slice(&(packed.len() as u32).to_le_bytes());
+        out.extend_from_slice(&packed);
+        // Quantisation must preserve water flatness and the normal reader's limits.
+        Self::read(&out)?;
+        Ok(out)
+    }
+
     #[must_use]
     pub fn origin_m(&self) -> [f64; 2] {
         self.origin_m
@@ -611,47 +693,7 @@ pub fn generate_training_valley(seed: u64) -> Result<Vec<HeightTile>, TerrainErr
 }
 
 fn bundled_training_valley() -> Result<Vec<HeightTile>, TerrainError> {
-    [
-        include_bytes!("../../../assets/terrain/training-valley/00.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/01.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/02.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/03.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/04.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/05.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/06.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/07.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/08.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/09.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/10.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/11.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/12.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/13.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/14.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/15.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/16.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/17.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/18.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/19.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/20.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/21.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/22.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/23.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/24.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/25.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/26.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/27.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/28.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/29.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/30.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/31.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/32.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/33.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/34.fcht").as_slice(),
-        include_bytes!("../../../assets/terrain/training-valley/35.fcht").as_slice(),
-    ]
-    .into_iter()
-    .map(HeightTile::read)
-    .collect()
+    generate_training_valley(TRAINING_SEED)
 }
 
 /// Pavement wins over an intersecting unpaved strip. With equally ranked surfaces,

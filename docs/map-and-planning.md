@@ -415,8 +415,8 @@ Synthetic tests exercise collar isolation, GeoTIFF generation and decoding, geor
 hostile input.
 
 `schema/charts.json` describes `charts/<kind>/index.json`, recording the edition, expiry,
-public-domain attribution, zoom bounds, tile coordinates, `coverage_margin_nm`, and encoded byte count. PNG tiles use
-`<z>/<x>/<y>.png`. The checked-in editions are effective **2026-10-29 through 2026-12-23**:
+public-domain attribution, zoom bounds, tile coordinates, `coverage_margin_nm`, and encoded byte count. Version 1 PNG tiles use
+`<z>/<x>/<y>.png`; version 2 uses lossless WebP at `<z>/<x>/<y>.webp`. The viewer reads both versions. See [data sizes](data-size.md) for current encoded sizes. The checked-in editions are effective **2026-10-29 through 2026-12-23**:
 
 | Region | Base | Zooms | Tiles | PNG bytes |
 |---|---|---|---:|---:|

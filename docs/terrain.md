@@ -7,7 +7,7 @@ bytes. Adjacent edges share identical samples. An apron around Corvid Field is f
 zero MSL, and the 900 m by 23 m runway remains at the NED origin. The ridge rises to about
 600 m. The lake is a flat 35 m MSL surface. No external elevation data is used.
 
-The version 1 `.fcht` format is little-endian:
+The original version 1 `.fcht` format is little-endian (the reader also accepts compact version 2 below):
 
 | Offset | Type | Meaning |
 |---|---|---|
@@ -316,3 +316,219 @@ outside the terrain grid. The sibling `cargo xtask navigation-faa` importer and 
 The snapshot date and unknown-or-verified cycle date are distinct; source record edit dates never
 silently become a dataset cycle date. Search and route planning are advisory and not for real-world
 navigation.
+
+## Build a region
+
+Use the pipeline for new regions and FAA updates; keep source downloads and generated binary data
+outside git. For example:
+
+```sh
+cargo xtask region build --id new-york --name 'New York area' --origin 1N7 \
+  --bbox '-75.20,40.25,-73.25,41.30' --charts sectional,tac --spacing 60 \
+  --out out/new-york
+```
+
+The output directory must be new. The command downloads public Terrain Tiles HGT gzip files,
+FAA ADDS airports, runway polygons, airspace, navaids, components, fixes, ILS components, airways,
+and holds, current CIFP discovered through APRA, current d-TPP metadata, and requested FAA VFR
+chart archives. ADDS queries use ordered `resultOffset` pages until the transfer-limit flag clears;
+a stalled or oversized response fails the build. It runs elevation, airport/runway preparation,
+airspace, navigation, procedures with plate links, and chart importers in that order. It does not
+download or render approach-plate PDFs: d-TPP metadata supplies the existing procedure links.
+
+`--cache <directory>` selects the content-addressed source cache, default `.cache/sources`.
+Cached downloads are checked against SHA-256 receipts before reuse; current-edition discovery and
+live ADDS queries are refreshed. `sources.json` records URLs, known editions, retrieval times,
+encoded sizes, and SHA-256 hashes. Offline receipts record the time the supplied files were
+read, rather than claiming knowledge of their historical download time. ADDS remains explicitly a
+snapshot with an unknown effective date; CIFP's date is never assigned to a live ADDS snapshot.
+
+Chart selection uses `datasets/charts.json`: chart names are selected when their FAA metadata
+bounding rectangle intersects the requested box. The initial verified catalogue covers New York
+sectional and TAC charts, including both showcase regions. These conservative rectangles include
+collar margins, so selection may download a chart whose visible map face does not reach the box.
+The existing importer masks the collar, and combines overlapping map faces in catalogue order.
+Add another chart's name, kind, exact TIFF basename, and public FAA metadata bounds to this
+catalogue before requesting charts elsewhere. The pipeline fails if a requested kind has no
+verified candidate. Optional `neatline` rectangles follow the existing importer quality check.
+Inspect map labels, borders, seams, and runway/chart alignment before publishing a new coverage.
+
+All source datasets are public-domain US government works. Terrain Tiles combines USGS 3DEP and
+NASA SRTM; do not relabel these downloads as unmodified SRTM. Keep the attribution in the region
+manifest and [ATTRIBUTION.md](../ATTRIBUTION.md). FAA charts and procedures remain for simulation
+only, not for real-world navigation. Typical source inputs occupy hundreds of megabytes because
+they include full-resolution HGT and GeoTIFF files. Derived showcase data is much smaller;
+[measured sizes and the national projection](data-size.md) record the current ratios. No downloader
+is linked into the simulator binaries.
+
+### Offline input layout and reproducibility
+
+The same command accepts `--offline downloads/example`. It makes no network calls. The directory
+contains the following already-downloaded files; directories may be links to a local source cache,
+but individual input files must be bounded regular files:
+
+```text
+hgt/N40W075.hgt                 # raw .hgt, .hgt.gz, or .hgt.zip
+faa/US_Airport.geojson
+faa/Runways.geojson
+faa/Class_Airspace.geojson
+nav/NAVAIDSystem.geojson
+nav/NavaidComponent.geojson
+nav/DesignatedPoint.geojson
+nav/ILS_Component.geojson
+nav/ATS_Route.geojson
+nav/HoldingPattern.geojson
+cifp/FAACIFP18
+dtpp.xml
+charts/sectional/New York SEC.tif
+charts/sectional/New York SEC.tfw
+charts/sectional/New York SEC.htm
+charts/tac/New York TAC.tif
+charts/tac/New York TAC.tfw
+charts/tac/New York TAC.htm
+```
+
+`datasets/regions.json` preserves the exact original grids for the two showcase IDs, including their
+shared 1N7 threshold origin. Rebuilding those IDs with the documented boxes selects those grids.
+A new ID derives a bounded grid and reference runway from its chosen airport. The `--keep-v1`
+verification option retains full-precision terrain output for byte comparisons before migration.
+[Reproduction results](../datasets/regeneration.json) record the offline checks: all 198 original
+terrain tiles, both region manifests, both airport catalogues, both navigation catalogues, and
+both procedure catalogues reproduced byte-for-byte before compact encoding. The bundled offline
+recipes retain their original ADDS snapshot date. For another offline snapshot, include
+`snapshot.json` with `{"snapshot_date":"YYYY-MM-DD"}`; other new offline recipes default to the
+import date, and keep their effective cycle unknown.
+
+The current airspace importer produces 32 New York volumes instead of the previously committed
+34, and 27 eastern Pennsylvania volumes instead of 29. Its filtering omits `faa-473` and
+`faa-4105` in New York, and `faa-201` and `faa-953` in eastern Pennsylvania; these source records
+are present, but are outside the current importer's retained grid intersections. Polygon vertex
+selection also differs from the previous catalogue. This change adopts the current importer's
+output rather than hand-editing its geometry. `sources.json` hashes the actual supplied snapshots.
+All 1,206 regenerated chart tiles decode to exactly the same RGBA pixels as the previous PNGs;
+[the comparison receipt](../datasets/chart-comparison.json) records the counts. Chart indexes now
+select lossless WebP; compact terrain changes heights by at most 0.125 m per
+stored sample. These intentional format changes are separate from the reproduction comparison.
+
+### National navigation and terrain cells
+
+Build a terrain-independent geographic FAA catalogue:
+
+```sh
+cargo xtask region build --national --out out/national
+```
+
+This queries all FAA ADDS records without a regional envelope, retaining US states and territories,
+then imports CIFP procedures in bounded airport batches. `index.json` lists geographic source
+shards by type and state, and normalized airport, navigation, and procedure shards with byte
+sizes and SHA-256 checksums. State `US` means a source layer has no state attribute. Source
+GeoJSON retains private and military facilities; normalized airport views use the simulator's
+supported public-use land-airport policy. Coordinates stay WGS84 degrees and elevations MSL metres;
+no terrain files are required. Each normalized navigation shard follows `schema/navdata.json`,
+and each procedure shard follows `schema/procedures.json`. The index is the integration hook for
+nationwide search, planning, and GPS catalogue discovery; application-side national catalogue
+loading is not introduced by this importer. Existing runtime region size limits remain in force.
+
+Use `--national-data out/national` with a regional build to derive its FAA layers from verified
+national source shards. Regional importers apply their existing filters and projections; procedures and plate links are
+filtered from the verified national procedure shards. Elevation still comes from the selected
+online or offline source. A conservative margin
+retains navaid components and route segments crossing the view. National procedure shards retain
+terminal records and their supporting enroute points, without using a terrain projection.
+
+Build one fixed 2° cell at a time:
+
+```sh
+cargo xtask region build --cell n40w076 --out assets/terrain/n40w076
+```
+
+Cell IDs encode the southwest corner, on an even-degree grid: `n40w076` covers longitude
+−76 through −74 and latitude 40 through 42. The default origin is the cell centre; `--origin IDENT`
+selects an airport instead. The current region schema still carries a reference runway at a
+centre origin; it is not claimed to be an FAA airport. Grid padding and rectangular projection
+coverage may require HGT squares beyond the nominal box. Increase spacing when a cell would
+exceed the engine's 256-tile limit. Split regions at the antimeridian, using separate cells on each
+side. Terrain availability above the provider's latitude coverage is an explicit missing-data
+error, not fabricated elevation.
+
+A sibling `cells.json` records built bounds, origins, manifest locations, total bytes, manifest
+checksums, and checksums over the sorted content inventory. This is the hook for future world
+streaming; the current app still installs individual regions. Each cell uses its own terrain
+and optional chart release archives. Every build writes `validation.json` and `validation.md`,
+with airport/procedure/fix counts, sizes, up to 32 airport elevation checks (15 m tolerance), runway
+polygon-length checks (5%), and procedure parse diagnostics. Differences require review. The
+current eastern Pennsylvania report flags a 17 m elevation difference at 7N8; it is not corrected
+by substituting a published airport elevation for the DEM.
+
+### Release data and local installation
+
+Terrain and chart binaries are ignored by git. Small manifests, sidecars, chart indexes, source
+receipts, and `data.lock` remain versioned. Restore verified release data for local runs:
+
+```sh
+cargo xtask data fetch
+cargo xtask data fetch --offline   # restore only from the verified local archive cache
+```
+
+The default cache is `.cache/data`, keyed by the archive SHA-256. Archive size, checksum, per-file
+size and checksum, exact membership, safe paths, and regular-file types are verified before any
+installed file changes. A corrupted cache is an error. `--cache DIR` selects another local cache.
+`--base-url https://example.org/data` or `FLIGHTCRAFT_DATA_URL` changes the credential-free HTTPS
+base; the path contract is `<base>/<tag>/<asset>`. Desktop defaults to GitHub release assets.
+The browser downloads ordinary relative manifests and tiles from Pages, with only the two
+showcase regions copied by `cargo xtask web`. The complete site must stay below 1 GB. `cargo xtask web --check` performs a lightweight wasm
+compile and verifies the fetched showcase package without a release build. No account,
+paid host, credential, or additional service is required.
+
+To add a built region, install its directory under `assets/terrain`, record attribution, add its
+build recipe, and pack its data. Native discovery then offers it in the World menu. A browser
+URL can specify `?region=terrain/<id>/region.json`; add a region to the explicit showcase packaging
+list only after checking the Pages budget. Desktop packaging and web packaging fetch and verify
+the locked assets. Tests that require tiles explain a local absence and skip; CI treats absence
+as a failure and fetches the release data first.
+
+### First data release: required before merging
+
+Prepare deterministic archives and update `data.lock` while the generated binaries are installed:
+
+```sh
+cargo xtask data publish --tag region-data-2611 --out out/data
+```
+
+This creates one ZIP and one size/SHA-256 manifest per region and dataset, embeds that manifest in
+the ZIP, seeds the local offline cache, and prints upload commands. It never uploads. A maintainer
+must run these exact commands from the repository root **before merging** the initial removal of
+binary files, then confirm a clean checkout can run `cargo xtask data fetch`:
+
+```sh
+gh release create region-data-2611 --repo flightcraft-sim/flightcraft --title 'Region data region-data-2611' --notes 'Public-domain terrain and FAA data; see manifests and ATTRIBUTION.md.'
+gh release upload region-data-2611 out/data/*.zip out/data/*.manifest.json --repo flightcraft-sim/flightcraft
+```
+
+Do not remove old release assets referenced by supported locks. The migration removes binaries
+from the current tree, without rewriting git history. Original training-valley tiles are generated
+from the same deterministic seed in memory, preserving their exact heights and trajectory behavior;
+their version 1 writer remains available with `cargo xtask terrain`.
+
+The weekly and manually dispatched **FAA editions** workflow checks APRA editions, rebuilds the
+showcases when CIFP/d-TPP or chart editions advance, attaches archives and manifests as workflow
+artifacts, and opens a PR with airport, procedure, and fix additions/removals. ADDS is snapshotted
+with each 28-day procedure refresh; chart dates are checked independently. A maintainer publishes
+the attached assets before merging that PR. It uses only the default token, with write permissions
+limited to its PR-producing job. Repository settings must allow Actions to create pull requests.
+
+### Compact terrain version 2
+
+Version 2 retains the first 32 header bytes above, with version `2`. Byte 32 is a little-endian
+`f32` height offset, byte 36 is a little-endian `u32` compressed length, and byte 40 begins one
+zlib/DEFLATE stream. The decoded payload is `width²` little-endian signed `i16` heights followed
+by `(width−1)²` surface bytes. A height is `offset + integer × 0.25` metres. The writer selects a
+quarter-metre offset near the sample range midpoint and rounds each sample to the nearest quarter
+metre. It rejects ranges that cannot fit, rather than saturating. Maximum sample error is 0.125 m.
+
+The pure-Rust DEFLATE implementation is the workspace's permissively licensed `flate2` backend.
+Before allocation, the reader bounds width, compressed size, and the exact decoded payload size;
+it rejects expansion beyond that bound, truncated streams, invalid zlib checksums, trailing input,
+unknown surfaces, nonfinite or out-of-range reconstructed samples, and nonflat water cells.
+The same validated `HeightTile` is returned for versions 1 and 2. Installed-memory budgets still
+count decoded terrain; smaller downloads do not silently raise simulation memory limits.

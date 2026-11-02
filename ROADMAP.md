@@ -84,3 +84,13 @@ turn anticipation remain open.
   faceplates, and configurable display compositions, with previews at both sizes.
 
 See [equipment definitions, commands, and previews](docs/equipment.md).
+
+## Geographic data pipeline
+
+One-command region builds, bounded fixture-tested HTTP transport, offline source imports, FAA
+edition refresh PRs, compact terrain v2, lossless WebP charts, verified GitHub release archives,
+and a showcase Pages budget are implemented. National navigation builds produce geographic
+source and normalized type/state shards with an index; fixed 2° terrain cells carry bounds,
+origins, checksums, and validation reports. See [the build guide](docs/terrain.md#build-a-region).
+The first data release still requires maintainer publication before merging. Nationwide runtime
+catalogue discovery and streaming between cells remain follow-up engine/application integration.

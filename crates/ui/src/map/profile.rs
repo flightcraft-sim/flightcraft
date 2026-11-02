@@ -241,9 +241,11 @@ pub(super) fn paint(ui: &egui::Ui, s: &mut Session, rect: Rect) {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
     use super::*;
     #[test]
     fn veils_are_omitted_and_controlled_shelves_merge() {
+        require_region_data!();
         let mut s = super::super::tests::planned_session();
         let mut profile = s
             .run(flightcraft_control::ProfilePlan { spacing_m: 1000. })

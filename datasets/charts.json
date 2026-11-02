@@ -1,0 +1,26 @@
+[
+  {
+    "name": "New York",
+    "kind": "sectional",
+    "bounds": [
+      -78.136657,
+      39.468085,
+      -68.65028,
+      44.294169
+    ],
+    "basename": "New York SEC",
+    "neatline": null
+  },
+  {
+    "name": "New York",
+    "kind": "tac",
+    "bounds": [
+      -75.681903,
+      40.171829,
+      -72.624791,
+      41.375253
+    ],
+    "basename": "New York TAC",
+    "neatline": null
+  }
+]

@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{
     FlightPlan, PinsFile, PlanFormat, Session, export_plan, import_plan, parse_coordinates,
 };
@@ -73,6 +75,7 @@ fn pins_are_atomic_bounded_and_persisted() {
 }
 #[test]
 fn search_ranking_radial_nearest_and_opt_in_actions() {
+    require_region_data!();
     let mut s = Session::new().unwrap();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
     s.install_region(flightcraft_control::read_region(&dir).unwrap())
@@ -139,6 +142,7 @@ fn search_ranking_radial_nearest_and_opt_in_actions() {
 }
 #[test]
 fn editing_xml_summary_profile_and_glass_activation() {
+    require_region_data!();
     let mut s = Session::new().unwrap();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
     s.install_region(flightcraft_control::read_region(&dir).unwrap())
@@ -243,6 +247,7 @@ fn named_plan_storage_edits_and_hostile_names() {
 
 #[test]
 fn profile_warns_on_terrain_airspace_coverage_and_impossible_wind() {
+    require_region_data!();
     let mut s = Session::new().unwrap();
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
     s.install_region(flightcraft_control::read_region(&dir).unwrap())

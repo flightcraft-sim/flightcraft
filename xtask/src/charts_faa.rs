@@ -13,7 +13,10 @@ use tiff::{
 };
 
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let mut options = BTreeMap::new();
     while let Some(key) = args.next() {
         if ![
@@ -597,7 +600,7 @@ fn generate(
     std::fs::create_dir_all(output).map_err(|e| e.to_string())?;
     let mut index = ChartIndex {
         coverage_margin_nm: 40.0,
-        version: 1,
+        version: 2,
         kind,
         edition,
         expires,
@@ -645,7 +648,7 @@ fn generate(
                     continue;
                 }
                 let tile = ChartTile { z, x, y };
-                let path = output.join(tile.path());
+                let path = output.join(index.tile_path(tile));
                 std::fs::create_dir_all(path.parent().ok_or("tile parent")?).map_err(|e| e.to_string())?;
                 image.save(&path).map_err(|e| e.to_string())?;
                 index.bytes += std::fs::metadata(path).map_err(|e| e.to_string())?.len();
@@ -773,7 +776,9 @@ mod tests {
         let beyond_grid = p.destination(270., 2500.);
         let tile = ChartTile::at(beyond_grid, 10).unwrap();
         let [mx, my] = flightcraft_control::mercator(beyond_grid).unwrap();
-        let image = image::open(directory.join(tile.path())).unwrap().into_rgba8();
+        let image = image::open(directory.join(index.tile_path(tile)))
+            .unwrap()
+            .into_rgba8();
         let pixel = image.get_pixel(
             ((mx * 1024.).fract() * 256.) as u32,
             ((my * 1024.).fract() * 256.) as u32,
@@ -782,7 +787,7 @@ mod tests {
             pixel.0[3], 255,
             "chart coverage must survive beyond the terrain grid"
         );
-        let decoded = image::open(directory.join(index.tiles[0].path())).unwrap();
+        let decoded = image::open(directory.join(index.tile_path(index.tiles[0]))).unwrap();
         assert_eq!((decoded.width(), decoded.height()), (256, 256));
         ChartIndex::from_json(&std::fs::read(directory.join("index.json")).unwrap()).unwrap();
         std::fs::remove_dir_all(directory).unwrap();

@@ -26,3 +26,8 @@ libm.workspace = true
 roxmltree.workspace = true
 tiff.workspace = true
 image.workspace = true
+
+serde.workspace = true
+ureq.workspace = true
+sha2.workspace = true
+time.workspace = true

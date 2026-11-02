@@ -168,17 +168,58 @@ fn runway(ident: &str) -> Option<String> {
         .unwrap_or("");
     Some(format!("RW{number}{suffix}"))
 }
+/// Read the public HDR04 volume and effective date, without a hard-coded cycle.
+pub(super) fn edition(text: &str) -> Result<(String, String), String> {
+    let header = text
+        .lines()
+        .take(10)
+        .find(|l| l.starts_with("HDR04"))
+        .ok_or("missing CIFP HDR04")?;
+    let words: Vec<_> = header.split_whitespace().collect();
+    let at = words
+        .iter()
+        .position(|w| *w == "EFFECTIVE")
+        .ok_or("missing CIFP effective date")?;
+    let cycle = words.get(at.saturating_sub(1)).ok_or("missing CIFP cycle")?;
+    if cycle.len() != 4 || !cycle.bytes().all(|b| b.is_ascii_digit()) {
+        return Err("invalid CIFP cycle".into());
+    }
+    let day = words
+        .get(at + 1)
+        .ok_or("missing CIFP day")?
+        .parse::<u8>()
+        .map_err(|e| e.to_string())?;
+    let month = words.get(at + 2).ok_or("missing CIFP month")?;
+    let month = [
+        "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+    ]
+    .iter()
+    .position(|m| m == month)
+    .ok_or("invalid CIFP month")?
+        + 1;
+    let year = words
+        .get(at + 3)
+        .ok_or("missing CIFP year")?
+        .parse::<i32>()
+        .map_err(|e| e.to_string())?;
+    time::Date::from_calendar_date(
+        year,
+        time::Month::try_from(month as u8).map_err(|e| e.to_string())?,
+        day,
+    )
+    .map_err(|e| e.to_string())?;
+    let date = format!("{year:04}-{month:02}-{day:02}");
+    if !cycle.starts_with(&format!("{:02}", year.rem_euclid(100))) {
+        return Err("CIFP cycle and year disagree".into());
+    }
+    Ok(((*cycle).into(), date))
+}
+
 pub fn import(text: &str, airports: &BTreeSet<String>) -> Result<Procedures, String> {
     if text.len() > 128 * 1024 * 1024 || !text.is_ascii() {
         return Err("CIFP must be bounded ASCII".into());
     }
-    if !text
-        .lines()
-        .take(10)
-        .any(|l| l.contains("2611") && l.contains("29 OCT 2026"))
-    {
-        return Err("expected FAA cycle 2611, effective 2026-10-29".into());
-    }
+    let (cycle, effective_date) = edition(text)?;
     let mut points = BTreeMap::new();
     let mut localizers = Vec::new();
     let mut sbas = Vec::new();
@@ -406,8 +447,8 @@ pub fn import(text: &str, airports: &BTreeSet<String>) -> Result<Procedures, Str
         .collect();
     let data = Procedures {
         version: 1,
-        cycle: "2611".into(),
-        effective_date: "2026-10-29".into(),
+        cycle,
+        effective_date,
         attribution: PROCEDURES_ATTRIBUTION.into(),
         points,
         localizers,
@@ -448,7 +489,7 @@ fn plate_matches(p: &Procedure, name: &str) -> bool {
         .nth(1)
         .is_none_or(|s| title.contains(&format!(" {s} ")) || title.ends_with(&format!("-{s}")))
 }
-fn attach_plates(data: &mut Procedures, text: &str) -> Result<(), String> {
+pub(super) fn attach_plates(data: &mut Procedures, text: &str) -> Result<(), String> {
     if text.len() > 32 * 1024 * 1024 {
         return Err("d-TPP metadata too large".into());
     }
@@ -496,7 +537,10 @@ fn attach_plates(data: &mut Procedures, text: &str) -> Result<(), String> {
     data.validate().map_err(|e| e.to_string())
 }
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let mut options = BTreeMap::new();
     while let Some(k) = args.next() {
         if !["--region", "--cifp", "--out", "--dtpp"].contains(&k.as_str()) || options.contains_key(&k) {
@@ -613,6 +657,15 @@ mod tests {
             (100, "180"),
             (103, "-300"),
         ])
+    }
+    #[test]
+    fn edition_accepts_new_cycles_and_rejects_invalid_dates() {
+        assert_eq!(
+            edition("HDR04 CYCLE 2612 EFFECTIVE 26 NOV 2026\n").unwrap(),
+            ("2612".into(), "2026-11-26".into())
+        );
+        assert!(edition("HDR04 CYCLE 2612 EFFECTIVE 31 NOV 2026\n").is_err());
+        assert!(edition("HDR04 CYCLE 2512 EFFECTIVE 26 NOV 2026\n").is_err());
     }
     #[test]
     fn all_path_terminators_and_constraints() {

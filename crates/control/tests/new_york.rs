@@ -1,9 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, read_region};
 use flightcraft_world::{Surface, geo::LocalProjection};
 use serde_json::json;
 #[test]
 fn bundled_new_york_geography_airports_starts_and_commands() {
+    require_region_data!();
     let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
     let world = read_region(&directory).unwrap();
     let region = world.region().unwrap();
@@ -145,6 +148,7 @@ fn bundled_new_york_geography_airports_starts_and_commands() {
 
 #[test]
 fn bundled_eastern_pennsylvania_airports_elevations_and_shared_budget() {
+    require_region_data!();
     let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain");
     let world = read_region(&assets.join("eastern-pa")).unwrap();
     let region = world.region().unwrap();

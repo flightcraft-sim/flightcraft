@@ -1,0 +1,59 @@
+name: FAA editions
+
+on:
+  schedule:
+    - cron: '23 10 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: faa-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev libwayland-dev libudev-dev libasound2-dev
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          path: .cache/sources
+          key: faa-sources-${{ github.run_id }}
+          restore-keys: faa-sources-
+      - name: Discover editions and rebuild changed data
+        run: cargo xtask region refresh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: faa-region-data
+          path: |
+            out/data/
+            out/refresh-summary.md
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Open or update the data pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [ ! -f out/refresh-summary.md ]; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B data/faa-refresh
+          git add data.lock assets/terrain datasets
+          if git diff --cached --quiet; then exit 0; fi
+          cargo xtask ci
+          git commit -m 'Refresh FAA region datasets'
+          git push --force-with-lease origin data/faa-refresh
+          if gh pr view data/faa-refresh --json number >/dev/null 2>&1; then
+            gh pr edit data/faa-refresh --title 'Refresh FAA region datasets' --body-file out/refresh-summary.md
+          else
+            gh pr create --head data/faa-refresh --base main --title 'Refresh FAA region datasets' --body-file out/refresh-summary.md
+          fi

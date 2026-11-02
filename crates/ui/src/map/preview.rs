@@ -1,11 +1,13 @@
 //! Rasterise the actual map widget, including the font atlas and on-demand chart textures.
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 use eframe::egui::{ColorImage, TextureId, epaint::Primitive};
 use std::collections::BTreeMap;
 #[test]
 #[ignore = "manual planning map previews"]
 fn render_planning_map_previews() {
+    require_region_data!();
     let mut s = tests::planned_session();
     let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/map");
     std::fs::create_dir_all(&directory).unwrap();

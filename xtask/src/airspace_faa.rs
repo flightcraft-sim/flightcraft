@@ -8,7 +8,10 @@ use serde_json::Value;
 use std::{io::Read, path::PathBuf};
 
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let (mut region, mut input, mut output) = (None, None, None);
     let (mut keep_a, mut keep_e5) = (false, false);
     while let Some(arg) = args.next() {

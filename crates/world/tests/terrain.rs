@@ -148,3 +148,50 @@ fn nonflat_water_is_rejected_and_surfaces_round_trip() {
         );
     }
 }
+
+#[test]
+fn compact_tiles_are_bounded_quantized_and_backward_compatible() {
+    let original = HeightTile::new(
+        [0.; 2],
+        60.,
+        3,
+        vec![-123.12, -123.0, 0., 0.12, 0.13, 123.125, 123.13, 500., 500.1],
+        vec![Surface::Grass; 4],
+    )
+    .unwrap();
+    let bytes = original.write_compact().unwrap();
+    let decoded = HeightTile::read(&bytes).unwrap();
+    for j in 0..3 {
+        for i in 0..3 {
+            let a = original.sample(f64::from(i) * 60., f64::from(j) * 60.).unwrap();
+            let b = decoded.sample(f64::from(i) * 60., f64::from(j) * 60.).unwrap();
+            assert!((a.height_msl_m - b.height_msl_m).abs() <= 0.125);
+        }
+    }
+    for length in 0..bytes.len() {
+        assert!(HeightTile::read(&bytes[..length]).is_err());
+    }
+    let mut trailing = bytes.clone();
+    trailing.push(0);
+    assert!(HeightTile::read(&trailing).is_err());
+    let mut stream_trailing = bytes.clone();
+    stream_trailing.push(0);
+    let len = (stream_trailing.len() - 40) as u32;
+    stream_trailing[36..40].copy_from_slice(&len.to_le_bytes());
+    assert!(HeightTile::read(&stream_trailing).is_err());
+    let mut invalid = bytes.clone();
+    invalid[32..36].copy_from_slice(&f32::NAN.to_le_bytes());
+    assert!(HeightTile::read(&invalid).is_err());
+    let mut reserved = bytes.clone();
+    reserved[6] = 1;
+    assert!(HeightTile::read(&reserved).is_err());
+    // A tiny header cannot ask the inflater to allocate outside the declared grid.
+    let mut bomb = bytes.clone();
+    bomb[28..32].copy_from_slice(&2_u32.to_le_bytes());
+    assert!(HeightTile::read(&bomb).is_err());
+    for tile in generate_training_valley(TRAINING_SEED).unwrap() {
+        assert_eq!(HeightTile::read(&tile.write()).unwrap(), tile);
+        let compact = HeightTile::read(&tile.write_compact().unwrap()).unwrap();
+        assert_eq!(compact.origin_m(), tile.origin_m());
+    }
+}

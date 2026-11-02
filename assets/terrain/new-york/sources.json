@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/US_Airport/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.360897595Z",
+      "bytes": 162899,
+      "sha256": "456e08a62f0c737ad87cf4525cef5b6ee5bfea90083fceb9ebe7ca6f8310e41b"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Runways/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.381652353Z",
+      "bytes": 209336,
+      "sha256": "3cea126d2edcbd6076cec34b85125ce5af00e99ad00b44167b79df3105f91c18"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/Class_Airspace/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.427661532Z",
+      "bytes": 6090918,
+      "sha256": "4c85c6f18ad006005ceaf94fd1aa51f7a998c34560d9e10e9d6ec7105a7c37a9"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/NAVAIDSystem/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.833538555Z",
+      "bytes": 14129,
+      "sha256": "b027d1486dab2c64de61886bbb3e78935f2ac5842af23cf859751cd4e2b7b1bb"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/NavaidComponent/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.837287726Z",
+      "bytes": 254814,
+      "sha256": "101680f6d8d6632b19c8848a9eb22b4b6d4161f5684235d41103ff4146fa8e90"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/DesignatedPoint/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.862574357Z",
+      "bytes": 1018603,
+      "sha256": "0bf0dd0f8d7651f141e75201e0635957d3fd902635a462fa3431e2337eafe3cf"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/ILS_Component/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.946199497Z",
+      "bytes": 6576,
+      "sha256": "2830c854e09e2cd34cbde75655e15a38712f607ced125b542c68c48409b4354c"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/ATS_Route/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:46.950566247Z",
+      "bytes": 1009841,
+      "sha256": "673aac4b8f7f2d9c4240b2c120a3a44787acb4b1d95074878fca3392fac10d70"
+    },
+    {
+      "url": "https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/HoldingPattern/FeatureServer/0/query?where=1%3D1&geometry=-75.2%2C40.25%2C-73.25%2C41.3&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outSR=4326&outFields=*&returnGeometry=true&f=geojson&orderByFields=OBJECTID&resultRecordCount=2000&resultOffset=0",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:47.044755831Z",
+      "bytes": 17274,
+      "sha256": "62f88b43e14df57d7c4b72f34e7c1a5d960b92a4d208f0734b5a12c1bf99870c"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/cifp/chart?edition=current",
+      "edition": "2611 (2026-10-29)",
+      "downloaded_at": "2026-11-02T14:46:47.095400066Z",
+      "bytes": 53239406,
+      "sha256": "877bd911e105b9b1e85fa970c55488f6ad987760814f45c42b84017cd5d6c1c9"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/dtpp/info?edition=current",
+      "edition": "2611 (2026-10-29)",
+      "downloaded_at": "2026-11-02T14:46:47.130469732Z",
+      "bytes": 16261176,
+      "sha256": "35e554ff386032ac024dd2643d1bc287a4fafb1d1436006b0da6dbd70c81f99f"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N40/N40W076.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:47.332400182Z",
+      "bytes": 25934402,
+      "sha256": "37fcd80734e9f89ac28316756fc16dec542964d996030465e33746bb5491e1af"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N40/N40W075.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:47.514153896Z",
+      "bytes": 25934402,
+      "sha256": "4c6ad94889ed23df9564fb12473f7e26c3122fd424ef17a4e6dcfd369702c9b3"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N40/N40W074.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:47.724573644Z",
+      "bytes": 25934402,
+      "sha256": "1b7b5f65d4f43a9c7a1d5dfcf92812908662677ecca6cb9901c985098e6fc26b"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N41/N41W076.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:47.902397705Z",
+      "bytes": 25934402,
+      "sha256": "172a4f77e947647cda243bd97cc1b6a03ed2c7b1a97ca00009360f1f08997766"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N41/N41W075.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:48.080261261Z",
+      "bytes": 25934402,
+      "sha256": "8b68830c38dc3975f0abd9c2a902dbb11f199dd289ad1029505d920fa52951c7"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N41/N41W074.hgt.gz",
+      "edition": null,
+      "downloaded_at": "2026-11-02T14:46:48.282227288Z",
+      "bytes": 25934402,
+      "sha256": "3a515834a293c6ef192246f79f55dc9451326e51052da506b9682ca41049a135"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/sectional/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:47:31.84539071Z",
+      "bytes": 86781299,
+      "sha256": "2eb7e2b7e1eaf0d8da3bdeba62c70f1bd7781956a87f6e6d7e99411e41ea4f24"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/sectional/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:47:31.967096452Z",
+      "bytes": 92,
+      "sha256": "b6535242e8f453b1f16642c90d41d5646efbfea1bd3667dac6e893394e9ea769"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/sectional/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:47:31.967266273Z",
+      "bytes": 26841,
+      "sha256": "ed3dd9f756bec11c46f7b1a0819096bd70feb95eb781595f2c295e930e32296a"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/tac/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:48:32.969465374Z",
+      "bytes": 21411872,
+      "sha256": "1825f54e2642be3e88a35c3cb3332d1c8501ddea3155c240508a4f7474c0e9fa"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/tac/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:48:32.997745477Z",
+      "bytes": 91,
+      "sha256": "aa183c76b2770acc964d2be434a7fedaf24891a91fbd0f43212cb4c765484d16"
+    },
+    {
+      "url": "https://external-api.faa.gov/apra/vfr/tac/chart?geoname=New%20York&edition=current&format=tiff",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T14:48:32.997894308Z",
+      "bytes": 26586,
+      "sha256": "ac87ecaef7c9662a3715c78765c9095e4015375325fc6f7590629ba5bbe25fde"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 //! Manual, headless egui panel capture. The same meshes and font atlas as the application.
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 use eframe::egui::{ColorImage, TextureId, epaint::Primitive};
 use flightcraft_control::Session;
@@ -7,6 +9,7 @@ use flightcraft_control::Session;
 #[test]
 #[ignore = "manual panel preview"]
 fn render_panel_preview() {
+    require_region_data!();
     for compact in [false, true] {
         let mut panels = Vec::new();
         for (width, height) in [(1280_u32, 800.), (1000, 640.)] {
@@ -36,6 +39,7 @@ fn render_panel_preview() {
 #[test]
 #[ignore = "manual standby panel preview"]
 fn render_standby_preview() {
+    require_region_data!();
     let mut panels = Vec::new();
     for compact in [false, true] {
         for (width, height) in [(1280, 800.), (1000, 640.)] {
@@ -277,6 +281,7 @@ fn render_autopilot_previews() {
 #[test]
 #[ignore = "manual integrated glass panel preview"]
 fn render_glass_panel_preview() {
+    require_region_data!();
     let mut panels = Vec::new();
     for compact in [false, true] {
         for (width, height) in [(1280, 800.), (1000, 640.)] {

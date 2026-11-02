@@ -17,7 +17,7 @@ fn number(v: &Value, key: &str) -> Result<f64, String> {
         .filter(|v| v.is_finite())
         .ok_or_else(|| format!("missing finite number {key}"))
 }
-fn dms(text: &str) -> Result<f64, String> {
+pub(super) fn dms(text: &str) -> Result<f64, String> {
     let suffix = text.chars().last().ok_or("empty coordinate")?;
     let components = text.get(..text.len().saturating_sub(1)).ok_or("invalid DMS")?;
     let values = components
@@ -67,7 +67,7 @@ fn features(v: &Value) -> Result<&[Value], String> {
     }
     Ok(features)
 }
-fn centreline(feature: &Value, projection: &LocalProjection) -> Result<[[f64; 2]; 2], String> {
+pub(super) fn centreline(feature: &Value, projection: &LocalProjection) -> Result<[[f64; 2]; 2], String> {
     let geometry = feature.get("geometry").ok_or("missing runway geometry")?;
     if geometry.get("type").and_then(Value::as_str) != Some("Polygon") {
         return Err("runway must be a Polygon".into());
@@ -129,7 +129,7 @@ fn centreline(feature: &Value, projection: &LocalProjection) -> Result<[[f64; 2]
     Ok(ends)
 }
 /// Azimuth of a projected line measured against geodetic north at its threshold.
-fn true_heading(p: &LocalProjection, a: [f64; 2], b: [f64; 2]) -> Result<f64, String> {
+pub(super) fn true_heading(p: &LocalProjection, a: [f64; 2], b: [f64; 2]) -> Result<f64, String> {
     let [an, ae] = a;
     let [bn, be] = b;
     let length = libm::hypot(bn - an, be - ae);
@@ -145,7 +145,7 @@ fn true_heading(p: &LocalProjection, a: [f64; 2], b: [f64; 2]) -> Result<f64, St
         .to_degrees()
         .rem_euclid(360.0))
 }
-fn import(
+pub(super) fn import(
     region: &Region,
     terrain: &World,
     airport_layer: &Value,
@@ -268,7 +268,10 @@ fn import(
     Ok(output)
 }
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let (mut region, mut airports, mut runways, mut out) = (None, None, None, None);
     while let Some(arg) = args.next() {
         let slot = match arg.as_str() {"--region"=>&mut region,"--airports"=>&mut airports,"--runways"=>&mut runways,"--out"=>&mut out,_=>return Err("usage: navdata-faa --region <region.json> --airports <US_Airport.geojson> --runways <Runways.geojson> --out <airports.json>".into())};

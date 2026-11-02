@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 #[test]
 fn terrain_clearance_thresholds() {
@@ -64,6 +66,7 @@ fn oracle(a: [f64; 2], b: [f64; 2]) -> (f64, f64) {
 }
 #[test]
 fn new_york_leg_math_scaling_airspace_and_snapshot_schema() {
+    require_region_data!();
     let mut s = regional_session();
     let world = s.sim.world();
     let a = crate::regions::airport(world, "1N7").unwrap();
@@ -117,6 +120,7 @@ fn new_york_leg_math_scaling_airspace_and_snapshot_schema() {
 }
 #[test]
 fn independent_failure_reversion_and_backup_endurance() {
+    require_region_data!();
     let mut s = regional_session();
     s.sim.step(5401);
     assert!(s.glass_state().air_data.attitude_valid);
@@ -161,6 +165,7 @@ fn independent_failure_reversion_and_backup_endurance() {
 }
 #[test]
 fn blocked_ports_remain_unflagged_and_freeze_when_both_are_sealed() {
+    require_region_data!();
     let mut s = regional_session();
     s.sim.step(10);
     s.execute(
@@ -183,6 +188,7 @@ fn blocked_ports_remain_unflagged_and_freeze_when_both_are_sealed() {
 }
 #[test]
 fn actual_cdi_matches_signed_geodesic_and_terminal_transition() {
+    require_region_data!();
     let mut s = regional_session();
     s.set_glass(GlassSetting::FlightPlan {
         airports: vec!["1N7".into(), "KMMU".into()],
@@ -219,6 +225,7 @@ fn actual_cdi_matches_signed_geodesic_and_terminal_transition() {
 }
 #[test]
 fn glass_settings_validate_against_schemas_and_queries_do_not_advance_sensors() {
+    require_region_data!();
     let mut s = regional_session();
     let before = s.sim.glass_computers().clone();
     let hash = s.sim.state_hash();

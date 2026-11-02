@@ -1,4 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use flightcraft_control::{Session, read_region};
 use flightcraft_sim::{
     Sim, Start,
@@ -57,6 +59,7 @@ fn step(sim: &mut Sim, seconds: u32) {
 
 #[test]
 fn shared_heading_bug_moves_short_way_at_bank_limit_and_settles() {
+    require_region_data!();
     for panel in ["corvid-legacy", "corvid-digital"] {
         let mut sim = flight(panel);
         engage(&mut sim);
@@ -111,6 +114,7 @@ fn shared_heading_bug_moves_short_way_at_bank_limit_and_settles() {
 }
 #[test]
 fn altitude_capture_and_vs_track() {
+    require_region_data!();
     for panel in ["corvid-legacy", "corvid-digital"] {
         let mut sim = flight(panel);
         engage(&mut sim);
@@ -169,6 +173,7 @@ fn altitude_capture_and_vs_track() {
 }
 #[test]
 fn ias_climb_uses_pitch_and_pilot_power() {
+    require_region_data!();
     let mut sim = flight("corvid-digital");
     engage(&mut sim);
     let mut controls = sim.controls();
@@ -196,6 +201,7 @@ fn ias_climb_uses_pitch_and_pilot_power() {
 }
 #[test]
 fn gps_direct_to_kmmu_tracks_inside_tenth_mile() {
+    require_region_data!();
     let mut sim = flight("corvid-digital");
     let world = world();
     let region = world.region().unwrap();
@@ -241,6 +247,7 @@ fn gps_direct_to_kmmu_tracks_inside_tenth_mile() {
 }
 #[test]
 fn failures_disconnect_and_legacy_roll_dies_with_turn_sensor() {
+    require_region_data!();
     for panel in ["corvid-leveler", "corvid-legacy", "corvid-digital"] {
         for failure in [EquipmentFailure::RollServo, EquipmentFailure::RollSensor] {
             let mut sim = flight(panel);
@@ -271,6 +278,7 @@ fn failures_disconnect_and_legacy_roll_dies_with_turn_sensor() {
 }
 #[test]
 fn pilot_overpowers_clutch_and_trim_runs_or_warns_when_failed() {
+    require_region_data!();
     let mut sim = flight("corvid-digital");
     engage(&mut sim);
     set(
@@ -390,6 +398,7 @@ fn panel_commands_schemas_aliases_and_sync_use_one_bug() {
 
 #[test]
 fn lvl_recovers_forty_bank_and_ten_down_in_ten_seconds() {
+    require_region_data!();
     let initial = flight("corvid-digital");
     let mut state = *initial.state();
     let (roll, pitch) = (40.0_f64.to_radians(), -10.0_f64.to_radians());
@@ -422,6 +431,7 @@ fn lvl_recovers_forty_bank_and_ten_down_in_ten_seconds() {
 
 #[test]
 fn equipment_memory_hashes_and_fixed_step_batching_match() {
+    require_region_data!();
     let mut a = flight("corvid-digital");
     let original = a.state_hash();
     engage(&mut a);
@@ -444,6 +454,7 @@ fn equipment_memory_hashes_and_fixed_step_batching_match() {
 
 #[test]
 fn wing_leveler_turns_without_taking_pitch_or_throttle() {
+    require_region_data!();
     let mut sim = flight("corvid-leveler");
     let pilot = sim.controls();
     engage(&mut sim);

@@ -166,6 +166,7 @@ fn source_position(f: &Value, p: &Value, lat: &str, lon: &str) -> Result<GeoPoin
     }
 }
 struct Bounds {
+    national: bool,
     projection: LocalProjection,
     south: f64,
     west: f64,
@@ -178,6 +179,7 @@ impl Bounds {
         let [south, west] = r.southwest_m;
         let extent = f64::from(r.tile_size - 1) * f64::from(r.spacing_m);
         Ok(Self {
+            national: false,
             projection: LocalProjection::new(r.origin.latitude_deg, r.origin.longitude_deg)
                 .map_err(|e| e.to_string())?,
             south,
@@ -192,6 +194,9 @@ impl Bounds {
             .map_err(|e| e.to_string())
     }
     fn contains(&self, p: GeoPoint, margin: f64) -> Result<bool, String> {
+        if self.national {
+            return Ok(true);
+        }
         let [n, e] = self.local(p)?;
         Ok(libm::hypot(
             (self.south - n).max(0.0).max(n - self.north),
@@ -199,6 +204,9 @@ impl Bounds {
         ) <= margin)
     }
     fn crosses(&self, a: GeoPoint, b: GeoPoint) -> Result<bool, String> {
+        if self.national {
+            return Ok(true);
+        }
         let [an, ae] = self.local(a)?;
         let [bn, be] = self.local(b)?;
         let (mut low, mut high) = (0.0_f64, 1.0_f64);
@@ -223,14 +231,29 @@ impl Bounds {
         Ok(true)
     }
 }
-fn convert(
+pub(super) fn convert(
     r: &Region,
     layers: &[Value; 6],
     snapshot: String,
     effective: Option<String>,
 ) -> Result<Navdata, String> {
+    convert_bounded(layers, snapshot, effective, Bounds::new(r)?, true)
+}
+
+pub(super) fn convert_national(r: &Region, layers: &[Value; 6], snapshot: String) -> Result<Navdata, String> {
+    let mut bounds = Bounds::new(r)?;
+    bounds.national = true;
+    convert_bounded(layers, snapshot, None, bounds, false)
+}
+
+fn convert_bounded(
+    layers: &[Value; 6],
+    snapshot: String,
+    effective: Option<String>,
+    bounds: Bounds,
+    validate: bool,
+) -> Result<Navdata, String> {
     let [systems, components, fixes, ils, routes, holds] = layers;
-    let bounds = Bounds::new(r)?;
     let mut data = Navdata {
         version: 1,
         attribution: NAVDATA_ATTRIBUTION.into(),
@@ -408,7 +431,9 @@ fn convert(
     data.ils.sort_by(|a, b| a.id.cmp(&b.id));
     data.routes.sort_by(|a, b| a.id.cmp(&b.id));
     data.holds.sort_by(|a, b| a.id.cmp(&b.id));
-    data.validate().map_err(|e| e.to_string())?;
+    if validate {
+        data.validate().map_err(|e| e.to_string())?;
+    }
     Ok(data)
 }
 fn read(path: &Path, max: usize) -> Result<String, String> {
@@ -424,7 +449,10 @@ fn read(path: &Path, max: usize) -> Result<String, String> {
     Ok(text)
 }
 pub fn run() -> Result<(), String> {
-    let mut args = std::env::args().skip(2);
+    run_args(std::env::args().skip(2))
+}
+
+pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
     let mut opts = BTreeMap::new();
     while let Some(k) = args.next() {
         let v = args.next().ok_or("missing option value")?;

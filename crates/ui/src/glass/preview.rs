@@ -1,5 +1,7 @@
 //! Captures the actual glass egui meshes and font atlas without a graphics device.
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[cfg(test)]
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 use eframe::egui::{self, ColorImage, Pos2, Rect, TextureId, epaint::Primitive};
 use std::collections::BTreeMap;
@@ -183,6 +185,7 @@ fn capture(
 #[test]
 #[ignore = "manual KMMU ILS 23 captured APR/GS PFD preview"]
 fn render_procedure_ils_preview() {
+    require_region_data!();
     use flightcraft_control::{Session, Step, read_region};
     use serde_json::json;
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
