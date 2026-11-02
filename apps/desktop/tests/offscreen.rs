@@ -7,12 +7,61 @@ use std::sync::{Arc, mpsc};
 #[test]
 #[ignore = "requires a Vulkan software or hardware adapter"]
 fn app_renders_with_downlevel_limits() -> TestResult {
-    pollster::block_on(render())
+    pollster::block_on(render(Default::default()))
+}
+
+#[test]
+#[ignore = "requires a Vulkan software or hardware adapter"]
+fn region_renders_at_elevation_with_active_attribution() -> TestResult {
+    // Synthetic source data only; exercise the same portable manifest loader as the browser.
+    let mut region = flightcraft_control::Region::from_json(
+        r#"{
+        "id":"synthetic-field", "name":"Synthetic elevation field",
+        "origin":{"latitude_deg":37.5,"longitude_deg":-122.5,"field_elevation_m":750.0,
+            "runway_heading_deg":75.0,"runway_length_m":900.0,"runway_width_m":23.0},
+        "southwest_m":[-2000.0,-2000.0],"tiles_north":2,"tiles_east":2,
+        "spacing_m":31.25,"tile_size":65,"runway_blend_m":200.0,
+        "source":"SRTM","licence":"public domain",
+        "attribution":"NASA Shuttle Radar Topography Mission, public domain; distributed by USGS"
+    }"#,
+    )?;
+    let mut tiles = Vec::new();
+    for e in 0..2 {
+        for n in 0..2 {
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(b"FCHT");
+            bytes.extend_from_slice(&1_u16.to_le_bytes());
+            bytes.extend_from_slice(&0_u16.to_le_bytes());
+            for coordinate in [-2000.0 + 2000.0 * f64::from(n), -2000.0 + 2000.0 * f64::from(e)] {
+                bytes.extend_from_slice(&coordinate.to_le_bytes());
+            }
+            bytes.extend_from_slice(&31.25_f32.to_le_bytes());
+            bytes.extend_from_slice(&65_u32.to_le_bytes());
+            for _ in 0..65 * 65 {
+                bytes.extend_from_slice(&750_f32.to_le_bytes());
+            }
+            bytes.extend(vec![0; 64 * 64]);
+            region.tiles.push(format!("{:03}.fcht", tiles.len()));
+            tiles.push(bytes);
+        }
+    }
+    let world = flightcraft_control::region_world(region, tiles)?;
+    let options = flightcraft_ui::AppOptions {
+        regions: flightcraft_ui::RegionOptions {
+            fetched: vec![world],
+            ..Default::default()
+        },
+        script: Some(flightcraft_ui::script::Script::parse(
+            r#"{"at_s":0,"command":"sim.reset","input":{"world":"synthetic-field","start":{"kind":"runway"},"paused":true}}"#,
+        )?),
+        ..Default::default()
+    };
+    pollster::block_on(render(options))
 }
 
 type TestResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
-async fn render() -> TestResult {
+async fn render(options: flightcraft_ui::AppOptions) -> TestResult {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
         ..Default::default()
@@ -40,7 +89,7 @@ async fn render() -> TestResult {
     let ctx = egui::Context::default();
     let mut cc = eframe::CreationContext::_new_kittest(ctx.clone());
     cc.wgpu_render_state = Some(state.clone());
-    let mut app = flightcraft_ui::FlightCraftApp::new(&cc, Default::default())?;
+    let mut app = flightcraft_ui::FlightCraftApp::new(&cc, options)?;
     let mut frame = eframe::Frame::_new_kittest();
     let width = 1280;
     let height = 800;

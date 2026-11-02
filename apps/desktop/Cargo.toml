@@ -17,6 +17,7 @@ flightcraft-ui.workspace = true
 eframe.workspace = true
 
 [dev-dependencies]
+flightcraft-control.workspace = true
 egui-wgpu.workspace = true
 wgpu.workspace = true
 pollster.workspace = true

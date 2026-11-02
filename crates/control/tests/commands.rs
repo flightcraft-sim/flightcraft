@@ -9,6 +9,7 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
     let examples = [
         ("sim.reset", json!({"start": {"kind": "runway"}})),
         ("world.height", json!({"north_m":450,"east_m":0})),
+        ("world.list", json!({})),
         ("sim.set_controls", json!({"throttle": 0.7})),
         ("sim.step", json!({"steps": 120})),
         ("autopilot.set", json!({"heading_rad": 0.1, "pitch_rad": 0.0})),

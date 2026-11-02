@@ -17,3 +17,4 @@ libm.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 schemars.workspace = true
+serde_json.workspace = true

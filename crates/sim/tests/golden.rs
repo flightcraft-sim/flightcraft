@@ -21,7 +21,7 @@ fn valley_runway_pattern() {
 
 fn fly_pattern(choice: WorldChoice) {
     let aircraft = flightcraft_aero::Aircraft::corvid().unwrap();
-    let mut sim = Sim::new_with_world(&Start::Runway, World::load(choice).unwrap()).unwrap();
+    let mut sim = Sim::new_with_world(&Start::Runway, World::load(choice.clone()).unwrap()).unwrap();
     let mut phase = 0;
     let mut took_off = false;
     let mut landed = false;

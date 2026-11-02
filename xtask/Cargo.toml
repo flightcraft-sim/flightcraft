@@ -19,3 +19,5 @@ syn.workspace = true
 flightcraft-aero.workspace = true
 schemars.workspace = true
 flightcraft-world.workspace = true
+zip.workspace = true
+flate2.workspace = true

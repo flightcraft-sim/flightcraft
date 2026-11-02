@@ -102,10 +102,6 @@
           "type": "object"
         },
         "WorldChoice": {
-          "enum": [
-            "flat",
-            "training-valley"
-          ],
           "type": "string"
         }
       },
@@ -560,10 +556,6 @@
           "type": "object"
         },
         "WorldChoice": {
-          "enum": [
-            "flat",
-            "training-valley"
-          ],
           "type": "string"
         }
       },
@@ -663,6 +655,56 @@
         "surface"
       ],
       "title": "Ground",
+      "type": "object"
+    }
+  },
+  {
+    "name": "world.list",
+    "description": "List built-in worlds and installed terrain regions available to sim.reset.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ListWorlds",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "WorldChoice": {
+          "type": "string"
+        },
+        "WorldInfo": {
+          "properties": {
+            "attribution": {
+              "type": "string"
+            },
+            "id": {
+              "$ref": "#/$defs/WorldChoice"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "attribution"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "worlds": {
+          "items": {
+            "$ref": "#/$defs/WorldInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "worlds"
+      ],
+      "title": "WorldList",
       "type": "object"
     }
   },
@@ -2636,10 +2678,6 @@
           "type": "object"
         },
         "WorldChoice": {
-          "enum": [
-            "flat",
-            "training-valley"
-          ],
           "type": "string"
         }
       },
@@ -4421,10 +4459,6 @@
           "type": "object"
         },
         "WorldChoice": {
-          "enum": [
-            "flat",
-            "training-valley"
-          ],
           "type": "string"
         }
       },

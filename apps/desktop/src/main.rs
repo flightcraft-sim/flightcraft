@@ -11,9 +11,13 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut script = None;
     let mut control = None;
     let mut packs_directory = None;
+    let mut regions_directory = None;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--regions-dir" => {
+                regions_directory = Some(args.next().ok_or("--regions-dir needs a directory")?)
+            }
             "--packs-dir" => packs_directory = Some(args.next().ok_or("--packs-dir needs a directory")?),
             "--control" => {
                 let port: u16 = args
@@ -47,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
             "--help" | "-h" => {
                 println!(
-                    "flightcraft [--packs-dir <directory>] [--control <port>] [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--packs-dir loads aircraft packs and saves the directory preference.\n--control listens only on 127.0.0.1 for shared-session commands.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
+                    "flightcraft [--regions-dir <directory>] [--packs-dir <directory>] [--control <port>] [--script <flight.jsonl>] [--screenshot <path.png> [--frames <N> | --at-time <seconds>]]\nFly the Corvid. Open Input bindings for keyboard and gamepad controls.\n--regions-dir loads terrain regions (default assets/terrain).\n--packs-dir loads aircraft packs and saves the directory preference.\n--control listens only on 127.0.0.1 for shared-session commands.\n--script runs timed commands (see crates/ui/src/script.rs) and holds the controls until it ends."
                 );
                 return Ok(());
             }
@@ -83,6 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             Ok(Box::new(FlightCraftApp::new(
                 cc,
                 AppOptions {
+                    regions: flightcraft_ui::RegionOptions {
+                        directory: regions_directory,
+                        ..Default::default()
+                    },
                     screenshot: capture,
                     control,
                     script,

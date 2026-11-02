@@ -226,8 +226,10 @@ impl Sim {
                 // Unequal wheel heights encode a tail-down (or nose-down) parked attitude.
                 // Equal-height gear retains the original level initialization exactly.
                 let pitch = dynamics::runway_pitch(&aircraft);
-                if pitch != 0.0 {
-                    state.attitude = attitude(pitch, 0.0);
+                let runway = world.runway();
+                let heading = runway.heading_deg.to_radians().rem_euclid(core::f64::consts::TAU);
+                if pitch != 0.0 || heading != 0.0 {
+                    state.attitude = attitude(pitch, heading);
                 }
                 state.position_m = [
                     0.0,
@@ -254,6 +256,7 @@ impl Sim {
                                 .map(|g| g.stiffness_n_m)
                                 .sum::<f64>()),
                 ];
+                state.position_m[2] += runway.threshold_ned_m[2];
                 Controls::default()
             }
             Start::Air {

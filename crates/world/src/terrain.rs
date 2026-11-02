@@ -186,12 +186,40 @@ impl HeightTile {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
+/// Built-in world names remain stable; other strings name an installed region.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "String", into = "String")]
 pub enum WorldChoice {
     #[default]
     Flat,
     TrainingValley,
+    Region(String),
+}
+impl From<String> for WorldChoice {
+    fn from(id: String) -> Self {
+        match id.as_str() {
+            "flat" => Self::Flat,
+            "training-valley" => Self::TrainingValley,
+            _ => Self::Region(id),
+        }
+    }
+}
+impl From<WorldChoice> for String {
+    fn from(choice: WorldChoice) -> Self {
+        match choice {
+            WorldChoice::Flat => "flat".into(),
+            WorldChoice::TrainingValley => "training-valley".into(),
+            WorldChoice::Region(id) => id,
+        }
+    }
+}
+impl JsonSchema for WorldChoice {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "WorldChoice".into()
+    }
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        String::json_schema(generator)
+    }
 }
 
 /// Immutable tiles may be shared with presentation. Uncovered or non-finite queries use flat ground.
@@ -200,11 +228,13 @@ pub struct World {
     choice: WorldChoice,
     tiles: Arc<[HeightTile]>,
     fingerprint: u64,
+    region: Option<Arc<crate::Region>>,
 }
 impl Default for World {
     fn default() -> Self {
         Self {
             choice: WorldChoice::Flat,
+            region: None,
             tiles: Arc::from([]),
             fingerprint: 0xcbf2_9ce4_8422_2325,
         }
@@ -212,9 +242,10 @@ impl Default for World {
 }
 impl World {
     pub fn load(choice: WorldChoice) -> Result<Self, TerrainError> {
-        let tiles = match choice {
+        let tiles = match &choice {
             WorldChoice::Flat => Vec::new(),
             WorldChoice::TrainingValley => bundled_training_valley()?,
+            WorldChoice::Region(_) => return Err(TerrainError("region must be installed before selection")),
         };
         Self::build(choice, tiles)
     }
@@ -226,7 +257,7 @@ impl World {
     }
     #[must_use]
     pub fn choice(&self) -> WorldChoice {
-        self.choice
+        self.choice.clone()
     }
     #[must_use]
     pub fn tiles(&self) -> &[HeightTile] {
@@ -234,7 +265,23 @@ impl World {
     }
     #[must_use]
     pub fn ground(&self, north: f64, east: f64) -> Ground {
-        let flat = ground(north, east);
+        let flat = if self.region.is_some() {
+            let runway = self.runway();
+            let (s, c) = libm::sincos(runway.heading_deg.to_radians());
+            let along = north * c + east * s;
+            let across = -north * s + east * c;
+            Ground {
+                height_msl_m: -runway.threshold_ned_m[2],
+                normal_ned: [0.0, 0.0, -1.0],
+                surface: if (0.0..=runway.length_m).contains(&along) && across.abs() <= runway.width_m * 0.5 {
+                    Surface::Pavement
+                } else {
+                    Surface::Grass
+                },
+            }
+        } else {
+            ground(north, east)
+        };
         if flat.surface == Surface::Pavement {
             return flat;
         }
@@ -255,7 +302,53 @@ impl World {
             choice,
             tiles: tiles.into(),
             fingerprint,
+            region: None,
         })
+    }
+    /// Construct a region only after all declared tiles and their grid positions validate.
+    pub fn from_region(region: crate::Region, tiles: Vec<HeightTile>) -> Result<Self, TerrainError> {
+        region.validate_manifest()?;
+        if tiles.len() != region.tiles.len() {
+            return Err(TerrainError("missing region tiles"));
+        }
+        let extent = f64::from(region.tile_size - 1) * f64::from(region.spacing_m);
+        for (i, tile) in tiles.iter().enumerate() {
+            let n = i % region.tiles_north as usize;
+            let e = i / region.tiles_north as usize;
+            let expected = [
+                region.southwest_m[0] + n as f64 * extent,
+                region.southwest_m[1] + e as f64 * extent,
+            ];
+            if tile.origin_m() != expected
+                || tile.size() != region.tile_size
+                || tile.spacing_m() != f64::from(region.spacing_m)
+            {
+                return Err(TerrainError("region tile grid mismatch"));
+            }
+        }
+        let mut world = Self::build(WorldChoice::Region(region.id.clone()), tiles)?;
+        // Runway and metadata affect replay identity as well as tile content.
+        for byte in serde_json::to_vec(&region).map_err(|_| TerrainError("region identity"))? {
+            world.fingerprint ^= u64::from(byte);
+            world.fingerprint = world.fingerprint.wrapping_mul(0x100000001b3);
+        }
+        world.region = Some(Arc::new(region));
+        Ok(world)
+    }
+    #[must_use]
+    pub fn region(&self) -> Option<&crate::Region> {
+        self.region.as_deref()
+    }
+    #[must_use]
+    pub fn runway(&self) -> crate::Runway {
+        self.region().map_or(crate::RUNWAY, crate::Region::runway)
+    }
+    #[must_use]
+    pub fn attribution(&self) -> &str {
+        self.region()
+            .map_or("Original FlightCraft terrain · Apache-2.0", |r| {
+                r.attribution.as_str()
+            })
     }
     /// Stable content identity, computed once when tiles load.
     #[must_use]

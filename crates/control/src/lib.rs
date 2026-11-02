@@ -5,6 +5,8 @@
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
 mod aircraft;
+mod regions;
+pub use regions::*;
 mod packs;
 pub use aircraft::*;
 pub use packs::*;
@@ -71,6 +73,7 @@ pub struct Session {
     rate: f64,
     camera: Option<CameraSettings>,
     flight_generation: u64,
+    regions: std::collections::BTreeMap<String, flightcraft_world::World>,
 }
 
 impl Session {
@@ -90,6 +93,7 @@ impl Session {
             rate: 1.0,
             camera: None,
             flight_generation: 0,
+            regions: std::collections::BTreeMap::new(),
         })
     }
 
@@ -272,7 +276,7 @@ impl Command for Reset {
             &start,
             session.selected_aircraft.clone(),
             self.weather.unwrap_or_default(),
-            flightcraft_world::World::load(self.world).map_err(SimError::from)?,
+            session.resolve_world(self.world)?,
         )?;
         session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
@@ -508,6 +512,7 @@ macro_rules! registry {
 registry!(
     Reset,
     WorldHeight,
+    ListWorlds,
     SetControls,
     Step,
     SetAutopilot,

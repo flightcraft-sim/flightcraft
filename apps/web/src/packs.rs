@@ -53,6 +53,11 @@ async fn load_one(window: &web_sys::Window, url: &str) -> Result<PackContents, J
 }
 
 async fn fetch(window: &web_sys::Window, url: &str, max: usize) -> Result<String, JsValue> {
+    let bytes = fetch_bytes(window, url, max).await?;
+    String::from_utf8(bytes).map_err(|e| JsValue::from_str(&format!("Requires UTF-8: {e}")))
+}
+
+pub(crate) async fn fetch_bytes(window: &web_sys::Window, url: &str, max: usize) -> Result<Vec<u8>, JsValue> {
     let response = JsFuture::from(window.fetch_with_str(url))
         .await?
         .dyn_into::<web_sys::Response>()?;
@@ -78,5 +83,5 @@ async fn fetch(window: &web_sys::Window, url: &str, max: usize) -> Result<String
         }
         bytes.extend(array.to_vec());
     }
-    String::from_utf8(bytes).map_err(|e| JsValue::from_str(&format!("Requires UTF-8: {e}")))
+    Ok(bytes)
 }

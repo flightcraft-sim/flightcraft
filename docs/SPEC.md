@@ -125,7 +125,7 @@ Later, from open data only, each with a row in ATTRIBUTION.md:
 
 | Data | Source | Licence | Status |
 |---|---|---|---|
-| Elevation | SRTM (NASA/USGS) | Public domain | Planned |
+| Elevation | SRTM (NASA/USGS) | Public domain | Offline importer available; region selection pending |
 | Elevation | Copernicus DEM GLO-30 | Copernicus DEM licence, free with attribution; terms to be checked before use | Open question |
 | Airfields, roads, water, land use | OpenStreetMap | ODbL 1.0, with "© OpenStreetMap contributors" shown in the app | Planned |
 

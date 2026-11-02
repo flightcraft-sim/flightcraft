@@ -36,6 +36,10 @@ fn serve() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--connect is unavailable on wasm".into());
     }
     let mut session = Session::new()?;
+    #[cfg(not(target_arch = "wasm32"))]
+    for error in session.load_regions_directory(std::path::Path::new("assets/terrain")) {
+        eprintln!("{error}");
+    }
     let mut execute = |name: &str, input| {
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(client) = &mut client {

@@ -337,7 +337,21 @@ impl CallbackTrait for SceneCallback {
         let Some(gpu) = resources.get_mut::<Gpu>() else {
             return Vec::new();
         };
-        if !self.world.tiles().is_empty() && gpu.terrain_fingerprint != Some(self.world.fingerprint()) {
+        if gpu.terrain_fingerprint != Some(self.world.fingerprint()) {
+            gpu.meshes = [false, true].map(|larrow| {
+                let geometry = mesh::build_for_world(gpu.palette, larrow, &self.world);
+                DrawMesh {
+                    vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("field and aircraft mesh"),
+                        contents: bytemuck::cast_slice(&geometry.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    vertex_count: geometry.vertices.len() as u32,
+                    world_count: geometry.world_end,
+                    exterior_end: geometry.exterior_end,
+                    cockpit_end: geometry.cockpit_end,
+                }
+            });
             gpu.terrain = self
                 .world
                 .tiles()

@@ -81,6 +81,36 @@ pub(crate) struct Geometry {
     pub cockpit_end: u32,
 }
 
+/// Adapt the original runway markings to a region's threshold, width, length, and heading.
+pub(crate) fn build_for_world(p: Palette, larrow: bool, world: &flightcraft_world::World) -> Geometry {
+    let mut geometry = build(p, larrow);
+    if world.region().is_some() {
+        let runway = world.runway();
+        let (s, c) = (runway.heading_deg as f32).to_radians().sin_cos();
+        for (i, vertex) in geometry
+            .vertices
+            .iter_mut()
+            .take(geometry.world_end as usize)
+            .enumerate()
+        {
+            if i < 6 {
+                // The backdrop must not cover terrain below the airfield's MSL elevation.
+                vertex.position[1] = -20000.0;
+                continue;
+            }
+            let [x, y, z] = vertex.position;
+            let east = x * runway.width_m as f32 / 23.0;
+            let north = -z * runway.length_m as f32 / 900.0;
+            vertex.position = [
+                north * s + east * c,
+                y - runway.threshold_ned_m[2] as f32,
+                -(north * c - east * s),
+            ];
+        }
+    }
+    geometry
+}
+
 pub(crate) fn build(p: Palette, larrow: bool) -> Geometry {
     let mut m = Mesh::default();
     m.ground([-7000.0, 7000.0], [14000.0, 14000.0], 0.0, p.ground, 0.0);

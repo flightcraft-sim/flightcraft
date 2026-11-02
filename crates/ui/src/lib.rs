@@ -10,8 +10,8 @@ pub mod script;
 pub mod theme;
 
 use eframe::egui::{self, Align2, FontId, RichText};
-pub use flightcraft_control::PackOptions;
 use flightcraft_control::Session;
+pub use flightcraft_control::{PackOptions, RegionOptions};
 use flightcraft_render::{CameraMode, Scene};
 use keymap::{Action, Keymap};
 
@@ -64,6 +64,7 @@ pub struct AppOptions {
     /// Timed commands to run; they hold the flight controls until they run out.
     pub script: Option<script::Script>,
     pub packs: flightcraft_control::PackOptions,
+    pub regions: flightcraft_control::RegionOptions,
 }
 
 /// One session, one fixed-step accumulator, and read-only presentation of its state.
@@ -135,6 +136,16 @@ impl FlightCraftApp {
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
         let mut pack_errors = options.packs.errors;
+        pack_errors.extend(options.regions.errors);
+        #[cfg(not(target_arch = "wasm32"))]
+        pack_errors.extend(session.load_regions_directory(std::path::Path::new(
+            options.regions.directory.as_deref().unwrap_or("assets/terrain"),
+        )));
+        for world in options.regions.fetched {
+            if let Err(e) = session.install_region(world) {
+                pack_errors.push(e.to_string());
+            }
+        }
         #[cfg(not(target_arch = "wasm32"))]
         let packs_directory = options
             .packs
@@ -440,6 +451,40 @@ impl eframe::App for FlightCraftApp {
                             }
                         },
                     );
+                    ui.menu_button("World", |ui| {
+                        match self.session.run(flightcraft_control::ListWorlds {}) {
+                            Ok(choices) => {
+                                for world in choices.worlds {
+                                    if ui
+                                        .selectable_label(
+                                            self.session.sim().world().choice() == world.id,
+                                            &world.name,
+                                        )
+                                        .on_hover_text(&world.attribution)
+                                        .clicked()
+                                    {
+                                        match self.session.run(flightcraft_control::Reset {
+                                            world: world.id,
+                                            start: flightcraft_control::ResetStart::Runway {},
+                                            weather: Some(self.session.sim().weather()),
+                                            paused: Some(self.paused),
+                                        }) {
+                                            Ok(_) => {
+                                                self.clock.reset();
+                                                self.slip_ball = instruments::SlipBall::default();
+                                                self.input.trim = 0.0;
+                                                self.scene.reset_camera();
+                                                self.error = None;
+                                            }
+                                            Err(e) => self.error = Some(e.to_string()),
+                                        }
+                                        ui.close();
+                                    }
+                                }
+                            }
+                            Err(e) => self.error = Some(e.to_string()),
+                        }
+                    });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
@@ -514,7 +559,7 @@ impl eframe::App for FlightCraftApp {
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
-                            RichText::new("LOCAL NED  ·  STANDARD ATMOSPHERE  ·  NO WIND")
+                            RichText::new(self.session.sim().world().attribution())
                                 .size(10.0)
                                 .color(theme::MUTED),
                         );
@@ -565,14 +610,23 @@ impl eframe::App for FlightCraftApp {
                 painter.text(
                     rect.left_top(),
                     Align2::LEFT_TOP,
-                    "TRAINING FIELD",
+                    self.session
+                        .sim()
+                        .world()
+                        .region()
+                        .map_or("TRAINING FIELD", |r| r.name.as_str()),
                     FontId::monospace(12.0),
                     theme::BACKGROUND,
                 );
                 painter.text(
                     rect.left_top() + egui::vec2(0.0, 20.0),
                     Align2::LEFT_TOP,
-                    "RUNWAY 36   /   900 × 23 m",
+                    format!(
+                        "RUNWAY {:03.0}   /   {:.0} × {:.0} m",
+                        self.session.sim().world().runway().heading_deg,
+                        self.session.sim().world().runway().length_m,
+                        self.session.sim().world().runway().width_m
+                    ),
                     FontId::monospace(10.0),
                     theme::BACKGROUND,
                 );

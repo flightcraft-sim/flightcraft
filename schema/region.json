@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Region",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string",
+      "default": ""
+    },
+    "id": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string",
+      "default": ""
+    },
+    "name": {
+      "type": "string"
+    },
+    "origin": {
+      "$ref": "#/$defs/RegionOrigin"
+    },
+    "runway_blend_m": {
+      "type": "number",
+      "format": "double"
+    },
+    "source": {
+      "type": "string",
+      "default": ""
+    },
+    "southwest_m": {
+      "description": "Southwest local corner of the output grid, north/east metres.",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 2,
+      "minItems": 2
+    },
+    "spacing_m": {
+      "type": "number",
+      "format": "float"
+    },
+    "tile_size": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "tiles": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "tiles_east": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "tiles_north": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "origin",
+    "southwest_m",
+    "tiles_north",
+    "tiles_east",
+    "spacing_m",
+    "tile_size",
+    "runway_blend_m"
+  ],
+  "$defs": {
+    "RegionOrigin": {
+      "type": "object",
+      "properties": {
+        "field_elevation_m": {
+          "description": "SRTM and the simulator use MSL heights, not ellipsoidal heights.",
+          "type": "number",
+          "format": "double"
+        },
+        "latitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_heading_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_length_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "runway_width_m": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg",
+        "field_elevation_m",
+        "runway_heading_deg",
+        "runway_length_m",
+        "runway_width_m"
+      ]
+    }
+  }
+}
