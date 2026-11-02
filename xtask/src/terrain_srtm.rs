@@ -38,7 +38,8 @@ fn decode(name: &str, bytes: &[u8]) -> Result<HgtTile, String> {
             return Err("HGT ZIP must contain exactly one file".into());
         }
         let mut entry = archive.by_index(0).map_err(|e| e.to_string())?;
-        if entry.name() != hgt_name
+        let entry_name = entry.name().map_err(|e| e.to_string())?.into_owned();
+        if entry_name != hgt_name
             || entry.is_dir()
             || entry.encrypted()
             || entry
