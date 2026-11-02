@@ -20,6 +20,7 @@ flightcraft-control = { path = "crates/control" }
 flightcraft-render = { path = "crates/render" }
 flightcraft-ui = { path = "crates/ui" }
 
+getrandom = "0.3"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }

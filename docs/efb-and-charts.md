@@ -1,6 +1,6 @@
 # Tablet apps, charts, plates, and procedures
 
-Status: specification, not yet implemented.
+Status: desktop tablet broadcast implemented; charts, plates, procedures, and live data remain specifications.
 
 Pilots plan and fly with an electronic flight bag (EFB) app on a tablet. FlightCraft should feed
 those apps like a real aircraft does. It should also carry the FAA's own charts and procedures,
@@ -8,8 +8,8 @@ so the same work can be done inside the simulator.
 
 ## 1. Feeding EFB apps on your tablet
 
-The desktop app can broadcast the simulated aircraft on your local network. EFB apps then show it
-as ownship on their maps, plates, and synthetic vision.
+The desktop app can broadcast the simulated aircraft on your local network to compatible EFB
+inputs. Each tablet app controls how it uses the feed; interoperability has not been device-tested.
 
 - **Protocols,** both public:
   - **GDL 90:** the FAA's public data interface for ADS-B receivers, on UDP port 4000. It carries
@@ -18,14 +18,14 @@ as ownship on their maps, plates, and synthetic vision.
     use for device identification and AHRS attitude.
   - **The simulator position protocol** that EFB apps accept from flight simulators: plain-text
     `XGPS` position, `XATT` attitude, and `XTRAFFIC` messages on UDP port 49002.
-- **Apps:** ForeFlight, Garmin Pilot, FltPlan Go, SkyDemon, Avare, and others accept one or both
-  protocols.
+- **Apps:** consult your tablet app's documentation for supported simulator or receiver inputs.
+  No per-app compatibility has been verified.
 - **Honest identity:** FlightCraft identifies itself as FlightCraft, a simulator. It never claims
   to be a particular receiver model (for example a specific commercial ADS-B receiver).
   Pretending would misrepresent the device to the app and its maker. It could also trigger
   device-specific behaviour that a simulator cannot honour (firmware updates, battery status, and
-  weather uplinks). Everything a pilot needs (position, track, altitude, attitude for synthetic
-  vision, and traffic) works through the honest path.
+  weather uplinks). Position, track, altitude, attitude for synthetic vision, and traffic can be
+  represented through these public message formats.
 - **No fake weather uplink:** FlightCraft does not synthesise FIS-B weather into an EFB. Simulated
   weather must never look like real weather to an app that is also used in real aircraft.
 - **Control:** off by default. "Send to tablet apps" in Preferences, or `efb.broadcast`, asks for
@@ -34,6 +34,84 @@ as ownship on their maps, plates, and synthetic vision.
   as the sender.
 - **Plans from the tablet:** plans made in an EFB come in through the GPX and GPS flight-plan
   file import in [map and planning](map-and-planning.md).
+
+### Fly with your tablet app
+
+1. Put the desktop computer and tablet on the same local network. Select a geographic region,
+   such as New York or eastern Pennsylvania. The flat and training worlds have no geodesy;
+   FlightCraft sends nothing there and explains why in Preferences and `efb.status`.
+2. Open **Preferences → Send to tablet apps**. Enter the tablet's IPv4 address, or your subnet's
+   broadcast address (for example, `192.168.1.255` on the corresponding /24 subnet). Enable GDL 90,
+   simulator position, or both, enable broadcasting, and choose **Apply tablet settings**.
+   Settings are saved locally and restored at startup. Broadcasting defaults to off.
+3. In the tablet app, look for its simulator or device listing and enable the applicable input
+   if required. Consult that app's documentation for supported protocols and setup. Device discovery,
+   display, and synthetic vision have not been verified against third-party apps.
+4. Check the packet rate, cumulative per-protocol datagram counts, and last send error in
+   Preferences or `efb.status`. Disable broadcasting and apply to stop. Successful UDP sends count
+   datagrams handed to the network; they do not prove receipt by the tablet. A firewall, wireless
+   client isolation, or a different subnet can prevent delivery, especially with broadcast addresses.
+
+Only the desktop sends UDP. The browser reports **unavailable in the browser**. No weather uplinks,
+real receiver identity, or real-world navigation guarantees are provided.
+
+### Implemented wire formats
+
+GDL 90 uses one framed message per UDP datagram, to destination port **4000**:
+
+| Message | ID | Wall-clock rate |
+|---|---|---|
+| Heartbeat with UTC seconds since midnight | 0 | 1 Hz |
+| Ownship report | 10 | 1 Hz |
+| Ownship geometric altitude | 11 | 1 Hz |
+| Device identification, version 1 | 0x65, sub-ID 0 | 1 Hz |
+| AHRS attitude | 0x65, sub-ID 1 | 5 Hz |
+
+The original encoder follows FAA **GDL 90 Data Interface Specification, 560-1058-00 Rev A**:
+24-bit signed semicircles, nearest-step quantization, 25 ft pressure-altitude steps with a
+−1000 ft origin and `0xfff` invalid value, packed velocity, true track, light-aircraft emitter,
+CCITT polynomial `0x1021` with initial zero and the GDL table recurrence, low-byte-first CRC,
+`0x7e` flags, and `0x7d` XOR-`0x20` escaping. NIC and NACp are zero: simulated truth is not a
+certified navigation integrity source. The address is self-assigned from the installation serial,
+not an assigned ICAO address. Geometric altitude is MSL in 5 ft steps, with unavailable vertical
+figure of merit. The device capability bit for WGS84 ellipsoid altitude stays clear.
+
+The publicly documented [EFB device and AHRS extensions](https://www.foreflight.com/connect/spec/foreflight-gdl90-extension/)
+use an eight-byte installation serial derived from an operating-system random value saved in local
+app settings. The protocol's eight-byte short name is **FlightCr**, the longest prefix that fits;
+the 16-byte long-name field contains **FlightCraft**, zero-padded. FlightCraft never impersonates a
+commercial receiver. Attitude is in tenths of a degree, heading is marked true, and indicated and
+true airspeed fields are unavailable (`0xffff`), rather than filled with ground speed.
+
+Simulator messages go to destination port **49002**, one ASCII line per datagram, ending in LF:
+
+```text
+XGPSFlightCraft,<longitude_deg>,<latitude_deg>,<altitude_msl_m>,<track_true_deg>,<groundspeed_mps>
+XATTFlightCraft,<true_heading_deg>,<pitch_deg>,<roll_deg>
+XTRAFFICFlightCraft,<numeric_id>,<latitude_deg>,<longitude_deg>,<altitude_msl_ft>,<vertical_speed_fpm>,<airborne>,<true_heading_deg>,<groundspeed_kt>
+```
+
+XGPS runs at 1 Hz; XATT runs at 5 Hz. These cadences match the GDL position and attitude updates,
+while keeping attitude smoother than position. Coordinates have seven decimal places. Position
+altitude, angles, and speed have two decimal places; traffic altitude and vertical speed have one.
+Longitude comes first only in XGPS. Pitch is positive nose-up, roll is positive right-wing-down,
+track and heading are clockwise from true north, vertical speed is positive climbing, and airborne
+is `1` in flight or `0` on the ground. This follows the public simulator-message field conventions;
+FlightCraft is the source suffix. Compatibility with a particular tablet app is not claimed.
+
+Traffic encoders support GDL ID 20 and the XTRAFFIC line above. The current simulator has no
+traffic aircraft source, so the sender emits neither traffic reports nor fictitious targets.
+A future traffic source can use `efb::encode::report` and `efb::encode::xtraffic` in control.
+
+The app publishes a latest-value truth snapshot each frame to a dedicated sender thread.
+Position comes from the active region's geodesy; pressure altitude inverts the simulator's ISA
+static pressure, and geometric altitude is its MSL height. Ground velocity and attitude come
+from aircraft truth, independent of instrument failures and lag. True bearings account for the
+local projection's grid convergence. Sending continues while paused, showing the stationary
+simulated aircraft. A snapshot older than two seconds suppresses all packets. Deadlines use wall
+time, skip missed periods, and never burst to catch up. With both protocols on, the nominal total
+is 15 datagrams/s: nine GDL and six simulator datagrams. The last error persists as a diagnostic;
+packet counts reset when the app restarts.
 
 ## 2. Approach plates and airport diagrams
 

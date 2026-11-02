@@ -16,6 +16,8 @@ pub use regions::*;
 mod packs;
 pub use aircraft::*;
 pub use packs::*;
+pub mod efb;
+pub use efb::*;
 mod app;
 mod holds;
 pub use app::*;
@@ -71,6 +73,8 @@ pub enum CommandError {
 #[derive(Debug)]
 pub struct Session {
     sim: Sim,
+    #[cfg(not(target_arch = "wasm32"))]
+    efb: Option<efb::sender::Sender>,
     glass: GlassSettings,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
@@ -96,6 +100,8 @@ impl Session {
             active_configuration: Some(configuration),
             aircraft_catalog,
             sim: Sim::new(&Start::Runway)?,
+            #[cfg(not(target_arch = "wasm32"))]
+            efb: None,
             selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
             glass: GlassSettings::default(),
             paused: true,
@@ -165,6 +171,8 @@ impl Session {
         self.sequence_glass();
         let result = command.run(self);
         self.sequence_glass();
+        #[cfg(not(target_arch = "wasm32"))]
+        self.update_efb();
         result
     }
 
@@ -623,7 +631,9 @@ registry!(
     AppScreenshot,
     Wait,
     AirportQuery,
-    Geodetic
+    Geodetic,
+    EfbBroadcast,
+    EfbGetStatus
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.

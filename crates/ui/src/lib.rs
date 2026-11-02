@@ -72,6 +72,10 @@ pub struct AppOptions {
 /// One session, one fixed-step accumulator, and read-only presentation of its state.
 pub struct FlightCraftApp {
     session: Session,
+    efb_settings: flightcraft_control::EfbSettings,
+    efb_applied: flightcraft_control::EfbSettings,
+    #[cfg(not(target_arch = "wasm32"))]
+    efb_serial: Option<u64>,
     #[cfg(not(target_arch = "wasm32"))]
     packs_directory: String,
     #[cfg(not(target_arch = "wasm32"))]
@@ -180,10 +184,52 @@ impl FlightCraftApp {
             })?;
         }
         session.enable_app();
+        let efb_settings: flightcraft_control::EfbSettings = cc
+            .storage
+            .and_then(|s| s.get_string("efb.settings"))
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+        #[cfg(not(target_arch = "wasm32"))]
+        let efb_serial = {
+            let serial = cc
+                .storage
+                .and_then(|s| s.get_string("efb.serial"))
+                .and_then(|s| s.parse::<u64>().ok());
+            let serial = serial.map(Ok).unwrap_or_else(|| {
+                let mut bytes = [0_u8; 8];
+                getrandom::fill(&mut bytes)
+                    .map(|()| u64::from_be_bytes(bytes))
+                    .map_err(|e| e.to_string())
+            });
+            match serial {
+                Ok(serial) => {
+                    if let Err(e) = session.initialize_efb(serial) {
+                        error = Some(e);
+                    } else if let Err(e) = session.run(flightcraft_control::EfbBroadcast {
+                        enabled: efb_settings.enabled,
+                        destination: efb_settings.destination.clone(),
+                        gdl90: efb_settings.gdl90,
+                        simulator: efb_settings.simulator,
+                    }) {
+                        error = Some(e.to_string());
+                    }
+                    Some(serial)
+                }
+                Err(e) => {
+                    error = Some(format!("Tablet identity could not be created: {e}"));
+                    None
+                }
+            }
+        };
         session.run(flightcraft_control::Resume {})?;
         let paused = session.paused();
+        let efb_applied = session.efb_status().settings;
         Ok(Self {
             session,
+            efb_applied,
+            efb_settings,
+            #[cfg(not(target_arch = "wasm32"))]
+            efb_serial,
             #[cfg(not(target_arch = "wasm32"))]
             packs_directory,
             #[cfg(not(target_arch = "wasm32"))]
@@ -244,6 +290,11 @@ impl FlightCraftApp {
     }
 
     fn bindings_window(&mut self, ctx: &egui::Context) {
+        let applied = self.session.efb_status().settings;
+        if applied != self.efb_applied {
+            self.efb_settings = applied.clone();
+            self.efb_applied = applied;
+        }
         egui::Window::new("Preferences and input").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
             ui.label(RichText::new("INSTRUMENT PANEL").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.compact_panel, "Compact instruments (one row)");
@@ -263,6 +314,32 @@ impl FlightCraftApp {
                 ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Us,"US customary");
                 ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Si,"SI");
             });
+            ui.separator();
+            ui.label(RichText::new("Send to tablet apps").color(theme::ACCENT));
+            if cfg!(target_arch = "wasm32") {
+                ui.label("Unavailable in the browser: UDP requires the desktop app.");
+            } else {
+                ui.checkbox(&mut self.efb_settings.enabled, "Enable tablet broadcast");
+                ui.horizontal(|ui| {
+                    ui.label("Destination IPv4");
+                    ui.text_edit_singleline(&mut self.efb_settings.destination);
+                });
+                ui.checkbox(&mut self.efb_settings.gdl90, "GDL 90 (port 4000)");
+                ui.checkbox(&mut self.efb_settings.simulator, "Simulator position and attitude (port 49002)");
+                if ui.button("Apply tablet settings").clicked() {
+                    match self.session.run(flightcraft_control::EfbBroadcast {
+                        enabled: self.efb_settings.enabled, destination: self.efb_settings.destination.clone(),
+                        gdl90: self.efb_settings.gdl90, simulator: self.efb_settings.simulator,
+                    }) {
+                        Ok(status) => self.efb_settings = status.settings,
+                        Err(e) => self.error = Some(e.to_string()),
+                    }
+                }
+                let status = self.session.efb_status();
+                ui.label(format!("{} packets/s · GDL 90: {} · Simulator: {}", status.packets_per_second, status.gdl90_packets, status.simulator_packets));
+                if let Some(reason) = status.reason { ui.label(reason); }
+                if let Some(error) = status.last_error { ui.colored_label(theme::AMBER, error); }
+            }
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
@@ -968,10 +1045,21 @@ impl eframe::App for FlightCraftApp {
         self.bindings_window(ctx);
         #[cfg(not(target_arch = "wasm32"))]
         self.screenshot(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.session.update_efb();
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(1.0 / 60.0));
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(serial) = self.efb_serial {
+                storage.set_string("efb.serial", serial.to_string());
+            }
+            if let Ok(json) = serde_json::to_string(&self.session.efb_status().settings) {
+                storage.set_string("efb.settings", json);
+            }
+        }
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
         if let Ok(json) = serde_json::to_string(&self.instrument_panel.options) {
             storage.set_string(DISPLAY_OPTIONS_STORAGE, json);

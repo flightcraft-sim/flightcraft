@@ -13106,5 +13106,197 @@
       "title": "Coordinate",
       "type": "object"
     }
+  },
+  {
+    "name": "efb.broadcast",
+    "description": "Configure desktop UDP broadcast to tablet apps; off by default.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "destination": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "gdl90": {
+          "type": "boolean"
+        },
+        "simulator": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "destination",
+        "gdl90",
+        "simulator"
+      ],
+      "title": "EfbBroadcast",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "EfbSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "destination": {
+              "description": "Numeric IPv4 tablet or subnet broadcast address; no DNS or port syntax.",
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "gdl90": {
+              "type": "boolean"
+            },
+            "simulator": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled",
+            "destination",
+            "gdl90",
+            "simulator"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "gdl90_packets": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "packets_per_second": {
+          "description": "Successful datagrams in the most recently completed one-second interval.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reason": {
+          "description": "Why no aircraft packets are currently being sent.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "settings": {
+          "$ref": "#/$defs/EfbSettings"
+        },
+        "simulator_packets": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "settings",
+        "available",
+        "gdl90_packets",
+        "simulator_packets",
+        "packets_per_second"
+      ],
+      "title": "EfbStatus",
+      "type": "object"
+    }
+  },
+  {
+    "name": "efb.status",
+    "description": "Read tablet broadcast settings, packet counts, rate, and last error.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "EfbGetStatus",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "EfbSettings": {
+          "additionalProperties": false,
+          "properties": {
+            "destination": {
+              "description": "Numeric IPv4 tablet or subnet broadcast address; no DNS or port syntax.",
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "gdl90": {
+              "type": "boolean"
+            },
+            "simulator": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled",
+            "destination",
+            "gdl90",
+            "simulator"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "gdl90_packets": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "packets_per_second": {
+          "description": "Successful datagrams in the most recently completed one-second interval.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reason": {
+          "description": "Why no aircraft packets are currently being sent.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "settings": {
+          "$ref": "#/$defs/EfbSettings"
+        },
+        "simulator_packets": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "settings",
+        "available",
+        "gdl90_packets",
+        "simulator_packets",
+        "packets_per_second"
+      ],
+      "title": "EfbStatus",
+      "type": "object"
+    }
   }
 ]

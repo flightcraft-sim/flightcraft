@@ -831,6 +831,7 @@ dependencies = [
  "flightcraft-render",
  "flightcraft-sim",
  "flightcraft-world",
+ "getrandom 0.3.4",
  "gilrs",
  "image",
  "libm",

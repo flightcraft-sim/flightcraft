@@ -253,3 +253,28 @@ See [terrain and data import](terrain.md) for catalogue schemas, provenance, and
 
 The same commands support `eastern-pa` (Eastern Pennsylvania and New Jersey), including
 `KABE`, `KMPO`, `KAVP`, and `KRDG`. Both regions share the Blairstown runway 07 origin.
+
+## Tablet broadcast
+
+| Tool | Command | Arguments and result |
+|---|---|---|
+| `efb_broadcast` | `efb.broadcast` | Required `enabled`, numeric IPv4 `destination`, `gdl90`, and `simulator`. Applies the full configuration and returns broadcast status. Desktop app only. |
+| `efb_status` | `efb.status` | `{}`. Returns `settings`, `available`, cumulative `gdl90_packets` and `simulator_packets`, `packets_per_second`, `last_error`, and suppression `reason`. |
+
+For example, through the desktop control channel:
+
+```jsonl
+{"id":1,"command":"efb.broadcast","input":{"enabled":true,"destination":"192.168.1.255","gdl90":true,"simulator":true}}
+{"id":2,"command":"efb.status","input":{}}
+{"id":3,"command":"efb.broadcast","input":{"enabled":false,"destination":"192.168.1.255","gdl90":true,"simulator":true}}
+```
+
+Broadcast is off by default. The desktop persists the applied settings and random installation
+serial locally. Enabling requires at least one protocol. Destinations accept unicast or broadcast
+IPv4 addresses; hostnames, port suffixes, multicast, unspecified addresses, nulls, and unknown
+fields are rejected without changing settings. Ports are fixed at 4000 for GDL 90 and 49002 for
+simulator position. A successful configuration does not guarantee UDP delivery: consult counters
+and `last_error`. `reason` explains disabled, missing geodesy, or stale aircraft truth; no packets
+are emitted without active geographic position. Status remains available headlessly and in the
+browser with `available: false`; browser configuration reports “unavailable in the browser”.
+See [Fly with your tablet app](efb-and-charts.md#fly-with-your-tablet-app) for setup and wire formats.
