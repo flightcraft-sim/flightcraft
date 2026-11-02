@@ -327,10 +327,13 @@ fn render_equipment_previews() {
         )
         .unwrap();
     let terrain = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york");
-    session
-        .install_region(flightcraft_control::read_region(&terrain).unwrap())
-        .unwrap();
-    session.execute("sim.reset",serde_json::json!({"world":"new-york","start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":1.}})).unwrap();
+    let regional = terrain.join("000.fcht").exists();
+    if regional {
+        session
+            .install_region(flightcraft_control::read_region(&terrain).unwrap())
+            .unwrap();
+    }
+    session.execute("sim.reset",serde_json::json!({"world":if regional { "new-york" } else { "flat" },"start":{"kind":"air","height_m":1200.,"airspeed_mps":45.,"heading_rad":1.}})).unwrap();
     session
         .execute(
             "assist.set",
@@ -340,12 +343,14 @@ fn render_equipment_previews() {
     session
         .execute("sim.step", serde_json::json!({"steps":5500}))
         .unwrap();
-    session
+    if regional {
+        session
         .execute(
             "avionics.set",
             serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"direct_to","airport":"KMMU"}}}),
         )
         .unwrap();
+    }
     // Acknowledgement latches remain lit after a transient condition clears.
     session
         .execute(

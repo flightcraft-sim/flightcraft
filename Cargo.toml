@@ -44,7 +44,7 @@ glam = "0.30"
 naga = { version = "27", features = ["wgsl-in", "glsl-out"] }
 gilrs = "0.11"
 base64 = "0.22"
-image = { version = "0.25", default-features = false, features = ["png", "webp"] }
+image = { version = "0.25", default-features = false, features = ["png", "webp", "jpeg"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

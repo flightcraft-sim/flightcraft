@@ -1,6 +1,7 @@
 //! Fixed-step electronic engine controls, annunciation latches, and pilot recovery controls.
 use crate::{DT_S, SimError};
 use flightcraft_aero::modern::{AnnunciationSource, EngineControl, ModernSystems, Severity};
+use flightcraft_aero::panel_fidelity::{BackupCircuit, ControlBinding};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +35,13 @@ pub enum Component {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ModernSetting {
+    BackupPower {
+        circuit: BackupCircuit,
+        on: bool,
+    },
+    Wigwag {
+        on: bool,
+    },
     PanelControl {
         id: String,
         value: f64,
@@ -148,7 +156,21 @@ pub struct Annunciation {
     pub active: bool,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+pub struct BackupBusState {
+    pub circuit: BackupCircuit,
+    pub on: bool,
+    pub remaining_ah: f64,
+    pub voltage: f64,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct ModernState {
+    #[serde(skip)]
+    pub(crate) panel_bindings: std::collections::BTreeMap<String, ControlBinding>,
+    pub backup_buses: Vec<BackupBusState>,
+    pub wigwag: bool,
+    pub wigwag_elapsed_s: f64,
+    #[serde(skip)]
+    pub(crate) wigwag_installed: bool,
     pub panel_controls: std::collections::BTreeMap<String, f64>,
     pub panel_guards: std::collections::BTreeMap<String, bool>,
     pub light_switches: Vec<(flightcraft_aero::LoadSwitch, bool)>,
@@ -172,6 +194,23 @@ pub struct ModernState {
 impl ModernState {
     pub(crate) fn new(control: &EngineControl, d: Option<&ModernSystems>) -> Self {
         Self {
+            panel_bindings: Default::default(),
+            backup_buses: d
+                .map(|d| {
+                    d.backup_buses
+                        .iter()
+                        .map(|bus| BackupBusState {
+                            circuit: bus.circuit,
+                            on: false,
+                            remaining_ah: bus.capacity_ah,
+                            voltage: 0.,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            wigwag: false,
+            wigwag_elapsed_s: 0.,
+            wigwag_installed: d.is_some_and(|d| d.wigwag.is_some()),
             panel_controls: Default::default(),
             panel_guards: Default::default(),
             light_switches: [
@@ -219,6 +258,32 @@ impl ModernState {
     pub(crate) fn set(&mut self, setting: ModernSetting) -> Result<(), SimError> {
         let invalid = |message: &str| SimError::InvalidSystems(message.into());
         match setting {
+            ModernSetting::BackupPower { circuit, on } => {
+                let bus = self
+                    .backup_buses
+                    .iter_mut()
+                    .find(|b| b.circuit == circuit)
+                    .ok_or_else(|| invalid("backup bus not installed"))?;
+                bus.on = on;
+                if !on {
+                    bus.voltage = 0.;
+                }
+            }
+            ModernSetting::Wigwag { on } => {
+                if !self.wigwag_installed {
+                    return Err(invalid("wigwag not installed"));
+                }
+                self.wigwag = on;
+                self.wigwag_elapsed_s = 0.;
+                if on
+                    && let Some((_, enabled)) = self
+                        .light_switches
+                        .iter_mut()
+                        .find(|(light, _)| *light == flightcraft_aero::LoadSwitch::Landing)
+                {
+                    *enabled = true;
+                }
+            }
             ModernSetting::PanelControl { id, value } => {
                 if !value.is_finite() || !(0. ..=1.).contains(&value) {
                     return Err(invalid("panel control requires 0..1"));
@@ -230,6 +295,12 @@ impl ModernState {
                     .panel_controls
                     .get_mut(&id)
                     .ok_or_else(|| invalid("unknown panel control"))? = value;
+                if let Some(binding) = self.panel_bindings.get(&id) {
+                    match binding {
+                        ControlBinding::LaneA => self.lane_a.on = value >= 0.5,
+                        ControlBinding::LaneB => self.lane_b.on = value >= 0.5,
+                    }
+                }
             }
             ModernSetting::PanelGuard { id, open } => {
                 *self
@@ -252,6 +323,15 @@ impl ModernState {
                 match lane {
                     Lane::A => self.lane_a.on = on,
                     Lane::B => self.lane_b.on = on,
+                }
+                for (id, binding) in &self.panel_bindings {
+                    if matches!(
+                        (lane, binding),
+                        (Lane::A, ControlBinding::LaneA) | (Lane::B, ControlBinding::LaneB)
+                    ) && let Some(value) = self.panel_controls.get_mut(id)
+                    {
+                        *value = if on { 1. } else { 0. };
+                    }
                 }
             }
             ModernSetting::Pump { pump, on } => {

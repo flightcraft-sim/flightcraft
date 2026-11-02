@@ -132,7 +132,7 @@ their typed commands.
 A touch display's optional `composition` declares `top_data_bar`, `engine_strip_fraction`
 (0.1–0.3), `engine_style` (`bars` or `dials_and_bars`), `hsi`, and up to four distinct `insets`.
 Each inset has `corner` (`top_left`, `top_right`, `bottom_left`, or `bottom_right`) and `content`
-(`map`, `engine`, or `navigation`). The top bar reports shared COM, baro, transponder, waypoint,
+(`map`, `terrain`, `synthetic_vision`, `engine`, or `navigation`). The top bar reports shared COM, baro, transponder, waypoint,
 and distance data. Round RPM/manifold dials and bar gauges share the engine model. Flight content
 fills its complete viewport; the soft-key row and corner knobs remain outside it. The installed
 autopilot uses the complete existing controller faceplate and encoder behaviour, scaled together
@@ -180,3 +180,151 @@ It writes `out/equipment/panel.png`, `navigator.png`, and `display.png`, plus `-
 variants. Setting `FLIGHTCRAFT_EXTENDED_PANEL_PREVIEWS` additionally captures the procedure
 and map pages at both sizes. Run it through the build
 queue with `cargo test -p flightcraft-ui render_equipment_previews -- --ignored`.
+
+## Optional fidelity artwork
+
+[`panel-fidelity-demo`](../examples/packs/panel-fidelity-demo/pack.json) is a second,
+original equipment pack illustrating these options. The original `equipment-demo` JSON is
+unchanged. Omitted options retain the original theme, faceplates, layouts, and controls.
+
+Shell outlines, cubic curves, glare-shield outlines, and screws retain their existing mm
+coordinate format. `shell.centre_console` adds another outline in the same panel coordinate
+system. `shell.palette` accepts optional `face`, `glare_shield`, `bezel`, and `placard_text`
+colours as opaque sRGB `#RRGGBB` strings. The face palette also enables the shell silhouette
+against the surrounding background. Omitted colours use theme tokens. Label contrast must be
+at least 4.5:1 against the panel and bezel; malformed colours and unreadable combinations are
+load errors. The console shares the face colour.
+
+Every installation can declare an optional `appearance` object:
+
+| Field | Meaning and default |
+|---|---|
+| `style` | Optional original physical artwork; omission retains existing artwork |
+| `binding` | `lane_a` or `lane_b`, on a toggle only; omission retains a generic panel value |
+| `bezel` | Optional touch-display hardware configuration, described below |
+| `controller` | Optional autopilot sections and controls, described below |
+| `navigator_layout` | `classic` (default) or `home_columns` |
+| `skin` | Optional host equipment-artwork registry id |
+| `synthetic_vision` | Initial SVT selection, default false; `integrated_pfd` initially enables it |
+
+Styles are `black_rocker`, `push_pull_breaker`, `rounded_pull_handle`, `silver_key`,
+`louvred_eyeball`, `elt_plate`, `red_t_handle`, `arc_dimmer`, and `cabin_heat`. Styles are
+validated against their element kind. Black rockers put the label above the face and retain
+the optional sublabel below it. Breakers show the electrical definition's amp number. Key,
+fuel-selector, and dimmer styles use the existing silver bezel, guarded red T-handle, and
+arc-scale drawings. The rounded recovery handle retains separate pin and continuous-hold
+regions. Vents, ELT plates, and cabin heat use original generic artwork. Captions are measured
+with the installed font and shrink into their own reserved rectangles.
+
+A toggle's typed lane binding reads switch position and the lane's actual fault lamp from
+the equipment snapshot. Its `panel_control` action operates that engine lane. The existing
+`panel_guard` command must open a guarded toggle before `panel_control` can change it.
+Direct typed lane commands remain available to scripts and other cockpit controls.
+
+A touch-display `appearance.bezel` has `color` and `edge_trim` (optional sRGB colours),
+`margins` (`[left, top, right, bottom]` in installation-local mm), `softkeys` (boolean),
+`softkey_count` (1–12), `corner_knobs` (zero to two installation-local mm centres), and
+`card_slot` (boolean). The resulting screen must have positive width and height. Soft keys
+operate PFD, map, engine strip, and SVT selections; knobs retain heading sync and map range.
+Omitting the entire bezel retains the original hardware and hit regions.
+
+`touch_display.layout` additionally accepts `integrated_pfd`: an 8% top data bar, a 20%
+engine strip with manifold/RPM dials and bars, the remaining PFD and HSI, a bottom-left map,
+and a pack-selectable bottom-right terrain or synthetic-vision inset. The bottom-right `composition.insets` entry selects `terrain`, `synthetic_vision`, or
+`map`; omission defaults to terrain. Terrain uses the MAP page renderer with a local base
+override, without changing the shared map settings. This page selects its other composition defaults; other
+pages retain the existing optional `composition`. ETE and ETA use simulated flight time; the unmodelled second COM is shown as unavailable.
+The page uses the existing synthetic
+vision renderer and sensed flight data. SVT is still independently selectable per display.
+
+`appearance.controller` contains up to eight `sections` (`label`, `rect`) and 1–32
+`controls` (`action`, `rect`, optional sRGB `lit_color`). Each rectangle is `[x, y, width,
+height]` in installation-local mm, and must fit the installation. Control hit rectangles must not overlap, and actions must be unique:
+`ap`, `fd`, `yd`, `lvl`, `hdg`, `nav`, `apr`, `vs`, `alt`, `ias`, `vnav`, `heading_knob`,
+`altitude_knob`, and `pitch_wheel`. The face fills the complete installation rectangle.
+Knob pushes sync heading or selected altitude to sensed values; scrolling and dragging adjust
+heading, selected altitude (100/1,000 feet), or the current pitch/VS/IAS target. Buttons issue
+existing autopilot commands. `vnav` arms the existing GPS glidepath (`gp`) vertical mode;
+it does not introduce an en-route vertical flight-plan model. Installed autopilot capability
+validation still applies.
+
+`home_columns` retains the navigator's shared pages and commands, with HOME and CDI source
+controls on the left, a 4 × 2 home tile grid in the centre, and COM active/standby, swap,
+transponder status, band selection, and concentric encoders on the right. Font sizes follow
+the available height and measured caption bounds, including a 235 × 98 installation ratio.
+
+## Switched backup buses and alternating lights
+
+The systems definition's `modern.backup_buses` defaults to an empty list. Up to two entries
+can declare `circuit` (`ems` or `efis`), `capacity_ah` (0.01–100), `voltage` (9–32), and
+`loads` (1–64 existing electrical load ids). Circuits and load membership must be unique.
+The panel rocker switches `ems_backup` and `efis_backup`, or the equipment action
+`{"kind":"backup_power","circuit":"efis","on":true}`, connect the corresponding bus.
+Switches start OFF. A connected bus powers its named, switched-on loads when their normal
+bus is unavailable, respects their breakers, and consumes its own charge at their actual
+load current. An existing internal load battery remains a separate source. Bus switch,
+remaining charge, and voltage appear in `systems.modern.backup_buses`. Charging these separate
+backup batteries is not modelled; reset restores declared capacity.
+
+Optional `modern.wigwag` declares `left_load`, `right_load` (distinct existing landing-light
+loads), and `half_period_s` (0.1–5). The `landing_wigwag` rocker cycles OFF, steady, alternating,
+and OFF. `{"kind":"wigwag","on":true}` enables alternating operation and the landing
+switch; false restores steady operation if the landing switch is still on. The phase uses
+fixed simulation steps and stops advancing when paused. The individual light switches and
+breakers continue to apply. No wigwag definition means the action is rejected.
+
+## Equipment artwork registry hook
+
+Hosts can implement `instruments::EquipmentSkin` and register it through
+`Registry::register_equipment_skin(id, painter)`. Its `paint` method receives an egui painter,
+the exact installation rectangle, and an `EquipmentSnapshot` containing the installation and
+read-only `InstrumentInput` (sensed systems, navigation, displays, and installed autopilot).
+It cannot send commands, mutate the session, or advance time. The host continues to own all
+hit regions, guarded actions, encoder behaviour, and starter/recovery hold releases.
+
+Resolve a pack's `appearance.skin` through that registry, or call
+`Registry::set_equipment_skin(installation_id, skin_id)` to bind artwork to a particular
+installation id at host startup. A host override takes precedence over the JSON selection.
+Omission uses original artwork; an explicitly selected unknown id is a validation error.
+Register skins before selecting a panel. Conventional `register_skin` and
+`register_pack_skin` remain the conventional-instrument API.
+
+A private derivative can preserve the public pack's installation ids and rectangles, set
+its own registered artwork ids, and implement its artwork in a private host extension.
+The callback replaces visual content, including display/map artwork, while the original
+command regions remain active. Private painters must present the shared snapshot's state
+and current page; they must not implement receivers, guidance, flight dynamics, or power
+behaviour. Artwork remains private, and no reference-image pixels belong in a public pack.
+
+## Local panel comparison
+
+```
+cargo xtask panel-compare --pack examples/packs/panel-fidelity-demo \
+  --reference /path/to/local-reference.jpg --out out/comparison
+```
+
+The tool selects the pack's first aircraft definition, renders actual egui meshes and the
+font atlas at the reference image's dimensions, and writes `render.png`, `side-by-side.png`,
+`overlay.png` (50%), `edge-difference.png`, and `alignment.json`. It limits image dimensions
+and decoded allocation. Repository output is restricted to the git-ignored `out/` tree;
+other repository paths, including paths through symlinks, are refused before writing. Output file symlinks and overwriting the reference are also refused.
+Reference-derived comparison images remain local under ignored `out/` or an external directory.
+
+Scores compare Sobel edges symmetrically within four pixels in each declared installation
+rectangle. A score of one means all edges have nearby counterparts; zero includes empty
+edge sets. Counts and pixel rectangles accompany each score. The edge image uses red for reference
+edges, green for rendered edges, and blue for disagreement. This is an appearance-sensitive
+alignment aid, not a certification of measured placement or a manufacturer-artwork match.
+The CPU capture renders egui mesh content and shared vector maps; GPU synthetic-vision
+callbacks and online map tiles require an application capture to compare those layers.
+
+The public `panel_preview::render_equipment_panel` helper captures a session without stepping
+it. The ignored UI test `render_panel_fidelity_previews` writes an original example panel and
+navigator, controller, and display crops under `out/equipment-fidelity/`.
+
+Navigator home tiles use one measured font size for the complete grid, with at most two lines
+per label. The frequency column independently shares one font size across its captions and
+values. Bound lane toggles reserve separate lamp, caption, and switch/guard areas, in that order.
+When no geographic region is installed, the same MAP renderer shows a local-coordinate moving
+map with its grid, range rings, runway, aircraft, and track; it does not invent GPS coordinates.
+The fidelity preview uses original analytic terrain, independent of downloaded data.

@@ -16,6 +16,17 @@ mod preview;
 #[cfg(test)]
 mod tests;
 
+/// The same map renderer can show an independent terrain base without changing shared map settings.
+#[derive(Clone, Copy)]
+pub(crate) struct MapViewport {
+    pub rect: Rect,
+    pub base: Option<BaseMap>,
+}
+impl MapViewport {
+    pub fn shared(rect: Rect) -> Self {
+        Self { rect, base: None }
+    }
+}
 #[derive(Clone)]
 struct Feature {
     position: GeoPoint,
@@ -43,6 +54,7 @@ pub struct PlanningMap {
     drag: Option<Drag>,
     pub error: Option<String>,
     track: VecDeque<GeoPoint>,
+    local_track: VecDeque<[f64; 2]>,
     generation: Option<u64>,
     interchange: String,
     format: String,
@@ -86,7 +98,7 @@ impl PlanningMap {
                     (rect.bottom() - profile_height - 34.).max(top).min(rect.bottom()),
                 ),
             );
-            self.map(ui, chart, s, false);
+            self.map(ui, chart, s, false, None);
             let profile_rect =
                 Rect::from_min_max(egui::pos2(rect.left(), chart.bottom() + 24.), rect.right_bottom());
             profile::paint(ui, s, profile_rect);
@@ -109,10 +121,144 @@ impl PlanningMap {
     }
     /// Compact host: same projection, tiles, terrain, overlays, and gestures as the planning map.
     pub fn show_mfd(&mut self, ui: &mut egui::Ui, rect: Rect, s: &mut Session) {
-        self.map(ui, rect, s, true);
+        self.show_mfd_base(ui, rect, s, None);
+    }
+    pub(crate) fn show_mfd_base(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: Rect,
+        s: &mut Session,
+        base: Option<BaseMap>,
+    ) {
+        self.map(ui, rect, s, true, base);
+        if base == Some(BaseMap::Terrain) && s.sim().world().region().is_some() {
+            let size = (rect.height() * 0.10).clamp(1., 10.);
+            let p = ui.painter().with_clip_rect(rect);
+            p.rect_filled(
+                Rect::from_min_size(rect.min, egui::vec2(rect.width(), size * 1.5 + 2.)),
+                0.,
+                theme::PANEL,
+            );
+            p.text(
+                rect.center_top() + egui::vec2(0., size * 0.75 + 2.),
+                Align2::CENTER_CENTER,
+                "TERRAIN",
+                FontId::monospace(size),
+                theme::TEXT,
+            );
+        }
         if let Some(feature) = self.selected.clone() {
             self.card(ui, s, &feature, ui.ctx().content_rect());
         }
+    }
+    fn local_map(&mut self, p: &egui::Painter, rect: Rect, s: &Session, state: &MapState) {
+        if self.generation != Some(s.flight_generation()) {
+            self.local_track.clear();
+            self.generation = Some(s.flight_generation());
+        }
+        let [north, east, _] = s.sim().state().position_m;
+        if self
+            .local_track
+            .back()
+            .is_none_or(|[n, e]| (north - n).hypot(east - e) >= 50.)
+        {
+            if self.local_track.len() >= 2048 {
+                self.local_track.pop_front();
+            }
+            self.local_track.push_back([north, east]);
+        }
+        let heading = s.sim().readout().heading_grid_rad;
+        let [vn, ve, _] = s.sim().state().velocity_mps;
+        let angle = match state.orientation {
+            MapUp::NorthUp => 0.,
+            MapUp::HeadingUp => heading,
+            MapUp::TrackUp => {
+                if vn.hypot(ve) > 0.5 {
+                    ve.atan2(vn)
+                } else {
+                    heading
+                }
+            }
+        };
+        let (sin, cos) = angle.sin_cos();
+        let scale = f64::from(rect.width().min(rect.height())) / (state.range_nm * 1852. * 2.);
+        let point = |[n, e]: [f64; 2]| {
+            let (n, e) = (n - north, e - east);
+            rect.center()
+                + egui::vec2(
+                    ((e * cos - n * sin) * scale) as f32,
+                    (-(n * cos + e * sin) * scale) as f32,
+                )
+        };
+        p.rect_filled(
+            rect,
+            0.,
+            if state.base_map == BaseMap::Terrain {
+                theme::TERRAIN_LOW
+            } else {
+                theme::PANEL
+            },
+        );
+        let span = state.range_nm * 1852.;
+        // Local grid and runway use actual world coordinates, without inventing a GPS position.
+        let spacing = span * 0.5;
+        for i in -3..=3 {
+            let n = (north / spacing).floor() * spacing + f64::from(i) * spacing;
+            let e = (east / spacing).floor() * spacing + f64::from(i) * spacing;
+            p.line_segment(
+                [point([n, east - span * 2.]), point([n, east + span * 2.])],
+                Stroke::new(0.5, theme::BORDER),
+            );
+            p.line_segment(
+                [point([north - span * 2., e]), point([north + span * 2., e])],
+                Stroke::new(0.5, theme::BORDER),
+            );
+        }
+        for fraction in [0.5, 1.] {
+            p.circle_stroke(
+                rect.center(),
+                rect.width().min(rect.height()) * 0.48 * fraction,
+                Stroke::new(0.6, theme::MUTED),
+            );
+        }
+        let runway = s.sim().world().runway();
+        let [n, e, _] = runway.threshold_ned_m;
+        p.line_segment(
+            [
+                point([n, e]),
+                point([
+                    n + runway.length_m * runway.heading_deg.to_radians().cos(),
+                    e + runway.length_m * runway.heading_deg.to_radians().sin(),
+                ]),
+            ],
+            Stroke::new(2., theme::TEXT),
+        );
+        let path: Vec<_> = self.local_track.iter().copied().map(point).collect();
+        if path.len() > 1 {
+            p.add(egui::Shape::line(path, Stroke::new(1., theme::GLASS_GPS)));
+        }
+        let (sn, cs) = (heading - angle).sin_cos();
+        let at = |x: f32, y: f32| {
+            rect.center() + egui::vec2(x * cs as f32 - y * sn as f32, x * sn as f32 + y * cs as f32)
+        };
+        p.add(egui::Shape::convex_polygon(
+            vec![at(0., -7.), at(4., 5.), at(0., 2.), at(-4., 5.)],
+            theme::ACCENT,
+            Stroke::NONE,
+        ));
+        let label = if state.base_map == BaseMap::Terrain {
+            "TERRAIN · LOCAL"
+        } else {
+            "MAP · LOCAL"
+        };
+        let font = (rect.height() * 0.11).clamp(1., 10.);
+        p.text(
+            rect.center_top() + egui::vec2(0., font * 0.8),
+            Align2::CENTER_CENTER,
+            label,
+            FontId::monospace(font),
+            theme::TEXT,
+        );
     }
     fn toolbar(&mut self, ui: &mut egui::Ui, s: &mut Session) {
         let mut state = s.map_state().clone();
@@ -200,11 +346,14 @@ impl PlanningMap {
             self.command(s,"map.set",json!({"declutter":state.declutter,"base_map":state.base_map,"overlays":state.overlays,"orientation":state.orientation,"range_nm":state.range_nm,"centre":state.centre,"follow_aircraft":state.centre.is_none(),"night":state.night}));
         }
     }
-    fn map(&mut self, ui: &mut egui::Ui, rect: Rect, s: &mut Session, compact: bool) {
+    fn map(&mut self, ui: &mut egui::Ui, rect: Rect, s: &mut Session, compact: bool, base: Option<BaseMap>) {
         if rect.width() < 20. || rect.height() < 20. {
             return;
         }
-        let state = s.map_state().clone();
+        let mut state = s.map_state().clone();
+        if let Some(base) = base {
+            state.base_map = base;
+        }
         let p = ui.painter().with_clip_rect(rect);
         let background = if state.night {
             theme::PANEL
@@ -213,13 +362,7 @@ impl PlanningMap {
         };
         p.rect_filled(rect, 0., background);
         let Some(view) = View::new(s, &state, rect) else {
-            p.text(
-                rect.center(),
-                Align2::CENTER_CENTER,
-                "Select a geographic region to use the map",
-                FontId::proportional(14.),
-                theme::TEXT,
-            );
+            self.local_map(&p, rect, s, &state);
             return;
         };
         let response = ui.interact(

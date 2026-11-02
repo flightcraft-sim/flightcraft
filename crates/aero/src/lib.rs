@@ -12,6 +12,7 @@ pub use aircraft::*;
 pub use packs::*;
 mod installed;
 pub mod modern;
+pub mod panel_fidelity;
 pub use installed::*;
 mod failures;
 pub use failures::*;

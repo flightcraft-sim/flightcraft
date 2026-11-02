@@ -194,7 +194,13 @@ impl Session {
                     } else {
                         None
                     }
-                    .unwrap_or((*layout, *engine_strip, false, false));
+                    .unwrap_or((
+                        *layout,
+                        *engine_strip,
+                        false,
+                        e.appearance.synthetic_vision
+                            || *layout == flightcraft_aero::modern::TouchLayout::IntegratedPfd,
+                    ));
                     result.displays.push(TouchDisplayState {
                         id: e.id.clone(),
                         layout,

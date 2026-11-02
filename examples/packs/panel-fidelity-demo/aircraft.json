@@ -1,0 +1,28 @@
+{
+  "kind": "aircraft",
+  "format_version": 2,
+  "identity": {
+    "id": "equipment-fidelity-demonstrator",
+    "display_name": "Panel Fidelity Demonstrator",
+    "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "variant": "fidelity-demo-equipment-variant",
+  "panel": "fidelity-demo-touch-panel",
+  "load": {
+    "stations": [
+      {
+        "station": "pilot",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "passenger",
+        "mass_kg": 80.0
+      },
+      {
+        "station": "fuel",
+        "mass_kg": 40.0
+      }
+    ]
+  }
+}

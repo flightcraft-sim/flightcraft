@@ -102,6 +102,7 @@ fn input(ctx: &egui::Context, widget: &mut PlanningMap, s: &mut Session, events:
                     Rect::from_min_size(Pos2::ZERO, egui::vec2(800., 600.)),
                     s,
                     false,
+                    None,
                 );
             });
         },

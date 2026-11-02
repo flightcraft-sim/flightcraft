@@ -1,0 +1,1753 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "fidelity-demo-touch-panel",
+    "display_name": "Demo Touch Panel",
+    "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [],
+  "autopilot": {
+    "family": "digital_two_axis",
+    "lateral_modes": [
+      "rol",
+      "hdg",
+      "trk",
+      "nav",
+      "apr",
+      "loc_bc"
+    ],
+    "vertical_modes": [
+      "pit",
+      "alt",
+      "vs",
+      "ias",
+      "gp",
+      "gs"
+    ],
+    "power_load": "avionics",
+    "roll_sensor_load": "glass_ahrs",
+    "bank_limit_rad": 0.4363323129985824,
+    "pitch_rate_limit_rps": 0.12,
+    "max_load_g": 1.5,
+    "servo_torque": 0.65,
+    "servo_rate_per_s": 0.7,
+    "electric_trim": true,
+    "altitude_preselect": true,
+    "altitude_alert": true,
+    "stability_protection": true,
+    "yaw_damper": true,
+    "minimum_ias_mps": 27.0,
+    "maximum_ias_mps": 70.0
+  },
+  "equipment": {
+    "size": [
+      1250,
+      700
+    ],
+    "color": "panel",
+    "shape": "rounded",
+    "shell": {
+      "outline": {
+        "kind": "cubic",
+        "curves": [
+          [
+            [
+              12,
+              350
+            ],
+            [
+              21.240000000000002,
+              350
+            ],
+            [
+              30.48,
+              110
+            ],
+            [
+              40,
+              110
+            ]
+          ],
+          [
+            [
+              40,
+              110
+            ],
+            [
+              142.3,
+              110
+            ],
+            [
+              244.60000000000002,
+              45
+            ],
+            [
+              350,
+              45
+            ]
+          ],
+          [
+            [
+              350,
+              45
+            ],
+            [
+              531.5,
+              45
+            ],
+            [
+              713.0,
+              45
+            ],
+            [
+              900,
+              45
+            ]
+          ],
+          [
+            [
+              900,
+              45
+            ],
+            [
+              1005.6,
+              45
+            ],
+            [
+              1111.2,
+              110
+            ],
+            [
+              1220,
+              110
+            ]
+          ],
+          [
+            [
+              1220,
+              110
+            ],
+            [
+              1226.6,
+              110
+            ],
+            [
+              1233.2,
+              350
+            ],
+            [
+              1240,
+              350
+            ]
+          ],
+          [
+            [
+              1240,
+              350
+            ],
+            [
+              1213.6,
+              350
+            ],
+            [
+              1187.2,
+              565
+            ],
+            [
+              1160,
+              565
+            ]
+          ],
+          [
+            [
+              1160,
+              565
+            ],
+            [
+              1024.7,
+              565
+            ],
+            [
+              889.4,
+              565
+            ],
+            [
+              750,
+              565
+            ]
+          ],
+          [
+            [
+              750,
+              565
+            ],
+            [
+              745.05,
+              565
+            ],
+            [
+              740.1,
+              690
+            ],
+            [
+              735,
+              690
+            ]
+          ],
+          [
+            [
+              735,
+              690
+            ],
+            [
+              665.7,
+              690
+            ],
+            [
+              596.4,
+              690
+            ],
+            [
+              525,
+              690
+            ]
+          ],
+          [
+            [
+              525,
+              690
+            ],
+            [
+              520.05,
+              690
+            ],
+            [
+              515.1,
+              565
+            ],
+            [
+              510,
+              565
+            ]
+          ],
+          [
+            [
+              510,
+              565
+            ],
+            [
+              371.4,
+              565
+            ],
+            [
+              232.8,
+              565
+            ],
+            [
+              90,
+              565
+            ]
+          ],
+          [
+            [
+              90,
+              565
+            ],
+            [
+              64.25999999999999,
+              565
+            ],
+            [
+              38.519999999999996,
+              350
+            ],
+            [
+              12,
+              350
+            ]
+          ]
+        ]
+      },
+      "fill": "raised",
+      "glare_shield": {
+        "kind": "polygon",
+        "points": [
+          [
+            40,
+            110
+          ],
+          [
+            350,
+            45
+          ],
+          [
+            900,
+            45
+          ],
+          [
+            1220,
+            110
+          ],
+          [
+            1210,
+            123
+          ],
+          [
+            895,
+            61
+          ],
+          [
+            355,
+            61
+          ],
+          [
+            50,
+            123
+          ]
+        ]
+      },
+      "screws": [
+        [
+          80,
+          125
+        ],
+        [
+          485,
+          126
+        ],
+        [
+          788,
+          126
+        ],
+        [
+          1192,
+          125
+        ],
+        [
+          95,
+          404
+        ],
+        [
+          470,
+          404
+        ],
+        [
+          803,
+          404
+        ],
+        [
+          1180,
+          404
+        ],
+        [
+          533,
+          579
+        ],
+        [
+          727,
+          579
+        ]
+      ],
+      "palette": {
+        "face": "#2b2c2e",
+        "glare_shield": "#101010",
+        "bezel": "#080808",
+        "placard_text": "#ffffff"
+      },
+      "centre_console": {
+        "kind": "polygon",
+        "points": [
+          [
+            550,
+            580
+          ],
+          [
+            720,
+            580
+          ],
+          [
+            720,
+            700
+          ],
+          [
+            550,
+            700
+          ]
+        ]
+      }
+    },
+    "elements": [
+      {
+        "id": "left_display",
+        "position": [
+          90,
+          130
+        ],
+        "size": [
+          385,
+          270
+        ],
+        "element": {
+          "kind": "touch_display",
+          "load": "touch_left",
+          "layout": "integrated_pfd",
+          "engine_strip": true,
+          "composition": {
+            "top_data_bar": true,
+            "engine_strip_fraction": 0.2,
+            "engine_style": "dials_and_bars",
+            "hsi": true,
+            "insets": [
+              {
+                "corner": "bottom_left",
+                "content": "map"
+              },
+              {
+                "corner": "bottom_right",
+                "content": "terrain"
+              }
+            ]
+          }
+        },
+        "appearance": {
+          "synthetic_vision": true,
+          "bezel": {
+            "color": "#080808",
+            "edge_trim": "#aeb5bd",
+            "margins": [
+              20,
+              25,
+              20,
+              55
+            ],
+            "softkeys": true,
+            "softkey_count": 4,
+            "corner_knobs": [
+              [
+                15,
+                246
+              ],
+              [
+                370,
+                246
+              ]
+            ],
+            "card_slot": true
+          }
+        }
+      },
+      {
+        "id": "right_display",
+        "position": [
+          800,
+          130
+        ],
+        "size": [
+          385,
+          270
+        ],
+        "element": {
+          "kind": "touch_display",
+          "load": "touch_right",
+          "layout": "integrated_pfd",
+          "engine_strip": false,
+          "composition": {
+            "top_data_bar": true,
+            "engine_strip_fraction": 0.2,
+            "engine_style": "dials_and_bars",
+            "hsi": true,
+            "insets": [
+              {
+                "corner": "bottom_left",
+                "content": "map"
+              },
+              {
+                "corner": "bottom_right",
+                "content": "terrain"
+              }
+            ]
+          }
+        },
+        "appearance": {
+          "synthetic_vision": true,
+          "bezel": {
+            "color": "#080808",
+            "edge_trim": "#aeb5bd",
+            "margins": [
+              20,
+              25,
+              20,
+              55
+            ],
+            "softkeys": true,
+            "softkey_count": 4,
+            "corner_knobs": [
+              [
+                15,
+                246
+              ],
+              [
+                370,
+                246
+              ]
+            ],
+            "card_slot": true
+          }
+        }
+      },
+      {
+        "id": "navigator",
+        "position": [
+          500,
+          185
+        ],
+        "size": [
+          181,
+          75
+        ],
+        "element": {
+          "kind": "navigator",
+          "load": "navigator",
+          "transponder": true
+        },
+        "appearance": {
+          "navigator_layout": "home_columns"
+        }
+      },
+      {
+        "id": "standby",
+        "position": [
+          600,
+          65
+        ],
+        "size": [
+          78,
+          100
+        ],
+        "element": {
+          "kind": "standby"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "autopilot",
+        "position": [
+          490,
+          345
+        ],
+        "size": [
+          187,
+          59
+        ],
+        "element": {
+          "kind": "autopilot"
+        },
+        "appearance": {
+          "controller": {
+            "sections": [
+              {
+                "label": "LATERAL",
+                "rect": [
+                  2,
+                  2,
+                  60,
+                  55
+                ]
+              },
+              {
+                "label": "MODES",
+                "rect": [
+                  63,
+                  2,
+                  52,
+                  55
+                ]
+              },
+              {
+                "label": "VERTICAL",
+                "rect": [
+                  117,
+                  2,
+                  68,
+                  55
+                ]
+              }
+            ],
+            "controls": [
+              {
+                "action": "heading_knob",
+                "rect": [
+                  4,
+                  10,
+                  34,
+                  30
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "apr",
+                "rect": [
+                  39,
+                  12,
+                  22,
+                  12
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "hdg",
+                "rect": [
+                  4,
+                  44,
+                  25,
+                  11
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "nav",
+                "rect": [
+                  33,
+                  44,
+                  25,
+                  11
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "ap",
+                "rect": [
+                  65,
+                  13,
+                  22,
+                  13
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "lvl",
+                "rect": [
+                  91,
+                  13,
+                  22,
+                  13
+                ],
+                "lit_color": "#5bd4c3"
+              },
+              {
+                "action": "fd",
+                "rect": [
+                  65,
+                  31,
+                  22,
+                  13
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "yd",
+                "rect": [
+                  91,
+                  31,
+                  22,
+                  13
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "pitch_wheel",
+                "rect": [
+                  119,
+                  12,
+                  10,
+                  37
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "ias",
+                "rect": [
+                  133,
+                  12,
+                  20,
+                  9
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "vnav",
+                "rect": [
+                  133,
+                  22,
+                  20,
+                  11
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "vs",
+                "rect": [
+                  133,
+                  44,
+                  20,
+                  11
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "alt",
+                "rect": [
+                  158,
+                  44,
+                  23,
+                  11
+                ],
+                "lit_color": "#6ed384"
+              },
+              {
+                "action": "altitude_knob",
+                "rect": [
+                  154,
+                  10,
+                  30,
+                  30
+                ],
+                "lit_color": "#6ed384"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "caution",
+        "position": [
+          487,
+          91
+        ],
+        "size": [
+          30,
+          38
+        ],
+        "element": {
+          "kind": "master_light",
+          "severity": "caution"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "warning",
+        "position": [
+          519,
+          91
+        ],
+        "size": [
+          30,
+          38
+        ],
+        "element": {
+          "kind": "master_light",
+          "severity": "warning"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "seat_placard",
+        "position": [
+          180,
+          109
+        ],
+        "size": [
+          160,
+          14
+        ],
+        "element": {
+          "kind": "placard",
+          "text": "FASTEN RESTRAINTS",
+          "font_size_mm": 3.2,
+          "color": "white"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "test_mark",
+        "position": [
+          350,
+          107
+        ],
+        "size": [
+          110,
+          18
+        ],
+        "element": {
+          "kind": "placard",
+          "text": "DEMO-01",
+          "font_size_mm": 4.5,
+          "color": "white"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "flight_placard",
+        "position": [
+          890,
+          109
+        ],
+        "size": [
+          210,
+          14
+        ],
+        "element": {
+          "kind": "placard",
+          "text": "FICTIONAL EQUIPMENT PANEL",
+          "font_size_mm": 3.0,
+          "color": "white"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "vent_left",
+        "position": [
+          15,
+          306
+        ],
+        "size": [
+          65,
+          65
+        ],
+        "element": {
+          "kind": "vent"
+        },
+        "appearance": {
+          "style": "louvred_eyeball"
+        }
+      },
+      {
+        "id": "vent_right",
+        "position": [
+          1188,
+          306
+        ],
+        "size": [
+          58,
+          58
+        ],
+        "element": {
+          "kind": "vent"
+        },
+        "appearance": {
+          "style": "louvred_eyeball"
+        }
+      },
+      {
+        "id": "toggle_aux",
+        "position": [
+          25,
+          172
+        ],
+        "size": [
+          40,
+          56
+        ],
+        "element": {
+          "kind": "toggle",
+          "label": "LANE A",
+          "guarded": true,
+          "lamp": true
+        },
+        "appearance": {
+          "binding": "lane_a"
+        }
+      },
+      {
+        "id": "key",
+        "position": [
+          17,
+          235
+        ],
+        "size": [
+          65,
+          57
+        ],
+        "element": {
+          "kind": "key"
+        },
+        "appearance": {
+          "style": "silver_key"
+        }
+      },
+      {
+        "id": "elt",
+        "position": [
+          1200,
+          210
+        ],
+        "size": [
+          32,
+          70
+        ],
+        "element": {
+          "kind": "elt",
+          "label": "ELT"
+        },
+        "appearance": {
+          "style": "elt_plate"
+        }
+      },
+      {
+        "id": "backlight",
+        "position": [
+          547,
+          132
+        ],
+        "size": [
+          43,
+          43
+        ],
+        "element": {
+          "kind": "dimmer",
+          "label": "BACKLIGHT"
+        },
+        "appearance": {
+          "style": "arc_dimmer"
+        }
+      },
+      {
+        "id": "cabin_heat",
+        "position": [
+          731,
+          418
+        ],
+        "size": [
+          50,
+          50
+        ],
+        "element": {
+          "kind": "push_pull",
+          "label": "CABIN HEAT"
+        },
+        "appearance": {
+          "style": "cabin_heat"
+        }
+      },
+      {
+        "id": "pitch_wheel",
+        "position": [
+          690,
+          75
+        ],
+        "size": [
+          40,
+          70
+        ],
+        "element": {
+          "kind": "pitch_wheel",
+          "label": "PITCH"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "cabin_light",
+        "position": [
+          742,
+          80
+        ],
+        "size": [
+          45,
+          65
+        ],
+        "element": {
+          "kind": "dimmer",
+          "label": "CABIN LIGHT"
+        },
+        "appearance": {
+          "style": "arc_dimmer"
+        }
+      },
+      {
+        "id": "status_lamp",
+        "position": [
+          40,
+          115
+        ],
+        "size": [
+          32,
+          36
+        ],
+        "element": {
+          "kind": "lamp",
+          "label": "STATUS",
+          "color": "amber"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "group_engine",
+        "position": [
+          100,
+          422
+        ],
+        "size": [
+          270,
+          16
+        ],
+        "element": {
+          "kind": "bracket",
+          "label": "ENGINE"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "group_electrical",
+        "position": [
+          390,
+          422
+        ],
+        "size": [
+          207,
+          16
+        ],
+        "element": {
+          "kind": "bracket",
+          "label": "ELECTRICAL"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "group_lights",
+        "position": [
+          815,
+          422
+        ],
+        "size": [
+          305,
+          16
+        ],
+        "element": {
+          "kind": "bracket",
+          "label": "LIGHTS"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "switch_lane_a",
+        "position": [
+          110,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "lane_a",
+          "label": "LANE A",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_lane_b",
+        "position": [
+          177,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "toggle",
+          "label": "LANE B",
+          "guarded": true,
+          "lamp": true
+        },
+        "appearance": {
+          "binding": "lane_b"
+        }
+      },
+      {
+        "id": "switch_pump1",
+        "position": [
+          244,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "pump1",
+          "label": "PUMP 1",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_pump2",
+        "position": [
+          311,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "pump2",
+          "label": "PUMP 2",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_master",
+        "position": [
+          400,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "master",
+          "label": "MASTER",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_alternator",
+        "position": [
+          465,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "alternator",
+          "label": "ALT",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_avionics",
+        "position": [
+          530,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "avionics",
+          "label": "AVIONICS",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_beacon",
+        "position": [
+          815,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "beacon",
+          "label": "BEACON",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_nav",
+        "position": [
+          874,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "nav",
+          "label": "NAV",
+          "backlit": true,
+          "sublabel": "POSITION"
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_strobe",
+        "position": [
+          933,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "strobe",
+          "label": "STROBE",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_taxi",
+        "position": [
+          992,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "taxi",
+          "label": "TAXI",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_landing",
+        "position": [
+          1051,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "landing_wigwag",
+          "label": "LAND",
+          "backlit": true,
+          "sublabel": "WIGWAG"
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_pitot_heat",
+        "position": [
+          1125,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "pitot_heat",
+          "label": "PITOT",
+          "backlit": true
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "switch_guard_0",
+        "position": [
+          237,
+          448
+        ],
+        "size": [
+          3,
+          35
+        ],
+        "element": {
+          "kind": "guard_bar"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "switch_guard_1",
+        "position": [
+          304,
+          448
+        ],
+        "size": [
+          3,
+          35
+        ],
+        "element": {
+          "kind": "guard_bar"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "switch_guard_2",
+        "position": [
+          383,
+          448
+        ],
+        "size": [
+          3,
+          35
+        ],
+        "element": {
+          "kind": "guard_bar"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "recovery",
+        "position": [
+          600,
+          439
+        ],
+        "size": [
+          120,
+          42
+        ],
+        "element": {
+          "kind": "parachute"
+        },
+        "appearance": {
+          "style": "rounded_pull_handle"
+        }
+      },
+      {
+        "id": "floor_selector",
+        "position": [
+          553,
+          589
+        ],
+        "size": [
+          170,
+          100
+        ],
+        "element": {
+          "kind": "fuel_selector"
+        },
+        "appearance": {
+          "style": "red_t_handle"
+        }
+      },
+      {
+        "id": "breaker_avionics",
+        "position": [
+          115,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "avionics",
+          "label": "AVIONICS"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_pitot_heat",
+        "position": [
+          215,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "pitot_heat",
+          "label": "PITOT HEAT"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_turn_coordinator",
+        "position": [
+          315,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "turn_coordinator",
+          "label": "TURN COORDINATOR"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_glass_ahrs",
+        "position": [
+          415,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "glass_ahrs",
+          "label": "GLASS AHRS"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_glass_standby",
+        "position": [
+          515,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "glass_standby",
+          "label": "GLASS STANDBY"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_lane_a",
+        "position": [
+          615,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "lane_a",
+          "label": "LANE A"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_lane_b",
+        "position": [
+          715,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "lane_b",
+          "label": "LANE B"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_pump_1",
+        "position": [
+          815,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "pump_1",
+          "label": "PUMP 1"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_pump_2",
+        "position": [
+          915,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "pump_2",
+          "label": "PUMP 2"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_touch_left",
+        "position": [
+          1015,
+          509
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "touch_left",
+          "label": "TOUCH LEFT"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_touch_right",
+        "position": [
+          115,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "touch_right",
+          "label": "TOUCH RIGHT"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_navigator",
+        "position": [
+          215,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "navigator",
+          "label": "NAVIGATOR"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_beacon",
+        "position": [
+          315,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "beacon",
+          "label": "BEACON"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_nav",
+        "position": [
+          415,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "nav",
+          "label": "NAV"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_strobe",
+        "position": [
+          515,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "strobe",
+          "label": "STROBE"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_taxi",
+        "position": [
+          615,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "taxi",
+          "label": "TAXI"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_landing",
+        "position": [
+          715,
+          549
+        ],
+        "size": [
+          85,
+          36
+        ],
+        "element": {
+          "kind": "breaker",
+          "load": "landing",
+          "label": "LANDING"
+        },
+        "appearance": {
+          "style": "push_pull_breaker"
+        }
+      },
+      {
+        "id": "breaker_label",
+        "position": [
+          120,
+          494
+        ],
+        "size": [
+          990,
+          10
+        ],
+        "element": {
+          "kind": "label",
+          "text": "EQUIPMENT CIRCUIT BREAKERS"
+        },
+        "appearance": {}
+      },
+      {
+        "id": "ems_backup",
+        "position": [
+          30,
+          443
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "ems_backup",
+          "label": "EMS BKUP"
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "efis_backup",
+        "position": [
+          730,
+          475
+        ],
+        "size": [
+          54,
+          52
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "efis_backup",
+          "label": "EFIS BKUP"
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      }
+    ]
+  }
+}

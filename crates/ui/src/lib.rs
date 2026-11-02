@@ -13,6 +13,7 @@ pub mod map;
 mod modern;
 mod navigation;
 mod panel_art;
+pub mod panel_preview;
 mod procedures;
 pub mod script;
 pub mod theme;
@@ -1315,3 +1316,6 @@ fn runway_label(world: &flightcraft_control::TerrainWorld, [n, e, _]: [f64; 3]) 
         runway.heading_deg, runway.length_m, runway.width_m
     )
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod panel_fidelity_tests;

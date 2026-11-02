@@ -14,6 +14,7 @@ mod download;
 mod national;
 mod navdata_faa;
 mod navigation_faa;
+mod panel_compare;
 mod procedures_faa;
 mod refresh;
 mod region;
@@ -65,7 +66,12 @@ const LAYERS: &[(&str, &[&str])] = &[
     ("flightcraft-mcp", &["flightcraft-control", "flightcraft-sim"]),
     (
         "xtask",
-        &["flightcraft-control", "flightcraft-aero", "flightcraft-world"],
+        &[
+            "flightcraft-control",
+            "flightcraft-aero",
+            "flightcraft-world",
+            "flightcraft-ui",
+        ],
     ),
 ];
 
@@ -88,6 +94,7 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     let result = match task.as_str() {
         "layers" => layers(),
+        "panel-compare" => panel_compare::run(),
         "region" => region::run(),
         "data" => data::run(),
         "terrain" => terrain(),

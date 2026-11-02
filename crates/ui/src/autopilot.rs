@@ -1,4 +1,5 @@
 //! Original controller faceplates and flight-mode annunciation; interactions only emit commands.
+mod declared;
 use crate::instruments::formatting as f;
 use crate::{
     instruments::{DrawItem, DrawList, Ink, heading},

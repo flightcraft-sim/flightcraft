@@ -133,6 +133,27 @@ impl SystemsDefinition {
         )?;
         if let Some(m) = &self.modern {
             m.validate()?;
+            for bus in &m.backup_buses {
+                for id in &bus.loads {
+                    require(
+                        self.electrical.loads.iter().any(|l| &l.id == id),
+                        "backup_bus.load",
+                        "unknown electrical load",
+                    )?;
+                }
+            }
+            if let Some(w) = &m.wigwag {
+                for id in [&w.left_load, &w.right_load] {
+                    require(
+                        self.electrical
+                            .loads
+                            .iter()
+                            .any(|l| &l.id == id && l.switch == LoadSwitch::Landing),
+                        "wigwag.load",
+                        "requires landing light load",
+                    )?;
+                }
+            }
         }
         let e = &self.electrical;
         for (name, value) in [

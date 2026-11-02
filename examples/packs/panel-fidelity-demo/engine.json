@@ -1,0 +1,173 @@
+{
+  "kind": "engine",
+  "format_version": 2,
+  "identity": {
+    "id": "fidelity-demo-geared-engine",
+    "display_name": "Demo Geared Engine",
+    "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "propulsion": {
+    "max_power_w": 120000.0,
+    "idle_power_w": 1800.0,
+    "prop_diameter_m": 1.9,
+    "min_rps": 5.0,
+    "max_rpm": 2800.0,
+    "windmill_drag_area_m2": 0.1,
+    "windmill_advance_ratio": 1.5,
+    "prop_ct": {
+      "points": [
+        [
+          0.0,
+          0.105
+        ],
+        [
+          0.3,
+          0.093
+        ],
+        [
+          0.6,
+          0.066
+        ],
+        [
+          0.9,
+          0.025
+        ],
+        [
+          1.1,
+          0.0
+        ],
+        [
+          1.4,
+          -0.025
+        ],
+        [
+          3.0,
+          -0.04
+        ]
+      ],
+      "source": "Original fixed-pitch prop estimates, J=V/(nD), CT=T/(rho n\u00b2 D\u2074). Smooth unloading to zero thrust at J=1.1, then windmilling drag."
+    },
+    "prop_cp": {
+      "points": [
+        [
+          0.0,
+          0.055
+        ],
+        [
+          0.3,
+          0.052
+        ],
+        [
+          0.6,
+          0.047
+        ],
+        [
+          0.9,
+          0.038
+        ],
+        [
+          1.1,
+          0.03
+        ],
+        [
+          1.4,
+          0.022
+        ],
+        [
+          3.0,
+          0.022
+        ]
+      ],
+      "source": "Original CP=P/(rho n\u00b3 D\u2075); paired with CT for peak efficiency below 0.85."
+    },
+    "power_density": {
+      "points": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.25,
+          0.25
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.75,
+          0.75
+        ],
+        [
+          1.0,
+          1.0
+        ],
+        [
+          1.5,
+          1.5
+        ]
+      ],
+      "source": "Original normally aspirated engine: available shaft power proportional to density ratio."
+    }
+  },
+  "induction": "injection",
+  "fuel_flow_kg_s": {
+    "points": [
+      [
+        0.0,
+        0.0005
+      ],
+      [
+        1.0,
+        0.01
+      ]
+    ],
+    "source": "Original fictional fuel flow estimate against shaft-power fraction."
+  },
+  "gearbox_ratio": 2.4,
+  "control": {
+    "kind": "electronic_dual_lane",
+    "lane_a_load": "lane_a",
+    "lane_b_load": "lane_b",
+    "pump_1_load": "pump_1",
+    "pump_2_load": "pump_2",
+    "single_lane_power_fraction": 0.96,
+    "fuel_pressure_pa": 300000,
+    "coolant_temperature_c": {
+      "points": [
+        [
+          0,
+          65
+        ],
+        [
+          0.5,
+          85
+        ],
+        [
+          1,
+          105
+        ]
+      ],
+      "source": "Original fictional equipment estimate; no measured aircraft or engine data."
+    },
+    "coolant_lag_s": 60,
+    "manifold_pressure_fraction": {
+      "points": [
+        [
+          0,
+          0.3
+        ],
+        [
+          0.5,
+          0.65
+        ],
+        [
+          1,
+          0.98
+        ]
+      ],
+      "source": "Original fictional equipment estimate; no measured aircraft or engine data."
+    }
+  }
+}

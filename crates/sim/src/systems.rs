@@ -464,7 +464,11 @@ impl SystemsState {
             && let Some(panel) = &r.panel.equipment
         {
             for e in &panel.elements {
-                modern.panel_controls.insert(e.id.clone(), 0.);
+                let initial = if e.appearance.binding.is_some() { 1. } else { 0. };
+                modern.panel_controls.insert(e.id.clone(), initial);
+                if let Some(binding) = e.appearance.binding {
+                    modern.panel_bindings.insert(e.id.clone(), binding);
+                }
                 if matches!(
                     e.element,
                     flightcraft_aero::modern::PanelElement::Toggle { guarded: true, .. }
@@ -681,6 +685,18 @@ impl SystemsState {
             })
     }
     fn electronic_load_on(modern: Option<&crate::modern::ModernState>, m: &SystemsModel, id: &str) -> bool {
+        if let Some(state) = modern
+            && state.wigwag
+            && let Some(w) = m.definition.modern.as_ref().and_then(|d| d.wigwag.as_ref())
+            && (id == w.left_load || id == w.right_load)
+        {
+            let left = state.wigwag_elapsed_s < w.half_period_s;
+            return (id == w.left_load) == left
+                && state
+                    .light_switches
+                    .iter()
+                    .any(|(s, on)| *s == LoadSwitch::Landing && *on);
+        }
         if let Some(state) = modern
             && let Some(load) = m.definition.electrical.loads.iter().find(|l| l.id == id)
             && let Some((_, on)) = state
@@ -994,6 +1010,28 @@ impl SystemsState {
     }
 
     pub(crate) fn electrical_step(&mut self, m: &SystemsModel, rpm: f64, failures: Failures) {
+        if let Some(state) = &mut self.modern
+            && state.wigwag
+            && let Some(w) = m.definition.modern.as_ref().and_then(|d| d.wigwag.as_ref())
+        {
+            state.wigwag_elapsed_s = libm::fmod(state.wigwag_elapsed_s + DT_S, w.half_period_s * 2.);
+        }
+        let feeds: Vec<_> = m
+            .definition
+            .modern
+            .as_ref()
+            .into_iter()
+            .flat_map(|d| &d.backup_buses)
+            .filter_map(|d| {
+                self.modern
+                    .as_ref()?
+                    .backup_buses
+                    .iter()
+                    .find(|s| s.circuit == d.circuit && s.on && s.remaining_ah > 0.)
+                    .map(|s| (d, s.remaining_ah))
+            })
+            .collect();
+        let mut backup_draw = Vec::new();
         let unit_on = |id: &str| {
             Self::electronic_load_on(self.modern.as_ref(), m, id)
                 && match id {
@@ -1033,7 +1071,8 @@ impl SystemsState {
                     | LoadSwitch::Landing => true,
                 };
             let amps = def.amps * l.multiplier;
-            if l.breaker_closed && supply && switched && amps > def.breaker_amps {
+            let backup_supply = feeds.iter().any(|(b, _)| b.loads.contains(&def.id));
+            if l.breaker_closed && (supply || backup_supply) && switched && amps > def.breaker_amps {
                 l.overload_s += DT_S * ((amps / def.breaker_amps) * (amps / def.breaker_amps) - 1.0);
                 if l.overload_s >= 1.0 {
                     l.breaker_closed = false;
@@ -1107,14 +1146,38 @@ impl SystemsState {
             if bus < 9.0 {
                 l.current_a = 0.0;
             }
-            l.on_backup = switched && l.current_a == 0.0 && l.backup_remaining_ah > 0.0;
+            let feed = feeds.iter().find(|(b, _)| b.loads.contains(&def.id));
+            let shared_backup = switched && l.breaker_closed && l.current_a == 0. && feed.is_some();
+            l.on_backup = shared_backup || (switched && l.current_a == 0.0 && l.backup_remaining_ah > 0.0);
             l.powered = l.current_a > 0.0 || l.on_backup;
-            if l.on_backup {
+            if shared_backup {
+                if let Some((bus, _)) = feed {
+                    backup_draw.push((bus.circuit, def.amps * l.multiplier * DT_S / 3600.));
+                }
+            } else if l.on_backup {
                 l.backup_remaining_ah = (l.backup_remaining_ah - def.amps * DT_S / 3600.0).max(0.0);
                 l.powered = l.backup_remaining_ah > 0.0;
             } else if l.current_a > 0.0 {
                 l.backup_remaining_ah =
                     (l.backup_remaining_ah + def.amps * 0.1 * DT_S / 3600.0).min(def.backup_capacity_ah);
+            }
+        }
+        if let Some(state) = &mut self.modern {
+            for bus in &mut state.backup_buses {
+                let draw: f64 = backup_draw
+                    .iter()
+                    .filter(|(c, _)| *c == bus.circuit)
+                    .map(|(_, ah)| ah)
+                    .sum();
+                bus.remaining_ah = (bus.remaining_ah - draw).max(0.);
+                bus.voltage = if bus.on && bus.remaining_ah > 0. {
+                    feeds
+                        .iter()
+                        .find(|(d, _)| d.circuit == bus.circuit)
+                        .map_or(0., |(d, _)| d.voltage)
+                } else {
+                    0.
+                };
             }
         }
         self.pitot_heat_powered = e

@@ -1,0 +1,125 @@
+{
+  "kind": "variant",
+  "format_version": 2,
+  "identity": {
+    "id": "fidelity-demo-equipment-variant",
+    "display_name": "Demo Equipment Variant",
+    "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "family": "corvid-family",
+  "engine": "fidelity-demo-geared-engine",
+  "systems": "fidelity-demo-electronic-systems",
+  "empty_mass": {
+    "mass_kg": 800.0,
+    "cg_m": [
+      -0.0625,
+      0.0,
+      0.0
+    ],
+    "inertia_kg_m2": [
+      [
+        1190.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1681.25,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        2371.25
+      ]
+    ]
+  },
+  "min_mass_kg": 500.0,
+  "max_mass_kg": 1200.0,
+  "cg_envelope": [
+    [
+      -0.5,
+      500.0
+    ],
+    [
+      0.5,
+      500.0
+    ],
+    [
+      0.4,
+      1200.0
+    ],
+    [
+      -0.3,
+      1200.0
+    ]
+  ],
+  "flap_stages": [
+    {
+      "position": 0.0,
+      "max_speed_mps": 45.0
+    },
+    {
+      "position": 0.5,
+      "max_speed_mps": 45.0
+    },
+    {
+      "position": 1.0,
+      "max_speed_mps": 45.0
+    }
+  ],
+  "fuel_capacity_kg": 100,
+  "stations": [
+    {
+      "id": "pilot",
+      "kind": "pilot",
+      "position_m": [
+        0.3125,
+        -0.25,
+        0.0
+      ],
+      "max_mass_kg": 150
+    },
+    {
+      "id": "passenger",
+      "kind": "passenger",
+      "position_m": [
+        0.3125,
+        0.25,
+        0.0
+      ],
+      "max_mass_kg": 150
+    },
+    {
+      "id": "baggage",
+      "kind": "baggage",
+      "position_m": [
+        -1.0,
+        0.0,
+        0.125
+      ],
+      "max_mass_kg": 50
+    },
+    {
+      "id": "fuel",
+      "kind": "fuel",
+      "position_m": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "max_mass_kg": 100
+    }
+  ],
+  "v_speeds": {
+    "vs_mps": 27.0,
+    "vso_mps": 23.0,
+    "vr_mps": 29.0,
+    "vx_mps": 33.0,
+    "vy_mps": 36.0,
+    "vfe_mps": 45.0,
+    "vno_mps": 55.0,
+    "vne_mps": 65.0
+  }
+}

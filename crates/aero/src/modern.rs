@@ -115,6 +115,12 @@ pub struct ParachuteDefinition {
 #[serde(deny_unknown_fields)]
 pub struct ModernSystems {
     #[serde(default)]
+    #[schemars(length(max = 2))]
+    pub backup_buses: Vec<crate::panel_fidelity::BackupBus>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wigwag: Option<crate::panel_fidelity::Wigwag>,
+    #[serde(default)]
     pub selector_both: bool,
     #[serde(default)]
     #[schemars(length(max = 32))]
@@ -124,6 +130,36 @@ pub struct ModernSystems {
 }
 impl ModernSystems {
     pub fn validate(&self) -> Result<(), AircraftError> {
+        require(self.backup_buses.len() <= 2, "backup_buses", "at most two buses")?;
+        let mut circuits = BTreeSet::new();
+        let mut loads = BTreeSet::new();
+        for bus in &self.backup_buses {
+            require(
+                circuits.insert(bus.circuit as u8)
+                    && (0.01..=100.).contains(&bus.capacity_ah)
+                    && (9. ..=32.).contains(&bus.voltage)
+                    && (1..=64).contains(&bus.loads.len()),
+                "backup_bus",
+                "invalid circuit, capacity, voltage, or load count",
+            )?;
+            for id in &bus.loads {
+                crate::layers::id(id, "backup_bus.load")?;
+                require(
+                    loads.insert(id),
+                    "backup_bus.load",
+                    "load belongs to only one backup bus",
+                )?;
+            }
+        }
+        if let Some(w) = &self.wigwag {
+            crate::layers::id(&w.left_load, "wigwag.left_load")?;
+            crate::layers::id(&w.right_load, "wigwag.right_load")?;
+            require(
+                w.left_load != w.right_load && (0.1..=5.).contains(&w.half_period_s),
+                "wigwag",
+                "requires distinct lights and 0.1..5 second half period",
+            )?;
+        }
         require(
             self.annunciations.len() <= 32,
             "annunciations",
@@ -166,6 +202,7 @@ impl ModernSystems {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TouchLayout {
+    IntegratedPfd,
     FullPfd,
     #[default]
     PfdMap,
@@ -201,6 +238,9 @@ pub enum Rocker {
     LaneB,
     Pump1,
     Pump2,
+    EmsBackup,
+    EfisBackup,
+    LandingWigwag,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -261,6 +301,11 @@ impl Outline {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PanelShell {
+    #[serde(default)]
+    pub palette: crate::panel_fidelity::PanelPalette,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub centre_console: Option<Outline>,
     pub outline: Outline,
     pub fill: PanelColor,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -279,6 +324,8 @@ pub enum EngineStripStyle {
 #[serde(rename_all = "snake_case")]
 pub enum DisplayInset {
     Map,
+    Terrain,
+    SyntheticVision,
     Engine,
     Navigation,
 }
@@ -402,6 +449,8 @@ pub enum PanelElement {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EquipmentInstallation {
+    #[serde(default)]
+    pub appearance: crate::panel_fidelity::EquipmentAppearance,
     pub id: String,
     pub position: [f64; 2],
     pub size: [f64; 2],
@@ -435,6 +484,10 @@ impl EquipmentPanel {
         )?;
         if let Some(shell) = &self.shell {
             shell.outline.validate(self.size)?;
+            shell.palette.validate()?;
+            if let Some(console) = &shell.centre_console {
+                console.validate(self.size)?;
+            }
             if let Some(glare) = &shell.glare_shield {
                 glare.validate(self.size)?;
             }
@@ -453,6 +506,94 @@ impl EquipmentPanel {
         let mut navigators = 0;
         for e in &self.elements {
             crate::layers::id(&e.id, "panel.elements.id")?;
+            e.appearance.validate(e.size)?;
+            if let Some(shell) = &self.shell {
+                use crate::panel_fidelity::SrgbHex;
+                let ink = shell
+                    .palette
+                    .placard_text
+                    .clone()
+                    .unwrap_or(SrgbHex("#e4edf2".into()));
+                let face = shell.palette.face.clone().unwrap_or(SrgbHex(
+                    match shell.fill {
+                        PanelColor::Panel => "#131d28",
+                        PanelColor::Raised => "#1d2b39",
+                        PanelColor::Dial => "#0a121a",
+                    }
+                    .into(),
+                ));
+                require(
+                    ink.contrast(&face).is_some_and(|v| v >= 4.5),
+                    "panel.palette",
+                    "placards require contrast of at least 4.5:1",
+                )?;
+                if let Some(b) = &e.appearance.bezel {
+                    let bg = b
+                        .color
+                        .as_ref()
+                        .or(shell.palette.bezel.as_ref())
+                        .cloned()
+                        .unwrap_or(SrgbHex("#0a121a".into()));
+                    require(
+                        ink.contrast(&bg).is_some_and(|v| v >= 4.5),
+                        "display.bezel.color",
+                        "bezel labels require contrast of at least 4.5:1",
+                    )?;
+                }
+            }
+            if let Some(b) = &e.appearance.bezel
+                && self.shell.is_none()
+                && let Some(bg) = &b.color
+            {
+                require(
+                    crate::panel_fidelity::SrgbHex("#e4edf2".into())
+                        .contrast(bg)
+                        .is_some_and(|v| v >= 4.5),
+                    "display.bezel.color",
+                    "bezel labels require contrast of at least 4.5:1",
+                )?;
+            }
+            if let Some(layout) = &e.appearance.controller {
+                let background = self
+                    .shell
+                    .as_ref()
+                    .and_then(|s| s.palette.bezel.clone())
+                    .unwrap_or(crate::panel_fidelity::SrgbHex("#0a121a".into()));
+                for control in &layout.controls {
+                    if let Some(color) = &control.lit_color {
+                        require(
+                            color.contrast(&background).is_some_and(|v| v >= 4.5),
+                            "controller.lit_color",
+                            "lit labels require contrast of at least 4.5:1",
+                        )?;
+                    }
+                }
+            }
+            use crate::panel_fidelity::{ControlStyle as S, NavigatorLayout};
+            let a = &e.appearance;
+            let compatible_style = match a.style {
+                None => true,
+                Some(S::BlackRocker) => matches!(e.element, PanelElement::Rocker { .. }),
+                Some(S::PushPullBreaker) => matches!(e.element, PanelElement::Breaker { .. }),
+                Some(S::RoundedPullHandle) => matches!(e.element, PanelElement::Parachute),
+                Some(S::SilverKey) => matches!(e.element, PanelElement::Key),
+                Some(S::LouvredEyeball) => matches!(e.element, PanelElement::Vent),
+                Some(S::EltPlate) => matches!(e.element, PanelElement::Elt { .. }),
+                Some(S::RedTHandle) => matches!(e.element, PanelElement::FuelSelector),
+                Some(S::ArcDimmer) => matches!(e.element, PanelElement::Dimmer { .. }),
+                Some(S::CabinHeat) => matches!(e.element, PanelElement::PushPull { .. }),
+            };
+            require(
+                compatible_style
+                    && (a.binding.is_none() || matches!(e.element, PanelElement::Toggle { .. }))
+                    && (a.bezel.is_none() || matches!(e.element, PanelElement::TouchDisplay { .. }))
+                    && (a.controller.is_none() || matches!(e.element, PanelElement::Autopilot))
+                    && (a.navigator_layout == NavigatorLayout::Classic
+                        || matches!(e.element, PanelElement::Navigator { .. }))
+                    && (!a.synthetic_vision || matches!(e.element, PanelElement::TouchDisplay { .. })),
+                "equipment.appearance",
+                "option incompatible with element kind",
+            )?;
             require(ids.insert(&e.id), "panel.elements.id", "duplicate installation")?;
             let [x, y] = e.position;
             let [w, h] = e.size;
@@ -543,6 +684,13 @@ pub fn validate_installation(
     use crate::aircraft::error;
     if let Some(panel) = &p.equipment {
         panel.validate()?;
+        if panel.elements.iter().any(|i| i.appearance.binding.is_some()) {
+            require(
+                matches!(e.control, EngineControl::ElectronicDualLane { .. }),
+                "panel.binding",
+                "lane binding requires electronic engine",
+            )?;
+        }
     }
     if let EngineControl::ElectronicDualLane {
         lane_a_load,
@@ -584,6 +732,37 @@ pub fn validate_installation(
                     d.electrical.loads.iter().any(|l| &l.id == load),
                     "panel.load",
                     "unknown load",
+                )?,
+                PanelElement::Rocker {
+                    switch: Rocker::EmsBackup | Rocker::EfisBackup,
+                    ..
+                } => {
+                    let wanted = if matches!(
+                        element.element,
+                        PanelElement::Rocker {
+                            switch: Rocker::EmsBackup,
+                            ..
+                        }
+                    ) {
+                        crate::panel_fidelity::BackupCircuit::Ems
+                    } else {
+                        crate::panel_fidelity::BackupCircuit::Efis
+                    };
+                    require(
+                        d.modern
+                            .as_ref()
+                            .is_some_and(|m| m.backup_buses.iter().any(|b| b.circuit == wanted)),
+                        "panel.backup_switch",
+                        "backup bus not installed",
+                    )?;
+                }
+                PanelElement::Rocker {
+                    switch: Rocker::LandingWigwag,
+                    ..
+                } => require(
+                    d.modern.as_ref().is_some_and(|m| m.wigwag.is_some()),
+                    "panel.wigwag",
+                    "alternating lights not installed",
                 )?,
                 PanelElement::Parachute => require(
                     d.modern.as_ref().is_some_and(|m| m.parachute.is_some()),

@@ -1745,6 +1745,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -4707,6 +4709,7 @@ dependencies = [
  "flate2",
  "flightcraft-aero",
  "flightcraft-control",
+ "flightcraft-ui",
  "flightcraft-world",
  "image",
  "libm",

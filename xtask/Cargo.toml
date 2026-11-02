@@ -15,6 +15,7 @@ workspace = true
 [dependencies]
 serde_json.workspace = true
 flightcraft-control.workspace = true
+flightcraft-ui.workspace = true
 syn.workspace = true
 flightcraft-aero.workspace = true
 schemars.workspace = true

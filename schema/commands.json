@@ -436,6 +436,13 @@
             }
           ]
         },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "BearingPointer": {
           "enum": [
             "off",
@@ -1046,6 +1053,44 @@
         },
         "ModernSetting": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "kind": {
+                  "const": "backup_power",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "wigwag",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -1933,6 +1978,7 @@
         },
         "TouchLayout": {
           "enum": [
+            "integrated_pfd",
             "full_pfd",
             "pfd_map",
             "map_engine"
@@ -2109,6 +2155,7 @@
         },
         "TouchLayout": {
           "enum": [
+            "integrated_pfd",
             "full_pfd",
             "pfd_map",
             "map_engine"
@@ -6747,6 +6794,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -7218,6 +7297,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -7302,9 +7387,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -10460,6 +10555,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -10931,6 +11058,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -11015,9 +11148,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -12056,6 +12199,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -12483,6 +12658,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -12567,9 +12748,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -13116,6 +13307,13 @@
     "description": "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.",
     "input_schema": {
       "$defs": {
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "Component": {
           "enum": [
             "lane_a",
@@ -13175,6 +13373,44 @@
         },
         "ModernSetting": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "kind": {
+                  "const": "backup_power",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "wigwag",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -13757,6 +13993,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -14184,6 +14452,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -14268,9 +14542,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -18217,6 +18501,7 @@
         },
         "TouchLayout": {
           "enum": [
+            "integrated_pfd",
             "full_pfd",
             "pfd_map",
             "map_engine"
@@ -20382,6 +20667,7 @@
         },
         "TouchLayout": {
           "enum": [
+            "integrated_pfd",
             "full_pfd",
             "pfd_map",
             "map_engine"
@@ -20703,6 +20989,38 @@
             "electronic_hsi"
           ],
           "type": "object"
+        },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
         },
         "ElectricalState": {
           "properties": {
@@ -21131,6 +21449,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -21215,9 +21539,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -21846,6 +22180,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -22273,6 +22639,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -22357,9 +22729,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",
@@ -23791,6 +24173,38 @@
           ],
           "type": "object"
         },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -24262,6 +24676,12 @@
               },
               "type": "array"
             },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
             "coolant_temperature_c": {
               "format": "double",
               "type": "number"
@@ -24346,9 +24766,19 @@
                   "type": "null"
                 }
               ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
             "panel_controls",
             "panel_guards",
             "light_switches",

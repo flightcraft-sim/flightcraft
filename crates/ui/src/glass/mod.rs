@@ -280,7 +280,8 @@ pub(crate) fn paint_touch(
     input: InstrumentInput<'_>,
     display: &flightcraft_control::TouchDisplayState,
     composition: &flightcraft_aero::modern::DisplayComposition,
-) -> Vec<egui::Rect> {
+) -> Vec<crate::map::MapViewport> {
+    use crate::map::MapViewport;
     use flightcraft_aero::modern::{DisplayInset, TouchLayout};
     let mut maps = Vec::new();
     if display.failed || !display.powered {
@@ -297,6 +298,41 @@ pub(crate) fn paint_touch(
         paint_fill(ui, cell, d);
         return maps;
     }
+    let integrated = flightcraft_aero::modern::DisplayComposition {
+        top_data_bar: true,
+        engine_strip_fraction: 0.20,
+        engine_style: flightcraft_aero::modern::EngineStripStyle::DialsAndBars,
+        hsi: true,
+        insets: vec![
+            flightcraft_aero::modern::PfdInset {
+                corner: flightcraft_aero::modern::PfdCorner::BottomLeft,
+                content: DisplayInset::Map,
+            },
+            flightcraft_aero::modern::PfdInset {
+                corner: flightcraft_aero::modern::PfdCorner::BottomRight,
+                content: DisplayInset::Terrain,
+            },
+        ],
+    };
+    let mut integrated = integrated;
+    // The integrated page fixes its primary map, while the pack selects the second inset.
+    if let Some(choice) = composition
+        .insets
+        .iter()
+        .find(|i| i.corner == flightcraft_aero::modern::PfdCorner::BottomRight)
+        && matches!(
+            choice.content,
+            DisplayInset::Map | DisplayInset::Terrain | DisplayInset::SyntheticVision
+        )
+        && let Some(right) = integrated.insets.get_mut(1)
+    {
+        right.content = choice.content;
+    }
+    let composition = if display.layout == TouchLayout::IntegratedPfd {
+        &integrated
+    } else {
+        composition
+    };
     let mut shared = s.clone();
     shared.pfd_failed = false;
     shared.mfd_failed = false;
@@ -318,37 +354,80 @@ pub(crate) fn paint_touch(
                 a.active && a.source == flightcraft_aero::modern::AnnunciationSource::EngineShutdown
             })
         });
-        for (fraction, label) in [
-            (0.20, radio),
-            (
-                0.54,
-                advice.map_or_else(
-                    || {
-                        format!(
-                            "{} {:.1} NM",
-                            s.gps.destination.as_deref().unwrap_or("GPS"),
-                            s.gps.distance_nm
-                        )
-                    },
-                    |a| a.label.clone(),
+        if display.layout == TouchLayout::IntegratedPfd {
+            let duration = |seconds: f64| {
+                let minutes = (seconds.max(0.) / 60.) as u64;
+                format!("{:02}:{:02}", minutes / 60, minutes % 60)
+            };
+            let ete = s.gps.ete_s.map_or("--:--".into(), duration);
+            let eta = s
+                .gps
+                .ete_s
+                .map_or("--:--".into(), |ete| duration(input.time_s + ete));
+            for (x, w, label) in [
+                (0., 0.27, radio),
+                (
+                    0.27,
+                    0.21,
+                    format!("{:.2} XPDR {}", s.baro_pa / 3386.389, s.settings.transponder_code),
                 ),
-            ),
-            (
-                0.84,
-                format!(
-                    "{:.2}  XPDR {}",
-                    s.baro_pa / 3386.389,
-                    s.settings.transponder_code
+                (
+                    0.48,
+                    0.40,
+                    format!(
+                        "{} {:.1} NM ETE {} ETA {}",
+                        s.gps.destination.as_deref().unwrap_or("GPS"),
+                        s.gps.distance_nm,
+                        ete,
+                        eta
+                    ),
                 ),
-            ),
-        ] {
-            ui.painter().text(
-                egui::pos2(bar.left() + bar.width() * fraction, bar.center().y),
-                egui::Align2::CENTER_CENTER,
-                label,
-                egui::FontId::monospace((bar.height() * 0.37).max(5.)),
-                crate::theme::TEXT,
-            );
+                (0.88, 0.12, "COM 2 —".into()),
+            ] {
+                crate::panel_art::fit_text(
+                    ui,
+                    egui::Rect::from_min_size(
+                        bar.min + egui::vec2(bar.width() * x, 0.),
+                        egui::vec2(bar.width() * w, bar.height()),
+                    ),
+                    &label,
+                    bar.height() * 0.37,
+                    crate::theme::TEXT,
+                );
+            }
+        } else {
+            for (fraction, label) in [
+                (0.20, radio),
+                (
+                    0.54,
+                    advice.map_or_else(
+                        || {
+                            format!(
+                                "{} {:.1} NM",
+                                s.gps.destination.as_deref().unwrap_or("GPS"),
+                                s.gps.distance_nm
+                            )
+                        },
+                        |a| a.label.clone(),
+                    ),
+                ),
+                (
+                    0.84,
+                    format!(
+                        "{:.2}  XPDR {}",
+                        s.baro_pa / 3386.389,
+                        s.settings.transponder_code
+                    ),
+                ),
+            ] {
+                ui.painter().text(
+                    egui::pos2(bar.left() + bar.width() * fraction, bar.center().y),
+                    egui::Align2::CENTER_CENTER,
+                    label,
+                    egui::FontId::monospace((bar.height() * 0.37).max(5.)),
+                    crate::theme::TEXT,
+                );
+            }
         }
         content.min.y = bar.bottom();
     }
@@ -357,7 +436,7 @@ pub(crate) fn paint_touch(
     } else {
         display.layout
     };
-    let strip = if display.engine_strip || display.reversion {
+    let strip = if display.engine_strip || display.reversion || display.layout == TouchLayout::IntegratedPfd {
         content.width() * composition.engine_strip_fraction as f32
     } else {
         0.
@@ -373,15 +452,15 @@ pub(crate) fn paint_touch(
         );
     }
     let primary = match layout {
-        TouchLayout::FullPfd => Some(main),
+        TouchLayout::FullPfd | TouchLayout::IntegratedPfd => Some(main),
         TouchLayout::PfdMap => {
             let (left, right) = main.split_left_right_at_fraction(0.5);
-            maps.push(right);
+            maps.push(MapViewport::shared(right));
             Some(left)
         }
         TouchLayout::MapEngine => {
             let (map, engine) = main.split_left_right_at_fraction(0.68);
-            maps.push(map);
+            maps.push(MapViewport::shared(map));
             touch_engine(ui, engine, &shared, input, composition.engine_style);
             None
         }
@@ -420,7 +499,16 @@ pub(crate) fn paint_touch(
                 egui::vec2(primary.width() * 0.27, primary.height() * 0.25),
             );
             match inset.content {
-                DisplayInset::Map => maps.push(rect),
+                DisplayInset::Map => maps.push(MapViewport::shared(rect)),
+                DisplayInset::Terrain => maps.push(MapViewport {
+                    rect,
+                    base: Some(flightcraft_control::BaseMap::Terrain),
+                }),
+                DisplayInset::SyntheticVision => {
+                    let mut vision = shared.clone();
+                    vision.settings.synthetic_vision = true;
+                    paint_fill(ui, rect, pfd::draw_composed(&vision, input, false, false));
+                }
                 DisplayInset::Engine => touch_engine(ui, rect, &shared, input, composition.engine_style),
                 DisplayInset::Navigation => {
                     ui.painter().rect_filled(rect, 0., crate::theme::DIAL);

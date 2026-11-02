@@ -274,13 +274,27 @@ impl Skin for SkinPack {
 }
 
 type Factory = fn(&str) -> Result<Box<dyn Instrument>, String>;
+/// Read-only equipment and sensed flight state passed to artwork painters.
+#[derive(Clone, Copy)]
+pub struct EquipmentSnapshot<'a> {
+    pub installation: &'a flightcraft_aero::modern::EquipmentInstallation,
+    pub input: InstrumentInput<'a>,
+}
+/// Paint artwork only. The host retains all command hit regions and hold ownership.
+pub trait EquipmentSkin {
+    fn paint(&self, painter: &Painter, rect: Rect, snapshot: EquipmentSnapshot<'_>);
+}
 pub struct Registry {
+    equipment_skins: BTreeMap<String, Box<dyn EquipmentSkin>>,
+    equipment_installations: BTreeMap<String, String>,
     modules: BTreeMap<String, Factory>,
     skins: BTreeMap<String, Box<dyn Skin>>,
 }
 impl Default for Registry {
     fn default() -> Self {
         let mut r = Self {
+            equipment_skins: BTreeMap::new(),
+            equipment_installations: BTreeMap::new(),
             modules: BTreeMap::new(),
             skins: BTreeMap::new(),
         };
@@ -308,6 +322,35 @@ impl Default for Registry {
     }
 }
 impl Registry {
+    pub fn register_equipment_skin(
+        &mut self,
+        id: String,
+        skin: Box<dyn EquipmentSkin>,
+    ) -> Result<(), String> {
+        if !valid_id(&id) || id == "original" || self.equipment_skins.contains_key(&id) {
+            return Err("Invalid or duplicate equipment skin id".into());
+        }
+        self.equipment_skins.insert(id, skin);
+        Ok(())
+    }
+    /// Resolve artwork by installation id; commands always remain in the host.
+    pub fn set_equipment_skin(&mut self, installation: String, skin: String) -> Result<(), String> {
+        if !valid_id(&installation) || (skin != "original" && !self.equipment_skins.contains_key(&skin)) {
+            return Err("Invalid installation or unknown equipment skin".into());
+        }
+        self.equipment_installations.insert(installation, skin);
+        Ok(())
+    }
+    pub(crate) fn equipment_skin(
+        &self,
+        installation: &flightcraft_aero::modern::EquipmentInstallation,
+    ) -> Option<&dyn EquipmentSkin> {
+        self.equipment_installations
+            .get(&installation.id)
+            .or(installation.appearance.skin.as_ref())
+            .and_then(|id| self.equipment_skins.get(id))
+            .map(Box::as_ref)
+    }
     pub fn instrument(&self, id: &str) -> Result<Box<dyn Instrument>, String> {
         self.modules
             .get(id)
@@ -335,6 +378,17 @@ impl Registry {
         flightcraft_aero::LayerFile::Panel(panel.clone())
             .validate()
             .map_err(|e| e.to_string())?;
+        if let Some(equipment) = &panel.equipment {
+            for e in &equipment.elements {
+                let selected = self
+                    .equipment_installations
+                    .get(&e.id)
+                    .or(e.appearance.skin.as_ref());
+                if selected.is_some_and(|id| id != "original") && self.equipment_skin(e).is_none() {
+                    return Err(format!("Unknown equipment skin for {}", e.id));
+                }
+            }
+        }
         for i in &panel.instruments {
             if !self.modules.contains_key(&i.module) {
                 return Err(format!("Unknown instrument module: {}", i.module));
@@ -412,10 +466,12 @@ impl InstrumentPanel {
         self.map_rect
     }
     pub fn show_shared_hosts(&mut self, ui: &mut egui::Ui, session: &mut flightcraft_control::Session) {
-        for (id, rect) in &self.modern.maps {
+        for (id, viewport) in &self.modern.maps {
             let map = self.modern.map_widgets.entry(id.clone()).or_default();
             map.options = self.options;
-            ui.push_id(id, |ui| map.show_mfd(ui, *rect, session));
+            ui.push_id(id, |ui| {
+                map.show_mfd_base(ui, viewport.rect, session, viewport.base)
+            });
         }
         if let Some(rect) = self.modern.procedure_rect {
             self.heading_commands
@@ -495,7 +551,7 @@ impl InstrumentPanel {
             self.generation = Some(generation);
         }
         if let Some(equipment) = &panel.equipment {
-            let settings = self.modern.show(ui, equipment, input);
+            let settings = self.modern.show(ui, equipment, input, &self.registry);
             self.heading_commands.append(&mut self.modern.avionics);
             return Ok(settings);
         }

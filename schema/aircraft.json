@@ -642,11 +642,166 @@
         "maximum_ias_mps"
       ]
     },
+    "BackupBus": {
+      "type": "object",
+      "properties": {
+        "capacity_ah": {
+          "type": "number",
+          "format": "double"
+        },
+        "circuit": {
+          "$ref": "#/$defs/BackupCircuit"
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        },
+        "voltage": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "circuit",
+        "capacity_ah",
+        "voltage",
+        "loads"
+      ]
+    },
+    "BackupCircuit": {
+      "type": "string",
+      "enum": [
+        "ems",
+        "efis"
+      ]
+    },
     "Bus": {
       "type": "string",
       "enum": [
         "main",
         "essential"
+      ]
+    },
+    "ControlBinding": {
+      "type": "string",
+      "enum": [
+        "lane_a",
+        "lane_b"
+      ]
+    },
+    "ControlStyle": {
+      "type": "string",
+      "enum": [
+        "black_rocker",
+        "push_pull_breaker",
+        "rounded_pull_handle",
+        "silver_key",
+        "louvred_eyeball",
+        "elt_plate",
+        "red_t_handle",
+        "arc_dimmer",
+        "cabin_heat"
+      ]
+    },
+    "ControllerAction": {
+      "type": "string",
+      "enum": [
+        "ap",
+        "fd",
+        "yd",
+        "lvl",
+        "hdg",
+        "nav",
+        "apr",
+        "vs",
+        "alt",
+        "ias",
+        "vnav",
+        "heading_knob",
+        "altitude_knob",
+        "pitch_wheel"
+      ]
+    },
+    "ControllerControl": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ControllerAction"
+        },
+        "lit_color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rect": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "rect"
+      ]
+    },
+    "ControllerLayout": {
+      "type": "object",
+      "properties": {
+        "controls": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ControllerControl"
+          },
+          "maxItems": 32,
+          "minItems": 1
+        },
+        "sections": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ControllerSection"
+          },
+          "maxItems": 8
+        }
+      },
+      "additionalProperties": false
+    },
+    "ControllerSection": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "rect": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "rect"
       ]
     },
     "Derivatives": {
@@ -712,6 +867,75 @@
         "cn_aileron"
       ]
     },
+    "DisplayBezel": {
+      "type": "object",
+      "properties": {
+        "card_slot": {
+          "type": "boolean"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "corner_knobs": {
+          "description": "Knob centres in local installation mm; zero, one, or two knobs.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          },
+          "maxItems": 2
+        },
+        "edge_trim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "margins": {
+          "description": "Left, top, right, bottom margins, in mm.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        },
+        "softkey_count": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 12,
+          "minimum": 1
+        },
+        "softkeys": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "margins",
+        "softkeys",
+        "softkey_count",
+        "corner_knobs",
+        "card_slot"
+      ]
+    },
     "DisplayComposition": {
       "type": "object",
       "properties": {
@@ -746,6 +970,8 @@
       "type": "string",
       "enum": [
         "map",
+        "terrain",
+        "synthetic_vision",
         "engine",
         "navigation"
       ]
@@ -953,9 +1179,77 @@
         "dials_and_bars"
       ]
     },
+    "EquipmentAppearance": {
+      "type": "object",
+      "properties": {
+        "bezel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DisplayBezel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControlBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "controller": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControllerLayout"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "navigator_layout": {
+          "$ref": "#/$defs/NavigatorLayout",
+          "default": "classic"
+        },
+        "skin": {
+          "description": "Host registry artwork id; omission selects original artwork.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "style": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControlStyle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "synthetic_vision": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "EquipmentInstallation": {
       "type": "object",
       "properties": {
+        "appearance": {
+          "$ref": "#/$defs/EquipmentAppearance",
+          "default": {
+            "navigator_layout": "classic",
+            "synthetic_vision": false
+          }
+        },
         "element": {
           "$ref": "#/$defs/PanelElement"
         },
@@ -1346,6 +1640,14 @@
           },
           "maxItems": 32
         },
+        "backup_buses": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BackupBus"
+          },
+          "maxItems": 2
+        },
         "parachute": {
           "anyOf": [
             {
@@ -1359,9 +1661,26 @@
         "selector_both": {
           "type": "boolean",
           "default": false
+        },
+        "wigwag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Wigwag"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
+    },
+    "NavigatorLayout": {
+      "type": "string",
+      "enum": [
+        "classic",
+        "home_columns"
+      ]
     },
     "Outline": {
       "oneOf": [
@@ -1837,6 +2156,52 @@
         "accent"
       ]
     },
+    "PanelPalette": {
+      "type": "object",
+      "properties": {
+        "bezel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "face": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "glare_shield": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "placard_text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "PanelShape": {
       "type": "string",
       "enum": [
@@ -1847,6 +2212,16 @@
     "PanelShell": {
       "type": "object",
       "properties": {
+        "centre_console": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "fill": {
           "$ref": "#/$defs/PanelColor"
         },
@@ -1862,6 +2237,10 @@
         },
         "outline": {
           "$ref": "#/$defs/Outline"
+        },
+        "palette": {
+          "$ref": "#/$defs/PanelPalette",
+          "default": {}
         },
         "screws": {
           "type": "array",
@@ -2035,7 +2414,10 @@
         "lane_a",
         "lane_b",
         "pump1",
-        "pump2"
+        "pump2",
+        "ems_backup",
+        "efis_backup",
+        "landing_wigwag"
       ]
     },
     "Severity": {
@@ -2044,6 +2426,11 @@
         "caution",
         "warning"
       ]
+    },
+    "SrgbHex": {
+      "description": "Six-digit opaque sRGB, including the leading `#`.",
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
     },
     "StationKind": {
       "type": "string",
@@ -2205,6 +2592,7 @@
     "TouchLayout": {
       "type": "string",
       "enum": [
+        "integrated_pfd",
         "full_pfd",
         "pfd_map",
         "map_engine"
@@ -2305,6 +2693,27 @@
         "ias",
         "gp",
         "gs"
+      ]
+    },
+    "Wigwag": {
+      "type": "object",
+      "properties": {
+        "half_period_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "left_load": {
+          "type": "string"
+        },
+        "right_load": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "left_load",
+        "right_load",
+        "half_period_s"
       ]
     },
     "Wing": {
