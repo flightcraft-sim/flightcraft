@@ -55,6 +55,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 31 | The crew: a deterministic virtual pilot, watching, demonstrating, and instructing modes, intercom and kneeboard instead of a chat box, ACS-graded lessons, and an optional AI link ([spec](docs/crew.md)) | 30 |
 | 32 | Navigation data, WMM2025, search, pins, opt-in location and geocoding, flight-plan commands, and glass GPS activation (done); shared planning/MFD map, route gestures, profiles, Aero and terrain bases, and FAA sectional/TAC tiles are implemented; satellite, street, and live overlays remain planned ([spec](docs/map-and-planning.md)) | 18, 21 |
 | 33 | Tablet apps, plates, charts, and procedures: desktop GDL 90 and simulator position broadcast to EFB apps (done; traffic encoders ready, no traffic source yet), sectional and terminal chart tiles (done), FAA plates with georeferenced overlay, CIFP procedures in the GPS with ILS and VOR signals, and opt-in live weather and TFRs ([spec](docs/efb-and-charts.md)) | 30, 32 |
+| 34 | Training for students: weather and IMC visuals with a view-limiting hood, radios with CTAF traffic and towered ATC, readback checks, scenario scripts, emergencies graded against the POH, and instrument tasks ([spec](docs/training.md)) | 21, 31, 33 |
 
 ## Aircraft equipment
 
