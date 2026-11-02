@@ -24,6 +24,24 @@ pub enum MapUp {
     TrackUp,
     HeadingUp,
 }
+impl From<crate::MapOrientation> for MapUp {
+    fn from(o: crate::MapOrientation) -> Self {
+        match o {
+            crate::MapOrientation::NorthUp => Self::NorthUp,
+            crate::MapOrientation::TrackUp => Self::TrackUp,
+            crate::MapOrientation::HeadingUp => Self::HeadingUp,
+        }
+    }
+}
+impl From<MapUp> for crate::MapOrientation {
+    fn from(o: MapUp) -> Self {
+        match o {
+            MapUp::NorthUp => Self::NorthUp,
+            MapUp::TrackUp => Self::TrackUp,
+            MapUp::HeadingUp => Self::HeadingUp,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MapOverlay {
@@ -222,11 +240,7 @@ impl Command for SetMap {
         }
         s.map = state.clone();
         s.glass.range_nm = state.range_nm.max(1.0);
-        s.glass.orientation = if state.orientation == MapUp::NorthUp {
-            crate::MapOrientation::NorthUp
-        } else {
-            crate::MapOrientation::TrackUp
-        };
+        s.glass.orientation = state.orientation.into();
         Ok(state)
     }
 }
