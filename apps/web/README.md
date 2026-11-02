@@ -78,3 +78,11 @@ Aircraft packs can be loaded from static hosts by repeating the `pack` query par
 manifest URLs, for example `?pack=packs/demo-pack/pack.json`. Relative file paths resolve against
 the manifest URL; cross-origin hosts need CORS. Bad packs are reported and skipped. See
 [aircraft format and packs](../../docs/aircraft-format.md) for limits and the example manifest.
+
+## Geographic regions
+
+Open [New York area](https://flightcraft-sim.github.io/flightcraft/?region=terrain/new-york/region.json)
+to start on Blairstown runway 07, then use **Start** to search airports and choose another runway.
+Also fly [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json), with the same Blairstown origin.
+The static build includes both region directories, with public-domain elevation and FAA airports.
+The same query works on a local static host. Without `?region=`, the flat world stays the default.

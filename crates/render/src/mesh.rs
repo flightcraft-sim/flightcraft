@@ -84,6 +84,27 @@ pub(crate) struct Geometry {
 /// Adapt the original runway markings to a region's threshold, width, length, and heading.
 pub(crate) fn build_for_world(p: Palette, larrow: bool, world: &flightcraft_world::World) -> Geometry {
     let mut geometry = build(p, larrow);
+    if !world.runway_strips().is_empty() {
+        let old_end = geometry.world_end as usize;
+        let mut m = Mesh::default();
+        m.ground(
+            [-300000.0, 300000.0],
+            [600000.0, 600000.0],
+            -20000.0,
+            p.ground,
+            0.0,
+        );
+        for strip in world.runway_strips() {
+            airport_runway(&mut m, strip, p);
+        }
+        let new_end = m.0.len() as u32;
+        m.0.extend(geometry.vertices.into_iter().skip(old_end));
+        geometry.vertices = m.0;
+        geometry.exterior_end = geometry.exterior_end - geometry.world_end + new_end;
+        geometry.cockpit_end = geometry.cockpit_end - geometry.world_end + new_end;
+        geometry.world_end = new_end;
+        return geometry;
+    }
     if world.region().is_some() {
         let runway = world.runway();
         let (s, c) = (runway.heading_deg as f32).to_radians().sin_cos();
@@ -109,6 +130,126 @@ pub(crate) fn build_for_world(p: Palette, larrow: bool, world: &flightcraft_worl
         }
     }
     geometry
+}
+
+/// Runway markings are rectangles in runway coordinates, transformed onto the sloping plane.
+fn airport_runway(m: &mut Mesh, strip: &flightcraft_world::RunwayStrip, p: Palette) {
+    let [[an, ae], [bn, be]] = strip.ends_m;
+    let [ha, hb] = strip.elevations_m;
+    let length = strip.length_m();
+    let width = strip.width_m;
+    let (c, s) = ((bn - an) / length, (be - ae) / length);
+    let mut rectangle = |along: f64, across: f64, long: f64, wide: f64, offset: f64, color, reverse: bool| {
+        let point = |u: f64, v: f64| {
+            let (u, v) = if reverse { (length - u, -v) } else { (u, v) };
+            Vec3::new(
+                (ae + u * s + v * c) as f32,
+                (ha + (hb - ha) * u / length + offset) as f32,
+                -(an + u * c - v * s) as f32,
+            )
+        };
+        m.quad(
+            [
+                point(along, across),
+                point(along + long, across),
+                point(along + long, across + wide),
+                point(along, across + wide),
+            ],
+            color,
+            3.0,
+        );
+    };
+    let color = match strip.surface {
+        flightcraft_world::RunwaySurface::Asphalt | flightcraft_world::RunwaySurface::Concrete => p.runway,
+        flightcraft_world::RunwaySurface::Turf => p.ground,
+        flightcraft_world::RunwaySurface::Water => p.water,
+        _ => p.earth,
+    };
+    rectangle(0.0, -width / 2.0, length, width, 0.04, color, false);
+    let scale = (width / 23.0).min(length / 300.0).clamp(0.1, 4.0);
+    for i in 0..(length / 30.0) as usize {
+        let along = 65.0 * scale + i as f64 * 30.0;
+        if along + 15.0 < length - 65.0 * scale {
+            rectangle(along, -0.22 * scale, 15.0, 0.44 * scale, 0.06, p.marking, false);
+        }
+    }
+    for (index, ident) in strip.end_idents.iter().enumerate() {
+        let reverse = index == 1;
+        for i in 0..8 {
+            let across = -width * 0.43 + i as f64 * width * 0.11;
+            rectangle(
+                5.0 * scale,
+                across,
+                20.0 * scale,
+                width * 0.04,
+                0.06,
+                p.marking,
+                reverse,
+            );
+        }
+        let glyph_width = 3.5 * scale;
+        let advance = 5.0 * scale;
+        let start = -(ident.len() as f64 * advance - 1.5 * scale) * 0.5;
+        for (i, ch) in ident.chars().enumerate() {
+            for (x, y, xx, yy) in glyph(ch) {
+                let x = start + i as f64 * advance + x * glyph_width;
+                let y = 35.0 * scale + y * 12.0 * scale;
+                rectangle(
+                    y,
+                    x,
+                    (yy * 12.0 * scale).max(0.45 * scale),
+                    (xx * glyph_width).max(0.45 * scale),
+                    0.07,
+                    p.marking,
+                    reverse,
+                );
+            }
+        }
+    }
+}
+/// Original rectilinear stroke alphabet. Each stroke is x, y, width, and height on a unit grid.
+fn glyph(ch: char) -> Vec<(f64, f64, f64, f64)> {
+    if ch == 'R' {
+        return vec![
+            (0.0, 0.0, 0.0, 1.0),
+            (0.0, 1.0, 1.0, 0.0),
+            (1.0, 0.5, 0.0, 0.5),
+            (0.0, 0.5, 1.0, 0.0),
+            (0.4, 0.25, 0.0, 0.25),
+            (0.7, 0.0, 0.0, 0.25),
+        ];
+    }
+    let mask = match ch {
+        '0' => 0b1110111,
+        '1' => 0b0100100,
+        '2' => 0b1011101,
+        '3' => 0b1101101,
+        '4' => 0b0101110,
+        '5' => 0b1101011,
+        '6' => 0b1111011,
+        '7' => 0b0100101,
+        '8' => 0b1111111,
+        '9' => 0b1101111,
+        'L' => 0b1010010,
+        'C' => 0b1010011,
+        'G' => 0b1110011,
+        'R' => 0b0111111,
+        _ => 0,
+    };
+    let strokes = [
+        (0.0, 1.0, 1.0, 0.0),
+        (0.0, 0.5, 0.0, 0.5),
+        (1.0, 0.5, 0.0, 0.5),
+        (0.0, 0.5, 1.0, 0.0),
+        (0.0, 0.0, 0.0, 0.5),
+        (1.0, 0.0, 0.0, 0.5),
+        (0.0, 0.0, 1.0, 0.0),
+    ];
+    strokes
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, s)| if mask & (1 << i) != 0 { Some(s) } else { None })
+        .collect()
 }
 
 pub(crate) fn build(p: Palette, larrow: bool) -> Geometry {
@@ -473,7 +614,13 @@ pub(crate) fn terrain(
             let e = east + f64::from(j) * spacing;
             let mut water = 0.0;
             for (dn, de) in [(-0.25, -0.25), (-0.25, 0.25), (0.25, -0.25), (0.25, 0.25)] {
-                if world.ground(n + dn * spacing, e + de * spacing).surface == Surface::Water {
+                if (if world.region().is_some() {
+                    tile.sample(n + dn * spacing, e + de * spacing)
+                        .map_or(Surface::Grass, |g| g.surface)
+                } else {
+                    world.ground(n + dn * spacing, e + de * spacing).surface
+                }) == Surface::Water
+                {
                     water += 0.25;
                 }
             }
@@ -532,7 +679,12 @@ pub(crate) fn terrain(
     let mut fine_end = 0;
     // Coarse cells sample full-resolution normals. Keep mixed material blocks at full resolution
     // in both LODs, so a shoreline cannot move or turn into a sloping water triangle on a switch.
-    for step in [1_u32, 4] {
+    let steps = if world.region().is_some() {
+        [2_u32, 8]
+    } else {
+        [1_u32, 4]
+    };
+    for step in steps {
         for j in (0..end).step_by(step as usize) {
             for i in (0..end).step_by(step as usize) {
                 let ii = (i + step).min(end);
@@ -541,8 +693,16 @@ pub(crate) fn terrain(
                 let shoreline = [point(i, j), point(ii, j), point(ii, jj), point(i, jj)]
                     .iter()
                     .any(|(_, _, water)| *water > 0.0 && *water < 1.0);
-                let mixed =
-                    step > 1 && (shoreline || (j..jj).any(|y| (i..ii).any(|x| surface(x, y) != first)));
+                let runway_near = step > 1
+                    && world.runway_strips().iter().any(|strip| {
+                        strip.near(
+                            north + f64::from(i + ii) * 0.5 * spacing,
+                            east + f64::from(j + jj) * 0.5 * spacing,
+                            (f64::from(step) * 0.5 + 2.0) * spacing,
+                        )
+                    });
+                let mixed = step > 1
+                    && (runway_near || shoreline || (j..jj).any(|y| (i..ii).any(|x| surface(x, y) != first)));
                 if mixed {
                     for y in j..jj {
                         for x in i..ii {
@@ -565,7 +725,7 @@ pub(crate) fn terrain(
                 m.quad([a, b, b - Vec3::Y * 100.0, a - Vec3::Y * 100.0], p.ground, 4.0);
             }
         }
-        if step == 1 {
+        if step == steps[0] {
             fine_end = m.0.len() as u32;
         }
     }
@@ -583,11 +743,59 @@ pub(crate) fn near_tile(eye: [f32; 4], center: [f32; 3]) -> bool {
     (x - cx) * (x - cx) + (y - cy) * (y - cy) + (z - cz) * (z - cz) < 3000.0 * 3000.0
 }
 
+/// Distance to the tile footprint, so large regional tiles retain detail at their edges.
+pub(crate) fn near_region_tile(eye: [f32; 4], center: [f32; 3], half_extent_m: f32) -> bool {
+    let [x, _, z, _] = eye;
+    let [cx, _, cz] = center;
+    let dx = ((x - cx).abs() - half_extent_m).max(0.0);
+    let dz = ((z - cz).abs() - half_extent_m).max(0.0);
+    dx * dx + dz * dz < 3000.0 * 3000.0
+}
+
 #[cfg(test)]
 mod terrain_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use flightcraft_world::{World, WorldChoice};
+
+    #[test]
+    fn large_region_tile_edges_select_near_detail() {
+        assert!(near_region_tile([7680.0, 100.0, 7680.0, 0.0], [0.0; 3], 7680.0));
+        assert!(!near_region_tile(
+            [11000.0, 100.0, 11000.0, 0.0],
+            [0.0; 3],
+            7680.0
+        ));
+    }
+
+    #[test]
+    fn regional_runway_mesh_stays_on_its_geographic_rectangle_and_grade() {
+        let p = palette();
+        let strip = flightcraft_world::RunwayStrip {
+            ends_m: [[100000.0, 70000.0], [102400.0, 71800.0]],
+            elevations_m: [100.0, 120.0],
+            width_m: 45.0,
+            surface: flightcraft_world::RunwaySurface::Concrete,
+            end_idents: ["16L".into(), "34R".into()],
+        };
+        let mut m = Mesh::default();
+        airport_runway(&mut m, &strip, p);
+        assert!(m.0.len() > 6);
+        for v in &m.0 {
+            let [east, height, south] = v.position;
+            let dn = -f64::from(south) - 100000.0;
+            let de = f64::from(east) - 70000.0;
+            let along = dn * 0.8 + de * 0.6;
+            let across = -dn * 0.6 + de * 0.8;
+            assert!((-0.02..=3000.02).contains(&along));
+            assert!(across.abs() < 22.52);
+            assert!((f64::from(height) - (100.0 + along / 150.0)).abs() < 0.08);
+            assert!(v.normal.iter().all(|v| v.is_finite()));
+        }
+        for ch in "0123456789LRCG".chars() {
+            assert!(!glyph(ch).is_empty());
+        }
+    }
 
     pub(super) fn palette() -> Palette {
         Palette {

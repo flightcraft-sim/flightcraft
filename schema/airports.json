@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Airports",
+  "type": "object",
+  "properties": {
+    "airports": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Airport"
+      }
+    },
+    "attribution": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "attribution",
+    "airports"
+  ],
+  "$defs": {
+    "Airport": {
+      "type": "object",
+      "properties": {
+        "elevation_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "icao": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ident": {
+          "type": "string"
+        },
+        "latitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "name": {
+          "type": "string"
+        },
+        "runways": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AirportRunway"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ident",
+        "name",
+        "elevation_m",
+        "latitude_deg",
+        "longitude_deg",
+        "runways"
+      ]
+    },
+    "AirportRunway": {
+      "type": "object",
+      "properties": {
+        "designator": {
+          "type": "string"
+        },
+        "ends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RunwayEnd"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "length_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "surface": {
+          "$ref": "#/$defs/RunwaySurface"
+        },
+        "width_m": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "designator",
+        "length_m",
+        "width_m",
+        "surface",
+        "ends"
+      ]
+    },
+    "RunwayEnd": {
+      "type": "object",
+      "properties": {
+        "elevation_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "heading_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "ident": {
+          "type": "string"
+        },
+        "latitude_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ident",
+        "latitude_deg",
+        "longitude_deg",
+        "elevation_m",
+        "heading_deg"
+      ]
+    },
+    "RunwaySurface": {
+      "type": "string",
+      "enum": [
+        "asphalt",
+        "concrete",
+        "turf",
+        "gravel",
+        "water",
+        "other"
+      ]
+    }
+  }
+}

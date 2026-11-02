@@ -94,6 +94,8 @@ impl Default for State {
 /// Derived values for instruments, agents, and tests.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Readout {
+    pub latitude_deg: Option<f64>,
+    pub longitude_deg: Option<f64>,
     pub time_s: f64,
     /// Indicated airspeed, m/s.
     pub indicated_airspeed_mps: f64,
@@ -146,6 +148,17 @@ pub struct Readout {
 pub enum Start {
     /// Parked on the runway threshold, engine idling, pointing down the runway.
     Runway,
+    /// Explicit threshold and local grid heading, used for region airport starts.
+    RunwayAt {
+        threshold_ned_m: [f64; 3],
+        heading_rad: f64,
+    },
+    /// Explicit local air position, MSL altitude, and grid heading.
+    AirAt {
+        position_m: [f64; 3],
+        airspeed_mps: f64,
+        heading_rad: f64,
+    },
     /// In the air: height above the runway threshold (m), airspeed (m/s), and heading (rad).
     Air {
         height_m: f64,
@@ -230,11 +243,22 @@ impl Sim {
         let wind = world::Wind::new(weather)?;
         let mut state = State::default();
         let controls = match *start {
-            Start::Runway => {
+            Start::Runway | Start::RunwayAt { .. } => {
                 // Unequal wheel heights encode a tail-down (or nose-down) parked attitude.
                 // Equal-height gear retains the original level initialization exactly.
                 let pitch = dynamics::runway_pitch(&aircraft);
-                let runway = world.runway();
+                let mut runway = world.runway();
+                if let Start::RunwayAt {
+                    threshold_ned_m,
+                    heading_rad,
+                } = *start
+                {
+                    if threshold_ned_m.iter().any(|v| !v.is_finite()) || !heading_rad.is_finite() {
+                        return Err(SimError::InvalidStart("non-finite runway start".into()));
+                    }
+                    runway.threshold_ned_m = threshold_ned_m;
+                    runway.heading_deg = heading_rad.to_degrees();
+                }
                 let heading = runway.heading_deg.to_radians().rem_euclid(core::f64::consts::TAU);
                 if pitch != 0.0 || heading != 0.0 {
                     state.attitude = attitude(pitch, heading);
@@ -264,6 +288,8 @@ impl Sim {
                                 .map(|g| g.stiffness_n_m)
                                 .sum::<f64>()),
                 ];
+                state.position_m[0] = runway.threshold_ned_m[0];
+                state.position_m[1] = runway.threshold_ned_m[1];
                 state.position_m[2] += runway.threshold_ned_m[2];
                 Controls::default()
             }
@@ -272,29 +298,34 @@ impl Sim {
                 airspeed_mps,
                 heading_rad,
             } => {
-                if !height_m.is_finite()
-                    || !(2.0..=20_000.0).contains(&height_m)
-                    || !airspeed_mps.is_finite()
-                    || !(1.0..=150.0).contains(&airspeed_mps)
-                    || !heading_rad.is_finite()
+                let (initial, controls) = air_state(&aircraft, height_m, airspeed_mps, heading_rad)?;
+                state = initial;
+                controls
+            }
+            Start::AirAt {
+                position_m,
+                airspeed_mps,
+                heading_rad,
+            } => {
+                let [north, east, down] = position_m;
+                if !north.is_finite()
+                    || !east.is_finite()
+                    || north.abs() > 250_000.0
+                    || east.abs() > 250_000.0
                 {
                     return Err(SimError::InvalidStart(
-                        "finite height in 2..=20000 m and speed in 1..=150 m/s required".into(),
+                        "air position outside region bounds".into(),
                     ));
                 }
-                let heading = heading_rad.rem_euclid(core::f64::consts::TAU);
-                let (alpha, controls) = dynamics::trim(&aircraft, height_m, airspeed_mps);
-                state.position_m = [0.0, 0.0, -height_m];
-                state.velocity_mps = [
-                    airspeed_mps * libm::cos(heading),
-                    airspeed_mps * libm::sin(heading),
-                    0.0,
-                ];
-                state.attitude = attitude(alpha, heading);
+                let (initial, controls) = air_state(&aircraft, -down, airspeed_mps, heading_rad)?;
+                state = initial;
+                state.position_m = position_m;
                 controls
             }
         };
-        if matches!(start, Start::Air { .. }) && wind.velocity_mps(state.position_m) != [0.0; 3] {
+        if matches!(start, Start::Air { .. } | Start::AirAt { .. })
+            && wind.velocity_mps(state.position_m) != [0.0; 3]
+        {
             state.velocity_mps = add(state.velocity_mps, wind.velocity_mps(state.position_m));
         }
         if !dynamics::valid(&state) {
@@ -568,7 +599,10 @@ impl Sim {
         let [_, q, r] = s.angular_rate_rps;
         let cos_pitch = libm::cos(pitch);
         let h = dynamics::height(&self.aircraft, s, &self.world);
+        let geodetic = self.world.geodetic(s.position_m[0], s.position_m[1]);
         Readout {
+            latitude_deg: geodetic.map(|[lat, _]| lat),
+            longitude_deg: geodetic.map(|[_, lon]| lon),
             time_s: s.time_s,
             indicated_airspeed_mps: speed
                 * libm::sqrt(world::atmosphere(-z).density_kg_m3 / world::SEA_LEVEL_DENSITY),
@@ -672,4 +706,38 @@ impl Sim {
         }
         h
     }
+}
+
+/// Shared deterministic trim for absolute and airport-relative air starts.
+fn air_state(
+    aircraft: &Aircraft,
+    height_m: f64,
+    airspeed_mps: f64,
+    heading_rad: f64,
+) -> Result<(State, Controls), SimError> {
+    if !height_m.is_finite()
+        || !(2.0..=20000.0).contains(&height_m)
+        || !airspeed_mps.is_finite()
+        || !(1.0..=150.0).contains(&airspeed_mps)
+        || !heading_rad.is_finite()
+    {
+        return Err(SimError::InvalidStart(
+            "finite height in 2..=20000 m and speed in 1..=150 m/s required".into(),
+        ));
+    }
+    let heading = heading_rad.rem_euclid(core::f64::consts::TAU);
+    let (alpha, controls) = dynamics::trim(aircraft, height_m, airspeed_mps);
+    Ok((
+        State {
+            position_m: [0.0, 0.0, -height_m],
+            velocity_mps: [
+                airspeed_mps * libm::cos(heading),
+                airspeed_mps * libm::sin(heading),
+                0.0,
+            ],
+            attitude: attitude(alpha, heading),
+            ..State::default()
+        },
+        controls,
+    ))
 }

@@ -44,6 +44,9 @@ pub struct Region {
     pub attribution: String,
     #[serde(default)]
     pub tiles: Vec<String>,
+    /// Optional adjacent airport catalogue; only the canonical basename is accepted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub airports: Option<String>,
 }
 
 pub fn region_id(id: &str) -> bool {
@@ -94,12 +97,13 @@ impl Region {
             || self
                 .southwest_m
                 .iter()
-                .any(|v| !v.is_finite() || v.abs() > 50000.0)
-            || self.southwest_m[0] + f64::from(self.tiles_north) * extent > 50000.0
-            || self.southwest_m[1] + f64::from(self.tiles_east) * extent > 50000.0
+                .any(|v| !v.is_finite() || v.abs() > 250000.0)
+            || self.southwest_m[0] + f64::from(self.tiles_north) * extent > 250000.0
+            || self.southwest_m[1] + f64::from(self.tiles_east) * extent > 250000.0
             || [&self.source, &self.licence, &self.attribution]
                 .iter()
                 .any(|s| s.len() > 2048)
+            || self.airports.as_deref().is_some_and(|s| s != "airports.json")
             || self.tiles.len() > MAX_REGION_TILES
             || self.tiles.iter().any(|s| !tile_name(s))
         {
@@ -133,16 +137,16 @@ impl Region {
     pub fn validate_manifest(&self) -> Result<(), TerrainError> {
         self.validate()?;
         if self.tiles.len() != self.tiles_north as usize * self.tiles_east as usize
-            || self.source != "SRTM"
-            || self.licence != "public domain"
-            || self.attribution != SRTM_ATTRIBUTION
+            || self.source.is_empty()
+            || self.licence.is_empty()
+            || self.attribution.is_empty()
             || self
                 .tiles
                 .iter()
                 .enumerate()
                 .any(|(i, s)| s != &format!("{i:03}.fcht"))
         {
-            return Err(TerrainError("incomplete region manifest or SRTM attribution"));
+            return Err(TerrainError("incomplete region manifest or attribution"));
         }
         Ok(())
     }

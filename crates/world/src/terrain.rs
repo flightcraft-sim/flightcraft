@@ -230,6 +230,8 @@ pub struct World {
     fingerprint: u64,
     region: Option<Arc<crate::Region>>,
     airspace: Option<Arc<crate::Airspace>>,
+    airports: Option<Arc<crate::Airports>>,
+    strips: Arc<[crate::RunwayStrip]>,
 }
 impl Default for World {
     fn default() -> Self {
@@ -237,6 +239,8 @@ impl Default for World {
             choice: WorldChoice::Flat,
             region: None,
             airspace: None,
+            airports: None,
+            strips: Arc::from([]),
             tiles: Arc::from([]),
             fingerprint: 0xcbf2_9ce4_8422_2325,
         }
@@ -267,6 +271,27 @@ impl World {
     }
     #[must_use]
     pub fn ground(&self, north: f64, east: f64) -> Ground {
+        if !self.strips.is_empty() {
+            let base = self.terrain_ground(north, east).unwrap_or(Ground {
+                height_msl_m: -self.runway().threshold_ned_m[2],
+                normal_ned: [0.0, 0.0, -1.0],
+                surface: Surface::Grass,
+            });
+            if !north.is_finite() || !east.is_finite() {
+                return base;
+            }
+            let mut exact = None;
+            for strip in self.strips.iter() {
+                if !strip.near(north, east, 0.0) {
+                    continue;
+                }
+                let (d, plane) = strip.plane(north, east);
+                if d <= 0.00001 && prefer_runway(exact, plane) {
+                    exact = Some(plane);
+                }
+            }
+            return exact.unwrap_or(base);
+        }
         let flat = if self.region.is_some() {
             let runway = self.runway();
             let (s, c) = libm::sincos(runway.heading_deg.to_radians());
@@ -306,6 +331,8 @@ impl World {
             fingerprint,
             region: None,
             airspace: None,
+            airports: None,
+            strips: Arc::from([]),
         })
     }
     /// Construct a region only after all declared tiles and their grid positions validate.
@@ -368,6 +395,126 @@ impl World {
             .map_or("Original FlightCraft terrain · Apache-2.0", |r| {
                 r.attribution.as_str()
             })
+    }
+    /// Attach a validated adjacent catalogue and include it in replay identity.
+    pub fn with_airports(mut self, airports: crate::Airports) -> Result<Self, TerrainError> {
+        let region = self.region().ok_or(TerrainError("airports require a region"))?;
+        airports.validate(region)?;
+        let p = crate::geo::LocalProjection::new(region.origin.latitude_deg, region.origin.longitude_deg)?;
+        let strips = airports
+            .airports
+            .iter()
+            .flat_map(|a| &a.runways)
+            .map(|r| crate::RunwayStrip::project(r, &p))
+            .collect::<Result<Vec<_>, _>>()?;
+        for byte in serde_json::to_vec(&airports).map_err(|_| TerrainError("airport identity"))? {
+            self.fingerprint ^= u64::from(byte);
+            self.fingerprint = self.fingerprint.wrapping_mul(0x100000001b3);
+        }
+        self.strips = strips.into();
+        self.airports = Some(Arc::new(airports));
+        Ok(self)
+    }
+    pub fn airports(&self) -> Option<&crate::Airports> {
+        self.airports.as_deref()
+    }
+    pub fn runway_strips(&self) -> &[crate::RunwayStrip] {
+        &self.strips
+    }
+    pub fn geodetic(&self, north: f64, east: f64) -> Option<[f64; 2]> {
+        let r = self.region()?;
+        crate::geo::LocalProjection::new(r.origin.latitude_deg, r.origin.longitude_deg)
+            .ok()?
+            .unproject(north, east)
+            .ok()
+    }
+    /// Elevation grid without the exact runway rectangle override.
+    /// The FAA importer samples this before preparing runway aprons.
+    pub fn terrain_ground(&self, north: f64, east: f64) -> Option<Ground> {
+        self.tiles.iter().find_map(|t| t.sample(north, east))
+    }
+    /// Offline runway preparation from original tiles, including the smooth apron.
+    /// Loaded tiles already include this blend; live queries only override the exact rectangles.
+    pub fn prepared_airport_ground(&self, north: f64, east: f64) -> Ground {
+        let fallback = Ground {
+            height_msl_m: -self.runway().threshold_ned_m[2],
+            normal_ned: [0.0, 0.0, -1.0],
+            surface: Surface::Grass,
+        };
+        let base = self.terrain_ground(north, east).unwrap_or(fallback);
+        if !north.is_finite() || !east.is_finite() {
+            return base;
+        }
+        // Choose a surface before applying any blend. At a crossing, pavement wins,
+        // and no neighbouring apron is allowed to bend a runway plane.
+        let mut exact = None;
+        let mut nearest = None;
+        let margin = self
+            .region()
+            .map_or(0.0, |r| r.runway_blend_m + f64::from(r.spacing_m) * 2.0);
+        for strip in self.strips.iter() {
+            if !strip.near(north, east, margin) {
+                continue;
+            }
+            let (distance, plane) = strip.plane(north, east);
+            if distance <= 0.0 {
+                if prefer_runway(exact, plane) {
+                    exact = Some(plane);
+                }
+            } else if nearest.as_ref().is_none_or(|(d, _)| distance < *d) {
+                nearest = Some((distance, plane));
+            }
+        }
+        if let Some(plane) = exact {
+            return plane;
+        }
+        let Some(region) = self.region() else {
+            return base;
+        };
+        if let Some((distance, plane)) = nearest {
+            let t = ((distance - f64::from(region.spacing_m) * 2.0) / region.runway_blend_m).clamp(0.0, 1.0);
+            let blend = t * t * (3.0 - 2.0 * t);
+            if blend < 1.0 {
+                // Differentiate the blended height to keep ground-contact normals consistent.
+                let height = |n, e| self.airport_height(n, e, region);
+                let dn = (height(north + 0.1, east) - height(north - 0.1, east)) / 0.2;
+                let de = (height(north, east + 0.1) - height(north, east - 0.1)) / 0.2;
+                let norm = libm::sqrt(1.0 + dn * dn + de * de);
+                return Ground {
+                    height_msl_m: plane.height_msl_m * (1.0 - blend) + base.height_msl_m * blend,
+                    normal_ned: [-dn / norm, -de / norm, -1.0 / norm],
+                    surface: base.surface,
+                };
+            }
+        }
+        base
+    }
+    fn airport_height(&self, n: f64, e: f64, region: &crate::Region) -> f64 {
+        let base = self
+            .terrain_ground(n, e)
+            .map_or(region.origin.field_elevation_m, |g| g.height_msl_m);
+        let mut nearest: Option<(f64, Ground)> = None;
+        let mut exact = None;
+        for strip in self.strips.iter() {
+            if !strip.near(n, e, region.runway_blend_m + f64::from(region.spacing_m) * 2.0) {
+                continue;
+            }
+            let (d, plane) = strip.plane(n, e);
+            if d <= 0.00001 && prefer_runway(exact, plane) {
+                exact = Some(plane);
+            }
+            if nearest.as_ref().is_none_or(|(old, _)| d < *old) {
+                nearest = Some((d, plane));
+            }
+        }
+        if let Some(plane) = exact {
+            return plane.height_msl_m;
+        }
+        nearest.map_or(base, |(d, plane)| {
+            let t = ((d - f64::from(region.spacing_m) * 2.0) / region.runway_blend_m).clamp(0.0, 1.0);
+            let b = t * t * (3.0 - 2.0 * t);
+            plane.height_msl_m * (1.0 - b) + base * b
+        })
     }
     /// Stable content identity, computed once when tiles load.
     #[must_use]
@@ -480,4 +627,14 @@ fn bundled_training_valley() -> Result<Vec<HeightTile>, TerrainError> {
     .into_iter()
     .map(HeightTile::read)
     .collect()
+}
+
+/// Pavement wins over an intersecting unpaved strip. With equally ranked surfaces,
+/// the upper plane matches the visible surface where sampled elevation grades differ.
+fn prefer_runway(current: Option<Ground>, candidate: Ground) -> bool {
+    current.is_none_or(|old| {
+        let paved = candidate.surface == Surface::Pavement;
+        let old_paved = old.surface == Surface::Pavement;
+        (paved && !old_paved) || (paved == old_paved && candidate.height_msl_m > old.height_msl_m)
+    })
 }

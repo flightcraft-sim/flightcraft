@@ -45,6 +45,7 @@ struct TerrainBuffer {
     count: u32,
     fine_end: u32,
     center: [f32; 3],
+    half_extent_m: f32,
 }
 
 struct DrawMesh {
@@ -370,6 +371,7 @@ impl CallbackTrait for SceneCallback {
                         count: geometry.vertices.len() as u32,
                         fine_end: geometry.fine_end,
                         center: geometry.center,
+                        half_extent_m: tile.extent_m() as f32 * 0.5,
                     }
                 })
                 .collect();
@@ -425,7 +427,12 @@ impl CallbackTrait for SceneCallback {
         if !self.world.tiles().is_empty() {
             for tile in &gpu.terrain {
                 pass.set_vertex_buffer(0, tile.vertices.slice(..));
-                let range = if mesh::near_tile(self.uniform.eye, tile.center) {
+                let near = if self.world.region().is_some() {
+                    mesh::near_region_tile(self.uniform.eye, tile.center, tile.half_extent_m)
+                } else {
+                    mesh::near_tile(self.uniform.eye, tile.center)
+                };
+                let range = if near {
                     0..tile.fine_end
                 } else {
                     tile.fine_end..tile.count

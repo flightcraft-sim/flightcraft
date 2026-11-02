@@ -65,12 +65,28 @@ pub fn build() -> Result<(), String> {
         .replace(
             "    <link data-trunk rel=\"copy-file\" href=\"takeoff.jsonl\">\n",
             "",
+        )
+        .replace(
+            "    <link data-trunk rel=\"copy-dir\" href=\"../../assets/terrain\">\n",
+            "",
         );
     std::fs::write(dist.join("index.html"), index).map_err(|e| e.to_string())?;
     std::fs::copy(root.join("apps/web/bootstrap.js"), dist.join("bootstrap.js"))
         .map_err(|e| e.to_string())?;
     std::fs::copy(root.join("apps/web/takeoff.jsonl"), dist.join("takeoff.jsonl"))
         .map_err(|e| e.to_string())?;
+    for id in ["new-york", "eastern-pa"] {
+        let region_source = root.join("assets/terrain").join(id);
+        let region_target = dist.join("terrain").join(id);
+        std::fs::create_dir_all(&region_target).map_err(|e| e.to_string())?;
+        for entry in std::fs::read_dir(region_source).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            if entry.file_type().map_err(|e| e.to_string())?.is_file() {
+                std::fs::copy(entry.path(), region_target.join(entry.file_name()))
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+    }
     eprintln!("xtask: static web build ready in dist/");
     Ok(())
 }

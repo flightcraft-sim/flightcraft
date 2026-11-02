@@ -54,8 +54,8 @@ the ground, water uses the theme's blue token, and the runway remains a separate
 
 ## Importing real SRTM elevation offline
 
-The SRTM importer accepts NASA/USGS public-domain elevation only. It needs no network connection,
-account credentials, or external conversion tools. No real region is bundled yet. The simulator
+The elevation importer accepts documented public-domain HGT elevation. It needs no network connection,
+account credentials, or external conversion tools. The New York area region is bundled under `assets/terrain/new-york/`. The simulator
 continues to start in the flat world.
 
 1. Choose an airfield and record the latitude and longitude of its runway threshold in decimal
@@ -110,35 +110,31 @@ cargo xtask terrain-srtm --region example-region.json --hgt downloads/srtm --out
 
 The output contains numbered `.fcht` tiles and a `region.json` manifest. The input and output share
 one schema, published as `schema/region.json`; generated fields `source`, `licence`, `attribution`,
-and `tiles` may be omitted from input. The importer sets them to `SRTM`, `public domain`,
+and `tiles` may be omitted from input. When omitted, the importer defaults these to `SRTM`, `public domain`,
 `NASA Shuttle Radar Topography Mission, public domain; distributed by USGS`, and the ordered tile
-filenames. It refuses to overwrite an existing directory. Missing coverage, malformed files, and
+filenames. Explicit source, licence, and attribution strings are preserved. It refuses to overwrite an existing directory. Missing coverage, malformed files, and
 unfillable voids produce errors before output creation. A failed disk write removes the new output;
 metadata is written last, so discovery never offers a partially written world.
 
 The grid’s southwest corner is `[north, east]` in local metres; each tile spans
 `(tile_size - 1) * spacing_m`. At most 256 tiles, 257 samples per side, 64 HGT files, and 256 MiB of
-raw HGT data are accepted. Installed regions share a 128 MiB tile budget. Coordinates stay within ±50 km on each horizontal axis of the origin,
+raw HGT data are accepted. Installed regions share a 128 MiB tile budget. Coordinates stay within ±250 km on each horizontal axis of the origin,
 which must be below 85° absolute latitude. The grid must enclose the runway and its blend margin.
 IDs contain lowercase ASCII letters, digits, and hyphens, up to 64 characters, and cannot replace
 `flat` or `training-valley`. Source directories are read in sorted order; duplicates are errors.
 
 ### Projection, voids, and runway preparation
 
-The horizontal projection is the orthographic local tangent plane of a sphere with IUGG mean
-radius R = 6,371,008.8 m. For origin latitude φ₀ and longitude λ₀, point latitude φ and longitude λ,
-with Δλ = λ − λ₀:
+The horizontal projection is WGS84 transverse Mercator, with central meridian equal to the
+origin longitude, central scale `k0 = 1`, zero false easting, and false northing chosen to put the
+origin at `[0, 0]`. `world::geo::LocalProjection` implements forward and inverse Krüger series
+through the fourth power of the third flattening, with `libm` throughout. The compatibility
+re-export `world::srtm::LocalProjection` remains available. Round trips are tested below 1 mm over
+the full ±250 km square, including high latitudes and the antimeridian. Independently evaluated
+closed-form transverse Mercator equations from USGS Professional Paper 1395 check forward values.
+This is a map projection, so grid bearings and distances differ slightly from true bearings and
+ellipsoidal distances away from the central meridian.
 
-```text
-north = R (cos φ₀ sin φ − sin φ₀ cos φ cos Δλ)
-east  = R cos φ sin Δλ
-```
-
-The inverse reconstructs the positive local up component `sqrt(1 − (north/R)² − (east/R)²)` and
-rotates back onto the sphere. All transcendental functions use `libm`. Round trips are tested below
-0.5 m within 50 km, including high latitudes and the antimeridian. This is a spherical local
-approximation, not a survey datum conversion: horizontal scale distortion grows with distance,
-and ellipsoidal distances can differ by several parts per thousand. Use it for local scenery.
 SRTM elevations are orthometric MSL heights (normally EGM96), retained directly. The simulation’s
 vertical coordinate is negative MSL elevation; field elevation does not get subtracted from samples.
 
@@ -190,3 +186,121 @@ variants and JSON names remain supported. The original flat-world golden traject
 Regions can also carry an optional `airspace.json`, loaded by native and browser transports.
 See [controlled airspace](airspace.md) for the FAA offline importer, schema, containment semantics,
 commands, and display settings. The airspace file is validated before the region becomes selectable.
+## Public airports and runway starts
+
+A region may name `"airports": "airports.json"`. That bounded, adjacent catalogue follows
+[`schema/airports.json`](../schema/airports.json): an attribution string and an `airports` array.
+Each airport records its FAA ident, optional ICAO ident, name, MSL elevation, latitude, longitude,
+and runways. Each runway records its designator, dimensions in metres, surface, and two ends
+with ident, WGS84 latitude/longitude, MSL elevation, and true heading in degrees. The loader checks
+finite values, unique idents and designators, grid containment, lengths, grades, and a maximum of
+2,000 runways. Catalogues are limited to 4 MiB. Missing or invalid catalogues prevent installation.
+Rust `Region` literals now supply `airports: None` when no catalogue is declared. Located host
+starts use `Start::RunwayAt` and `Start::AirAt`; typed control starts use
+`ResetStart::AirportRunway` and `ResetStart::AirportAir`. Both `Readout` and `StateOutput` gain
+optional latitude and longitude fields. Native and browser transports finish airport validation
+with `region_world_with_airports(region, tiles, airports_bytes)`, then attach any adjacent airspace
+data through the airspace loader. Static packaging copies adjacent files alongside both regions.
+
+Runway collision surfaces are straight sloped planes through their endpoint elevations. Terrain
+preparation flattens a two-sample apron and applies the same smooth blend margin as the origin
+runway. Exact runway surfaces take precedence over neighbouring blend margins; pavement wins at
+crossings with other surfaces. When equally ranked source planes disagree at a crossing, the
+upper plane owns the overlap, matching the visible surface; endpoint heights remain the original
+terrain samples. Such source disagreements are not survey-grade runway profiles. The renderer draws each runway at its precise width, with threshold
+bars, centreline dashes, and an original stroke alphabet for both end idents. Turf and gravel use
+ground surfaces, asphalt and concrete use pavement, and water uses water. Regional rendering uses 120 m near meshes and 480 m far meshes, refining
+cells near runway aprons to the original 60 m samples in both levels. Distance to the tile
+footprint selects near detail even at the edges of a large tile. Built-in worlds retain
+their original runway artwork.
+
+The **Start** menu searches the active region by ident, ICAO ident, or name, lists its runway ends,
+and shows the airport catalogue attribution. These selections use `sim.reset`:
+
+```json
+{"world":"new-york","start":{"runway":{"airport":"1N7","end":"07"}},"paused":true}
+```
+
+An airport-relative air start uses true bearing clockwise from north, horizontal distance in
+metres, and height above airport elevation. The heading is a local grid heading in radians:
+
+```json
+{"world":"new-york","start":{"air":{"airport":"JFK","distance_m":5000,"bearing_deg":220,"height_m":600,"airspeed_mps":45,"heading_rad":0.7}}}
+```
+
+The existing `{ "kind": "air", "height_m": 600, "airspeed_mps": 45, "heading_rad": 0 }` retains
+its absolute MSL altitude and origin position. Omitting a selected runway keeps the origin runway.
+`sim.state` and its readout report optional `latitude_deg` and `longitude_deg`; they are null in
+built-in worlds or beyond projection bounds. The state output also supplies optional
+`altitude_msl_m` for a geographic position. The readout's existing MSL altitude remains available
+in every world. `world.geodetic` converts either `{north_m, east_m}` or
+`{latitude_deg, longitude_deg}` and returns both coordinate pairs. `world.airports` lists the active
+catalogue, with optional `nearest_to_m: [north, east]` to sort by airport distance.
+
+## Importing FAA ADDS data offline
+
+Fetch the two FAA Aeronautical Data Delivery Service layers outside the repository. The FAA data
+is US government work, public domain. For each of `US_Airport` and `Runways`, make this ArcGIS REST
+query, substituting the layer name and the envelope for the region. This example covers the New
+York area; the output must have no transfer-limit truncation. If a service reports
+`exceededTransferLimit`, paginate with `resultOffset` and combine the feature arrays before import.
+
+```sh
+curl --get 'https://services6.arcgis.com/ssFJjBXIUyZDrSYZ/arcgis/rest/services/US_Airport/FeatureServer/0/query' \
+  --data-urlencode 'where=1=1' \
+  --data-urlencode 'geometry={"xmin":-75.20,"ymin":40.25,"xmax":-73.25,"ymax":41.30,"spatialReference":{"wkid":4326}}' \
+  --data-urlencode 'geometryType=esriGeometryEnvelope' \
+  --data-urlencode 'inSR=4326' --data-urlencode 'outSR=4326' \
+  --data-urlencode 'spatialRel=esriSpatialRelIntersects' \
+  --data-urlencode 'outFields=*' --data-urlencode 'f=geojson' \
+  --output downloads/faa/US_Airport.geojson
+```
+
+Repeat with `/Runways/FeatureServer/0/query` and `downloads/faa/Runways.geojson`. Then run:
+
+```sh
+cargo xtask navdata-faa --region assets/terrain/example-region/region.json \
+  --airports downloads/faa/US_Airport.geojson --runways downloads/faa/Runways.geojson \
+  --out assets/terrain/example-region/airports.json
+```
+
+Import only after `terrain-srtm`. The importer keeps public-use land airports (`TYPE_CODE=AD`,
+`PRIVATEUSE=0`) inside the region grid, joins `AIRPORT_ID` to `GLOBAL_ID`, skips helipads and water
+lanes, and converts FAA feet to metres. Closed quadrilateral runway polygons supply centreline
+endpoints at the midpoints of their short edges. A discrepancy above 5% against `LENGTH` is an
+error identifying the airport and runway. Runway designators orient the centreline; true headings
+are measured against the local geodetic meridian. Each end samples terrain before airport
+flattening, falling back to airport elevation when terrain has no coverage. The importer prepares
+the tile apron, writes `airports.json`, and publishes its reference in `region.json` last. It refuses
+to replace an existing catalogue. Elevation provenance remains the region's own metadata.
+
+## Bundled New York area
+
+`new-york` uses Blairstown (1N7) runway 07's imported threshold as its origin. Its public-domain
+Terrain Tiles elevation sources are USGS 3DEP and NASA SRTM. Six one-degree, 1-arc-second HGT tiles
+cover the input. The grid uses 60 m spacing and 257-sample tiles, enclosing latitude 40.25–41.30
+and longitude −75.20–−73.25. The bundled manifest carries the exact grid and attribution. FAA airport
+and runway attribution is separate and appears in the picker. Source HGT and GeoJSON files remain
+outside the repository. To regenerate, use the manifest's origin and grid as the `terrain-srtm`
+input, omitting generated `tiles` and retaining `airports: "airports.json"`, then run `navdata-faa` as above.
+Declaring an airport catalogue in the elevation input preserves raw terrain for endpoint sampling;
+the FAA importer prepares all runway aprons together. The intermediate region is not selectable
+until its catalogue exists.
+
+Desktop discovery includes this directory by default. The static browser build copies it to
+`terrain/new-york/`; open
+[New York area](https://flightcraft-sim.github.io/flightcraft/?region=terrain/new-york/region.json).
+The region URL selects its origin start. With no region URL, the browser retains the flat default.
+
+`eastern-pa`, **Eastern Pennsylvania and New Jersey**, shares the same Blairstown runway 07
+origin and attribution. Its 110 tiles enclose latitude 40.20–41.50 and longitude −76.20–−74.30,
+using the same 60 m spacing and 257-sample tiles. This adds Lehigh Valley (KABE), Pocono Mountains
+(KMPO), Wilkes-Barre/Scranton (KAVP), Reading (KRDG), and nearby New Jersey fields. Regeneration
+uses the additional HGT degree squares west to 77°W and a separate FAA envelope query with those
+bounds. Both installed regions remain within the shared 128 MiB terrain budget.
+Open [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json).
+
+Current bundled sizes (tiles, manifests, and catalogues) are approximately 29.1 MB for `new-york`
+and 36.3 MB for `eastern-pa`. Together their elevation tiles use 65,293,272 bytes. New York has
+26 public airports and 46 runways; Eastern Pennsylvania and New Jersey has 43 public airports
+and 61 runways.

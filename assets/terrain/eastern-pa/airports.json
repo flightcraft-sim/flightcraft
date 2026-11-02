@@ -1,0 +1,1752 @@
+{
+  "attribution": "Airports and runways: FAA Aeronautical Data Delivery Service, public domain",
+  "airports": [
+    {
+      "ident": "06N",
+      "name": "Randall",
+      "elevation_m": 159.31896000000003,
+      "latitude_deg": 41.431911944444444,
+      "longitude_deg": -74.39156083333334,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 856.488,
+          "width_m": 18.288,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 41.43015913166484,
+              "longitude_deg": -74.39612100731472,
+              "elevation_m": 153.02756343487852,
+              "heading_deg": 62.822866034394885
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 41.43368154917237,
+              "longitude_deg": -74.3870037271098,
+              "elevation_m": 157.2197618168277,
+              "heading_deg": 242.82891912732765
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "12N",
+      "name": "Aeroflex/Andover",
+      "elevation_m": 177.60696000000002,
+      "latitude_deg": 41.00861972222222,
+      "longitude_deg": -74.73803388888889,
+      "runways": [
+        {
+          "designator": "03/21",
+          "length_m": 603.8088,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "03",
+              "latitude_deg": 41.00609606537953,
+              "longitude_deg": -74.73934281284133,
+              "elevation_m": 176.7102409999054,
+              "heading_deg": 21.359334907312896
+            },
+            {
+              "ident": "21",
+              "latitude_deg": 41.011159954956284,
+              "longitude_deg": -74.73672836782642,
+              "elevation_m": 178.81557582813963,
+              "heading_deg": 201.36106275118078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "14N",
+      "name": "Beltzville",
+      "elevation_m": 274.0152,
+      "latitude_deg": 40.8442875,
+      "longitude_deg": -75.63535416666667,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 615.0864,
+          "width_m": 30.48,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.84311933353449,
+              "longitude_deg": -75.63865753308383,
+              "elevation_m": 271.45923322166084,
+              "heading_deg": 64.86079454176526
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.84547211223823,
+              "longitude_deg": -75.63205475363694,
+              "elevation_m": 270.580394429801,
+              "heading_deg": 244.86508512040717
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "1N7",
+      "name": "Blairstown",
+      "elevation_m": 113.23320000000001,
+      "latitude_deg": 40.97113313888889,
+      "longitude_deg": -74.99750405555555,
+      "runways": [
+        {
+          "designator": "07/25",
+          "length_m": 948.5376,
+          "width_m": 21.336000000000002,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 40.96905613156273,
+              "longitude_deg": -75.00242278301268,
+              "elevation_m": 111.64070468476237,
+              "heading_deg": 60.76659070034455
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 40.973226688232224,
+              "longitude_deg": -74.99258941913907,
+              "elevation_m": 111.2271802046988,
+              "heading_deg": 240.7730300438738
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "22N",
+      "name": "Jake Arner Meml",
+      "elevation_m": 162.7632,
+      "latitude_deg": 40.809508888888885,
+      "longitude_deg": -75.76149638888889,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 914.4000000000001,
+          "width_m": 18.288,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.80804626640705,
+              "longitude_deg": -75.76654729355221,
+              "elevation_m": 161.63761718817415,
+              "heading_deg": 68.9225107023521
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.81100737836198,
+              "longitude_deg": -75.75643395753184,
+              "elevation_m": 154.43704796903972,
+              "heading_deg": 248.92908312015857
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "39N",
+      "name": "Princeton",
+      "elevation_m": 39.075359999999996,
+      "latitude_deg": 40.39908888888889,
+      "longitude_deg": -74.6590063888889,
+      "runways": [
+        {
+          "designator": "10/28",
+          "length_m": 1066.4952,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 40.399041282421926,
+              "longitude_deg": -74.66528933442864,
+              "elevation_m": 35.81536206271685,
+              "heading_deg": 89.33147544520587
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 40.39915267189263,
+              "longitude_deg": -74.65272646943463,
+              "elevation_m": 38.722831889784764,
+              "heading_deg": 269.33961060928164
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "3N6",
+      "name": "Old Bridge",
+      "elevation_m": 26.5176,
+      "latitude_deg": 40.32988666666667,
+      "longitude_deg": -74.34678694444445,
+      "runways": [
+        {
+          "designator": "06/24",
+          "length_m": 1095.4512,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "06",
+              "latitude_deg": 40.32635983474477,
+              "longitude_deg": -74.35128486893711,
+              "elevation_m": 17.73059318870302,
+              "heading_deg": 44.283169028625885
+            },
+            {
+              "ident": "24",
+              "latitude_deg": 40.33342150295661,
+              "longitude_deg": -74.34228486599298,
+              "elevation_m": 24.05817553919803,
+              "heading_deg": 224.28904754528145
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "47N",
+      "name": "Central Jersey Rgnl",
+      "elevation_m": 26.182320000000004,
+      "latitude_deg": 40.52444444444444,
+      "longitude_deg": -74.59830555555556,
+      "runways": [
+        {
+          "designator": "07/25",
+          "length_m": 1068.9336,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 40.52175955876838,
+              "longitude_deg": -74.60353137772793,
+              "elevation_m": 25.55130712783651,
+              "heading_deg": 56.101961431514376
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 40.52712803219689,
+              "longitude_deg": -74.59305979171862,
+              "elevation_m": 19.056847500251394,
+              "heading_deg": 236.10878618742012
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "4N1",
+      "name": "Greenwood Lake",
+      "elevation_m": 240.67008,
+      "latitude_deg": 41.12838888888889,
+      "longitude_deg": -74.34652777777778,
+      "runways": [
+        {
+          "designator": "06/24",
+          "length_m": 1057.9608,
+          "width_m": 18.288,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "06",
+              "latitude_deg": 41.12519096348945,
+              "longitude_deg": -74.35120200101774,
+              "elevation_m": 239.612368836442,
+              "heading_deg": 47.83051163262434
+            },
+            {
+              "ident": "24",
+              "latitude_deg": 41.13158646506338,
+              "longitude_deg": -74.34186274892463,
+              "elevation_m": 238.58053787172014,
+              "heading_deg": 227.83670154171884
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "69N",
+      "name": "Slatington",
+      "elevation_m": 115.82400000000001,
+      "latitude_deg": 40.76359405555556,
+      "longitude_deg": -75.60485241666666,
+      "runways": [
+        {
+          "designator": "01/19",
+          "length_m": 748.284,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "01",
+              "latitude_deg": 40.76023362422888,
+              "longitude_deg": -75.6048989061144,
+              "elevation_m": 112.0969896804737,
+              "heading_deg": 0.6040210275010949
+            },
+            {
+              "ident": "19",
+              "latitude_deg": 40.76697087554065,
+              "longitude_deg": -75.60480548952074,
+              "elevation_m": 114.18341715089822,
+              "heading_deg": 180.60402836308413
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "76N",
+      "name": "Skyhaven",
+      "elevation_m": 194.7672,
+      "latitude_deg": 41.52816388888889,
+      "longitude_deg": -75.94588055555556,
+      "runways": [
+        {
+          "designator": "01/19",
+          "length_m": 611.7336,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "01",
+              "latitude_deg": 41.52543334180251,
+              "longitude_deg": -75.94549934358129,
+              "elevation_m": 194.90415512211808,
+              "heading_deg": 353.99635558983834
+            },
+            {
+              "ident": "19",
+              "latitude_deg": 41.530911120314,
+              "longitude_deg": -75.94626601070134,
+              "elevation_m": 192.25045359338583,
+              "heading_deg": 173.99578134547866
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "7N8",
+      "name": "Butter Valley Golf Port",
+      "elevation_m": 152.4,
+      "latitude_deg": 40.397438888888885,
+      "longitude_deg": -75.56318888888889,
+      "runways": [
+        {
+          "designator": "16/34",
+          "length_m": 737.616,
+          "width_m": 25.908,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "16",
+              "latitude_deg": 40.40029394101122,
+              "longitude_deg": -75.56542833566762,
+              "elevation_m": 147.34489285423354,
+              "heading_deg": 148.99853024010554
+            },
+            {
+              "ident": "34",
+              "latitude_deg": 40.39460006956062,
+              "longitude_deg": -75.56095348088839,
+              "elevation_m": 123.50587231881336,
+              "heading_deg": 329.00146593312195
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "8N4",
+      "name": "Flying Dollar",
+      "elevation_m": 435.86400000000003,
+      "latitude_deg": 41.21492916666667,
+      "longitude_deg": -75.24690277777778,
+      "runways": [
+        {
+          "designator": "02/20",
+          "length_m": 733.044,
+          "width_m": 30.48,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "02",
+              "latitude_deg": 41.2116694194433,
+              "longitude_deg": -75.24751298804122,
+              "elevation_m": 404.72250925603174,
+              "heading_deg": 8.000717324322308
+            },
+            {
+              "ident": "20",
+              "latitude_deg": 41.21820553174584,
+              "longitude_deg": -75.24629632158054,
+              "elevation_m": 437.81380731129644,
+              "heading_deg": 188.0014958055455
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "9N1",
+      "name": "Vansant",
+      "elevation_m": 118.872,
+      "latitude_deg": 40.48426972222222,
+      "longitude_deg": -75.0996161111111,
+      "runways": [
+        {
+          "designator": "05G/23G",
+          "length_m": 408.432,
+          "width_m": 60.96,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "05G",
+              "latitude_deg": 40.48282868901118,
+              "longitude_deg": -75.101100721086,
+              "elevation_m": 110.99081344104759,
+              "heading_deg": 37.99903848390324
+            },
+            {
+              "ident": "23G",
+              "latitude_deg": 40.48572708118743,
+              "longitude_deg": -75.09813500382383,
+              "elevation_m": 110.0843743756,
+              "heading_deg": 218.00095262678008
+            }
+          ]
+        },
+        {
+          "designator": "07/25",
+          "length_m": 932.0784000000001,
+          "width_m": 36.576,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 40.48205378695153,
+              "longitude_deg": -75.10427908202134,
+              "elevation_m": 110.57840814506162,
+              "heading_deg": 57.99697843266003
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 40.4865018131631,
+              "longitude_deg": -75.09495639933454,
+              "elevation_m": 95.35342791500551,
+              "heading_deg": 238.00301691225087
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "ABE",
+      "icao": "KABE",
+      "name": "Lehigh Valley Intl",
+      "elevation_m": 119.99976000000001,
+      "latitude_deg": 40.652362777777775,
+      "longitude_deg": -75.44040583333334,
+      "runways": [
+        {
+          "designator": "06/24",
+          "length_m": 2316.1752,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "06",
+              "latitude_deg": 40.646989747034965,
+              "longitude_deg": -75.4506344328901,
+              "elevation_m": 119.8056122396066,
+              "heading_deg": 51.25974913076181
+            },
+            {
+              "ident": "24",
+              "latitude_deg": 40.66004011137015,
+              "longitude_deg": -75.42927153843286,
+              "elevation_m": 115.96702518595538,
+              "heading_deg": 231.27358333181124
+            }
+          ]
+        },
+        {
+          "designator": "13/31",
+          "length_m": 1767.8400000000001,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 40.65520544313442,
+              "longitude_deg": -75.44976787742404,
+              "elevation_m": 116.49936326140863,
+              "heading_deg": 122.98926487756947
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 40.64653669209476,
+              "longitude_deg": -75.43223817729772,
+              "elevation_m": 115.15358739302641,
+              "heading_deg": 303.000726842146
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "AVP",
+      "icao": "KAVP",
+      "name": "Wilkes-Barre/Scranton Intl",
+      "elevation_m": 293.12616,
+      "latitude_deg": 41.33847222222222,
+      "longitude_deg": -75.72338888888889,
+      "runways": [
+        {
+          "designator": "04/22",
+          "length_m": 2286.6096000000002,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "04",
+              "latitude_deg": 41.32870611770948,
+              "longitude_deg": -75.73153340053939,
+              "elevation_m": 292.656285785174,
+              "heading_deg": 32.69516689428896
+            },
+            {
+              "ident": "22",
+              "latitude_deg": 41.34603067758597,
+              "longitude_deg": -75.71677639699331,
+              "elevation_m": 277.6450337271061,
+              "heading_deg": 212.70474363038764
+            }
+          ]
+        },
+        {
+          "designator": "10/28",
+          "length_m": 1310.64,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 41.34060998181818,
+              "longitude_deg": -75.72990798423046,
+              "elevation_m": 281.12763252621244,
+              "heading_deg": 91.72129437602644
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 41.340254426347634,
+              "longitude_deg": -75.71425592371128,
+              "elevation_m": 284.3769516513185,
+              "heading_deg": 271.73162953034944
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "CDW",
+      "icao": "KCDW",
+      "name": "Essex County",
+      "elevation_m": 52.51704000000001,
+      "latitude_deg": 40.87522472222222,
+      "longitude_deg": -74.28135027777778,
+      "runways": [
+        {
+          "designator": "04/22",
+          "length_m": 1387.4496000000001,
+          "width_m": 24.384,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "04",
+              "latitude_deg": 40.867768360343995,
+              "longitude_deg": -74.28633921414573,
+              "elevation_m": 52.008265048747454,
+              "heading_deg": 29.605460577343113
+            },
+            {
+              "ident": "22",
+              "latitude_deg": 40.87863164025129,
+              "longitude_deg": -74.2782066012135,
+              "elevation_m": 52.003030436795,
+              "heading_deg": 209.61087945399865
+            }
+          ]
+        },
+        {
+          "designator": "10/28",
+          "length_m": 1133.5512,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 40.87711341757948,
+              "longitude_deg": -74.2868994094826,
+              "elevation_m": 51.0,
+              "heading_deg": 83.15088332844014
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 40.87832989079232,
+              "longitude_deg": -74.27354757228268,
+              "elevation_m": 52.03614153223272,
+              "heading_deg": 263.1596259979895
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "CKZ",
+      "icao": "KCKZ",
+      "name": "Pennridge",
+      "elevation_m": 173.00448000000003,
+      "latitude_deg": 40.38919444444444,
+      "longitude_deg": -75.29047222222222,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 1283.5128,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.38719078474196,
+              "longitude_deg": -75.29756695162048,
+              "elevation_m": 155.96140410563373,
+              "heading_deg": 69.72014316669117
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.39119548054698,
+              "longitude_deg": -75.28338969737008,
+              "elevation_m": 172.20993601075955,
+              "heading_deg": 249.729306311576
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "DYL",
+      "icao": "KDYL",
+      "name": "Doylestown",
+      "elevation_m": 119.9388,
+      "latitude_deg": 40.33306416666667,
+      "longitude_deg": -75.12233472222222,
+      "runways": [
+        {
+          "designator": "05/23",
+          "length_m": 915.6192000000001,
+          "width_m": 18.288,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "05",
+              "latitude_deg": 40.32979791924275,
+              "longitude_deg": -75.12560897649888,
+              "elevation_m": 118.99896245059942,
+              "heading_deg": 37.4105175052207
+            },
+            {
+              "ident": "23",
+              "latitude_deg": 40.33634658676905,
+              "longitude_deg": -75.11906350282585,
+              "elevation_m": 119.57692171518451,
+              "heading_deg": 217.41473585616208
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "FWN",
+      "icao": "KFWN",
+      "name": "Sussex",
+      "elevation_m": 128.50368,
+      "latitude_deg": 41.20021388888889,
+      "longitude_deg": -74.62303527777777,
+      "runways": [
+        {
+          "designator": "03/21",
+          "length_m": 1068.6288,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "03",
+              "latitude_deg": 41.19559268924979,
+              "longitude_deg": -74.62477039869616,
+              "elevation_m": 127.81504741952716,
+              "heading_deg": 15.791110375824278
+            },
+            {
+              "ident": "21",
+              "latitude_deg": 41.20485194166306,
+              "longitude_deg": -74.62130314817614,
+              "elevation_m": 122.24106531900904,
+              "heading_deg": 195.79343624473515
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "HZL",
+      "icao": "KHZL",
+      "name": "Hazleton Rgnl",
+      "elevation_m": 488.71632000000005,
+      "latitude_deg": 40.9867725,
+      "longitude_deg": -75.99470305555556,
+      "runways": [
+        {
+          "designator": "10/28",
+          "length_m": 1524.3048000000001,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 40.98727384753416,
+              "longitude_deg": -76.00373821481018,
+              "elevation_m": 485.2667829031113,
+              "heading_deg": 94.11683808872228
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 40.986287098034154,
+              "longitude_deg": -75.98567234750287,
+              "elevation_m": 485.6416580329023,
+              "heading_deg": 274.1286944623575
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "LDJ",
+      "icao": "KLDJ",
+      "name": "Linden",
+      "elevation_m": 6.7056000000000004,
+      "latitude_deg": 40.617449444444446,
+      "longitude_deg": -74.24459416666667,
+      "runways": [
+        {
+          "designator": "09/27",
+          "length_m": 1261.872,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "09",
+              "latitude_deg": 40.61605239578022,
+              "longitude_deg": -74.25181938267798,
+              "elevation_m": 6.71120746546375,
+              "heading_deg": 75.67533452845406
+            },
+            {
+              "ident": "27",
+              "latitude_deg": 40.61886272984224,
+              "longitude_deg": -74.2373717947317,
+              "elevation_m": 4.956046829517962,
+              "heading_deg": 255.68476117718777
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "MGJ",
+      "icao": "KMGJ",
+      "name": "Orange County",
+      "elevation_m": 112.74552000000001,
+      "latitude_deg": 41.51181166666667,
+      "longitude_deg": -74.26353916666666,
+      "runways": [
+        {
+          "designator": "04/22",
+          "length_m": 1525.8288,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "04",
+              "latitude_deg": 41.50804687386394,
+              "longitude_deg": -74.2681695820712,
+              "elevation_m": 107.06246801328848,
+              "heading_deg": 22.223256051828432
+            },
+            {
+              "ident": "22",
+              "latitude_deg": 41.520764626553074,
+              "longitude_deg": -74.2612556361604,
+              "elevation_m": 115.08518818744338,
+              "heading_deg": 202.22795606171232
+            }
+          ]
+        },
+        {
+          "designator": "08/26",
+          "length_m": 1116.7872,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 41.506260789925804,
+              "longitude_deg": -74.26806066541745,
+              "elevation_m": 107.16090029894112,
+              "heading_deg": 66.22624540844397
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 41.510313763645996,
+              "longitude_deg": -74.25581824523695,
+              "elevation_m": 111.05006755641435,
+              "heading_deg": 246.23439036418839
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "MMU",
+      "icao": "KMMU",
+      "name": "Morristown Muni",
+      "elevation_m": 56.87568,
+      "latitude_deg": 40.79933833333333,
+      "longitude_deg": -74.41488861111112,
+      "runways": [
+        {
+          "designator": "05/23",
+          "length_m": 1828.1904000000002,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "05",
+              "latitude_deg": 40.793112285675726,
+              "longitude_deg": -74.41924344675607,
+              "elevation_m": 54.95379385520873,
+              "heading_deg": 36.10335626083491
+            },
+            {
+              "ident": "23",
+              "latitude_deg": 40.80641370472812,
+              "longitude_deg": -74.40647599899607,
+              "elevation_m": 55.17652689434608,
+              "heading_deg": 216.11179521307528
+            }
+          ]
+        },
+        {
+          "designator": "13/31",
+          "length_m": 1218.2856000000002,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 40.8009466478669,
+              "longitude_deg": -74.42453458764543,
+              "elevation_m": 56.72163015102758,
+              "heading_deg": 113.92752358834987
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 40.796495952970226,
+              "longitude_deg": -74.41133800014974,
+              "elevation_m": 54.991078509409654,
+              "heading_deg": 293.93610424829444
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "MPO",
+      "icao": "KMPO",
+      "name": "Pocono Mountains Rgnl",
+      "elevation_m": 583.75296,
+      "latitude_deg": 41.13769444444444,
+      "longitude_deg": -75.38005555555554,
+      "runways": [
+        {
+          "designator": "05/23",
+          "length_m": 1218.8952000000002,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "05",
+              "latitude_deg": 41.13405464944396,
+              "longitude_deg": -75.381549637135,
+              "elevation_m": 570.9702068931379,
+              "heading_deg": 36.7055035148743
+            },
+            {
+              "ident": "23",
+              "latitude_deg": 41.14285237346319,
+              "longitude_deg": -75.37287291244205,
+              "elevation_m": 583.361070467609,
+              "heading_deg": 216.711160748443
+            }
+          ]
+        },
+        {
+          "designator": "13/31",
+          "length_m": 1524.3048000000001,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 41.14002212217773,
+              "longitude_deg": -75.39054250115896,
+              "elevation_m": 568.0034707794052,
+              "heading_deg": 115.14279114312973
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 41.134189788670426,
+              "longitude_deg": -75.37410969003156,
+              "elevation_m": 570.378308345814,
+              "heading_deg": 295.15362245326963
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N05",
+      "name": "Hackettstown",
+      "elevation_m": 204.216,
+      "latitude_deg": 40.82009916666667,
+      "longitude_deg": -74.85516722222222,
+      "runways": [
+        {
+          "designator": "05/23",
+          "length_m": 670.5600000000001,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "05",
+              "latitude_deg": 40.817728249474534,
+              "longitude_deg": -74.85761564170106,
+              "elevation_m": 192.42033214423154,
+              "heading_deg": 37.998397107841015
+            },
+            {
+              "ident": "23",
+              "latitude_deg": 40.82248652557883,
+              "longitude_deg": -74.85272208093913,
+              "elevation_m": 197.0834673999159,
+              "heading_deg": 218.0015975135963
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N07",
+      "name": "Lincoln Park",
+      "elevation_m": 55.168800000000005,
+      "latitude_deg": 40.947628055555555,
+      "longitude_deg": -74.3145111111111,
+      "runways": [
+        {
+          "designator": "01/19",
+          "length_m": 843.3816,
+          "width_m": 12.192,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "01",
+              "latitude_deg": 40.94385117962439,
+              "longitude_deg": -74.31411039486339,
+              "elevation_m": 54.0,
+              "heading_deg": 355.39295900507454
+            },
+            {
+              "ident": "19",
+              "latitude_deg": 40.95142131956819,
+              "longitude_deg": -74.31491497859174,
+              "elevation_m": 55.0,
+              "heading_deg": 175.39250126119865
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N30",
+      "name": "Cherry Ridge",
+      "elevation_m": 413.6136,
+      "latitude_deg": 41.515591666666666,
+      "longitude_deg": -75.25155972222223,
+      "runways": [
+        {
+          "designator": "18/36",
+          "length_m": 910.1328000000001,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "18",
+              "latitude_deg": 41.519591700629555,
+              "longitude_deg": -75.25279356565096,
+              "elevation_m": 408.20628132698374,
+              "heading_deg": 166.9394088803304
+            },
+            {
+              "ident": "36",
+              "latitude_deg": 41.51160836519884,
+              "longitude_deg": -75.25032967532955,
+              "elevation_m": 401.29971809869687,
+              "heading_deg": 346.9410646284467
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N40",
+      "name": "Sky Manor",
+      "elevation_m": 170.68800000000002,
+      "latitude_deg": 40.56588222222222,
+      "longitude_deg": -74.97930805555556,
+      "runways": [
+        {
+          "designator": "07/25",
+          "length_m": 883.9200000000001,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 40.56356374776716,
+              "longitude_deg": -74.98354619589203,
+              "elevation_m": 166.5734050226114,
+              "heading_deg": 54.23700567236828
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 40.568217082485944,
+              "longitude_deg": -74.97507341548507,
+              "elevation_m": 169.14165289590196,
+              "heading_deg": 234.24250881744317
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N43",
+      "name": "Braden Airpark",
+      "elevation_m": 120.94464,
+      "latitude_deg": 40.74216666666667,
+      "longitude_deg": -75.24294444444445,
+      "runways": [
+        {
+          "designator": "18/36",
+          "length_m": 596.1888,
+          "width_m": 50.292,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "18",
+              "latitude_deg": 40.744770078961544,
+              "longitude_deg": -75.24379951247501,
+              "elevation_m": 118.87801958079744,
+              "heading_deg": 165.9766090881281
+            },
+            {
+              "ident": "36",
+              "latitude_deg": 40.73956096701063,
+              "longitude_deg": -75.24208901159818,
+              "elevation_m": 117.10597804506325,
+              "heading_deg": 345.9777383033647
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N47",
+      "name": "Pottstown Muni",
+      "elevation_m": 77.90688,
+      "latitude_deg": 40.260416666666664,
+      "longitude_deg": -75.67083333333333,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 824.1792,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.25897735714757,
+              "longitude_deg": -75.67530997986583,
+              "elevation_m": 76.5418963366525,
+              "heading_deg": 67.11412774487775
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.261863497045056,
+              "longitude_deg": -75.66638422722194,
+              "elevation_m": 73.64219650257706,
+              "heading_deg": 247.11986294152064
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N51",
+      "name": "Solberg/Hunterdon",
+      "elevation_m": 57.79008,
+      "latitude_deg": 40.58278722222222,
+      "longitude_deg": -74.73670666666666,
+      "runways": [
+        {
+          "designator": "04/22",
+          "length_m": 1706.2704,
+          "width_m": 15.24,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "04",
+              "latitude_deg": 40.574107369638746,
+              "longitude_deg": -74.74046834111469,
+              "elevation_m": 54.29879482152123,
+              "heading_deg": 29.485149430606686
+            },
+            {
+              "ident": "22",
+              "latitude_deg": 40.58748237261657,
+              "longitude_deg": -74.73054806128062,
+              "elevation_m": 46.30072404690772,
+              "heading_deg": 209.49164349926963
+            }
+          ]
+        },
+        {
+          "designator": "10/28",
+          "length_m": 612.648,
+          "width_m": 30.48,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 40.58185051002855,
+              "longitude_deg": -74.74340767601367,
+              "elevation_m": 56.414308541161745,
+              "heading_deg": 80.85050561734144
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 40.58272764945768,
+              "longitude_deg": -74.73626278529039,
+              "elevation_m": 54.3254320538622,
+              "heading_deg": 260.85514902854015
+            }
+          ]
+        },
+        {
+          "designator": "13/31",
+          "length_m": 1049.7312,
+          "width_m": 60.96,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 40.588669317044676,
+              "longitude_deg": -74.74222945374993,
+              "elevation_m": 57.0,
+              "heading_deg": 119.48582779685613
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 40.58401653852194,
+              "longitude_deg": -74.73143778352129,
+              "elevation_m": 46.37086721364417,
+              "heading_deg": 299.4928241720924
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N72",
+      "name": "Warwick Muni",
+      "elevation_m": 164.592,
+      "latitude_deg": 41.287593611111106,
+      "longitude_deg": -74.28709472222222,
+      "runways": [
+        {
+          "designator": "03L/21R",
+          "length_m": 640.08,
+          "width_m": 15.24,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "03L",
+              "latitude_deg": 41.28484617961922,
+              "longitude_deg": -74.28821326541447,
+              "elevation_m": 158.4050278590576,
+              "heading_deg": 16.999234746411407
+            },
+            {
+              "ident": "21R",
+              "latitude_deg": 41.29035774676268,
+              "longitude_deg": -74.28597923354576,
+              "elevation_m": 159.59303564868858,
+              "heading_deg": 197.00075621378514
+            }
+          ]
+        },
+        {
+          "designator": "03R/21L",
+          "length_m": 655.32,
+          "width_m": 8.5344,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "03R",
+              "latitude_deg": 41.28478056558318,
+              "longitude_deg": -74.28823985843746,
+              "elevation_m": 158.310471813824,
+              "heading_deg": 16.999217150444867
+            },
+            {
+              "ident": "21L",
+              "latitude_deg": 41.2904233597539,
+              "longitude_deg": -74.28595263555995,
+              "elevation_m": 159.54145459367206,
+              "heading_deg": 197.0007749256501
+            }
+          ]
+        },
+        {
+          "designator": "08/26",
+          "length_m": 685.8000000000001,
+          "width_m": 24.384,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 41.286395510804134,
+              "longitude_deg": -74.29086424880434,
+              "elevation_m": 160.2775271564409,
+              "heading_deg": 66.99750473431604
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 41.288808303540904,
+              "longitude_deg": -74.28332820503636,
+              "elevation_m": 158.7600615811594,
+              "heading_deg": 247.00249199220121
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N85",
+      "name": "Alexandria",
+      "elevation_m": 146.304,
+      "latitude_deg": 40.58757388888889,
+      "longitude_deg": -75.01942055555556,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 777.24,
+          "width_m": 18.288,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.58570625064646,
+              "longitude_deg": -75.02345676547563,
+              "elevation_m": 139.15694865877174,
+              "heading_deg": 64.46768755459772
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.5887226400382,
+              "longitude_deg": -75.01517259652712,
+              "elevation_m": 146.3799748582142,
+              "heading_deg": 244.473068366161
+            }
+          ]
+        },
+        {
+          "designator": "13/31",
+          "length_m": 549.8592,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 40.5892187513927,
+              "longitude_deg": -75.02241898806759,
+              "elevation_m": 134.57332228338794,
+              "heading_deg": 117.50991994811382
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 40.58693180665508,
+              "longitude_deg": -75.0166592635906,
+              "elevation_m": 140.18145486416287,
+              "heading_deg": 297.5136596859909
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "N87",
+      "name": "Trenton-Robbinsville",
+      "elevation_m": 35.9664,
+      "latitude_deg": 40.21394444444445,
+      "longitude_deg": -74.60177777777777,
+      "runways": [
+        {
+          "designator": "11/29",
+          "length_m": 1303.02,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "11",
+              "latitude_deg": 40.21451421999298,
+              "longitude_deg": -74.60939902745251,
+              "elevation_m": 32.05337997836288,
+              "heading_deg": 95.52351161332324
+            },
+            {
+              "ident": "29",
+              "latitude_deg": 40.213383748809576,
+              "longitude_deg": -74.59416416153802,
+              "elevation_m": 35.071287032626515,
+              "heading_deg": 275.53333454527854
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "P91",
+      "name": "Flying M Aerodrome",
+      "elevation_m": 224.02800000000002,
+      "latitude_deg": 40.73753055555556,
+      "longitude_deg": -75.70541666666666,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 725.4240000000001,
+          "width_m": 30.48,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.736452643674845,
+              "longitude_deg": -75.70946865968654,
+              "elevation_m": 221.79736537695047,
+              "heading_deg": 70.57643771303752
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.738624866400635,
+              "longitude_deg": -75.70136865775429,
+              "elevation_m": 224.97493772672414,
+              "heading_deg": 250.58169596200443
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "PTW",
+      "icao": "KPTW",
+      "name": "Heritage Fld",
+      "elevation_m": 93.93936000000001,
+      "latitude_deg": 40.239555555555555,
+      "longitude_deg": -75.55672222222222,
+      "runways": [
+        {
+          "designator": "10/28",
+          "length_m": 1027.4808,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "10",
+              "latitude_deg": 40.23909652388117,
+              "longitude_deg": -75.56272872051998,
+              "elevation_m": 93.15235130711577,
+              "heading_deg": 84.10622347245035
+            },
+            {
+              "ident": "28",
+              "latitude_deg": 40.240046108010205,
+              "longitude_deg": -75.55071746677544,
+              "elevation_m": 91.20924739944542,
+              "heading_deg": 264.1139683816193
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "RDG",
+      "icao": "KRDG",
+      "name": "Reading Rgnl/Carl A Spaatz Fld",
+      "elevation_m": 104.66832000000002,
+      "latitude_deg": 40.37849861111111,
+      "longitude_deg": -75.96524722222223,
+      "runways": [
+        {
+          "designator": "13/31",
+          "length_m": 1935.48,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "13",
+              "latitude_deg": 40.38358003686877,
+              "longitude_deg": -75.97810402755641,
+              "elevation_m": 104.15929076552462,
+              "heading_deg": 121.26259031929492
+            },
+            {
+              "ident": "31",
+              "latitude_deg": 40.374533702329515,
+              "longitude_deg": -75.95862485481283,
+              "elevation_m": 99.96622349705189,
+              "heading_deg": 301.2753196814155
+            }
+          ]
+        },
+        {
+          "designator": "18/36",
+          "length_m": 1570.0248000000001,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "18",
+              "latitude_deg": 40.38483087091642,
+              "longitude_deg": -75.96266913400882,
+              "elevation_m": 88.19783622051102,
+              "heading_deg": 172.1717547240501
+            },
+            {
+              "ident": "36",
+              "latitude_deg": 40.370824729769666,
+              "longitude_deg": -75.96015149331372,
+              "elevation_m": 103.89297603790001,
+              "heading_deg": 352.1735623223515
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "SMQ",
+      "icao": "KSMQ",
+      "name": "Somerset",
+      "elevation_m": 32.36976,
+      "latitude_deg": 40.62598063888889,
+      "longitude_deg": -74.67003161111111,
+      "runways": [
+        {
+          "designator": "08/26",
+          "length_m": 586.1304,
+          "width_m": 30.48,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "08",
+              "latitude_deg": 40.62633835483337,
+              "longitude_deg": -74.6717520448555,
+              "elevation_m": 28.62852984236425,
+              "heading_deg": 69.31281998513357
+            },
+            {
+              "ident": "26",
+              "latitude_deg": 40.62820229993125,
+              "longitude_deg": -74.665272681904,
+              "elevation_m": 31.25587288908777,
+              "heading_deg": 249.31703912104834
+            }
+          ]
+        },
+        {
+          "designator": "12/30",
+          "length_m": 834.8472,
+          "width_m": 19.812,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "12",
+              "latitude_deg": 40.62692271580992,
+              "longitude_deg": -74.67526990668316,
+              "elevation_m": 25.0,
+              "heading_deg": 108.96666181022685
+            },
+            {
+              "ident": "30",
+              "latitude_deg": 40.62447929916702,
+              "longitude_deg": -74.66594037605584,
+              "elevation_m": 30.813039321258564,
+              "heading_deg": 288.97271759285735
+            }
+          ]
+        },
+        {
+          "designator": "17/35",
+          "length_m": 518.1600000000001,
+          "width_m": 45.72,
+          "surface": "turf",
+          "ends": [
+            {
+              "ident": "17",
+              "latitude_deg": 40.62721571627038,
+              "longitude_deg": -74.67180443379571,
+              "elevation_m": 29.457382006798717,
+              "heading_deg": 161.4903674629618
+            },
+            {
+              "ident": "35",
+              "latitude_deg": 40.622790492973856,
+              "longitude_deg": -74.6698601274014,
+              "elevation_m": 26.6624484568702,
+              "heading_deg": 341.4916093339531
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "TTN",
+      "icao": "KTTN",
+      "name": "Trenton Mercer",
+      "elevation_m": 64.80048000000001,
+      "latitude_deg": 40.276694444444445,
+      "longitude_deg": -74.81347222222222,
+      "runways": [
+        {
+          "designator": "06/24",
+          "length_m": 1830.6288000000002,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "06",
+              "latitude_deg": 40.26976072349299,
+              "longitude_deg": -74.82157840385386,
+              "elevation_m": 48.25003475004481,
+              "heading_deg": 46.4718778136268
+            },
+            {
+              "ident": "24",
+              "latitude_deg": 40.28111378179252,
+              "longitude_deg": -74.80597142758486,
+              "elevation_m": 58.00907424997806,
+              "heading_deg": 226.4819876221801
+            }
+          ]
+        },
+        {
+          "designator": "16/34",
+          "length_m": 1463.04,
+          "width_m": 45.72,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "16",
+              "latitude_deg": 40.28372353194332,
+              "longitude_deg": -74.81797395934707,
+              "elevation_m": 64.19887311773583,
+              "heading_deg": 145.6519946580425
+            },
+            {
+              "ident": "34",
+              "latitude_deg": 40.27284486364423,
+              "longitude_deg": -74.80826856659672,
+              "elevation_m": 52.61153086413535,
+              "heading_deg": 325.6582347929018
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "UKT",
+      "icao": "KUKT",
+      "name": "Quakertown",
+      "elevation_m": 160.05048000000002,
+      "latitude_deg": 40.435138888888886,
+      "longitude_deg": -75.38194444444444,
+      "runways": [
+        {
+          "designator": "11/29",
+          "length_m": 978.408,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "11",
+              "latitude_deg": 40.435833569463036,
+              "longitude_deg": -75.38765098292262,
+              "elevation_m": 159.84416818040037,
+              "heading_deg": 98.85223370933191
+            },
+            {
+              "ident": "29",
+              "latitude_deg": 40.434477069616094,
+              "longitude_deg": -75.37625706222016,
+              "elevation_m": 152.56726011914685,
+              "heading_deg": 278.8596229273717
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "WBW",
+      "icao": "KWBW",
+      "name": "Wilkes-Barre Wyoming Valley",
+      "elevation_m": 165.75024,
+      "latitude_deg": 41.297307499999995,
+      "longitude_deg": -75.85224333333333,
+      "runways": [
+        {
+          "designator": "07/25",
+          "length_m": 1028.7,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 41.294432412183575,
+              "longitude_deg": -75.85615282676979,
+              "elevation_m": 164.96925235922532,
+              "heading_deg": 53.584829512703834
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 41.29993102511421,
+              "longitude_deg": -75.84626774048839,
+              "elevation_m": 164.98556860609423,
+              "heading_deg": 233.59128438472095
+            }
+          ]
+        },
+        {
+          "designator": "09/27",
+          "length_m": 668.4264000000001,
+          "width_m": 30.48,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "09",
+              "latitude_deg": 41.296854385065856,
+              "longitude_deg": -75.85772916095365,
+              "elevation_m": 164.9870945343956,
+              "heading_deg": 77.17939852506434
+            },
+            {
+              "ident": "27",
+              "latitude_deg": 41.29818963561945,
+              "longitude_deg": -75.84994746406258,
+              "elevation_m": 165.14682514419042,
+              "heading_deg": 257.1845118989251
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ident": "XLL",
+      "icao": "KXLL",
+      "name": "Allentown Queen City Muni",
+      "elevation_m": 121.6152,
+      "latitude_deg": 40.57027777777778,
+      "longitude_deg": -75.48830555555556,
+      "runways": [
+        {
+          "designator": "07/25",
+          "length_m": 1203.96,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "07",
+              "latitude_deg": 40.56657756312468,
+              "longitude_deg": -75.49428252543989,
+              "elevation_m": 117.00722884490112,
+              "heading_deg": 58.24194892564824
+            },
+            {
+              "ident": "25",
+              "latitude_deg": 40.57228317568659,
+              "longitude_deg": -75.48219360496385,
+              "elevation_m": 117.1326597130678,
+              "heading_deg": 238.24976642075276
+            }
+          ]
+        },
+        {
+          "designator": "15/33",
+          "length_m": 963.168,
+          "width_m": 22.86,
+          "surface": "asphalt",
+          "ends": [
+            {
+              "ident": "15",
+              "latitude_deg": 40.57444148124561,
+              "longitude_deg": -75.49241302504363,
+              "elevation_m": 117.00542875220818,
+              "heading_deg": 135.02554967097248
+            },
+            {
+              "ident": "33",
+              "latitude_deg": 40.568305369345524,
+              "longitude_deg": -75.48437410559924,
+              "elevation_m": 121.39413898977097,
+              "heading_deg": 315.0308096722807
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,72 @@
     "description": "Start on the runway or in the air, in SI units.",
     "input_schema": {
       "$defs": {
+        "AirInput": {
+          "additionalProperties": false,
+          "properties": {
+            "air": {
+              "$ref": "#/$defs/AirportAirStart"
+            }
+          },
+          "required": [
+            "air"
+          ],
+          "type": "object"
+        },
+        "AirportAirStart": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "bearing_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "height_m": {
+              "description": "Height above airport elevation.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "airport",
+            "distance_m",
+            "bearing_deg",
+            "height_m",
+            "airspeed_mps",
+            "heading_rad"
+          ],
+          "type": "object"
+        },
+        "AirportRunwayStart": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "airport",
+            "end"
+          ],
+          "type": "object"
+        },
         "ResetStart": {
           "description": "Start on the default runway or in the air above its threshold.",
           "oneOf": [
@@ -17,6 +83,70 @@
               },
               "required": [
                 "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "airport_runway",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "end"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "airspeed_mps": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "bearing_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "distance_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "height_m": {
+                  "description": "Height above airport elevation.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airport_air",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "distance_m",
+                "bearing_deg",
+                "height_m",
+                "airspeed_mps",
+                "heading_rad"
               ],
               "type": "object"
             },
@@ -51,6 +181,31 @@
                 "heading_rad"
               ],
               "type": "object"
+            }
+          ]
+        },
+        "RunwayInput": {
+          "additionalProperties": false,
+          "properties": {
+            "runway": {
+              "$ref": "#/$defs/AirportRunwayStart"
+            }
+          },
+          "required": [
+            "runway"
+          ],
+          "type": "object"
+        },
+        "StartInput": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResetStart"
+            },
+            {
+              "$ref": "#/$defs/RunwayInput"
+            },
+            {
+              "$ref": "#/$defs/AirInput"
             }
           ]
         },
@@ -114,7 +269,7 @@
           "type": "boolean"
         },
         "start": {
-          "$ref": "#/$defs/ResetStart"
+          "$ref": "#/$defs/StartInput"
         },
         "weather": {
           "$ref": "#/$defs/Weather",
@@ -475,10 +630,24 @@
               "format": "double",
               "type": "number"
             },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
               "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
@@ -1000,6 +1169,27 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "altitude_msl_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "latitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
             "null"
           ]
         },
@@ -1930,10 +2120,24 @@
           "format": "double",
           "type": "number"
         },
+        "latitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "load_factor_g": {
           "description": "Load factor along body z, g (1 in level flight).",
           "format": "double",
           "type": "number"
+        },
+        "longitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
         },
         "on_ground": {
           "description": "True while any wheel touches the ground.",
@@ -2616,10 +2820,24 @@
               "format": "double",
               "type": "number"
             },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
               "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
@@ -3433,10 +3651,24 @@
               "format": "double",
               "type": "number"
             },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
               "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
@@ -3958,6 +4190,27 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "altitude_msl_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "latitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
             "null"
           ]
         },
@@ -7722,10 +7975,24 @@
               "format": "double",
               "type": "number"
             },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
             "load_factor_g": {
               "description": "Load factor along body z, g (1 in level flight).",
               "format": "double",
               "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "on_ground": {
               "description": "True while any wheel touches the ground.",
@@ -8250,6 +8517,27 @@
             "null"
           ]
         },
+        "altitude_msl_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "latitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude_deg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
         "paused": {
           "type": "boolean"
         },
@@ -8279,6 +8567,260 @@
         "world"
       ],
       "title": "StateOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "world.airports",
+    "description": "List active region airports and runways, optionally nearest first.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "nearest_to_m": {
+          "default": null,
+          "description": "Optional local north/east position; results are ordered by airport distance.",
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "title": "AirportQuery",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Airport": {
+          "additionalProperties": false,
+          "properties": {
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "icao": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ident": {
+              "type": "string"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            },
+            "runways": {
+              "items": {
+                "$ref": "#/$defs/AirportRunway"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "ident",
+            "name",
+            "elevation_m",
+            "latitude_deg",
+            "longitude_deg",
+            "runways"
+          ],
+          "type": "object"
+        },
+        "AirportRunway": {
+          "additionalProperties": false,
+          "properties": {
+            "designator": {
+              "type": "string"
+            },
+            "ends": {
+              "items": {
+                "$ref": "#/$defs/RunwayEnd"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "surface": {
+              "$ref": "#/$defs/RunwaySurface"
+            },
+            "width_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "designator",
+            "length_m",
+            "width_m",
+            "surface",
+            "ends"
+          ],
+          "type": "object"
+        },
+        "RunwayEnd": {
+          "additionalProperties": false,
+          "properties": {
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "ident": {
+              "type": "string"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "ident",
+            "latitude_deg",
+            "longitude_deg",
+            "elevation_m",
+            "heading_deg"
+          ],
+          "type": "object"
+        },
+        "RunwaySurface": {
+          "enum": [
+            "asphalt",
+            "concrete",
+            "turf",
+            "gravel",
+            "water",
+            "other"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "airports": {
+          "items": {
+            "$ref": "#/$defs/Airport"
+          },
+          "type": "array"
+        },
+        "attribution": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "attribution",
+        "airports"
+      ],
+      "title": "AirportList",
+      "type": "object"
+    }
+  },
+  {
+    "name": "world.geodetic",
+    "description": "Convert local north/east metres and WGS84 latitude/longitude in the active region.",
+    "input_schema": {
+      "$defs": {
+        "GeographicCoordinate": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "LocalCoordinate": {
+          "additionalProperties": false,
+          "properties": {
+            "east_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "north_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "north_m",
+            "east_m"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LocalCoordinate"
+        },
+        {
+          "$ref": "#/$defs/GeographicCoordinate"
+        }
+      ],
+      "title": "Geodetic",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "east_m": {
+          "format": "double",
+          "type": "number"
+        },
+        "latitude_deg": {
+          "format": "double",
+          "type": "number"
+        },
+        "longitude_deg": {
+          "format": "double",
+          "type": "number"
+        },
+        "north_m": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "north_m",
+        "east_m",
+        "latitude_deg",
+        "longitude_deg"
+      ],
+      "title": "Coordinate",
       "type": "object"
     }
   }

@@ -1,0 +1,6 @@
+{"type":"FeatureCollection","features":[
+  {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0.5,0.49991],[0.509,0.49991],[0.509,0.50009],[0.5,0.50009],[0.5,0.49991]]]},"properties":{"AIRPORT_ID":"public-field","DESIGNATOR":"09/27","LENGTH":3287,"WIDTH":65.6,"DIM_UOM":"FT","COMP_CODE":"ASPH"}},
+  {"type":"Feature","geometry":null,"properties":{"AIRPORT_ID":"public-field","DESIGNATOR":"H1"}},
+  {"type":"Feature","geometry":null,"properties":{"AIRPORT_ID":"private-field","DESIGNATOR":"01/19"}},
+  {"type":"Feature","geometry":null,"properties":{"AIRPORT_ID":"public-field","DESIGNATOR":"18/36","COMP_CODE":"WATER"}}
+]}

@@ -35,6 +35,7 @@ fn region() -> Region {
         licence: String::new(),
         attribution: String::new(),
         tiles: vec![],
+        airports: None,
     }
 }
 #[test]

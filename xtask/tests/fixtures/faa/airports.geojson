@@ -1,0 +1,5 @@
+{"type":"FeatureCollection","features":[
+  {"type":"Feature","geometry":{"type":"Point","coordinates":[0.5045,0.5]},"properties":{"GLOBAL_ID":"public-field","IDENT":"T01","ICAO_ID":null,"NAME":"Example Field","LATITUDE":"00-30-00.0000N","LONGITUDE":"000-30-16.2000E","ELEVATION":500,"TYPE_CODE":"AD","PRIVATEUSE":0}},
+  {"type":"Feature","geometry":null,"properties":{"GLOBAL_ID":"private-field","TYPE_CODE":"AD","PRIVATEUSE":1}},
+  {"type":"Feature","geometry":null,"properties":{"GLOBAL_ID":"heliport","TYPE_CODE":"HP","PRIVATEUSE":0}}
+]}

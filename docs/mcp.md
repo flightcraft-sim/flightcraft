@@ -227,3 +227,29 @@ an array of `{id, class}` memberships, empty when outside every loaded volume. T
 for worlds without airspace. SFC floors follow terrain height; ceilings are exclusive. STD limits
 use nominal MSL height. See [the data and rendering reference](airspace.md) for dataset coverage,
 limits, attribution, and offline conversion instructions.
+## Geographic regions and airports
+
+`world_geodetic` (`world.geodetic`) accepts either `{"north_m":0,"east_m":0}` or
+`{"latitude_deg":40.97,"longitude_deg":-75.0}` in the active region. It returns `north_m`,
+`east_m`, `latitude_deg`, and `longitude_deg`. Built-in worlds have no geodetic origin and return
+an error. Local coordinates are bounded to ±250 km.
+
+`world_airports` (`world.airports`) accepts `{}` or `{"nearest_to_m":[0,0]}`. It returns the active
+region's airport catalogue and its attribution, optionally sorted by distance from a local
+position. Airports contain runway dimensions, surfaces, and endpoint coordinates, elevations,
+and true headings. Built-in worlds return an empty catalogue.
+
+`sim_reset` also accepts `{"world":"new-york","start":{"runway":{"airport":"1N7","end":"07"}}}`.
+This parks at the selected threshold and aligns with its centreline. For an airport-relative air
+start, use `{"world":"new-york","start":{"air":{"airport":"JFK","distance_m":5000,
+"bearing_deg":220,"height_m":600,"airspeed_mps":45,"heading_rad":0.7}}}`. Distance is horizontal,
+bearing is true degrees clockwise from north, height is metres above airport elevation, and
+heading is a local grid heading in radians. Airport identifiers may be FAA or ICAO idents.
+Existing `kind` starts remain supported, including the air start's absolute MSL altitude.
+Invalid starts leave the active flight intact. `sim_state` and its readout include optional
+`latitude_deg` and `longitude_deg`, null without an active geographic position. The state output
+also includes optional `altitude_msl_m`; the readout retains its always-available MSL altitude.
+See [terrain and data import](terrain.md) for catalogue schemas, provenance, and offline loading.
+
+The same commands support `eastern-pa` (Eastern Pennsylvania and New Jersey), including
+`KABE`, `KMPO`, `KAVP`, and `KRDG`. Both regions share the Blairstown runway 07 origin.

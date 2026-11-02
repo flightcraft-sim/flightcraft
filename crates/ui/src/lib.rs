@@ -87,6 +87,7 @@ pub struct FlightCraftApp {
     compact_panel: bool,
     slip_ball: instruments::SlipBall,
     bindings_json: String,
+    airport_search: String,
     glance_origin: Option<[f64; 2]>,
     binding_message: Option<String>,
     script: script::Script,
@@ -141,6 +142,7 @@ impl FlightCraftApp {
         pack_errors.extend(session.load_regions_directory(std::path::Path::new(
             options.regions.directory.as_deref().unwrap_or("assets/terrain"),
         )));
+        let initial_region = options.regions.fetched.first().map(|w| w.choice());
         for world in options.regions.fetched {
             if let Err(e) = session.install_region(world) {
                 pack_errors.push(e.to_string());
@@ -164,6 +166,14 @@ impl FlightCraftApp {
                 pack_errors.insert(0, previous);
             }
             error = Some(pack_errors.join("\n"));
+        }
+        if let Some(world) = initial_region {
+            session.run(flightcraft_control::Reset {
+                world,
+                start: flightcraft_control::ResetStart::Runway {},
+                weather: None,
+                paused: Some(false),
+            })?;
         }
         session.enable_app();
         session.run(flightcraft_control::Resume {})?;
@@ -190,6 +200,7 @@ impl FlightCraftApp {
                 == Some("true"),
             slip_ball: instruments::SlipBall::default(),
             bindings_json,
+            airport_search: String::new(),
             glance_origin: None,
             binding_message: None,
             script: options.script.unwrap_or_default(),
@@ -505,6 +516,41 @@ impl eframe::App for FlightCraftApp {
                         }))
                         .on_hover_text(attribution);
                     }
+                    if self.session.sim().world().region().is_some() {
+                        ui.menu_button("Start", |ui| {
+                            ui.label("Airport or name");
+                            ui.text_edit_singleline(&mut self.airport_search);
+                            match self.session.run(flightcraft_control::AirportQuery { nearest_to_m: None }) {
+                                Ok(list) => {
+                                    let search = self.airport_search.to_lowercase();
+                                    egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
+                                        for airport in list.airports.iter().filter(|a| a.ident.to_lowercase().contains(&search) || a.name.to_lowercase().contains(&search) || a.icao.as_deref().is_some_and(|s|s.to_lowercase().contains(&search))) {
+                                            ui.menu_button(format!("{} · {}", airport.ident, airport.name), |ui| {
+                                                for runway in &airport.runways {
+                                                    for end in &runway.ends {
+                                                        if ui.button(format!("Runway {} · {:.0} × {:.0} m", end.ident, runway.length_m, runway.width_m)).clicked() {
+                                                            match self.session.run(flightcraft_control::Reset {
+                                                                world: self.session.sim().world().choice(),
+                                                                start: flightcraft_control::ResetStart::AirportRunway { airport: airport.ident.clone(), end: end.ident.clone() },
+                                                                weather: Some(self.session.sim().weather()), paused: Some(self.paused),
+                                                            }) {
+                                                                Ok(_) => { self.clock.reset(); self.slip_ball = instruments::SlipBall::default(); self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
+                                                                Err(e) => self.error = Some(e.to_string()),
+                                                            }
+                                                            ui.close();
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    });
+                                    ui.separator();
+                                    ui.label(&list.attribution);
+                                }
+                                Err(e) => self.error = Some(e.to_string()),
+                            }
+                        });
+                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
@@ -577,6 +623,15 @@ impl eframe::App for FlightCraftApp {
                             .size(10.0)
                             .color(theme::MUTED),
                     );
+                    if let (Some(lat), Some(lon)) = (readout.latitude_deg, readout.longitude_deg) {
+                        ui.separator();
+                        ui.label(
+                            RichText::new(format!("{lat:.5}°, {lon:.5}°"))
+                                .monospace()
+                                .size(10.0)
+                                .color(theme::MUTED),
+                        );
+                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(
                             RichText::new(self.session.sim().world().attribution())
@@ -642,12 +697,7 @@ impl eframe::App for FlightCraftApp {
                 painter.text(
                     rect.left_top() + egui::vec2(0.0, 20.0),
                     Align2::LEFT_TOP,
-                    format!(
-                        "RUNWAY {:03.0}   /   {:.0} × {:.0} m",
-                        self.session.sim().world().runway().heading_deg,
-                        self.session.sim().world().runway().length_m,
-                        self.session.sim().world().runway().width_m
-                    ),
+                    runway_label(self.session.sim().world(), self.session.sim().state().position_m),
                     FontId::monospace(10.0),
                     theme::BACKGROUND,
                 );
@@ -775,4 +825,33 @@ fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bo
         query.nearest.is_some_and(|b| b.warning),
         airspace.attribution.clone(),
     ))
+}
+
+/// Identify the nearest threshold in a region; built-in worlds keep their original readout.
+fn runway_label(world: &flightcraft_control::TerrainWorld, [n, e, _]: [f64; 3]) -> String {
+    if let Some(catalogue) = world.airports() {
+        let nearest = catalogue
+            .airports
+            .iter()
+            .flat_map(|a| a.runways.iter().map(move |r| (a, r)))
+            .zip(world.runway_strips())
+            .flat_map(|((a, r), strip)| {
+                strip.ends_m.iter().zip(&r.ends).map(move |([rn, re], end)| {
+                    let distance = (n - rn) * (n - rn) + (e - re) * (e - re);
+                    (distance, a, r, end)
+                })
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0));
+        if let Some((_, airport, runway, end)) = nearest {
+            return format!(
+                "NEAREST {} / {}   ·   {:.0} × {:.0} m",
+                airport.ident, end.ident, runway.length_m, runway.width_m
+            );
+        }
+    }
+    let runway = world.runway();
+    format!(
+        "RUNWAY {:03.0}   /   {:.0} × {:.0} m",
+        runway.heading_deg, runway.length_m, runway.width_m
+    )
 }

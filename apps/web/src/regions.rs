@@ -1,7 +1,7 @@
 //! Static region manifests supplied with repeatable ?region= URLs, like aircraft packs.
 use flightcraft_control::{
-    MAX_AIRSPACE_BYTES, MAX_REGION_BYTES, MAX_REGION_TILE_BYTES, MAX_REGIONS, MAX_TERRAIN_BYTES, Region,
-    RegionOptions, attach_region_airspace, region_world,
+    MAX_AIRPORT_BYTES, MAX_AIRSPACE_BYTES, MAX_REGION_BYTES, MAX_REGION_TILE_BYTES, MAX_REGIONS,
+    MAX_TERRAIN_BYTES, Region, RegionOptions, attach_region_airspace, region_world_with_airports,
 };
 use wasm_bindgen::JsValue;
 
@@ -60,7 +60,14 @@ async fn load_one(
         let tile_url = web_sys::Url::new_with_base(name, &url.href())?;
         tiles.push(crate::packs::fetch_bytes(window, &tile_url.href(), MAX_REGION_TILE_BYTES).await?);
     }
-    let world = region_world(region, tiles).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let airports = if let Some(name) = &region.airports {
+        let airport_url = web_sys::Url::new_with_base(name, &url.href())?;
+        Some(crate::packs::fetch_bytes(window, &airport_url.href(), MAX_AIRPORT_BYTES).await?)
+    } else {
+        None
+    };
+    let world =
+        region_world_with_airports(region, tiles, airports).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let airspace_url = web_sys::Url::new_with_base("airspace.json", &url.href())?;
     if let Some(bytes) =
         crate::packs::fetch_optional_bytes(window, &airspace_url.href(), MAX_AIRSPACE_BYTES).await?

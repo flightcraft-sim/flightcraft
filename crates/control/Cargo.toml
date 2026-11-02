@@ -13,6 +13,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+libm.workspace = true
 flightcraft-world.workspace = true
 flightcraft-aero.workspace = true
 flightcraft-sim.workspace = true

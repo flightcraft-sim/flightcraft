@@ -66,6 +66,7 @@ fn synthetic_region() -> (flightcraft_world::Region, Vec<flightcraft_world::Heig
         source: "SRTM".into(),
         licence: "public domain".into(),
         attribution: SRTM_ATTRIBUTION.into(),
+        airports: None,
         tiles: (0..4).map(|i| format!("{i:03}.fcht")).collect(),
     };
     let mut tiles = Vec::new();

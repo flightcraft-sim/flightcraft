@@ -3,6 +3,9 @@
 
 pub mod airspace;
 pub use airspace::*;
+mod airports;
+pub mod geo;
+pub use airports::*;
 mod region;
 pub use region::*;
 pub mod srtm;

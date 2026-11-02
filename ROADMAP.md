@@ -35,9 +35,9 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 15 | Aircraft file format, versioned, hostile-input safe (done) | 3 |
 | 16 | Constant wind, then gusts and turbulence (done) | 4 |
 | 17 | Engine failure and other failures as commands (done) | 6 |
-| 18 | Terrain tiles from SRTM for one region, streamed | 7, decision on data hosting |
+| 18 | Terrain Tiles elevation and FAA airports for the New York area and Eastern Pennsylvania and New Jersey, with WGS84 transverse Mercator, geographic commands, runway starts, and static browser loading (done) | 7, decision on data hosting |
+| 19 | FAA public airports and runway markings (done); OpenStreetMap features remain planned | 18 |
 | 18a | FAA controlled airspace sidecars, New York and eastern Pennsylvania shelves, volume queries, curtains, and status warnings (done) | 18 |
-| 19 | OpenStreetMap airfields and features with attribution in the app | 18 |
 | 20 | A second fictional aircraft | 15 |
 | 21 | Cockpit view (done) and a fuller instrument panel | 8 |
 | 22 | SolidCraft export format agreed and specified | decision with SolidCraft |

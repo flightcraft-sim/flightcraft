@@ -28,7 +28,11 @@ to watch a scripted takeoff).
 - Two aircraft, the Corvid trainer and the Larrow aerobatic taildragger, picked in the header.
 - Terrain from height tiles: the original Training Valley world, with ground contact on slopes.
 
-Not yet: real-world elevation, clouds, or the systems behind the instruments. The plan is in
+- Real public-domain elevation, FAA airports, and selectable runway starts in the
+  [New York area](https://flightcraft-sim.github.io/flightcraft/?region=terrain/new-york/region.json) and
+  [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json).
+
+Not yet: clouds. The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 
 ## Building

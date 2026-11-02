@@ -1,67 +1,10 @@
-//! SRTM decoding, a spherical local tangent plane, and deterministic resampling.
+//! SRTM decoding, WGS84 transverse Mercator, and deterministic resampling.
 use crate::{HeightTile, Region, SRTM_ATTRIBUTION, Surface, TerrainError};
 
 pub const MAX_HGT_BYTES: usize = 3601 * 3601 * 2;
 pub const MAX_HGT_TOTAL_BYTES: usize = 256 * 1024 * 1024;
-const RADIUS_M: f64 = 6_371_008.8;
 const VOID: i16 = i16::MIN;
-
-/// Orthographic projection onto the tangent plane of the IUGG mean-radius sphere.
-/// Horizontal N/E only; the simulator retains MSL height as its independent vertical coordinate.
-#[derive(Clone, Copy, Debug)]
-pub struct LocalProjection {
-    lat: f64,
-    lon: f64,
-}
-impl LocalProjection {
-    pub fn new(latitude_deg: f64, longitude_deg: f64) -> Result<Self, TerrainError> {
-        if !latitude_deg.is_finite()
-            || latitude_deg.abs() > 85.0
-            || !longitude_deg.is_finite()
-            || !(-180.0..180.0).contains(&longitude_deg)
-        {
-            return Err(TerrainError("projection origin outside supported bounds"));
-        }
-        Ok(Self {
-            lat: latitude_deg.to_radians(),
-            lon: longitude_deg.to_radians(),
-        })
-    }
-    pub fn project(&self, latitude_deg: f64, longitude_deg: f64) -> Result<[f64; 2], TerrainError> {
-        if !latitude_deg.is_finite()
-            || latitude_deg.abs() > 90.0
-            || !longitude_deg.is_finite()
-            || !(-180.0..=180.0).contains(&longitude_deg)
-        {
-            return Err(TerrainError("invalid geographic coordinate"));
-        }
-        let (s, c) = libm::sincos(latitude_deg.to_radians());
-        let (s0, c0) = libm::sincos(self.lat);
-        let d = longitude_deg.to_radians() - self.lon;
-        if s0 * s + c0 * c * libm::cos(d) < 0.99 {
-            return Err(TerrainError("coordinate too far from projection origin"));
-        }
-        Ok([
-            RADIUS_M * (c0 * s - s0 * c * libm::cos(d)),
-            RADIUS_M * c * libm::sin(d),
-        ])
-    }
-    pub fn unproject(&self, north: f64, east: f64) -> Result<[f64; 2], TerrainError> {
-        if !north.is_finite() || !east.is_finite() || north.abs() > 50000.0 || east.abs() > 50000.0 {
-            return Err(TerrainError("local coordinate outside 50 km bounds"));
-        }
-        let n = north / RADIUS_M;
-        let e = east / RADIUS_M;
-        let up = libm::sqrt(1.0 - n * n - e * e);
-        let (s, c) = libm::sincos(self.lat);
-        let lat = libm::asin(n * c + up * s);
-        let lon = self.lon + libm::atan2(e, up * c - n * s);
-        Ok([
-            lat.to_degrees(),
-            (lon.to_degrees() + 180.0).rem_euclid(360.0) - 180.0,
-        ])
-    }
-}
+pub use crate::geo::LocalProjection;
 
 #[derive(Debug)]
 pub struct HgtTile {
@@ -238,9 +181,15 @@ impl Srtm {
     pub fn import(&self, input: &Region) -> Result<(Region, Vec<HeightTile>), TerrainError> {
         input.validate()?;
         let mut region = input.clone();
-        region.source = "SRTM".into();
-        region.licence = "public domain".into();
-        region.attribution = SRTM_ATTRIBUTION.into();
+        if region.source.is_empty() {
+            region.source = "SRTM".into();
+        }
+        if region.licence.is_empty() {
+            region.licence = "public domain".into();
+        }
+        if region.attribution.is_empty() {
+            region.attribution = SRTM_ATTRIBUTION.into();
+        }
         region.tiles.clear();
         let projection = LocalProjection::new(region.origin.latitude_deg, region.origin.longitude_deg)?;
         let mut tiles = Vec::new();
@@ -260,7 +209,11 @@ impl Srtm {
                         let [north, east] = local(i, j);
                         let [lat, lon] = projection.unproject(north, east)?;
                         let original = self.height(lat, lon)?;
-                        samples.push(runway_height(&region, north, east, original) as f32);
+                        samples.push(if region.airports.is_some() {
+                            original
+                        } else {
+                            runway_height(&region, north, east, original)
+                        } as f32);
                     }
                 }
                 tiles.push(HeightTile::new(

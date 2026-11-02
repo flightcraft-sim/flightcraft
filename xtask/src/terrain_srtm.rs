@@ -9,7 +9,7 @@ use std::{
 };
 const MAX_ARCHIVE_BYTES: usize = MAX_HGT_BYTES + 1024 * 1024;
 
-fn bounded(path: &Path, max: usize) -> Result<Vec<u8>, String> {
+pub(super) fn bounded(path: &Path, max: usize) -> Result<Vec<u8>, String> {
     let metadata = std::fs::symlink_metadata(path).map_err(|e| e.to_string())?;
     if !metadata.is_file() || metadata.len() > max as u64 {
         return Err("requires a bounded regular file without symlinks".into());

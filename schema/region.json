@@ -3,6 +3,13 @@
   "title": "Region",
   "type": "object",
   "properties": {
+    "airports": {
+      "description": "Optional adjacent airport catalogue; only the canonical basename is accepted.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "attribution": {
       "type": "string",
       "default": ""

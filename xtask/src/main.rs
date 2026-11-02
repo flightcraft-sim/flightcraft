@@ -8,6 +8,7 @@ use std::process::{Command, ExitCode};
 use syn::visit::Visit;
 
 mod airspace_faa;
+mod navdata_faa;
 mod terrain_srtm;
 mod web;
 
@@ -81,6 +82,7 @@ fn main() -> ExitCode {
         "terrain" => terrain(),
         "terrain-srtm" => terrain_srtm::run(),
         "airspace-faa" => airspace_faa::run(),
+        "navdata-faa" => navdata_faa::run(),
         "aircraft" => migrate_aircraft(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
@@ -152,6 +154,10 @@ fn schemas(check: bool) -> Result<(), String> {
         (
             "airspace.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::AirspaceFile)),
+        ),
+        (
+            "airports.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Airports)),
         ),
         (
             "region.json",

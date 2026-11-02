@@ -125,8 +125,9 @@ Later, from open data only, each with a row in ATTRIBUTION.md:
 
 | Data | Source | Licence | Status |
 |---|---|---|---|
-| Elevation | SRTM (NASA/USGS) | Public domain | Offline importer available; region selection pending |
+| Elevation | SRTM (NASA/USGS) | Public domain | Bundled New York area and Eastern Pennsylvania and New Jersey regions; offline importer and region selection available |
 | Elevation | Copernicus DEM GLO-30 | Copernicus DEM licence, free with attribution; terms to be checked before use | Open question |
+| Public airports and runways | FAA ADDS | Public domain | Bundled in both regions, with endpoint starts and markings |
 | Airfields, roads, water, land use | OpenStreetMap | ODbL 1.0, with "© OpenStreetMap contributors" shown in the app | Planned |
 
 Terrain streams in tiles. The browser build fetches tiles from a static host or works from tiles

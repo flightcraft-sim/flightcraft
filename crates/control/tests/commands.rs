@@ -47,7 +47,8 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
         ),
     ];
     let registry = Session::commands();
-    assert_eq!(registry.len(), examples.len() + 3);
+    // App and geographic commands are exercised with their own session setup.
+    assert_eq!(registry.len(), examples.len() + 5);
     for command in &registry {
         for schema in [&command.input_schema, &command.output_schema] {
             jsonschema::meta::validate(schema).unwrap();

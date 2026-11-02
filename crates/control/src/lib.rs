@@ -181,9 +181,13 @@ impl Session {
     }
 
     fn snapshot(&self) -> StateOutput {
+        let readout = self.sim.readout();
         StateOutput {
+            latitude_deg: readout.latitude_deg,
+            longitude_deg: readout.longitude_deg,
+            altitude_msl_m: readout.latitude_deg.map(|_| readout.altitude_msl_m),
             state: *self.sim.state(),
-            readout: self.sim.readout(),
+            readout,
             systems: self.sim.systems().clone(),
             paused: self.paused,
             rate: self.rate,
@@ -218,6 +222,9 @@ impl Session {
 /// Full simulation state in SI units, plus app playback settings.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct StateOutput {
+    pub latitude_deg: Option<f64>,
+    pub longitude_deg: Option<f64>,
+    pub altitude_msl_m: Option<f64>,
     pub state: State,
     pub readout: Readout,
     pub systems: flightcraft_sim::systems::SystemsState,
@@ -240,6 +247,11 @@ pub struct Playback {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ResetStart {
     Runway {},
+    AirportRunway {
+        airport: String,
+        end: String,
+    },
+    AirportAir(AirportAirStart),
     Air {
         #[schemars(range(min = 0))]
         height_m: f64,
@@ -250,12 +262,42 @@ pub enum ResetStart {
     },
 }
 
+#[derive(Deserialize, JsonSchema)]
+#[serde(untagged)]
+enum StartInput {
+    Existing(ResetStart),
+    Runway(RunwayInput),
+    Air(AirInput),
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct RunwayInput {
+    runway: AirportRunwayStart,
+}
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct AirInput {
+    air: AirportAirStart,
+}
+fn deserialize_start<'de, D: serde::Deserializer<'de>>(d: D) -> Result<ResetStart, D::Error> {
+    Ok(match StartInput::deserialize(d)? {
+        StartInput::Existing(s) => s,
+        StartInput::Runway(s) => ResetStart::AirportRunway {
+            airport: s.runway.airport,
+            end: s.runway.end,
+        },
+        StartInput::Air(s) => ResetStart::AirportAir(s.air),
+    })
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Reset {
     /// World data is part of the start. Omission retains the original flat world.
     #[serde(default)]
     pub world: WorldChoice,
+    #[serde(deserialize_with = "deserialize_start")]
+    #[schemars(with = "StartInput")]
     pub start: ResetStart,
     /// Omission starts in calm air. Supplying weather makes its seed part of the start.
     #[serde(default, deserialize_with = "provided")]
@@ -273,7 +315,12 @@ impl Command for Reset {
     type Output = StateOutput;
 
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
+        let world = session.resolve_world(self.world)?;
         let start = match self.start {
+            ResetStart::AirportRunway { airport, end } => {
+                regions::runway_start(&world, AirportRunwayStart { airport, end })?
+            }
+            ResetStart::AirportAir(s) => regions::air_start(&world, s)?,
             ResetStart::Runway {} => Start::Runway,
             ResetStart::Air {
                 height_m,
@@ -300,7 +347,7 @@ impl Command for Reset {
             &start,
             session.selected_aircraft.clone(),
             self.weather.unwrap_or_default(),
-            session.resolve_world(self.world)?,
+            world,
         )?;
         if let Some(configuration) = &session.selected_configuration {
             replacement.configure_systems(configuration)?;
@@ -563,7 +610,9 @@ registry!(
     ComputeWeightBalance,
     SetCamera,
     AppScreenshot,
-    Wait
+    Wait,
+    AirportQuery,
+    Geodetic
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.
