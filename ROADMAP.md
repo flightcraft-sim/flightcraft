@@ -48,3 +48,5 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 27 | Contributor guides and agent skills: how to contribute an aircraft, a region, or an instrument skin, written so a coding agent told "contribute to FlightCraft" knows what to do | 26, instrument modules |
 | 28 | Issue claims: `/claim` and `/unclaim`, a draft PR referencing an issue claims it, the lowest-numbered PR wins, and a daily sweep frees stale claims | 27 |
 | 29 | External hardware and home-built panels: HID yokes and quadrants with device profiles, a device protocol for custom boards, layouts on extra screens, and physical panels with cut-template export ([spec](docs/hardware-and-panels.md)) | 21 |
+| 30 | Installed autopilots: wing leveler, two-axis legacy, and digital two-axis with flight director, envelope protection, and mode annunciation | 21 |
+| 31 | The crew: a deterministic virtual pilot, watching, demonstrating, and instructing modes, intercom and kneeboard instead of a chat box, ACS-graded lessons, and an optional AI link ([spec](docs/crew.md)) | 30 |
