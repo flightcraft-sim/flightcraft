@@ -125,10 +125,12 @@ jobs:
           cp "target/release/$mcp" "$out/"
           cp -R assets/terrain "$out/assets/"
           cp LICENSE NOTICE ATTRIBUTION.md README.md "$out/"
+          # A tar keeps the executable bit, which artifact zips drop.
+          tar czf "$out.tar.gz" "$out"
       - uses: actions/upload-artifact@v4
         with:
           name: flightcraft-${{ matrix.target }}
-          path: flightcraft-${{ matrix.target }}
+          path: flightcraft-${{ matrix.target }}.tar.gz
           retention-days: 30
 
   golden-wasm:
