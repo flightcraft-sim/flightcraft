@@ -57,6 +57,11 @@ pub fn install(ctx: &egui::Context) {
 
 pub fn scene() -> Palette {
     Palette {
+        airspace_b: [0.12, 0.40, 1.0, 0.82],
+        airspace_c: [0.85, 0.12, 0.68, 0.82],
+        airspace_d: [0.12, 0.40, 1.0, 0.70],
+        airspace_e: [0.85, 0.12, 0.68, 0.70],
+        airspace_mode_c: [0.65, 0.68, 0.71, 0.22],
         sky_top: [0.24, 0.48, 0.68, 1.0],
         sky_horizon: [0.76, 0.84, 0.85, 1.0],
         ground: [0.43, 0.53, 0.34, 1.0],

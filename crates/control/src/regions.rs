@@ -1,8 +1,13 @@
 //! Native and browser transports install immutable, validated terrain before reset.
 use crate::{Command, CommandError, Session, WorldChoice};
 use flightcraft_world::{HeightTile, TerrainError, World};
+pub use flightcraft_world::{MAX_AIRSPACE_BYTES, Region, World as TerrainWorld};
 pub use flightcraft_world::{MAX_REGION_BYTES, MAX_REGION_TILE_BYTES, MAX_REGIONS, MAX_TERRAIN_BYTES};
-pub use flightcraft_world::{Region, World as TerrainWorld};
+
+/// Browser and native transports use the same bounded airspace reader.
+pub fn attach_region_airspace(world: World, text: &str) -> Result<World, TerrainError> {
+    world.with_airspace(flightcraft_world::AirspaceFile::from_json(text)?)
+}
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -126,7 +131,17 @@ pub fn read_region(directory: &std::path::Path) -> Result<World, String> {
         .iter()
         .map(|name| bounded(&directory.join(name), MAX_REGION_TILE_BYTES))
         .collect::<Result<Vec<_>, _>>()?;
-    region_world(region, tiles).map_err(|e| e.to_string())
+    let world = region_world(region, tiles).map_err(|e| e.to_string())?;
+    let path = directory.join("airspace.json");
+    match std::fs::symlink_metadata(&path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(world),
+        Err(e) => Err(e.to_string()),
+        Ok(_) => {
+            let bytes = bounded(&path, MAX_AIRSPACE_BYTES)?;
+            attach_region_airspace(world, std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

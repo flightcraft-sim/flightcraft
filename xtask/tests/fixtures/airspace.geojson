@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature", "id": 1,
+      "properties": {"NAME":"Example B", "CLASS":"B", "LOCAL_TYPE":"CLASS_B", "LOWER_VAL":1000, "LOWER_UOM":"FT", "LOWER_CODE":"MSL", "UPPER_VAL":7000, "UPPER_UOM":"FT", "UPPER_CODE":"MSL", "SECTOR":"AREA A"},
+      "geometry": {"type":"Polygon", "coordinates":[[[-0.02,-0.02],[0,-0.019999],[0.02,-0.02],[0.02,0.02],[-0.02,0.02],[-0.02,-0.02]], [[-0.005,-0.005],[0.005,-0.005],[0.005,0.005],[-0.005,0.005],[-0.005,-0.005]]]}
+    },
+    {
+      "type":"Feature", "id":2,
+      "properties":{"NAME":"Example D", "CLASS":"D", "LOCAL_TYPE":"CLASS_D", "LOWER_VAL":0, "LOWER_UOM":"FT", "LOWER_CODE":"SFC", "UPPER_VAL":2500, "UPPER_UOM":"FT", "UPPER_CODE":"MSL", "SECTOR":null},
+      "geometry":{"type":"MultiPolygon", "coordinates":[[[[0.025,0],[0.03,0],[0.03,0.005],[0.025,0.005],[0.025,0]]],[[[0.025,0.01],[0.03,0.01],[0.03,0.015],[0.025,0.015],[0.025,0.01]]]]}
+    },
+    {
+      "type":"Feature", "id":3,
+      "properties":{"NAME":"Surface E", "CLASS":"E", "LOCAL_TYPE":"CLASS_E2", "LOWER_VAL":0, "LOWER_UOM":"FT", "LOWER_CODE":"SFC", "UPPER_VAL":-9998, "UPPER_UOM":null, "UPPER_CODE":null},
+      "geometry":{"type":"Polygon", "coordinates":[[[-0.04,0],[-0.03,0],[-0.03,0.01],[-0.04,0.01],[-0.04,0]]]}
+    },
+    {
+      "type":"Feature", "id":4,
+      "properties":{"NAME":"Veil", "CLASS":null, "LOCAL_TYPE":"MODE C", "LOWER_VAL":0, "LOWER_UOM":"FT", "LOWER_CODE":"SFC", "UPPER_VAL":10000, "UPPER_UOM":"FT", "UPPER_CODE":"MSL"},
+      "geometry":{"type":"Polygon", "coordinates":[[[-0.08,-0.08],[0.08,-0.08],[0.08,0.08],[-0.08,0.08],[-0.08,-0.08]]]}
+    },
+    {
+      "type":"Feature", "id":5,
+      "properties":{"NAME":"High A", "CLASS":"A", "LOCAL_TYPE":"CLASS_A", "LOWER_VAL":18000, "LOWER_UOM":"FT", "LOWER_CODE":"MSL", "UPPER_VAL":600, "UPPER_UOM":"FL", "UPPER_CODE":"STD"},
+      "geometry":{"type":"Polygon", "coordinates":[[[-0.08,-0.08],[0.08,-0.08],[0.08,0.08],[-0.08,0.08],[-0.08,-0.08]]]}
+    },
+    {
+      "type":"Feature", "id":6,
+      "properties":{"NAME":"E transition", "CLASS":"E", "LOCAL_TYPE":"CLASS_E5", "LOWER_VAL":700, "LOWER_UOM":"FT", "LOWER_CODE":"SFC", "UPPER_VAL":-9998, "UPPER_UOM":null, "UPPER_CODE":null},
+      "geometry":{"type":"Polygon", "coordinates":[[[-0.08,-0.08],[0.08,-0.08],[0.08,0.08],[-0.08,0.08],[-0.08,-0.08]]]}
+    },
+    {
+      "type":"Feature", "id":7,
+      "properties":{"NAME":"Outside C", "CLASS":"C", "LOCAL_TYPE":"CLASS_C", "LOWER_VAL":0, "LOWER_UOM":"FT", "LOWER_CODE":"SFC", "UPPER_VAL":4000, "UPPER_UOM":"FT", "UPPER_CODE":"MSL"},
+      "geometry":{"type":"Polygon", "coordinates":[[[1,1],[1.1,1],[1.1,1.1],[1,1.1],[1,1]]]}
+    }
+  ]
+}

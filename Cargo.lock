@@ -828,6 +828,7 @@ dependencies = [
  "flightcraft-control",
  "flightcraft-render",
  "flightcraft-sim",
+ "flightcraft-world",
  "gilrs",
  "image",
  "serde",

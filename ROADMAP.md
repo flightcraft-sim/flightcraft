@@ -36,6 +36,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 16 | Constant wind, then gusts and turbulence (done) | 4 |
 | 17 | Engine failure and other failures as commands (done) | 6 |
 | 18 | Terrain tiles from SRTM for one region, streamed | 7, decision on data hosting |
+| 18a | FAA controlled airspace sidecars, New York and eastern Pennsylvania shelves, volume queries, curtains, and status warnings (done) | 18 |
 | 19 | OpenStreetMap airfields and features with attribution in the app | 18 |
 | 20 | A second fictional aircraft | 15 |
 | 21 | Cockpit view (done) and a fuller instrument panel | 8 |

@@ -205,3 +205,25 @@ Run `cargo xtask schemas` after changing command types to regenerate `schema/com
 `cargo xtask schemas --check` detects stale schemas and runs as part of `cargo xtask ci`.
 CI also runs `cargo xtask determinism`, which rejects standard float transcendental calls in
 the world, aero, and sim source and allows `libm` calls and test modules.
+
+## Airspace
+
+| Tool | Command | Arguments and result |
+|---|---|---|
+| `airspace_list` | `airspace.list` | `{}`. Returns `attribution` and `volumes` with `id`, `name`, `class`, `kind`, optional `sector`, `floor`, and `ceiling`. Mode C has a null class. No polygon payloads. |
+| `airspace_at` | `airspace.at` | Supply all of `north_m`, `east_m`, and `altitude_msl_m`, or omit all three for the aircraft. Returns every `containing` volume and `nearest`, the nearest B/C shelf above or alongside the point. Partial coordinates and nulls are errors. |
+| `view_set_airspace` | `view.set_airspace` | Required `visible` boolean. Returns `visible`. Controls the app's curtains and outlines; works headlessly without dialogs. Default is true. |
+
+`nearest` is null when no B/C entry boundary is available. Otherwise it contains `id`, `class`,
+`lateral_distance_m` (zero under the shelf), `floor_msl_m`, `floor_above_m` (nonnegative height to the
+floor), and `warning`. The entry warning activates within 1 nm at shelf altitude or within 300 ft
+below a floor when underneath or within 1 nm of its footprint. The nearest shelf minimises combined
+lateral and vertical distance, breaking ties by the lower floor. Queries exclude shelves already
+containing the point and shelves entirely below it from this entry calculation. All containing
+volumes, including Mode C veils, remain in `containing`.
+
+When the active region has an airspace sidecar, `sim.state` and reset results also include `airspace`,
+an array of `{id, class}` memberships, empty when outside every loaded volume. The field is omitted
+for worlds without airspace. SFC floors follow terrain height; ceilings are exclusive. STD limits
+use nominal MSL height. See [the data and rendering reference](airspace.md) for dataset coverage,
+limits, attribution, and offline conversion instructions.

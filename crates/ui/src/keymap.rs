@@ -19,6 +19,7 @@ pub enum Action {
     Pause,
     Reset,
     Camera,
+    Airspace,
     TrimUp,
     TrimDown,
     LookLeft,
@@ -27,7 +28,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 19] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -41,6 +42,7 @@ impl Action {
         Self::Pause,
         Self::Reset,
         Self::Camera,
+        Self::Airspace,
         Self::TrimUp,
         Self::TrimDown,
         Self::LookLeft,
@@ -63,6 +65,7 @@ impl Action {
             Self::Pause => "Pause / resume",
             Self::Reset => "Reset flight",
             Self::Camera => "Change camera",
+            Self::Airspace => "Show / hide airspace",
             Self::TrimUp => "Trim up",
             Self::TrimDown => "Trim down",
             Self::LookLeft => "Glance left",
@@ -97,6 +100,7 @@ impl Default for Keymap {
                 (Pause, vec![Key::Space, Key::P]),
                 (Reset, vec![Key::R]),
                 (Camera, vec![Key::C]),
+                (Airspace, vec![Key::U]),
                 (TrimUp, vec![Key::Home]),
                 (TrimDown, vec![Key::End]),
                 (LookLeft, vec![Key::J]),
@@ -172,6 +176,13 @@ impl Keymap {
                 value.bindings.insert(action, available);
             }
         }
+        if !value.bindings.contains_key(&Action::Airspace) {
+            let key = [Key::U, Key::O, Key::V]
+                .into_iter()
+                .find(|key| !value.bindings.values().any(|keys| keys.contains(key)))
+                .ok_or("Assign a key for airspace")?;
+            value.bindings.insert(Action::Airspace, vec![key]);
+        }
         let mut buttons = Vec::new();
         for assigned in value.gamepad_bindings.values() {
             for button in assigned {
@@ -225,7 +236,12 @@ mod tests {
     fn saved_maps_gain_glances_and_gamepad_buttons_are_configurable() {
         let mut legacy = Keymap::default();
         legacy.bindings.insert(Action::Camera, vec![Key::V]);
-        for action in [Action::LookLeft, Action::LookRight, Action::LookUp] {
+        for action in [
+            Action::LookLeft,
+            Action::LookRight,
+            Action::LookUp,
+            Action::Airspace,
+        ] {
             legacy.bindings.remove(&action);
         }
         let mut json = serde_json::to_value(&legacy).expect("serialize");

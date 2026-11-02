@@ -162,3 +162,107 @@ fn native_regions_require_all_tiles_and_skip_bad_neighbours() {
     assert!(flightcraft_control::read_region(&bad).is_err());
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn airspace_commands_state_membership_visibility_and_atomic_sidecar_loading() {
+    use flightcraft_control::attach_region_airspace;
+    use flightcraft_world::World;
+    let text = json!({"attribution":"Original test airspace", "volumes":[{
+        "id":"surface-d", "name":"Test field", "class":"D", "kind":"class",
+        "floor":{"value_ft":0,"reference":"SFC"},
+        "ceiling":{"value_ft":4000,"reference":"MSL"},
+        "polygons":[[[[36.99,-123.01],[36.99,-122.99],[37.01,-122.99],[37.01,-123.01]]]]
+    }, {
+        "id":"upper-b", "name":"Test shelf", "class":"B", "kind":"class",
+        "floor":{"value_ft":3000,"reference":"MSL"},
+        "ceiling":{"value_ft":7000,"reference":"MSL"},
+        "polygons":[[[[36.99,-123.01],[36.99,-122.99],[37.01,-122.99],[37.01,-123.01]]]]
+    }]})
+    .to_string();
+    let (region, tiles) = synthetic_region();
+    let bare = World::from_region(region.clone(), tiles.clone()).unwrap();
+    let world = attach_region_airspace(bare.clone(), &text).unwrap();
+    assert_ne!(bare.fingerprint(), world.fingerprint());
+    assert!(attach_region_airspace(bare, "{}").is_err());
+    let mut session = Session::new().unwrap();
+    assert!(
+        session
+            .execute("sim.state", json!({}))
+            .unwrap()
+            .get("airspace")
+            .is_none()
+    );
+    assert!(
+        session.execute("airspace.list", json!({})).unwrap()["volumes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    session.install_region(world).unwrap();
+    let reset = session
+        .execute(
+            "sim.reset",
+            json!({"world":"test-field","start":{"kind":"runway"}}),
+        )
+        .unwrap();
+    assert_eq!(reset["airspace"], json!([{"id":"surface-d","class":"D"}]));
+    let list = session.execute("airspace.list", json!({})).unwrap();
+    assert_eq!(list["volumes"].as_array().unwrap().len(), 2);
+    assert!(list["volumes"][0].get("polygons").is_none());
+    let schema = schemars::schema_for!(flightcraft_control::AirspaceAt);
+    let validator = jsonschema::validator_for(schema.as_value()).unwrap();
+    assert!(validator.is_valid(&json!({})));
+    assert!(!validator.is_valid(&json!({"north_m":0})));
+    assert!(!validator.is_valid(&json!({"north_m":null,"east_m":0,"altitude_msl_m":0})));
+    let query = session.execute("airspace.at", json!({})).unwrap();
+    assert_eq!(query["containing"][0]["id"], "surface-d");
+    assert_eq!(query["nearest"]["id"], "upper-b");
+    assert!((query["nearest"]["floor_msl_m"].as_f64().unwrap() - 914.4).abs() < 1e-10);
+    let at = session
+        .execute(
+            "airspace.at",
+            json!({"north_m":0,"east_m":0,"altitude_msl_m":1000}),
+        )
+        .unwrap();
+    assert_eq!(at["containing"][0]["class"], "B");
+    for input in [
+        json!({"north_m":0}),
+        json!({"north_m":null}),
+        json!({"north_m":0,"east_m":0,"altitude_msl_m":1e100}),
+        json!({"unknown":0}),
+    ] {
+        assert!(session.execute("airspace.at", input).is_err());
+    }
+    assert!(session.airspace_visible());
+    session
+        .execute("view.set_airspace", json!({"visible":false}))
+        .unwrap();
+    assert!(!session.airspace_visible());
+    assert!(
+        session
+            .execute("view.set_airspace", json!({"visible":null}))
+            .is_err()
+    );
+    let root = std::env::temp_dir().join(format!("flightcraft-airspace-{}", std::process::id()));
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("region.json"), serde_json::to_string(&region).unwrap()).unwrap();
+    for (name, tile) in region.tiles.iter().zip(tiles) {
+        std::fs::write(root.join(name), tile.write()).unwrap();
+    }
+    assert!(
+        flightcraft_control::read_region(&root)
+            .unwrap()
+            .airspace()
+            .is_none()
+    );
+    std::fs::write(root.join("airspace.json"), &text).unwrap();
+    assert!(
+        flightcraft_control::read_region(&root)
+            .unwrap()
+            .airspace()
+            .is_some()
+    );
+    std::fs::write(root.join("airspace.json"), "{}").unwrap();
+    assert!(flightcraft_control::read_region(&root).is_err());
+    std::fs::remove_dir_all(root).unwrap();
+}

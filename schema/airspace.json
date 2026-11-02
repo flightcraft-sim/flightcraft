@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AirspaceFile",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string"
+    },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AirspaceVolume"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "attribution",
+    "volumes"
+  ],
+  "$defs": {
+    "AirspaceAltitude": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/AltitudeReference"
+        },
+        "value_ft": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "value_ft",
+        "reference"
+      ]
+    },
+    "AirspaceClass": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ]
+    },
+    "AirspaceKind": {
+      "type": "string",
+      "enum": [
+        "class",
+        "mode_c"
+      ]
+    },
+    "AirspaceVolume": {
+      "type": "object",
+      "properties": {
+        "ceiling": {
+          "$ref": "#/$defs/AirspaceAltitude"
+        },
+        "class": {
+          "description": "Mode C veils have no airspace class.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AirspaceClass"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor": {
+          "$ref": "#/$defs/AirspaceAltitude"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AirspaceKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "polygons": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        },
+        "sector": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "floor",
+        "ceiling",
+        "polygons"
+      ]
+    },
+    "AltitudeReference": {
+      "type": "string",
+      "enum": [
+        "MSL",
+        "SFC",
+        "STD"
+      ]
+    }
+  }
+}

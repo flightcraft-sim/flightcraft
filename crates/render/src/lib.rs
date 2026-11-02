@@ -14,6 +14,11 @@ use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 /// Scene colours supplied by the UI's single theme module.
 #[derive(Clone, Copy)]
 pub struct Palette {
+    pub airspace_b: [f32; 4],
+    pub airspace_c: [f32; 4],
+    pub airspace_d: [f32; 4],
+    pub airspace_e: [f32; 4],
+    pub airspace_mode_c: [f32; 4],
     pub sky_top: [f32; 4],
     pub sky_horizon: [f32; 4],
     pub ground: [f32; 4],
@@ -46,6 +51,7 @@ pub enum CameraMode {
 
 pub struct Scene {
     world: flightcraft_world::World,
+    pub airspace_visible: bool,
     eye: Option<Vec3>,
     target: Option<Vec3>,
     pub camera: CameraMode,
@@ -61,6 +67,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             world: flightcraft_world::World::default(),
+            airspace_visible: true,
             eye: None,
             target: None,
             camera: CameraMode::Chase,
@@ -205,6 +212,7 @@ impl Scene {
             rect,
             gpu::SceneCallback {
                 uniform,
+                show_airspace: self.airspace_visible,
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera == CameraMode::Chase,

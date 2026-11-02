@@ -5,6 +5,8 @@
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
 mod aircraft;
+mod airspace;
+pub use airspace::*;
 mod regions;
 pub use regions::*;
 mod packs;
@@ -72,6 +74,7 @@ pub struct Session {
     paused: bool,
     rate: f64,
     camera: Option<CameraSettings>,
+    airspace_visible: bool,
     flight_generation: u64,
     regions: std::collections::BTreeMap<String, flightcraft_world::World>,
 }
@@ -92,6 +95,7 @@ impl Session {
             paused: true,
             rate: 1.0,
             camera: None,
+            airspace_visible: true,
             flight_generation: 0,
             regions: std::collections::BTreeMap::new(),
         })
@@ -184,6 +188,22 @@ impl Session {
             paused: self.paused,
             rate: self.rate,
             world: self.sim.world().choice(),
+            airspace: self.sim.world().airspace().map(|_| {
+                let [n, e, d] = self.sim.state().position_m;
+                self.sim
+                    .world()
+                    .airspace_at(n, e, -d)
+                    .map(|q| {
+                        q.containing
+                            .into_iter()
+                            .map(|v| flightcraft_world::AirspaceMembership {
+                                id: v.id,
+                                class: v.class,
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            }),
         }
     }
 
@@ -204,6 +224,8 @@ pub struct StateOutput {
     pub paused: bool,
     pub rate: f64,
     pub world: WorldChoice,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub airspace: Option<Vec<flightcraft_world::AirspaceMembership>>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -519,6 +541,9 @@ registry!(
     Reset,
     WorldHeight,
     ListWorlds,
+    ListAirspace,
+    AirspaceAt,
+    SetAirspaceView,
     SetControls,
     Step,
     SetAutopilot,

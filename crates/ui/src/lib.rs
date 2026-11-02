@@ -221,6 +221,11 @@ impl FlightCraftApp {
         egui::Window::new("Preferences and input").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
             ui.label(RichText::new("INSTRUMENT PANEL").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.compact_panel, "Compact instruments (one row)");
+            let mut visible = self.session.airspace_visible();
+            if ui.checkbox(&mut visible, "Show airspace curtains and outlines").changed()
+                && let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
+                self.error = Some(e.to_string());
+            }
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
@@ -349,6 +354,12 @@ impl eframe::App for FlightCraftApp {
             && let Err(e) = actions::toggle_camera(&mut self.session)
         {
             self.error = Some(e.to_string());
+        }
+        if frame.pressed(Action::Airspace) {
+            let visible = !self.session.airspace_visible();
+            if let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
+                self.error = Some(e.to_string());
+            }
         }
         let scripted = self.script.active();
         let sim_time_s = self.session.sim().state().time_s;
@@ -485,6 +496,15 @@ impl eframe::App for FlightCraftApp {
                             Err(e) => self.error = Some(e.to_string()),
                         }
                     });
+                    if let Some((label, warning, attribution)) = airspace_status(&self.session) {
+                        ui.separator();
+                        ui.label(RichText::new(label).size(11.0).color(if warning {
+                            theme::AMBER
+                        } else {
+                            theme::TEXT
+                        }))
+                        .on_hover_text(attribution);
+                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
@@ -598,6 +618,7 @@ impl eframe::App for FlightCraftApp {
                         .set_cockpit_look(camera.look_yaw_rad as f32, camera.look_pitch_rad as f32);
                 }
                 self.scene.set_world(self.session.sim().world());
+                self.scene.airspace_visible = self.session.airspace_visible();
                 self.scene.set_propeller_power(
                     (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
                 );
@@ -706,4 +727,52 @@ impl eframe::App for FlightCraftApp {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn control_listener(port: u16) -> std::io::Result<flightcraft_control::bridge::Listener> {
     flightcraft_control::bridge::Listener::loopback(port)
+}
+
+/// The status and remote query use identical geometry and altitude semantics.
+fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bool, String)> {
+    use flightcraft_world::{AirspaceKind, AltitudeReference};
+    let world = session.sim().world();
+    let airspace = world.airspace()?;
+    let [n, e, d] = session.sim().state().position_m;
+    let query = world.airspace_at(n, e, -d).ok()?;
+    let limit = |a: flightcraft_world::AirspaceAltitude| {
+        if a.reference == AltitudeReference::SFC && a.value_ft == 0.0 {
+            "SFC".to_owned()
+        } else if a.reference == AltitudeReference::STD {
+            format!("FL{:.0}", a.value_ft / 100.0)
+        } else {
+            format!("{:.0}", a.value_ft)
+        }
+    };
+    let label = query
+        .containing
+        .iter()
+        .find(|v| v.kind == AirspaceKind::Class)
+        .map_or_else(
+            || "Class G".to_owned(),
+            |v| {
+                let name = if matches!(v.class, Some(flightcraft_world::AirspaceClass::D)) {
+                    format!(" {}", v.name.strip_suffix(" CLASS D").unwrap_or(&v.name))
+                } else {
+                    String::new()
+                };
+                let reference = match v.ceiling.reference {
+                    AltitudeReference::MSL => " MSL",
+                    AltitudeReference::SFC => " AGL",
+                    AltitudeReference::STD => "",
+                };
+                format!(
+                    "Class {:?}{name} {}–{}{reference}",
+                    v.class.unwrap_or(flightcraft_world::AirspaceClass::E),
+                    limit(v.floor),
+                    limit(v.ceiling)
+                )
+            },
+        );
+    Some((
+        label,
+        query.nearest.is_some_and(|b| b.warning),
+        airspace.attribution.clone(),
+    ))
 }

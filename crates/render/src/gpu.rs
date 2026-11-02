@@ -29,6 +29,7 @@ pub(crate) struct SceneCallback {
     pub uniform: Uniform,
     pub size: [f32; 2],
     pub show_aircraft: bool,
+    pub show_airspace: bool,
     pub larrow: bool,
 }
 
@@ -56,6 +57,7 @@ struct DrawMesh {
 
 struct Gpu {
     terrain: Vec<TerrainBuffer>,
+    airspace: Option<(wgpu::Buffer, u32)>,
     terrain_fingerprint: Option<u64>,
     palette: Palette,
     sky: wgpu::RenderPipeline,
@@ -315,6 +317,7 @@ impl Gpu {
             blit,
             meshes,
             terrain: Vec::new(),
+            airspace: None,
             terrain_fingerprint: None,
             palette,
             uniform,
@@ -370,6 +373,19 @@ impl CallbackTrait for SceneCallback {
                     }
                 })
                 .collect();
+            let vertices = mesh::airspace(&self.world, gpu.palette);
+            gpu.airspace = if vertices.is_empty() {
+                None
+            } else {
+                Some((
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("airspace curtains and outlines"),
+                        contents: bytemuck::cast_slice(&vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    vertices.len() as u32,
+                ))
+            };
             gpu.terrain_fingerprint = Some(self.world.fingerprint());
         }
         let max_dimension = device.limits().max_texture_dimension_2d.min(4096) as f32;
@@ -429,6 +445,13 @@ impl CallbackTrait for SceneCallback {
         if self.uniform.eye.get(3).is_some_and(|power| *power > 0.01) {
             pass.set_pipeline(&gpu.transparent);
             pass.draw(mesh.cockpit_end..mesh.vertex_count, 0..1);
+        }
+        if self.show_airspace
+            && let Some((vertices, count)) = &gpu.airspace
+        {
+            pass.set_pipeline(&gpu.transparent);
+            pass.set_vertex_buffer(0, vertices.slice(..));
+            pass.draw(0..*count, 0..1);
         }
         Vec::new()
     }

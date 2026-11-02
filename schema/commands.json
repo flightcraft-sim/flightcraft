@@ -134,6 +134,37 @@
     },
     "output_schema": {
       "$defs": {
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "AirspaceMembership": {
+          "properties": {
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
         "AirspeedMode": {
           "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
           "enum": [
@@ -963,6 +994,15 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Full simulation state in SI units, plus app playback settings.",
       "properties": {
+        "airspace": {
+          "items": {
+            "$ref": "#/$defs/AirspaceMembership"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "paused": {
           "type": "boolean"
         },
@@ -1110,6 +1150,365 @@
         "worlds"
       ],
       "title": "WorldList",
+      "type": "object"
+    }
+  },
+  {
+    "name": "airspace.list",
+    "description": "List the active region's airspace volumes, vertical limits, and attribution.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ListAirspace",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspaceAltitude": {
+          "additionalProperties": false,
+          "properties": {
+            "reference": {
+              "$ref": "#/$defs/AltitudeReference"
+            },
+            "value_ft": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "value_ft",
+            "reference"
+          ],
+          "type": "object"
+        },
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "AirspaceInfo": {
+          "properties": {
+            "ceiling": {
+              "$ref": "#/$defs/AirspaceAltitude"
+            },
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "floor": {
+              "$ref": "#/$defs/AirspaceAltitude"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/AirspaceKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sector": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "floor",
+            "ceiling"
+          ],
+          "type": "object"
+        },
+        "AirspaceKind": {
+          "enum": [
+            "class",
+            "mode_c"
+          ],
+          "type": "string"
+        },
+        "AltitudeReference": {
+          "enum": [
+            "MSL",
+            "SFC",
+            "STD"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "attribution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "volumes": {
+          "items": {
+            "$ref": "#/$defs/AirspaceInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "volumes"
+      ],
+      "title": "AirspaceList",
+      "type": "object"
+    }
+  },
+  {
+    "name": "airspace.at",
+    "description": "Query all containing airspace and the nearest B/C shelf; omit all coordinates for the aircraft.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "north_m",
+            "east_m",
+            "altitude_msl_m"
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "north_m"
+                ]
+              },
+              {
+                "required": [
+                  "east_m"
+                ]
+              },
+              {
+                "required": [
+                  "altitude_msl_m"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "altitude_msl_m": {
+          "format": "double",
+          "maximum": 10000000,
+          "minimum": -10000000,
+          "type": "number"
+        },
+        "east_m": {
+          "format": "double",
+          "maximum": 10000000,
+          "minimum": -10000000,
+          "type": "number"
+        },
+        "north_m": {
+          "format": "double",
+          "maximum": 10000000,
+          "minimum": -10000000,
+          "type": "number"
+        }
+      },
+      "title": "AirspaceAt",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspaceAltitude": {
+          "additionalProperties": false,
+          "properties": {
+            "reference": {
+              "$ref": "#/$defs/AltitudeReference"
+            },
+            "value_ft": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "value_ft",
+            "reference"
+          ],
+          "type": "object"
+        },
+        "AirspaceBoundary": {
+          "properties": {
+            "class": {
+              "$ref": "#/$defs/AirspaceClass"
+            },
+            "floor_above_m": {
+              "description": "Nonnegative height to the floor; zero alongside a shelf.",
+              "format": "double",
+              "type": "number"
+            },
+            "floor_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lateral_distance_m": {
+              "description": "Zero underneath a shelf; otherwise distance to its lateral footprint.",
+              "format": "double",
+              "type": "number"
+            },
+            "warning": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "class",
+            "lateral_distance_m",
+            "floor_msl_m",
+            "floor_above_m",
+            "warning"
+          ],
+          "type": "object"
+        },
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "AirspaceInfo": {
+          "properties": {
+            "ceiling": {
+              "$ref": "#/$defs/AirspaceAltitude"
+            },
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "floor": {
+              "$ref": "#/$defs/AirspaceAltitude"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/AirspaceKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "sector": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "floor",
+            "ceiling"
+          ],
+          "type": "object"
+        },
+        "AirspaceKind": {
+          "enum": [
+            "class",
+            "mode_c"
+          ],
+          "type": "string"
+        },
+        "AltitudeReference": {
+          "enum": [
+            "MSL",
+            "SFC",
+            "STD"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "containing": {
+          "items": {
+            "$ref": "#/$defs/AirspaceInfo"
+          },
+          "type": "array"
+        },
+        "nearest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AirspaceBoundary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "containing"
+      ],
+      "title": "AirspaceAtOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "view.set_airspace",
+    "description": "Show or hide airspace curtains and outlines (default on in regions with airspace).",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible"
+      ],
+      "title": "SetAirspaceView",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible"
+      ],
+      "title": "AirspaceView",
       "type": "object"
     }
   },
@@ -2693,6 +3092,37 @@
     },
     "output_schema": {
       "$defs": {
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "AirspaceMembership": {
+          "properties": {
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
         "AirspeedMode": {
           "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
           "enum": [
@@ -3522,6 +3952,15 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Full simulation state in SI units, plus app playback settings.",
       "properties": {
+        "airspace": {
+          "items": {
+            "$ref": "#/$defs/AirspaceMembership"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "paused": {
           "type": "boolean"
         },
@@ -6942,6 +7381,37 @@
     },
     "output_schema": {
       "$defs": {
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "AirspaceMembership": {
+          "properties": {
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
         "AirspeedMode": {
           "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
           "enum": [
@@ -7771,6 +8241,15 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Full simulation state in SI units, plus app playback settings.",
       "properties": {
+        "airspace": {
+          "items": {
+            "$ref": "#/$defs/AirspaceMembership"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "paused": {
           "type": "boolean"
         },

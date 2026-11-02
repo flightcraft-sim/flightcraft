@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 use syn::visit::Visit;
 
+mod airspace_faa;
 mod terrain_srtm;
 mod web;
 
@@ -79,6 +80,7 @@ fn main() -> ExitCode {
         "layers" => layers(),
         "terrain" => terrain(),
         "terrain-srtm" => terrain_srtm::run(),
+        "airspace-faa" => airspace_faa::run(),
         "aircraft" => migrate_aircraft(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
@@ -88,7 +90,7 @@ fn main() -> ExitCode {
         "determinism" => determinism(),
         "web" => web::build(),
         "ci" => ci(),
-        _ => Err("usage: cargo xtask <ci|terrain|terrain-srtm --region <region.json> --hgt <directory> --out <new-directory>|aircraft migrate <v1.json> <new-directory>|layers|schemas [--check]|determinism|web>".to_string()),
+        _ => Err("usage: cargo xtask <ci|terrain|terrain-srtm --region <region.json> --hgt <directory> --out <new-directory>|airspace-faa --region <region.json> --airspace <Class_Airspace.geojson> --out <airspace.json>|aircraft migrate <v1.json> <new-directory>|layers|schemas [--check]|determinism|web>".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -147,6 +149,10 @@ fn root() -> Result<PathBuf, String> {
 
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
+        (
+            "airspace.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::AirspaceFile)),
+        ),
         (
             "region.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Region)),

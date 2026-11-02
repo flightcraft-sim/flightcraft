@@ -229,12 +229,14 @@ pub struct World {
     tiles: Arc<[HeightTile]>,
     fingerprint: u64,
     region: Option<Arc<crate::Region>>,
+    airspace: Option<Arc<crate::Airspace>>,
 }
 impl Default for World {
     fn default() -> Self {
         Self {
             choice: WorldChoice::Flat,
             region: None,
+            airspace: None,
             tiles: Arc::from([]),
             fingerprint: 0xcbf2_9ce4_8422_2325,
         }
@@ -303,6 +305,7 @@ impl World {
             tiles: tiles.into(),
             fingerprint,
             region: None,
+            airspace: None,
         })
     }
     /// Construct a region only after all declared tiles and their grid positions validate.
@@ -334,6 +337,22 @@ impl World {
         }
         world.region = Some(Arc::new(region));
         Ok(world)
+    }
+    /// Attach optional region data only after complete validation and projection.
+    pub fn with_airspace(mut self, file: crate::AirspaceFile) -> Result<Self, TerrainError> {
+        let region = self.region().ok_or(TerrainError("airspace requires a region"))?;
+        let projection =
+            crate::srtm::LocalProjection::new(region.origin.latitude_deg, region.origin.longitude_deg)?;
+        let airspace = file.clone().project(projection)?;
+        for byte in serde_json::to_vec(&file).map_err(|_| TerrainError("airspace identity"))? {
+            self.fingerprint ^= u64::from(byte);
+            self.fingerprint = self.fingerprint.wrapping_mul(0x100000001b3);
+        }
+        self.airspace = Some(Arc::new(airspace));
+        Ok(self)
+    }
+    pub fn airspace(&self) -> Option<&crate::Airspace> {
+        self.airspace.as_deref()
     }
     #[must_use]
     pub fn region(&self) -> Option<&crate::Region> {

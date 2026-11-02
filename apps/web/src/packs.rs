@@ -64,6 +64,27 @@ pub(crate) async fn fetch_bytes(window: &web_sys::Window, url: &str, max: usize)
     if !response.ok() {
         return Err(JsValue::from_str(&format!("HTTP {}", response.status())));
     }
+    read_response(response, max).await
+}
+
+/// An absent optional region sidecar is allowed; every other HTTP failure is an error.
+pub(crate) async fn fetch_optional_bytes(
+    window: &web_sys::Window,
+    url: &str,
+    max: usize,
+) -> Result<Option<Vec<u8>>, JsValue> {
+    let response = JsFuture::from(window.fetch_with_str(url))
+        .await?
+        .dyn_into::<web_sys::Response>()?;
+    if response.status() == 404 {
+        return Ok(None);
+    }
+    if !response.ok() {
+        return Err(JsValue::from_str(&format!("HTTP {}", response.status())));
+    }
+    read_response(response, max).await.map(Some)
+}
+async fn read_response(response: web_sys::Response, max: usize) -> Result<Vec<u8>, JsValue> {
     let reader = response
         .body()
         .ok_or_else(|| JsValue::from_str("Response has no body"))?

@@ -1,6 +1,8 @@
 //! Deterministic atmosphere, height tiles, and the original Corvid Field.
 #![deny(clippy::disallowed_methods)]
 
+pub mod airspace;
+pub use airspace::*;
 mod region;
 pub use region::*;
 pub mod srtm;

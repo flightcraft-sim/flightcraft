@@ -116,6 +116,13 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     if i.kind == 1.0 || i.kind == 2.0 {
         fog = 1.0 - exp(-distance / 6800.0);
     }
-    let alpha = select(1.0, i.color.a * u.eye.w, i.kind == 2.0);
+    if i.kind == 9.0 && fract(i.water_coverage / 300.0) > 0.55 { discard; }
+    var alpha = select(1.0, i.color.a * u.eye.w, i.kind == 2.0);
+    if i.kind >= 6.0 {
+        // Keep chart colours readable at distance, independently of engine power and ground haze.
+        color = i.color.rgb;
+        fog = 0.0;
+        alpha = i.color.a;
+    }
     return vec4<f32>(mix(color, u.sky_horizon.rgb, fog), alpha);
 }

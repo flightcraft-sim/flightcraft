@@ -589,8 +589,13 @@ mod terrain_tests {
     use super::*;
     use flightcraft_world::{World, WorldChoice};
 
-    fn palette() -> Palette {
+    pub(super) fn palette() -> Palette {
         Palette {
+            airspace_b: [0.2; 4],
+            airspace_c: [0.3; 4],
+            airspace_d: [0.4; 4],
+            airspace_e: [0.5; 4],
+            airspace_mode_c: [0.1; 4],
             sky_top: [0.0; 4],
             sky_horizon: [0.0; 4],
             ground: [0.3, 0.4, 0.3, 1.0],
@@ -788,6 +793,113 @@ mod terrain_tests {
                 .iter()
                 .flat_map(|m| &m.vertices)
                 .any(|v| v.water_coverage == 0.5)
+        );
+    }
+}
+
+/// Cached world-space curtains; transparency uses depth testing without depth writes.
+pub(crate) fn airspace(world: &flightcraft_world::World, palette: Palette) -> Vec<Vertex> {
+    use flightcraft_world::{AirspaceClass, AirspaceKind};
+    let mut mesh = Mesh::default();
+    let Some(airspace) = world.airspace() else {
+        return mesh.0;
+    };
+    for volume in &airspace.volumes {
+        let info = &volume.info;
+        let color = if info.kind == AirspaceKind::ModeC {
+            palette.airspace_mode_c
+        } else {
+            match info.class {
+                Some(AirspaceClass::B) => palette.airspace_b,
+                Some(AirspaceClass::C) => palette.airspace_c,
+                Some(AirspaceClass::D) => palette.airspace_d,
+                _ => palette.airspace_e,
+            }
+        };
+        let dashed = matches!(info.class, Some(AirspaceClass::D | AirspaceClass::E));
+        for ring in volume.polygons.iter().flatten() {
+            let mut along = 0.0;
+            for pair in ring.windows(2) {
+                let [a, b] = pair else {
+                    continue;
+                };
+                let height = |p: [f64; 2], limit: flightcraft_world::AirspaceAltitude| {
+                    limit.msl_m(world.ground(p[0], p[1]).height_msl_m) as f32
+                };
+                let lo_a = Vec3::new(a[1] as f32, height(*a, info.floor), -a[0] as f32);
+                let lo_b = Vec3::new(b[1] as f32, height(*b, info.floor), -b[0] as f32);
+                let hi_a = Vec3::new(lo_a.x, height(*a, info.ceiling), lo_a.z);
+                let hi_b = Vec3::new(lo_b.x, height(*b, info.ceiling), lo_b.z);
+                let length = Vec3::new(lo_b.x - lo_a.x, 0.0, lo_b.z - lo_a.z).length();
+                if info.kind != AirspaceKind::ModeC {
+                    let mut curtain = color;
+                    curtain[3] *= 0.18;
+                    mesh.quad([lo_a, lo_b, hi_b, hi_a], curtain, 6.0);
+                }
+                for (start, end) in [(lo_a, lo_b), (hi_a, hi_b)] {
+                    let first = mesh.0.len();
+                    let width = Vec3::Y * 2.0;
+                    mesh.quad(
+                        [start - width, end - width, end + width, start + width],
+                        color,
+                        if dashed { 9.0 } else { 7.0 },
+                    );
+                    for vertex in mesh.0.iter_mut().skip(first) {
+                        let p = Vec3::from_array(vertex.position);
+                        vertex.water_coverage = along + Vec3::new(p.x - start.x, 0.0, p.z - start.z).length();
+                    }
+                }
+                along += length;
+            }
+        }
+    }
+    mesh.0
+}
+
+#[cfg(test)]
+mod airspace_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use flightcraft_world::{AirspaceFile, HeightTile, Region, Surface, World};
+    #[test]
+    fn curtains_use_terrain_height_and_translucent_world_geometry() {
+        let region = Region::from_json(r#"{"id":"test","name":"Test","origin":{"latitude_deg":0,"longitude_deg":0,"field_elevation_m":100,"runway_heading_deg":0,"runway_length_m":900,"runway_width_m":23},"southwest_m":[-2000,-2000],"tiles_north":1,"tiles_east":1,"spacing_m":250,"tile_size":17,"runway_blend_m":200,"source":"SRTM","licence":"public domain","attribution":"NASA Shuttle Radar Topography Mission, public domain; distributed by USGS","tiles":["000.fcht"]}"#).unwrap();
+        let tile = HeightTile::new(
+            [-2000.0, -2000.0],
+            250.0,
+            17,
+            vec![100.0; 17 * 17],
+            vec![Surface::Grass; 16 * 16],
+        )
+        .unwrap();
+        let world = World::from_region(region, vec![tile]).unwrap();
+        let file = AirspaceFile::from_json(r#"{"attribution":"Original test geometry","volumes":[{"id":"d","name":"Surface D","class":"D","kind":"class","floor":{"value_ft":0,"reference":"SFC"},"ceiling":{"value_ft":1000,"reference":"MSL"},"polygons":[[[[-0.01,-0.01],[-0.01,0.01],[0.01,0.01],[0.01,-0.01],[-0.01,-0.01]]]]}]}"#).unwrap();
+        let palette = super::terrain_tests::palette();
+        assert!(airspace(&world, palette).is_empty());
+        let world = world.with_airspace(file).unwrap();
+        let vertices = airspace(&world, palette);
+        assert!(!vertices.is_empty());
+        assert!(
+            vertices
+                .iter()
+                .any(|v| v.kind == 6.0 && (v.position[1] - 100.0).abs() < 0.01)
+        );
+        assert!(
+            vertices
+                .iter()
+                .any(|v| v.kind == 6.0 && (v.position[1] - 304.8).abs() < 0.01)
+        );
+        assert!(
+            vertices
+                .iter()
+                .any(|v| v.kind == 9.0 && v.water_coverage > 1000.0)
+        );
+        assert!(
+            vertices
+                .iter()
+                .all(|v| v.position.iter().chain(&v.normal).all(|x| x.is_finite())
+                    && v.color[3] < 1.0
+                    && v.kind >= 6.0)
         );
     }
 }

@@ -184,3 +184,9 @@ attribution and changes when the world changes. The SRTM attribution row templat
 `ATTRIBUTION.md`; future redistributed regions should keep their provenance there and in metadata.
 `WorldChoice` now includes `Region(String)` and is `Clone` rather than `Copy`; existing built-in Rust
 variants and JSON names remain supported. The original flat-world golden trajectory is preserved.
+
+### Airspace sidecars
+
+Regions can also carry an optional `airspace.json`, loaded by native and browser transports.
+See [controlled airspace](airspace.md) for the FAA offline importer, schema, containment semantics,
+commands, and display settings. The airspace file is validated before the region becomes selectable.
