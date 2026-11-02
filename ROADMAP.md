@@ -47,3 +47,4 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 26 | Real regions: New York area (1N7 to the JFK, EWR, and LGA Class B), then eastern Pennsylvania and New Jersey (KABE, KMPO, KAVP, KRDG) | 18 |
 | 27 | Contributor guides and agent skills: how to contribute an aircraft, a region, or an instrument skin, written so a coding agent told "contribute to FlightCraft" knows what to do | 26, instrument modules |
 | 28 | Issue claims: `/claim` and `/unclaim`, a draft PR referencing an issue claims it, the lowest-numbered PR wins, and a daily sweep frees stale claims | 27 |
+| 29 | External hardware and home-built panels: HID yokes and quadrants with device profiles, a device protocol for custom boards, layouts on extra screens, and physical panels with cut-template export ([spec](docs/hardware-and-panels.md)) | 21 |
