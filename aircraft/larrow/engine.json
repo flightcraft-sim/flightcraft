@@ -111,7 +111,7 @@
       "source": "Original ideal normally aspirated piston-engine estimate: oxygen mass flow and available shaft power proportional to air density at fixed volumetric efficiency; P/P0=rho/rho0. Breakpoints sample this analytic relation."
     }
   },
-  "induction": "carburettor",
+  "induction": "injection",
   "fuel_flow_kg_s": {
     "points": [
       [
@@ -123,6 +123,6 @@
         0.01
       ]
     ],
-    "source": "Original fictional engine estimate; metadata until fuel burn is implemented."
+    "source": "Original fictional fuel flow estimate against shaft-power fraction."
   }
 }

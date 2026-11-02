@@ -18,7 +18,7 @@ parts or parts from packs already installed. It cannot replace an existing id wi
 | `family` | `geometry`, `aerodynamics`, `controls` | Geometry, coefficient tables, gear, surface travel, and ground contact properties shared by a family. |
 | `variant` | `family`, `engine`, `systems`, `empty_mass`, `min_mass_kg`, `max_mass_kg`, `cg_envelope`, `flap_stages`, `fuel_capacity_kg`, `stations`, `v_speeds` | References and limits for a particular configuration. |
 | `engine` | `propulsion`, `induction`, `fuel_flow_kg_s` | Shaft power, fixed-pitch propeller, induction, and fuel-flow curve. |
-| `systems` | `installed` | Up to 64 distinct system ids. Installation metadata; system dynamics are future work. |
+| `systems` | `installed`, optional `definition` | Up to 64 distinct system ids and validated operational vacuum, electrical, pitot-static, fuel, and engine parameters. See [systems](systems.md). |
 | `panel` | `instruments` | Instrument installation ids, module ids, positions, and sizes. |
 | `aircraft` | `variant`, `panel`, `load` | A named aircraft with a default panel and station load. |
 
@@ -49,7 +49,8 @@ An engine's `propulsion` contains `max_power_w`, `idle_power_w`, `power_density`
 against density ratio), fixed-pitch propeller `prop_diameter_m`, `prop_ct`, and `prop_cp` tables
 against advance ratio, and the RPM and windmilling parameters. `induction` is `carburettor` or
 `injection`. `fuel_flow_kg_s` is a table against shaft-power fraction, from 0 to 1, with
-nonnegative flow. Induction and fuel flow are metadata until engine systems and fuel burn arrive.
+nonnegative flow. Induction and fuel flow feed the operational engine and fuel systems when the
+systems layer supplies a `definition`; placeholder installations retain legacy behavior.
 
 Each panel instrument has a unique installation `id`, a known `module`, a nonnegative
 `position: [x, y]`, and a positive `size: [width, height]`, in panel grid units. Today's modules
@@ -136,7 +137,8 @@ Rust callers use `LayerFile::from_json`, `AircraftCatalog::builtins`, `install_p
 or `resolve_aircraft`. Resolution returns a `ResolvedAircraft` with the physics `aircraft`, variant,
 engine, installed systems, panel, load, and balance. `Session::aircraft_configuration` exposes the
 active flight's resolved metadata; it is absent for a legacy fixed-mass source. `Sim` continues to
-consume the resolved `Aircraft` through its existing constructors. The resolved runtime structure
+consume the resolved `Aircraft` through its existing constructors; `Sim::configure_systems` installs
+the resolved systems, engine metadata, and station fuel into a new flight. The resolved runtime structure
 retains the version 1 representation for compatibility; authorable version 2 files use `LayerFile`.
 
 ## Packs and loading

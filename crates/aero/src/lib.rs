@@ -9,6 +9,8 @@ pub use layers::*;
 mod packs;
 pub use aircraft::*;
 pub use packs::*;
+mod installed;
+pub use installed::*;
 mod failures;
 pub use failures::*;
 

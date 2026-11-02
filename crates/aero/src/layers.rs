@@ -169,6 +169,9 @@ pub struct InstalledSystems {
     pub identity: Identity,
     #[schemars(length(max = 64))]
     pub installed: Vec<String>,
+    /// Absent for legacy placeholder installations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition: Option<crate::SystemsDefinition>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -252,7 +255,7 @@ pub struct WeightBalance {
     pub violations: Vec<String>,
 }
 
-fn id(value: &str, field: &str) -> Result<(), AircraftError> {
+pub(crate) fn id(value: &str, field: &str) -> Result<(), AircraftError> {
     require(
         !value.is_empty()
             && value.len() <= 128
@@ -369,6 +372,9 @@ impl LayerFile {
                 Ok(())
             }
             Self::Systems(s) => {
+                if let Some(d) = &s.definition {
+                    d.validate()?;
+                }
                 require(s.installed.len() <= 64, "installed", "at most 64 systems")?;
                 let mut seen = BTreeSet::new();
                 for system in &s.installed {
@@ -719,7 +725,32 @@ impl AircraftCatalog {
         let LayerFile::Engine(e) = self.get(FileKind::Engine, &v.engine)? else {
             return Err(error("engine", "wrong file kind"));
         };
-        self.get(FileKind::Systems, &v.systems)?;
+        let LayerFile::Systems(s) = self.get(FileKind::Systems, &v.systems)? else {
+            return Err(error("systems", "wrong file kind"));
+        };
+        if let Some(d) = &s.definition {
+            for t in &d.tanks {
+                require(
+                    v.stations
+                        .iter()
+                        .any(|s| s.id == t.station && s.kind == StationKind::Fuel),
+                    "tank.station",
+                    "must reference a fuel station",
+                )?;
+            }
+            require(
+                (d.tanks.iter().map(|t| t.capacity_kg).sum::<f64>() - v.fuel_capacity_kg).abs() < 1e-6,
+                "tanks",
+                "capacity must match variant fuel capacity",
+            )?;
+            for station in v.stations.iter().filter(|s| s.kind == StationKind::Fuel) {
+                require(
+                    d.tanks.iter().any(|t| t.station == station.id),
+                    "tank.station",
+                    "every fuel station needs a tank",
+                )?;
+            }
+        }
         let balance = v.weight_balance(load)?;
         let aircraft = Aircraft {
             format_version: 1,
@@ -863,6 +894,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         },
     };
     let systems = InstalledSystems {
+        definition: None,
         format_version: 2,
         identity: make_identity("systems"),
         installed: vec![

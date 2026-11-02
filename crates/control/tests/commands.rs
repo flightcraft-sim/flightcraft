@@ -23,6 +23,10 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
             "weather.set",
             json!({"wind_from_deg": 270, "wind_speed_mps": 3, "shear": false, "turbulence": "light", "seed": 42}),
         ),
+        (
+            "systems.set",
+            json!({"setting":{"kind":"switch","switch":"lights","on":true}}),
+        ),
         ("failure.set", json!({"failure": {"kind": "engine"}})),
         ("failure.clear", json!({})),
         ("sim.pause", json!({})),

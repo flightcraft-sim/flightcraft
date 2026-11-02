@@ -9,8 +9,180 @@
   },
   "installed": [
     "electrical",
-    "vacuum",
     "pitot_static",
-    "fuel"
-  ]
+    "fuel",
+    "engine_operation",
+    "electric_gyros"
+  ],
+  "definition": {
+    "electrical": {
+      "battery_capacity_ah": 24,
+      "battery_voltage": 12.6,
+      "alternator_voltage": 14.2,
+      "alternator_amps": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            600,
+            8
+          ],
+          [
+            1200,
+            40
+          ],
+          [
+            2800,
+            60
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "loads": [
+        {
+          "id": "avionics",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "lights",
+          "bus": "main",
+          "switch": "lights",
+          "amps": 8,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "fuel_pump",
+          "bus": "essential",
+          "switch": "fuel_pump",
+          "amps": 3,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "pitot_heat",
+          "bus": "main",
+          "switch": "pitot_heat",
+          "amps": 8,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "electric_gyros",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 1
+        }
+      ]
+    },
+    "pitot_static": {
+      "position_error_pa": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0.5,
+            -15
+          ],
+          [
+            1,
+            -35
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "alternate_static_error_pa": -80,
+      "vsi_lag_s": 6
+    },
+    "tanks": [
+      {
+        "id": "left",
+        "wing": "left",
+        "station": "fuel",
+        "capacity_kg": 40.0,
+        "unusable_kg": 1,
+        "gauge_lag_s": 10,
+        "gauge_bias_kg": 0.4
+      },
+      {
+        "id": "right",
+        "wing": "right",
+        "station": "fuel",
+        "capacity_kg": 40.0,
+        "unusable_kg": 1,
+        "gauge_lag_s": 10,
+        "gauge_bias_kg": -0.3
+      }
+    ],
+    "engine": {
+      "single_mag_power_fraction": 0.85,
+      "carb_heat_power_fraction": 0.9,
+      "carb_ice_rate": {
+        "points": [
+          [
+            -20,
+            0
+          ],
+          [
+            -5,
+            0.0001
+          ],
+          [
+            5,
+            0.001
+          ],
+          [
+            15,
+            0.0012
+          ],
+          [
+            25,
+            0.0005
+          ],
+          [
+            35,
+            0
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "carb_ice_humidity": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0.6,
+            0
+          ],
+          [
+            0.8,
+            0.5
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "source": "Original fictional lumped-parameter systems estimate; no aircraft-specific measurements."
+      },
+      "carb_heat_clear_rate": 0.006,
+      "egt_lag_s": 8,
+      "cht_lag_s": 90,
+      "start_time_s": 2,
+      "starter_amps": 120
+    },
+    "electric_gyro_load": "electric_gyros"
+  }
 }

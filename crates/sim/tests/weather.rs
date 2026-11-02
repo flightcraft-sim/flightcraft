@@ -161,6 +161,7 @@ fn failures_are_persistent_hash_state_and_actual_surfaces_override_holds() {
         aileron: Some(0.02),
         rudder: Some(-0.03),
         flaps: Some(0.2),
+        ..Failures::default()
     };
     sim.set_failures(f).unwrap();
     assert_ne!(sim.state_hash(), initial);

@@ -186,6 +186,56 @@
           ],
           "type": "object"
         },
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -198,6 +248,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -223,6 +277,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -231,12 +289,85 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
           ],
           "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -392,6 +523,47 @@
           ],
           "type": "object"
         },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -447,6 +619,235 @@
             "velocity_mps",
             "attitude",
             "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -575,6 +976,9 @@
         "state": {
           "$ref": "#/$defs/State"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "world": {
           "$ref": "#/$defs/WorldChoice"
         }
@@ -582,6 +986,7 @@
       "required": [
         "state",
         "readout",
+        "systems",
         "paused",
         "rate",
         "world"
@@ -890,6 +1295,10 @@
                 "null"
               ]
             },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
+            },
             "elevator": {
               "format": "double",
               "maximum": 1,
@@ -914,6 +1323,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -922,6 +1335,14 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1666,6 +2087,10 @@
                 "null"
               ]
             },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
+            },
             "elevator": {
               "format": "double",
               "maximum": 1,
@@ -1690,6 +2115,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -1698,6 +2127,14 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2308,6 +2745,56 @@
           ],
           "type": "object"
         },
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -2320,6 +2807,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -2345,6 +2836,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -2353,12 +2848,85 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
           ],
           "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -2514,6 +3082,47 @@
           ],
           "type": "object"
         },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -2569,6 +3178,235 @@
             "velocity_mps",
             "attitude",
             "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -2697,6 +3535,9 @@
         "state": {
           "$ref": "#/$defs/State"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "world": {
           "$ref": "#/$defs/WorldChoice"
         }
@@ -2704,6 +3545,7 @@
       "required": [
         "state",
         "readout",
+        "systems",
         "paused",
         "rate",
         "world"
@@ -2768,6 +3610,56 @@
     },
     "output_schema": {
       "$defs": {
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -2780,6 +3672,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -2805,6 +3701,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -2813,10 +3713,353 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -2873,13 +4116,809 @@
         "failures": {
           "$ref": "#/$defs/Failures"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "weather": {
           "$ref": "#/$defs/Weather"
         }
       },
       "required": [
         "weather",
-        "failures"
+        "failures",
+        "systems"
+      ],
+      "title": "Systems",
+      "type": "object"
+    }
+  },
+  {
+    "name": "systems.set",
+    "description": "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.",
+    "input_schema": {
+      "$defs": {
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "SystemSetting": {
+          "description": "One atomic panel action. Numeric values are validated before any state changes.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "switch",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "switch": {
+                  "$ref": "#/$defs/SystemSwitch"
+                }
+              },
+              "required": [
+                "kind",
+                "switch",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "magnetos",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/Magnetos"
+                }
+              },
+              "required": [
+                "kind",
+                "position"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "fuel_selector",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/FuelSelector"
+                }
+              },
+              "required": [
+                "kind",
+                "position"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "mixture",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "altimeter",
+                  "type": "string"
+                },
+                "pressure_pa": {
+                  "format": "double",
+                  "maximum": 110000,
+                  "minimum": 80000,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Primer charge, normalized; consumed while cranking.",
+              "properties": {
+                "charge": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "primer",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "charge"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "closed": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "breaker",
+                  "type": "string"
+                },
+                "load": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "load",
+                "closed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A deterministic load fault, for overload practice. 1 restores rated current.",
+              "properties": {
+                "kind": {
+                  "const": "load_multiplier",
+                  "type": "string"
+                },
+                "load": {
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 10,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "load",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Ground servicing / scenario setup; does not change rigid-body mass in flight.",
+              "properties": {
+                "kind": {
+                  "const": "tank_quantity",
+                  "type": "string"
+                },
+                "mass_kg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "tank": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "tank",
+                "mass_kg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "environment",
+                  "type": "string"
+                },
+                "relative_humidity": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "temperature_c": {
+                  "format": "double",
+                  "maximum": 60,
+                  "minimum": -60,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "temperature_c",
+                "relative_humidity"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "SystemSwitch": {
+          "enum": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "A switch, selector, knob, breaker, or ground-servicing action.",
+      "properties": {
+        "setting": {
+          "$ref": "#/$defs/SystemSetting"
+        }
+      },
+      "required": [
+        "setting"
+      ],
+      "title": "SetSystems",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
+          ],
+          "type": "object"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "failures",
+        "systems"
       ],
       "title": "Systems",
       "type": "object"
@@ -2887,7 +4926,7 @@
   },
   {
     "name": "failure.set",
-    "description": "Fail the engine, set a remaining power fraction, or jam a surface at a fixed deflection.",
+    "description": "Fail the engine, vacuum pump, alternator, or pitot/static ports; reduce power or jam a surface.",
     "input_schema": {
       "$defs": {
         "ControlSurface": {
@@ -2906,6 +4945,58 @@
               "properties": {
                 "kind": {
                   "const": "engine",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vacuum_pump",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "alternator",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pitot_blocked",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "static_blocked",
                   "type": "string"
                 }
               },
@@ -2977,6 +5068,56 @@
     },
     "output_schema": {
       "$defs": {
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -2989,6 +5130,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -3014,6 +5159,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -3022,10 +5171,353 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -3082,13 +5574,17 @@
         "failures": {
           "$ref": "#/$defs/Failures"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "weather": {
           "$ref": "#/$defs/Weather"
         }
       },
       "required": [
         "weather",
-        "failures"
+        "failures",
+        "systems"
       ],
       "title": "Systems",
       "type": "object"
@@ -3096,12 +5592,16 @@
   },
   {
     "name": "failure.clear",
-    "description": "Restore the engine, release a surface jam, or clear all failures (the default).",
+    "description": "Restore a system or engine, release a surface jam, or clear all failures (the default).",
     "input_schema": {
       "$defs": {
         "FailureTarget": {
           "enum": [
             "all",
+            "vacuum_pump",
+            "alternator",
+            "pitot_blocked",
+            "static_blocked",
             "engine",
             "elevator",
             "aileron",
@@ -3123,6 +5623,56 @@
     },
     "output_schema": {
       "$defs": {
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -3135,6 +5685,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -3160,6 +5714,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -3168,10 +5726,353 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -3228,13 +6129,17 @@
         "failures": {
           "$ref": "#/$defs/Failures"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "weather": {
           "$ref": "#/$defs/Weather"
         }
       },
       "required": [
         "weather",
-        "failures"
+        "failures",
+        "systems"
       ],
       "title": "Systems",
       "type": "object"
@@ -4089,6 +6994,56 @@
           ],
           "type": "object"
         },
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
         "Failures": {
           "additionalProperties": false,
           "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
@@ -4101,6 +7056,10 @@
                 "number",
                 "null"
               ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
             },
             "elevator": {
               "format": "double",
@@ -4126,6 +7085,10 @@
                 "null"
               ]
             },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
             "rudder": {
               "format": "double",
               "maximum": 1,
@@ -4134,12 +7097,85 @@
                 "number",
                 "null"
               ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
             }
           },
           "required": [
             "engine_power_fraction"
           ],
           "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
         },
         "Readout": {
           "description": "Derived values for instruments, agents, and tests.",
@@ -4295,6 +7331,47 @@
           ],
           "type": "object"
         },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -4350,6 +7427,235 @@
             "velocity_mps",
             "attitude",
             "angular_rate_rps"
+          ],
+          "type": "object"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "enabled",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
           ],
           "type": "object"
         },
@@ -4478,6 +7784,9 @@
         "state": {
           "$ref": "#/$defs/State"
         },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
         "world": {
           "$ref": "#/$defs/WorldChoice"
         }
@@ -4485,6 +7794,7 @@
       "required": [
         "state",
         "readout",
+        "systems",
         "paused",
         "rate",
         "world"

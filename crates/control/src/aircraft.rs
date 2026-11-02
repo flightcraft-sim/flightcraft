@@ -189,7 +189,10 @@ impl Command for LoadAircraft {
         } else {
             None
         };
-        if let Some(sim) = replacement {
+        if let Some(mut sim) = replacement {
+            if let Some(configuration) = &configuration {
+                sim.configure_systems(configuration)?;
+            }
             session.sim = sim;
             session.active_configuration = configuration.clone();
             session.paused = true;

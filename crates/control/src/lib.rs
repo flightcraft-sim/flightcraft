@@ -180,6 +180,7 @@ impl Session {
         StateOutput {
             state: *self.sim.state(),
             readout: self.sim.readout(),
+            systems: self.sim.systems().clone(),
             paused: self.paused,
             rate: self.rate,
             world: self.sim.world().choice(),
@@ -199,6 +200,7 @@ impl Session {
 pub struct StateOutput {
     pub state: State,
     pub readout: Readout,
+    pub systems: flightcraft_sim::systems::SystemsState,
     pub paused: bool,
     pub rate: f64,
     pub world: WorldChoice,
@@ -272,12 +274,16 @@ impl Command for Reset {
                 }
             }
         };
-        session.sim = Sim::new_with_aircraft_weather_world(
+        let mut replacement = Sim::new_with_aircraft_weather_world(
             &start,
             session.selected_aircraft.clone(),
             self.weather.unwrap_or_default(),
             session.resolve_world(self.world)?,
         )?;
+        if let Some(configuration) = &session.selected_configuration {
+            replacement.configure_systems(configuration)?;
+        }
+        session.sim = replacement;
         session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
         session.paused = self.paused.unwrap_or(true);
@@ -520,6 +526,7 @@ registry!(
     RunUntil,
     GetState,
     SetWeather,
+    SetSystems,
     SetFailure,
     ClearFailure,
     Pause,

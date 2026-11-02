@@ -171,6 +171,17 @@
     {
       "type": "object",
       "properties": {
+        "definition": {
+          "description": "Absent for legacy placeholder installations.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SystemsDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "format_version": {
           "type": "integer",
           "format": "uint32",
@@ -464,6 +475,13 @@
         "lateral_friction"
       ]
     },
+    "Bus": {
+      "type": "string",
+      "enum": [
+        "main",
+        "essential"
+      ]
+    },
     "Derivatives": {
       "type": "object",
       "properties": {
@@ -525,6 +543,131 @@
         "cn_rudder",
         "cy_rudder",
         "cn_aileron"
+      ]
+    },
+    "ElectricalDefinition": {
+      "type": "object",
+      "properties": {
+        "alternator_amps": {
+          "$ref": "#/$defs/Table"
+        },
+        "alternator_voltage": {
+          "type": "number",
+          "format": "double"
+        },
+        "battery_capacity_ah": {
+          "type": "number",
+          "format": "double"
+        },
+        "battery_voltage": {
+          "type": "number",
+          "format": "double"
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ElectricalLoad"
+          },
+          "maxItems": 64,
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "battery_capacity_ah",
+        "battery_voltage",
+        "alternator_voltage",
+        "alternator_amps",
+        "loads"
+      ]
+    },
+    "ElectricalLoad": {
+      "type": "object",
+      "properties": {
+        "amps": {
+          "type": "number",
+          "format": "double"
+        },
+        "backup_capacity_ah": {
+          "description": "Zero for equipment without an internal battery.",
+          "type": "number",
+          "format": "double"
+        },
+        "breaker_amps": {
+          "type": "number",
+          "format": "double"
+        },
+        "bus": {
+          "$ref": "#/$defs/Bus"
+        },
+        "id": {
+          "type": "string"
+        },
+        "switch": {
+          "$ref": "#/$defs/LoadSwitch"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "bus",
+        "switch",
+        "amps",
+        "breaker_amps",
+        "backup_capacity_ah"
+      ]
+    },
+    "EngineOperationDefinition": {
+      "type": "object",
+      "properties": {
+        "carb_heat_clear_rate": {
+          "type": "number",
+          "format": "double"
+        },
+        "carb_heat_power_fraction": {
+          "type": "number",
+          "format": "double"
+        },
+        "carb_ice_humidity": {
+          "description": "Multiplier against relative humidity, 0..1.",
+          "$ref": "#/$defs/Table"
+        },
+        "carb_ice_rate": {
+          "description": "Icing accumulation per second against ambient temperature (degrees Celsius).",
+          "$ref": "#/$defs/Table"
+        },
+        "cht_lag_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "egt_lag_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "single_mag_power_fraction": {
+          "type": "number",
+          "format": "double"
+        },
+        "start_time_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "starter_amps": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "single_mag_power_fraction",
+        "carb_heat_power_fraction",
+        "carb_ice_rate",
+        "carb_ice_humidity",
+        "carb_heat_clear_rate",
+        "egt_lag_s",
+        "cht_lag_s",
+        "start_time_s",
+        "starter_amps"
       ]
     },
     "FlapStage": {
@@ -755,6 +898,16 @@
         "max_mass_kg"
       ]
     },
+    "LoadSwitch": {
+      "type": "string",
+      "enum": [
+        "avionics",
+        "lights",
+        "fuel_pump",
+        "pitot_heat",
+        "always"
+      ]
+    },
     "Mass": {
       "type": "object",
       "properties": {
@@ -793,6 +946,29 @@
         "mass_kg",
         "cg_m",
         "inertia_kg_m2"
+      ]
+    },
+    "PitotStaticDefinition": {
+      "type": "object",
+      "properties": {
+        "alternate_static_error_pa": {
+          "type": "number",
+          "format": "double"
+        },
+        "position_error_pa": {
+          "description": "Static pressure error (Pa) against normalized flap position.",
+          "$ref": "#/$defs/Table"
+        },
+        "vsi_lag_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "position_error_pa",
+        "alternate_static_error_pa",
+        "vsi_lag_s"
       ]
     },
     "Propulsion": {
@@ -876,6 +1052,52 @@
         "mass_kg"
       ]
     },
+    "SystemsDefinition": {
+      "type": "object",
+      "properties": {
+        "electric_gyro_load": {
+          "description": "Electric attitude/heading sensor; its installation must name an electrical load.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "electrical": {
+          "$ref": "#/$defs/ElectricalDefinition"
+        },
+        "engine": {
+          "$ref": "#/$defs/EngineOperationDefinition"
+        },
+        "pitot_static": {
+          "$ref": "#/$defs/PitotStaticDefinition"
+        },
+        "tanks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TankDefinition"
+          },
+          "maxItems": 16,
+          "minItems": 2
+        },
+        "vacuum": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VacuumDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "electrical",
+        "pitot_static",
+        "tanks",
+        "engine"
+      ]
+    },
     "Table": {
       "type": "object",
       "properties": {
@@ -908,6 +1130,47 @@
       "required": [
         "points",
         "source"
+      ]
+    },
+    "TankDefinition": {
+      "type": "object",
+      "properties": {
+        "capacity_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "gauge_bias_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "gauge_lag_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "station": {
+          "description": "Load station supplying this tank. Shared stations are divided by tank capacity.",
+          "type": "string"
+        },
+        "unusable_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "wing": {
+          "$ref": "#/$defs/Wing"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "wing",
+        "station",
+        "capacity_kg",
+        "unusable_kg",
+        "gauge_lag_s",
+        "gauge_bias_kg"
       ]
     },
     "VSpeeds": {
@@ -956,6 +1219,51 @@
         "vfe_mps",
         "vno_mps",
         "vne_mps"
+      ]
+    },
+    "VacuumDefinition": {
+      "type": "object",
+      "properties": {
+        "drift_rps": {
+          "type": "number",
+          "format": "double"
+        },
+        "erection_rate_rps": {
+          "type": "number",
+          "format": "double"
+        },
+        "nominal_suction_pa": {
+          "type": "number",
+          "format": "double"
+        },
+        "spin_down_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "spin_up_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "suction_pa": {
+          "description": "Pump suction (Pa below ambient) against engine RPM.",
+          "$ref": "#/$defs/Table"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "suction_pa",
+        "nominal_suction_pa",
+        "spin_down_s",
+        "spin_up_s",
+        "erection_rate_rps",
+        "drift_rps"
+      ]
+    },
+    "Wing": {
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
       ]
     }
   }

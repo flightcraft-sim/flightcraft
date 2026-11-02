@@ -8,6 +8,71 @@ fn weather() -> Value {
 }
 
 #[test]
+fn aircraft_system_commands_report_sensed_state_and_reset_station_fuel() {
+    let mut s = Session::new().unwrap();
+    for setting in [
+        json!({"kind":"switch","switch":"master","on":false}),
+        json!({"kind":"magnetos","position":"left"}),
+        json!({"kind":"mixture","value":0.8}),
+        json!({"kind":"altimeter","pressure_pa":102000}),
+    ] {
+        s.execute("systems.set", json!({"setting":setting})).unwrap();
+    }
+    for kind in ["vacuum_pump", "alternator", "pitot_blocked", "static_blocked"] {
+        let output = s
+            .execute("failure.set", json!({"failure":{"kind":kind}}))
+            .unwrap();
+        assert_eq!(output["systems"]["failures"][kind], true);
+    }
+    let state = s.execute("sim.state", json!({})).unwrap();
+    assert_eq!(state["systems"]["controls"]["master"], false);
+    assert!(state["systems"]["sensed"]["altitude_msl_m"].as_f64().unwrap() > 50.0);
+    s.execute("aircraft.load",json!({"variant":"corvid-standard","panel":"corvid-six","load":{"stations":[{"station":"pilot","mass_kg":80},{"station":"passenger","mass_kg":80},{"station":"fuel","mass_kg":10}]},"reset":true})).unwrap();
+    let state = s.execute("sim.state", json!({})).unwrap();
+    assert_eq!(state["systems"]["controls"]["master"], true);
+    assert_eq!(state["systems"]["controls"]["magnetos"], "both");
+    assert_eq!(state["systems"]["controls"]["altimeter_setting_pa"], 101325.0);
+    assert_eq!(state["systems"]["failures"]["vacuum_pump"], false);
+    assert_eq!(state["systems"]["tanks"][0]["quantity_kg"], 5.0);
+    assert_eq!(state["systems"]["tanks"][1]["quantity_kg"], 5.0);
+}
+
+#[test]
+fn invalid_panel_actions_preserve_the_entire_state() {
+    let mut s = Session::new().unwrap();
+    let before = s.execute("sim.state", json!({})).unwrap();
+    for setting in [
+        json!({"kind":"mixture","value":1.1}),
+        json!({"kind":"altimeter","pressure_pa":10}),
+        json!({"kind":"primer","charge":-1}),
+        json!({"kind":"environment","temperature_c":10,"relative_humidity":2}),
+        json!({"kind":"tank_quantity","tank":"left","mass_kg":51}),
+        json!({"kind":"tank_quantity","tank":"unknown","mass_kg":0}),
+        json!({"kind":"breaker","load":"unknown","closed":true}),
+        json!({"kind":"load_multiplier","load":"avionics","value":11}),
+        json!({"kind":"switch","switch":"master","on":true,"extra":0}),
+        json!({"kind":"magnetos","position":"unknown"}),
+    ] {
+        assert!(s.execute("systems.set", json!({"setting":setting})).is_err());
+        assert_eq!(s.execute("sim.state", json!({})).unwrap(), before);
+    }
+    s.execute(
+        "aircraft.load",
+        json!({"source":{"kind":"built_in","id":"larrow"},"reset":true}),
+    )
+    .unwrap();
+    let before = s.execute("sim.state", json!({})).unwrap();
+    assert!(
+        s.execute(
+            "systems.set",
+            json!({"setting":{"kind":"switch","switch":"carb_heat","on":true}})
+        )
+        .is_err()
+    );
+    assert_eq!(s.execute("sim.state", json!({})).unwrap(), before);
+}
+
+#[test]
 fn set_clear_and_readout_report_weather_and_independent_failures() {
     let mut s = Session::new().unwrap();
     let w = s.execute("weather.set", weather()).unwrap();

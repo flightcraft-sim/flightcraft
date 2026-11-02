@@ -16,6 +16,14 @@ pub enum ControlSurface {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Failures {
+    #[serde(default)]
+    pub vacuum_pump: bool,
+    #[serde(default)]
+    pub alternator: bool,
+    #[serde(default)]
+    pub pitot_blocked: bool,
+    #[serde(default)]
+    pub static_blocked: bool,
     #[schemars(range(min = 0, max = 1))]
     pub engine_power_fraction: f64,
     #[schemars(range(min = -1, max = 1))]
@@ -31,6 +39,10 @@ pub struct Failures {
 impl Default for Failures {
     fn default() -> Self {
         Self {
+            vacuum_pump: false,
+            alternator: false,
+            pitot_blocked: false,
+            static_blocked: false,
             engine_power_fraction: 1.0,
             elevator: None,
             aileron: None,

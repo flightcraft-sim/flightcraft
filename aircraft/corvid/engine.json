@@ -123,6 +123,6 @@
         0.01
       ]
     ],
-    "source": "Original fictional engine estimate; metadata until fuel burn is implemented."
+    "source": "Original fictional fuel flow estimate against shaft-power fraction."
   }
 }

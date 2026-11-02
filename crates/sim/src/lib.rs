@@ -16,6 +16,9 @@
 pub mod autopilot;
 mod dynamics;
 mod math;
+pub mod systems;
+#[cfg(test)]
+mod systems_tests;
 
 pub use flightcraft_aero::{Aircraft, AircraftError, ControlSurface, Failures};
 use flightcraft_world as world;
@@ -153,6 +156,8 @@ pub enum Start {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum SimError {
+    #[error("invalid systems input: {0}")]
+    InvalidSystems(String),
     #[error(transparent)]
     Aircraft(#[from] AircraftError),
     #[error(transparent)]
@@ -181,6 +186,9 @@ pub struct Sim {
     autopilot: autopilot::Autopilot,
     wind: world::Wind,
     failures: Failures,
+    systems: systems::SystemsState,
+    systems_model: Option<systems::SystemsModel>,
+    systems_changed: bool,
 }
 
 impl Sim {
@@ -299,6 +307,9 @@ impl Sim {
             world,
             wind,
             failures: Failures::default(),
+            systems: systems::SystemsState::default(),
+            systems_model: None,
+            systems_changed: false,
             state,
             controls,
             steps: 0,
@@ -306,6 +317,7 @@ impl Sim {
             autopilot: autopilot::Autopilot::default(),
         };
         sim.controls = sim.limit_controls(sim.controls);
+        sim.configure_builtin_systems()?;
         Ok(sim)
     }
 
@@ -332,17 +344,65 @@ impl Sim {
         state.time_s = steps as f64 * DT_S;
         let aircraft = Aircraft::corvid()?;
         let crashed = dynamics::crash(&aircraft, &state, &world);
-        Ok(Self {
+        let mut sim = Self {
             aircraft,
             world,
             wind: world::Wind::new(Weather::default())?,
             failures: Failures::default(),
+            systems: systems::SystemsState::default(),
+            systems_model: None,
+            systems_changed: false,
             state,
             controls: controls.clamped(),
             steps,
             crashed,
             autopilot: autopilot::Autopilot::default(),
-        })
+        };
+        sim.configure_builtin_systems()?;
+        Ok(sim)
+    }
+
+    fn configure_builtin_systems(&mut self) -> Result<(), SimError> {
+        let name = match self.aircraft.identity.id.as_str() {
+            "corvid" | "corvid-standard" => "corvid",
+            "larrow" | "larrow-standard" => "larrow",
+            _ => return Ok(()),
+        };
+        let configuration = flightcraft_aero::AircraftCatalog::builtins()?.resolve_aircraft(name)?;
+        self.configure_systems(&configuration)
+    }
+
+    /// Install the resolved systems and station fuel for a newly created flight.
+    /// Legacy files with placeholder systems retain their original flight behavior.
+    pub fn configure_systems(
+        &mut self,
+        configuration: &flightcraft_aero::ResolvedAircraft,
+    ) -> Result<(), SimError> {
+        let (state, model) = systems::SystemsState::configure(configuration, self.readout())?;
+        self.systems = state;
+        self.systems_model = model;
+        self.systems_changed = false;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn systems(&self) -> &systems::SystemsState {
+        &self.systems
+    }
+
+    pub fn set_systems(&mut self, setting: systems::SystemSetting) -> Result<(), SimError> {
+        let previous = self.systems.clone();
+        self.systems.set(setting, self.systems_model.as_ref())?;
+        self.systems_changed |= self.systems != previous;
+        Ok(())
+    }
+
+    fn propulsion_failures(&self) -> Failures {
+        let mut failures = self.failures;
+        if self.systems.enabled && self.systems.engine_power_fraction != 1.0 {
+            failures.engine_power_fraction *= self.systems.engine_power_fraction;
+        }
+        failures
     }
 
     #[must_use]
@@ -370,6 +430,10 @@ impl Sim {
     pub fn set_failures(&mut self, failures: Failures) -> Result<(), SimError> {
         failures.validate()?;
         self.failures = failures;
+        self.systems.failures = failures;
+        if failures != Failures::default() {
+            self.systems_changed = true;
+        }
         Ok(())
     }
 
@@ -453,7 +517,7 @@ impl Sim {
                 self.state,
                 self.controls,
                 &self.wind,
-                self.failures,
+                self.propulsion_failures(),
                 &self.world,
             ) else {
                 self.crashed = true;
@@ -468,6 +532,10 @@ impl Sim {
             self.crashed = dynamics::crash(&self.aircraft, &next, &self.world)
                 || dynamics::hard_touchdown(&self.aircraft, &self.state, &next, &self.world);
             self.state = next;
+            if let Some(model) = &self.systems_model {
+                let readout = self.readout();
+                self.systems.step(model, readout, self.failures);
+            }
         }
     }
 
@@ -489,7 +557,13 @@ impl Sim {
         let [roll, pitch, heading] = euler(s.attitude);
         let [u, v, w] = dynamics::airflow(s, &self.wind).velocity_body_mps;
         let speed = norm(dynamics::relative_velocity(s, &self.wind));
-        let loads = dynamics::loads(&self.aircraft, s, self.controls, &self.wind, self.failures);
+        let loads = dynamics::loads(
+            &self.aircraft,
+            s,
+            self.controls,
+            &self.wind,
+            self.propulsion_failures(),
+        );
         let [_, fy, fz] = loads.force_n;
         let [_, q, r] = s.angular_rate_rps;
         let cos_pitch = libm::cos(pitch);
@@ -533,7 +607,8 @@ impl Sim {
     }
 
     /// FNV-1a over rigid-body state, crash flag, and step count, plus nondefault
-    /// weather/process memory and failures. Equal on every platform for the same inputs.
+    /// weather/process memory, failures, and operated systems. Equal on every platform
+    /// for the same inputs; healthy default systems preserve the original hash stream.
     #[must_use]
     pub fn state_hash(&self) -> u64 {
         let s = &self.state;
@@ -583,6 +658,12 @@ impl Sim {
                 if let Some(position) = jam {
                     eat(position.to_bits());
                 }
+            }
+        }
+        if self.systems_changed {
+            eat(0x7379_7374_656d_7301);
+            for word in self.systems.hash_words() {
+                eat(word);
             }
         }
         if !self.world.tiles().is_empty() {

@@ -8,12 +8,14 @@ use serde::{Deserialize, Serialize};
 pub struct Systems {
     pub weather: Weather,
     pub failures: Failures,
+    pub systems: flightcraft_sim::systems::SystemsState,
 }
 
 fn current(session: &Session) -> Systems {
     Systems {
         weather: session.sim().weather(),
         failures: session.sim().failures(),
+        systems: session.sim().systems().clone(),
     }
 }
 
@@ -40,6 +42,10 @@ impl Command for SetWeather {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Failure {
     Engine {},
+    VacuumPump {},
+    Alternator {},
+    PitotBlocked {},
+    StaticBlocked {},
     PartialPower {
         #[schemars(range(min = 0, max = 1))]
         fraction: f64,
@@ -61,11 +67,15 @@ pub struct SetFailure {
 impl Command for SetFailure {
     const NAME: &'static str = "failure.set";
     const DESCRIPTION: &'static str =
-        "Fail the engine, set a remaining power fraction, or jam a surface at a fixed deflection.";
+        "Fail the engine, vacuum pump, alternator, or pitot/static ports; reduce power or jam a surface.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         let mut failures = session.sim().failures();
         match self.failure {
+            Failure::VacuumPump {} => failures.vacuum_pump = true,
+            Failure::Alternator {} => failures.alternator = true,
+            Failure::PitotBlocked {} => failures.pitot_blocked = true,
+            Failure::StaticBlocked {} => failures.static_blocked = true,
             Failure::Engine {} => failures.engine_power_fraction = 0.0,
             Failure::PartialPower { fraction } => failures.engine_power_fraction = fraction,
             Failure::Jam { surface, position } => failures
@@ -82,6 +92,10 @@ impl Command for SetFailure {
 pub enum FailureTarget {
     #[default]
     All,
+    VacuumPump,
+    Alternator,
+    PitotBlocked,
+    StaticBlocked,
     Engine,
     Elevator,
     Aileron,
@@ -99,12 +113,16 @@ pub struct ClearFailure {
 impl Command for ClearFailure {
     const NAME: &'static str = "failure.clear";
     const DESCRIPTION: &'static str =
-        "Restore the engine, release a surface jam, or clear all failures (the default).";
+        "Restore a system or engine, release a surface jam, or clear all failures (the default).";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         let mut f = session.sim().failures();
         match self.target {
             FailureTarget::All => f = Failures::default(),
+            FailureTarget::VacuumPump => f.vacuum_pump = false,
+            FailureTarget::Alternator => f.alternator = false,
+            FailureTarget::PitotBlocked => f.pitot_blocked = false,
+            FailureTarget::StaticBlocked => f.static_blocked = false,
             FailureTarget::Engine => f.engine_power_fraction = 1.0,
             FailureTarget::Elevator => f.elevator = None,
             FailureTarget::Aileron => f.aileron = None,
@@ -112,6 +130,22 @@ impl Command for ClearFailure {
             FailureTarget::Flaps => f.flaps = None,
         }
         session.sim_mut().set_failures(f)?;
+        Ok(current(session))
+    }
+}
+
+/// A switch, selector, knob, breaker, or ground-servicing action.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetSystems {
+    pub setting: flightcraft_sim::systems::SystemSetting,
+}
+impl Command for SetSystems {
+    const NAME: &'static str = "systems.set";
+    const DESCRIPTION: &'static str = "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.";
+    type Output = Systems;
+    fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
+        session.sim_mut().set_systems(self.setting)?;
         Ok(current(session))
     }
 }
