@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         viewport: egui::ViewportBuilder::default()
-            .with_title("FlightCraft · Corvid")
+            .with_title("FlightCraft · The Art of Flying")
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([1000.0, 640.0]),
         multisampling: 0,

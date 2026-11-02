@@ -1,5 +1,7 @@
 # FlightCraft
 
+**The Art of Flying.**
+
 An open-source flight simulator in pure Rust, for the desktop and the browser, with a deterministic
 core that people, scripts, and AI agents fly the same way.
 
