@@ -312,7 +312,7 @@ provides the complete generated input and output schemas. Geographic positions a
 | `plan.new` | `name`, optional `cruise: {airspeed_mps, fuel_flow_kg_s}`, optional `reserve_s` (default 2700). Replaces the current editable plan with an empty one. |
 | `plan.add` | `point: {waypoint: {ident, kind, position}, altitude_m}`. Kinds are `airport`, `navaid`, `fix`, `pin`, and `coordinate`. |
 | `plan.insert` | `index`, `point`. Insert at a zero-based index, including the end. |
-| `plan.move` | `from`, `to`. Reorder a waypoint; `to` is the final index. |
+| `plan.move` | `from`, `to`, optional `position`. Atomically reorder and/or relocate a waypoint; `to` is the final index. |
 | `plan.remove` | `index`. Remove a waypoint. |
 | `plan.set_altitude` | `index`, `altitude_m`. Set a planned MSL altitude; endpoints interpolate along legs. |
 | `plan.summary` | `{}`. Legs, magnetic and true courses, WGS84 distances, wind-corrected ETE, trip fuel, reserve, required fuel, performance source, and sampled conflicts. Impossible winds produce null ETE/fuel and a conflict. |
@@ -391,3 +391,33 @@ geometric frames. Published CIFP/LOC course labels and VOR radials retain their 
 magnetic reference; VOR radials use published station declination rather than WMM. Planning
 leg labels are magnetic, with explicitly named true courses also available. Map track-up and
 heading-up convert magnetic indications back to grid angles for geometry.
+
+## Map presentation
+
+`map_set` (`map.set`) patches the shared planning/MFD map state. All fields are optional:
+`base_map` (`aero`, `terrain`, `sectional`, or `tac`), `orientation` (`north_up`, `track_up`, or
+`heading_up`), `range_nm` (0.25–200), `centre` (`{latitude_deg, longitude_deg}`), `follow_aircraft`,
+`night`, `declutter`, and `overlays`. Set `follow_aircraft: true` to clear a pinned centre. Geographic centres
+must project into the supported local frame when a region is active. Changes validate atomically.
+
+`overlays` is an object whose supplied entries replace that overlay's `{enabled, opacity}`;
+others retain their values. Supported keys are `route`, `airspace`, `terrain_warnings`, `airports`,
+`navaids`, `fixes`, `airways`, `pins`, `aircraft`, `track`, and `range_rings`. Opacity is 0–1.
+Satellite and Street base selections, and enabling `live_weather`, `tfr`, or `plates`, return a
+coming-soon error. `map_state` (`map.state`) accepts `{}` and returns the full presentation state.
+Neither command advances simulation or opens a dialog. Chart availability is determined by the
+host's regional tile index; a selected missing chart is displayed as unavailable.
+
+```json
+{"base_map":"sectional","range_nm":24,"orientation":"north_up","overlays":{"airspace":{"enabled":true,"opacity":0.4}}}
+```
+
+The map state belongs to the session and survives map visibility changes and flight resets.
+Legacy glass range and orientation inputs update it too. The heading-up option is available
+through `map.set`; the older glass orientation schema retains its two existing choices.
+
+`declutter` supplies `fixes_across_nm` and `airway_labels_across_nm`, each 0–400. They are
+horizontal viewport spans, defaulting to 15 and 20 NM. Route fixes bypass the fix threshold.
+Heading-up and track-up labels use WMM magnetic heading/track at the aircraft and simulation
+date. Their rotation accounts for variation and grid convergence; north-up remains true north.
+For example: `{"declutter":{"fixes_across_nm":15,"airway_labels_across_nm":20}}`.

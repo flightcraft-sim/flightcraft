@@ -193,7 +193,7 @@ fn map(d: &mut DrawList, s: &GlassState) {
         d,
         [302., 350.],
         if s.air_data.air_data_valid {
-            "TERRAIN  YELLOW ≤1000 FT  RED ≤100 FT"
+            "MAP SETTINGS SHARED WITH PLANNING"
         } else {
             "TERRAIN INHIBITED / ADC FAIL"
         },

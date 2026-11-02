@@ -79,6 +79,7 @@ pub fn build() -> Result<(), String> {
         let region_source = root.join("assets/terrain").join(id);
         let region_target = dist.join("terrain").join(id);
         std::fs::create_dir_all(&region_target).map_err(|e| e.to_string())?;
+        copy_tree(&region_source.join("charts"), &region_target.join("charts"))?;
         for entry in std::fs::read_dir(region_source).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             if entry.file_type().map_err(|e| e.to_string())?.is_file() {
@@ -106,6 +107,26 @@ fn bindgen_version(lock: &str) -> Result<&str, String> {
             })
         })
         .ok_or_else(|| "Cargo.lock has no wasm-bindgen version".into())
+}
+
+/// Chart pyramids are copied as encoded files; packaging never decodes a raster tile.
+fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> Result<(), String> {
+    if !source.exists() {
+        return Ok(());
+    }
+    std::fs::create_dir_all(target).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let kind = entry.file_type().map_err(|e| e.to_string())?;
+        if kind.is_dir() {
+            copy_tree(&entry.path(), &target.join(entry.file_name()))?;
+        } else if kind.is_file() {
+            std::fs::copy(entry.path(), target.join(entry.file_name())).map_err(|e| e.to_string())?;
+        } else {
+            return Err("chart package contains a non-regular file".into());
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

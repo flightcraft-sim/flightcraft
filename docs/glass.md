@@ -43,17 +43,21 @@ altitude, baro, VSI, heading bug, course and GPS CDI, optional GPS bearing point
 OAT, TAS, ground speed, ground track, and transponder code and mode. GPS normally drives the
 course pointer; moving the course knob selects a manual course until a new plan is loaded.
 
-The MFD samples the active region's height tiles on a chart grid of 64–256 intervals per
-axis, chosen from the map range and source sample spacing. A theme-coloured triangle mesh
-interpolates elevation shading between vertices. Null samples remain visibly unknown.
-The terrain bands remain relative to indicated aircraft altitude:
-yellow at or above 1,000 ft below the aircraft, red at or above 100 ft below it, and two
-muted elevation shades farther below. Uncovered terrain is explicitly unknown. These bands
-are situational shading, not a certified terrain warning system. The square chart preserves
-range and angle, and rotates terrain, runway diagrams, airspace rings, the plan, and the
-own-aircraft symbol together for track-up. Airport labels are decluttered. All polygon rings
-from the region sidecar remain visible, including New York Class B shelves. Class B and D
-use blue, Class C and E use magenta, and other outlines use a muted token.
+The application MFD map and its pop-out use the same rectangular map widget as the full-window
+planning map. Aero, terrain, sectional, and TAC bases, orientation, range, and overlay opacity
+share `map.set` state; legacy glass range and orientation controls update it too. The vector map
+uses a 48-interval terrain mesh and the region's original runway, airspace, and navigation data.
+Web Mercator chart textures are projected into that same local metre frame. See
+[map and planning](map-and-planning.md#shared-planning-and-mfd-map) for gestures, palettes,
+chart editions, coverage, and cache limits.
+
+Terrain warnings are an optional overlay. On the MFD they use indicated aircraft altitude:
+yellow at or above 1,000 ft below the aircraft, and red at or above 100 ft below it. Invalid air
+data inhibits those warnings; simulation truth never replaces the failed indication. Uncovered
+terrain remains explicitly unknown. These bands are situational shading, not a certified terrain
+warning system. Range rings and the scale bar preserve their shape on rectangular hosts.
+Standalone `GlassState` instrument snapshots retain their 64–256-interval elevation raster and
+legacy procedural map artwork for consumers that do not host the interactive widget.
 
 The engine strip shows RPM, fuel flow, oil pressure and temperature, EGT, CHT, volts, amps,
 and tank sender quantities. RPM, maximum flow, and tank capacities come from the resolved

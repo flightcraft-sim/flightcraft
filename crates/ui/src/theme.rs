@@ -19,6 +19,14 @@ pub const GLASS_GPS: Color32 = Color32::from_rgb(224, 116, 218);
 pub const AIRSPACE_BLUE: Color32 = Color32::from_rgb(75, 143, 255);
 pub const TERRAIN_HIGH: Color32 = Color32::from_rgb(71, 91, 67);
 pub const TERRAIN_LOW: Color32 = Color32::from_rgb(32, 64, 56);
+pub const MAP_DAY_OUTSIDE: Color32 = Color32::from_rgb(235, 239, 231);
+pub const MAP_DAY_LAND: Color32 = Color32::from_rgb(219, 222, 191);
+pub const MAP_DAY_HIGH: Color32 = Color32::from_rgb(173, 157, 114);
+pub const MAP_DAY_WATER: Color32 = Color32::from_rgb(171, 209, 223);
+pub const MAP_DAY_TEXT: Color32 = Color32::from_rgb(28, 45, 49);
+pub const MAP_NIGHT_WATER: Color32 = Color32::from_rgb(21, 47, 65);
+pub const MAP_CHART_DAY: Color32 = Color32::WHITE;
+pub const MAP_CHART_NIGHT: Color32 = Color32::from_rgb(105, 110, 125);
 pub const CLEAR: Color32 = Color32::TRANSPARENT;
 
 pub fn install(ctx: &egui::Context) {

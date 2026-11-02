@@ -8,6 +8,7 @@ use std::process::{Command, ExitCode};
 use syn::visit::Visit;
 
 mod airspace_faa;
+mod charts_faa;
 mod navdata_faa;
 mod navigation_faa;
 mod procedures_faa;
@@ -83,6 +84,7 @@ fn main() -> ExitCode {
         "layers" => layers(),
         "terrain" => terrain(),
         "terrain-srtm" => terrain_srtm::run(),
+        "charts-faa" => charts_faa::run(),
         "airspace-faa" => airspace_faa::run(),
         "navdata-faa" => navdata_faa::run(),
         "procedures-faa" => procedures_faa::run(),
@@ -162,6 +164,10 @@ fn schemas(check: bool) -> Result<(), String> {
         (
             "pins.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::PinsFile)),
+        ),
+        (
+            "charts.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::ChartIndex)),
         ),
         (
             "plan.json",

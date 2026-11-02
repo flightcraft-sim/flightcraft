@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChartIndex",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string"
+    },
+    "bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "coverage_margin_nm": {
+      "type": "number",
+      "format": "double",
+      "default": 0.0,
+      "maximum": 80,
+      "minimum": 0
+    },
+    "edition": {
+      "type": "string"
+    },
+    "expires": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/BaseMap"
+    },
+    "max_zoom": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "min_zoom": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "tile_size": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "tiles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ChartTile"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "kind",
+    "edition",
+    "expires",
+    "attribution",
+    "min_zoom",
+    "max_zoom",
+    "tile_size",
+    "tiles",
+    "bytes"
+  ],
+  "$defs": {
+    "BaseMap": {
+      "type": "string",
+      "enum": [
+        "aero",
+        "terrain",
+        "sectional",
+        "tac",
+        "satellite",
+        "street"
+      ]
+    },
+    "ChartTile": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "z": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "z",
+        "x",
+        "y"
+      ]
+    }
+  }
+}

@@ -21,6 +21,9 @@ pub enum Action {
     Camera,
     Airspace,
     Search,
+    PlanningMap,
+    MapZoomIn,
+    MapZoomOut,
     TrimUp,
     TrimDown,
     LookLeft,
@@ -70,7 +73,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 61] = [
+    pub const ALL: [Self; 64] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -86,6 +89,9 @@ impl Action {
         Self::Camera,
         Self::Airspace,
         Self::Search,
+        Self::PlanningMap,
+        Self::MapZoomIn,
+        Self::MapZoomOut,
         Self::TrimUp,
         Self::TrimDown,
         Self::LookLeft,
@@ -207,6 +213,9 @@ impl Action {
             Self::Pause => "Pause / resume",
             Self::Reset => "Reset flight",
             Self::Camera => "Change camera",
+            Self::PlanningMap => "Show / hide planning map",
+            Self::MapZoomIn => "Map zoom in",
+            Self::MapZoomOut => "Map zoom out",
             Self::Search => "Focus search",
             Self::Airspace => "Show / hide airspace",
             Self::TrimUp => "Trim up",
@@ -286,6 +295,9 @@ impl Default for Keymap {
                 (Camera, vec![Key::C]),
                 (Airspace, vec![Key::U]),
                 (Search, vec![Key::Slash]),
+                (PlanningMap, vec![Key::M]),
+                (MapZoomIn, vec![Key::Plus]),
+                (MapZoomOut, vec![Key::Minus]),
                 (TrimUp, vec![Key::Home]),
                 (TrimDown, vec![Key::End]),
                 (LookLeft, vec![Key::J]),
@@ -389,6 +401,18 @@ impl Keymap {
         {
             value.bindings.entry(action).or_default();
         }
+        for action in [Action::PlanningMap, Action::MapZoomIn, Action::MapZoomOut] {
+            if !value.bindings.contains_key(&action) {
+                let keys = Self::default()
+                    .bindings
+                    .remove(&action)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|key| !value.bindings.values().any(|keys| keys.contains(key)))
+                    .collect();
+                value.bindings.insert(action, keys);
+            }
+        }
         let mut buttons = Vec::new();
         for assigned in value.gamepad_bindings.values() {
             for button in assigned {
@@ -408,7 +432,13 @@ impl Keymap {
                 && !Action::SYSTEMS.contains(&action)
                 && !Action::AUTOPILOT.contains(&action)
                 && !Action::AVIONICS.contains(&action)
-                && action != Action::Search
+                && ![
+                    Action::Search,
+                    Action::PlanningMap,
+                    Action::MapZoomIn,
+                    Action::MapZoomOut,
+                ]
+                .contains(&action)
                 && !Action::GLASS.contains(&action)
             {
                 return Err(format!("{} needs a key", action.label()));

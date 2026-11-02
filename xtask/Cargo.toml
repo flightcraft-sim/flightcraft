@@ -24,3 +24,5 @@ flate2.workspace = true
 libm.workspace = true
 
 roxmltree.workspace = true
+tiff.workspace = true
+image.workspace = true

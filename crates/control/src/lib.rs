@@ -10,6 +10,8 @@ mod avionics;
 pub use avionics::*;
 mod navigation;
 pub use navigation::*;
+pub mod map;
+pub use map::*;
 mod planning;
 pub use planning::*;
 mod geocoding;
@@ -84,6 +86,7 @@ pub struct Session {
     #[cfg(not(target_arch = "wasm32"))]
     efb: Option<efb::sender::Sender>,
     navigation: navigation::NavigationState,
+    map: MapState,
     glass: GlassSettings,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
@@ -113,6 +116,7 @@ impl Session {
             #[cfg(not(target_arch = "wasm32"))]
             efb: None,
             selected_aircraft: flightcraft_aero::Aircraft::corvid().map_err(SimError::from)?,
+            map: MapState::default(),
             glass: GlassSettings::default(),
             paused: true,
             rate: 1.0,
@@ -714,6 +718,8 @@ registry!(
     PinsExport,
     CurrentLocation,
     GeocodeLookup,
+    SetMap,
+    GetMap,
     PlanNew,
     PlanAdd,
     PlanInsert,

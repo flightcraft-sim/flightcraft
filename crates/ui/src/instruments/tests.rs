@@ -369,7 +369,7 @@ fn old_keymaps_gain_optional_systems_bindings_without_changing_custom_keys() {
             .all(|a| upgraded.bindings.get(a).is_some_and(Vec::is_empty))
     );
     let mut configured = upgraded;
-    configured.bindings.insert(Action::Master, vec![egui::Key::M]);
+    configured.bindings.insert(Action::Master, vec![egui::Key::O]);
     assert_eq!(
         Keymap::from_json(&configured.json().unwrap()).unwrap(),
         configured

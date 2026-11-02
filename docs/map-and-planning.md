@@ -1,7 +1,7 @@
 # Map, search, and flight planning
 
 Status: navigation data, magnetic variation, search, pins, explicit location/address actions,
-and the command-driven flight-plan model are implemented. The full planning map and charts remain planned.
+the command-driven flight-plan model, the shared planning/MFD map, and regional FAA chart tiles are implemented.
 
 A planning map you can open at any time, a single search box that finds anything, and flight plans
 that the GPS, the autopilot, and the virtual pilot all fly.
@@ -95,10 +95,8 @@ centre.
   - user pins;
   - your location;
   - the aircraft, with its track history.
-  - Later:
-    - FAA VFR sectional charts as a raster base layer (public domain, imported per region from the
-      FAA's georeferenced chart files);
-    - OpenStreetMap features with attribution.
+  - FAA VFR sectional and terminal area charts as raster bases, imported per region from public-domain GeoTIFFs;
+  - Later: OpenStreetMap features with attribution.
 - **Planning:**
   - Click to add waypoints, or add from search results.
   - Drag a leg to insert a waypoint, and drag a waypoint to move it.
@@ -196,8 +194,8 @@ FlightCraft's own design, not a copy of any app's styling.
 
 ## Implementation reference
 
-Phases 1 and 2, the plan model and commands from phase 3, and a small top-bar search panel are
-implemented. The full planning map, charts, and graphical plan editor remain planned. Use the
+Phases 1–3, Aero and terrain bases, and regional sectional and terminal chart bases are
+implemented, including a top-bar search panel and graphical route editing. Use the
 configurable **Focus search** action (default `/`) for the search field. Results show their kind,
 distance, details, source dates, and the navigation disclaimer. **Start here** makes a paused air
 start 600 m above local terrain, **Direct to** selects a resolved glass GPS waypoint, **Add to plan**
@@ -330,3 +328,118 @@ Unidentified ILS markers retain a null ident rather than acquiring a fabricated 
 The source snapshot provides no DME component for the EWR system; its component array remains
 empty. Some airway endpoint UUIDs have no record in the supplied point layers and retain null
 endpoint idents, while their UUIDs and segment geometry remain available.
+
+### Shared planning and MFD map
+
+Open **Map** in the top bar, or use the configurable **Show / hide planning map** action (default
+M). **Map zoom in/out** default to +/−. Pan by dragging; wheel and pinch zoom both work. The
+planning widget takes a rectangle, clips its drawing and controls to it, and can be hosted by
+future layouts. The application MFD map and its pop-out use the same widget renderer, projection,
+chart cache, and presentation state. Existing standalone glass instrument snapshots remain usable.
+Legacy glass range and orientation controls also update the shared map state. Planning hides
+the instrument and autopilot strips to use the full content area, including at a 1000 × 640 window.
+
+The vector Aero base draws a terrain mesh, sea-level/water tint, airport symbols and runway
+widths at closer ranges, airspace rings and floor/ceiling labels, navaid roses, fixes, and airways.
+Water tint currently uses the region's water surface flags and nonpositive elevation, rather than
+a separate shoreline catalogue. It is an approximate coastline. Terrain adds relief shading from
+the DEM surface normals. All vector drawing uses theme tokens, with separate day and night
+palettes; night dims chart textures. Unknown terrain remains visibly distinct. North-up, track-up,
+and heading-up use one local metre frame, preserving bearings and range on rectangular displays.
+North-up references true north at the map centre, including grid convergence. Heading-up and
+track-up expose WMM magnetic bearings at the aircraft and simulation date; rotation converts
+those bearings back to the region frame so the aircraft heading or track remains at the top.
+Physical attitude and velocity supply that conversion independently of pilot-facing readouts.
+Web Mercator chart tiles are subdivided and projected into that same region frame. Terrain tint
+ends exactly at the grid boundary. Available navigation and airspace still draw beyond it, on a
+neutral Aero background. Aero also remains visible outside a raster chart's coverage.
+
+Fixes appear below a default 15 NM horizontal map span; fixes in the editable or active GPS route
+remain visible at any span. Airways use thin, faint lines, with labels below 20 NM across.
+`map.set.declutter` exposes both thresholds, and the map picker provides matching controls.
+
+Each available overlay has an enabled flag and 0–1 opacity: route, airspace, terrain warnings,
+airports, navaids, fixes, airways, pins, aircraft, track, and range rings. Aircraft history retains
+at most 2,048 positions, spaced by at least 50 m, and clears on reset. Satellite and Street bases,
+and live-weather, TFR, and plate overlays, are visibly disabled as coming soon. No network service
+is contacted for those choices.
+
+Click an airport, navaid, fix, airspace boundary/interior, or pin for a details card. Runway
+sizes and surfaces, navaid frequencies, and airspace vertical references come from the region.
+The airport catalogue currently has no communications frequencies, and the card says so. Cards
+send existing direct-to, plan, reset, and pin commands; **Open plates** stays disabled.
+
+Enable **Edit route** to add coordinate waypoints by clicking empty map space. Feature cards
+add resolved waypoints. Drag a waypoint to relocate it, drag a leg to insert a point, and
+right-click or long-press a waypoint to remove it. Waypoints exposes planned MSL altitude controls.
+`plan.move` accepts an optional `position` alongside its existing `from` and `to` indices, allowing
+relocation and reorder to validate atomically. Dragging preserves the waypoint's ident and kind.
+Leg labels show magnetic course, nautical miles, and ETE; the totals strip includes time, fuel,
+reserve, and conflict count. Fuel follows the engine/fuel preference (US gallons by default,
+using the instruments' 0.72 kg/L conversion; kg in SI). Altitude controls use feet, and planning
+airspeed uses knots. The profile uses `plan.profile` samples and `plan.summary` conflicts,
+showing filled terrain, B/C/D shelf outlines with labelled floors and ceilings, and planned altitude.
+Mode C veils are omitted from the profile. Its axes show feet MSL and nautical miles. Red route segments
+identify legs with reported conflicts. Existing sampling and cruise-estimate limitations still apply.
+
+**Activate GPS** sends `plan.activate`. **Import / export** supports GPX, FPL, and JSON through
+the existing commands. Desktop exports create a new numbered file under the local data directory's
+`exports/` folder without replacing an existing file; browser exports download a file. Import
+accepts dropped files or pasted text and validates through `plan.import` before replacement.
+Copy text is also available. Programmatic exports still return text and never open a dialog. The **Measure** tool takes two clicks and
+shows WGS84 distance and WMM magnetic bearing at the first point, using the simulation date.
+
+### Offline FAA chart tiles
+
+The local-only, pure-Rust importer reads a palette8 or RGB8 GeoTIFF, metric Lambert conformal
+conic 2SP GeoKeys, ellipsoid parameters, and a six-coefficient world file. It supports NAD83 and
+WGS84 chart coordinates; datum differences smaller than the chart pixel resolution are not
+modelled. A sibling FAA `.htm` supplies the verified beginning and ending dates. Source paths are
+never written into the output. Inputs are read-only. For example:
+
+```sh
+cargo xtask charts-faa --region assets/terrain/example-region/region.json \
+  --geotiff downloads/chart.tif --tfw downloads/chart.tfw \
+  --kind sectional --out assets/terrain/example-region/charts/sectional
+```
+
+The output must be a new directory. Default zooms are z8–z11 for sectional and z9–z11 for TAC;
+`--min-zoom` and `--max-zoom` can select a different range, up to z13. Each output is limited to
+65 MiB. The chart footprint is the region grid plus a 40 NM margin on every side, independently
+of terrain coverage. Pixels outside that expanded footprint become transparent. Collar detection selects the
+largest coloured map-face component at a coarse image scale, fills enclosed label holes, and
+masks the disconnected legend. For charts with ambiguous colour boundaries, supply a verified
+geographic map-face extent with `--neatline west,south,east,north`. Inspect a generated map before
+redistributing a new chart. The importer also writes a temporary source overview for inspection.
+Synthetic tests exercise collar isolation, GeoTIFF generation and decoding, georeferencing, and
+hostile input.
+
+`schema/charts.json` describes `charts/<kind>/index.json`, recording the edition, expiry,
+public-domain attribution, zoom bounds, tile coordinates, `coverage_margin_nm`, and encoded byte count. PNG tiles use
+`<z>/<x>/<y>.png`. The checked-in editions are effective **2026-10-29 through 2026-12-23**:
+
+| Region | Base | Zooms | Tiles | PNG bytes |
+|---|---|---|---:|---:|
+| New York | VFR sectional | 8–11 | 485 | 52,609,137 |
+| New York | Terminal area | 9–11 | 178 | 13,533,163 |
+| Eastern Pennsylvania and New Jersey | VFR sectional | 8–11 | 543 | 63,124,909 |
+
+The 1,206 tiles total 129,267,209 bytes, excluding the small indexes. TAC coverage follows the chart
+face, so western parts of the terrain region remain uncovered. The map displays the edition and
+expiry alongside **not for navigation**, or an explicit unavailable/loading message. No base
+silently substitutes another chart. Aero is explicitly shown outside chart coverage, and the
+map labels that underlay. The TAC top zoom is reduced from z12 to z11 to keep both regions
+within the 150 MB chart budget (129,339,184 bytes including indexes).
+
+Desktop reads encoded tiles from the selected terrain directory. Browser maps fetch them from
+the static region location, with bounded streaming reads and at most eight requests in flight.
+`cargo xtask web` copies chart subdirectories recursively, and Trunk's terrain directory copy
+includes them as well. The cache holds at most 96 decoded 256-pixel textures per widget, four
+indexes, and a bounded failed-tile set. Loading is limited to four new visible tiles per frame;
+a whole chart is never decoded by the runtime.
+
+The ignored `render_planning_map_previews` test writes the actual Aero, sectional, and TAC widget
+meshes and font atlas to `out/map/` at full, compact (1000 × 640), and compact content-area
+(1000 × 546) sizes, with the 1N7 → SBJ → KMMU plan and vertical profile. Regular
+tests cover region-frame and Mercator round trips, tile edges, card hits, simulated drag commands,
+and clipped rectangular layouts.

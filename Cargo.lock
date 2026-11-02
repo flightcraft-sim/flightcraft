@@ -1120,9 +1120,11 @@ dependencies = [
  "getrandom 0.3.4",
  "gilrs",
  "image",
+ "js-sys",
  "libm",
  "serde",
  "serde_json",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
 ]
@@ -4578,11 +4580,13 @@ dependencies = [
  "flightcraft-aero",
  "flightcraft-control",
  "flightcraft-world",
+ "image",
  "libm",
  "roxmltree",
  "schemars",
  "serde_json",
  "syn 2.0.119",
+ "tiff",
  "zip",
 ]
 

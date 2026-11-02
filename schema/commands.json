@@ -1405,6 +1405,594 @@
     }
   },
   {
+    "name": "map.set",
+    "description": "Set base map, overlay opacity, orientation, range, centre, and night palette atomically.",
+    "input_schema": {
+      "$defs": {
+        "BaseMap": {
+          "enum": [
+            "aero",
+            "terrain",
+            "sectional",
+            "tac",
+            "satellite",
+            "street"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "MapDeclutter": {
+          "additionalProperties": false,
+          "description": "Declutter distances are the visible span across the map's horizontal dimension, in nautical miles.",
+          "properties": {
+            "airway_labels_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            },
+            "fixes_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "fixes_across_nm",
+            "airway_labels_across_nm"
+          ],
+          "type": "object"
+        },
+        "MapUp": {
+          "enum": [
+            "north_up",
+            "track_up",
+            "heading_up"
+          ],
+          "type": "string"
+        },
+        "OverlayStyle": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "opacity": {
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "enabled",
+            "opacity"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "base_map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BaseMap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "centre": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "declutter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MapDeclutter"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "follow_aircraft": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "night": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "orientation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MapUp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "overlays": {
+          "additionalProperties": false,
+          "default": null,
+          "description": "Supplied entries replace those overlays; omitted entries retain their values.",
+          "properties": {
+            "aircraft": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airports": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airspace": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airways": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "fixes": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "live_weather": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "navaids": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "pins": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "plates": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "range_rings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "route": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "terrain_warnings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "tfr": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "track": {
+              "$ref": "#/$defs/OverlayStyle"
+            }
+          },
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "range_nm": {
+          "default": null,
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "title": "SetMap",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "BaseMap": {
+          "enum": [
+            "aero",
+            "terrain",
+            "sectional",
+            "tac",
+            "satellite",
+            "street"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "MapDeclutter": {
+          "additionalProperties": false,
+          "description": "Declutter distances are the visible span across the map's horizontal dimension, in nautical miles.",
+          "properties": {
+            "airway_labels_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            },
+            "fixes_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "fixes_across_nm",
+            "airway_labels_across_nm"
+          ],
+          "type": "object"
+        },
+        "MapUp": {
+          "enum": [
+            "north_up",
+            "track_up",
+            "heading_up"
+          ],
+          "type": "string"
+        },
+        "OverlayStyle": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "opacity": {
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "enabled",
+            "opacity"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "base_map": {
+          "$ref": "#/$defs/BaseMap"
+        },
+        "centre": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null follows the aircraft; a position pins the centre in the active region's frame."
+        },
+        "declutter": {
+          "$ref": "#/$defs/MapDeclutter",
+          "default": {
+            "airway_labels_across_nm": 20.0,
+            "fixes_across_nm": 15.0
+          }
+        },
+        "night": {
+          "type": "boolean"
+        },
+        "orientation": {
+          "$ref": "#/$defs/MapUp"
+        },
+        "overlays": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airports": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airspace": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airways": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "fixes": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "live_weather": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "navaids": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "pins": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "plates": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "range_rings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "route": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "terrain_warnings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "tfr": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "track": {
+              "$ref": "#/$defs/OverlayStyle"
+            }
+          },
+          "type": "object"
+        },
+        "range_nm": {
+          "format": "double",
+          "maximum": 200,
+          "minimum": 0.25,
+          "type": "number"
+        }
+      },
+      "required": [
+        "base_map",
+        "overlays",
+        "orientation",
+        "range_nm",
+        "night"
+      ],
+      "title": "MapState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "map.state",
+    "description": "Read map presentation state without advancing the flight.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetMap",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "BaseMap": {
+          "enum": [
+            "aero",
+            "terrain",
+            "sectional",
+            "tac",
+            "satellite",
+            "street"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "MapDeclutter": {
+          "additionalProperties": false,
+          "description": "Declutter distances are the visible span across the map's horizontal dimension, in nautical miles.",
+          "properties": {
+            "airway_labels_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            },
+            "fixes_across_nm": {
+              "format": "double",
+              "maximum": 400,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "fixes_across_nm",
+            "airway_labels_across_nm"
+          ],
+          "type": "object"
+        },
+        "MapUp": {
+          "enum": [
+            "north_up",
+            "track_up",
+            "heading_up"
+          ],
+          "type": "string"
+        },
+        "OverlayStyle": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "opacity": {
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "enabled",
+            "opacity"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "base_map": {
+          "$ref": "#/$defs/BaseMap"
+        },
+        "centre": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Null follows the aircraft; a position pins the centre in the active region's frame."
+        },
+        "declutter": {
+          "$ref": "#/$defs/MapDeclutter",
+          "default": {
+            "airway_labels_across_nm": 20.0,
+            "fixes_across_nm": 15.0
+          }
+        },
+        "night": {
+          "type": "boolean"
+        },
+        "orientation": {
+          "$ref": "#/$defs/MapUp"
+        },
+        "overlays": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airports": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airspace": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "airways": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "fixes": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "live_weather": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "navaids": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "pins": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "plates": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "range_rings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "route": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "terrain_warnings": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "tfr": {
+              "$ref": "#/$defs/OverlayStyle"
+            },
+            "track": {
+              "$ref": "#/$defs/OverlayStyle"
+            }
+          },
+          "type": "object"
+        },
+        "range_nm": {
+          "format": "double",
+          "maximum": 200,
+          "minimum": 0.25,
+          "type": "number"
+        }
+      },
+      "required": [
+        "base_map",
+        "overlays",
+        "orientation",
+        "range_nm",
+        "night"
+      ],
+      "title": "MapState",
+      "type": "object"
+    }
+  },
+  {
     "name": "plan.new",
     "description": "Create an empty plan with cruise performance and a default 45-minute reserve.",
     "input_schema": {
@@ -2098,6 +2686,30 @@
     "name": "plan.move",
     "description": "Reorder a waypoint; to is its final zero-based position.",
     "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
@@ -2105,6 +2717,18 @@
           "format": "uint",
           "minimum": 0,
           "type": "integer"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional geographic relocation, applied atomically with reordering."
         },
         "to": {
           "format": "uint",

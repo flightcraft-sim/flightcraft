@@ -374,8 +374,12 @@ pub struct InstrumentPanel {
     heading_knobs: BTreeMap<String, heading::Knob>,
     heading_commands: Vec<flightcraft_sim::avionics::AvionicsSetting>,
     glass_commands: Vec<flightcraft_control::GlassSetting>,
+    map_rect: Option<Rect>,
 }
 impl InstrumentPanel {
+    pub fn map_rect(&self) -> Option<Rect> {
+        self.map_rect
+    }
     pub fn take_heading_commands(&mut self) -> Vec<flightcraft_sim::avionics::AvionicsSetting> {
         std::mem::take(&mut self.heading_commands)
     }
@@ -438,6 +442,7 @@ impl InstrumentPanel {
         generation: u64,
     ) -> Result<Vec<SystemSetting>, String> {
         input.options = self.options;
+        self.map_rect = None;
         if self.loaded.as_ref() != Some(panel) || self.generation != Some(generation) {
             self.load(panel)?;
             self.generation = Some(generation);
@@ -455,23 +460,6 @@ impl InstrumentPanel {
         let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
         let cells = layout(panel, rect);
         for ((installation, module), cell) in panel.instruments.iter().zip(&mut self.modules).zip(cells) {
-            if installation.module == "glass_mfd"
-                && ui.rect_contains_pointer(cell)
-                && let Some(glass) = input.glass
-            {
-                let wheel = ui.input_mut(|i| {
-                    let value = i.raw_scroll_delta.y;
-                    i.raw_scroll_delta.y = 0.;
-                    value
-                });
-                if wheel != 0. {
-                    self.glass_commands
-                        .push(flightcraft_control::GlassSetting::MapRange {
-                            range_nm: (glass.settings.range_nm * if wheel > 0. { 0.8 } else { 1.25 })
-                                .clamp(1., 200.),
-                        });
-                }
-            }
             let draw = module.update(input);
             if installation.module.starts_with("electronic_")
                 && ui
@@ -488,6 +476,17 @@ impl InstrumentPanel {
                 .ok_or_else(|| format!("Unknown skin: {}", installation.skin))?;
             let local = fit_size(cell, draw.size);
             scaled(ui.painter(), local, draw.size, |p| skin.paint(p, &draw));
+            if installation.module == "glass_mfd"
+                && input
+                    .glass
+                    .is_some_and(|g| !g.mfd_failed && g.settings.page == flightcraft_control::GlassPage::Map)
+            {
+                let factor = local.width() / 500.;
+                self.map_rect = Some(Rect::from_min_size(
+                    local.min + egui::vec2(151., 40.) * factor,
+                    egui::vec2(300., 300.) * factor,
+                ));
+            }
             let knob = match installation.module.as_str() {
                 "heading" => Some(([155., 143.], 12.)),
                 "electronic_hsi" => Some(([174., 110.], 12.)),

@@ -171,6 +171,9 @@ edit!(
 pub struct PlanMove {
     pub from: usize,
     pub to: usize,
+    /// Optional geographic relocation, applied atomically with reordering.
+    #[serde(default)]
+    pub position: Option<GeoPoint>,
 }
 edit!(
     PlanMove,
@@ -180,7 +183,10 @@ edit!(
         if a.from >= p.waypoints.len() || a.to >= p.waypoints.len() {
             return Err(failed("waypoint index out of range"));
         }
-        let w = p.waypoints.remove(a.from);
+        let mut w = p.waypoints.remove(a.from);
+        if let Some(position) = a.position {
+            w.waypoint.position = position;
+        }
         p.waypoints.insert(a.to, w);
         Ok(())
     }

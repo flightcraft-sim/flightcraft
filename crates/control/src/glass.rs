@@ -197,8 +197,16 @@ impl Session {
             GlassSetting::MapRange { range_nm } => {
                 range(NAME, "range_nm", range_nm, 1.0, 200.0)?;
                 self.glass.range_nm = range_nm;
+                self.map.range_nm = range_nm;
             }
-            GlassSetting::Orientation { orientation } => self.glass.orientation = orientation,
+            GlassSetting::Orientation { orientation } => {
+                self.glass.orientation = orientation;
+                self.map.orientation = if orientation == MapOrientation::TrackUp {
+                    crate::MapUp::TrackUp
+                } else {
+                    crate::MapUp::NorthUp
+                };
+            }
             GlassSetting::Page { page } => self.glass.page = page,
             GlassSetting::DirectTo { airport } => self.set_glass_plan(vec![airport])?,
             GlassSetting::FlightPlan { airports } => self.set_glass_plan(airports)?,
@@ -341,6 +349,12 @@ impl Session {
             self.glass.clone()
         } else {
             GlassSettings::default()
+        };
+        settings.range_nm = self.map.range_nm.max(1.0);
+        settings.orientation = if self.map.orientation == crate::MapUp::NorthUp {
+            MapOrientation::NorthUp
+        } else {
+            MapOrientation::TrackUp
         };
         settings.heading_bug_rad = sys.controls.heading_bug_rad;
         if let Some(ap) = sim.installed_autopilot() {
