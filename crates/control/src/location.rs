@@ -1,8 +1,5 @@
 //! Device location is requested only by explicit command and is never persisted here.
-use crate::{
-    Command, CommandError, Session,
-    navigation::{failed, valid_point},
-};
+use crate::{Command, CommandError, Session, navigation::failed};
 use flightcraft_world::GeoPoint;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -106,7 +103,7 @@ fn linux_location() -> Result<DeviceLocation, CommandError> {
                     accuracy_m: location.get_property("Accuracy").map_err(error)?,
                     source: "GeoClue2".into(),
                 };
-                valid_point(r.position)?;
+                crate::navigation::valid_point(r.position)?;
                 if !r.accuracy_m.is_finite() || r.accuracy_m < 0.0 {
                     return Err(failed("invalid location accuracy"));
                 }
@@ -168,7 +165,7 @@ pub async fn location_browser() -> Result<DeviceLocation, CommandError> {
         accuracy_m: c.accuracy(),
         source: "Browser Geolocation API".into(),
     };
-    valid_point(r.position)?;
+    crate::navigation::valid_point(r.position)?;
     if !r.accuracy_m.is_finite() || r.accuracy_m < 0.0 {
         return Err(failed("invalid location accuracy"));
     }
