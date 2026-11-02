@@ -43,10 +43,10 @@ stream. The golden test folds this
 hash at 0.1 s intervals through a complete takeoff, rectangular pattern, landing,
 and stop. The stored constant changes only with reviewed model/pilot changes.
 
-The model uses ISA geopotential height up to 20 km, flat ground, diagonal inertia,
+The model uses ISA geopotential height up to 20 km, terrain contact, full-tensor inertia,
 a normally aspirated piston engine, a fixed-pitch propeller, and instantaneous
-control deflection, with optional jams. Torque, propeller slipstream, fuel
-consumption, and terrain variation are future extensions. The original aerodynamic estimates
+control deflection, with optional jams. Fuel burn updates station mass, CG, and inertia
+once per fixed step. Torque and propeller slipstream are future extensions. The original aerodynamic estimates
 support plausibility checks, not aircraft certification or training.
 
 

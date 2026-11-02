@@ -740,11 +740,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -760,7 +768,9 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
@@ -827,6 +837,9 @@
             "alternate_static": {
               "type": "boolean"
             },
+            "alternator": {
+              "type": "boolean"
+            },
             "altimeter_setting_pa": {
               "format": "double",
               "type": "number"
@@ -842,6 +855,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -874,6 +891,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -891,6 +910,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -959,6 +981,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -990,10 +1020,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -1014,6 +1049,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -1040,10 +1077,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -1155,6 +1196,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         },
         "WorldChoice": {
           "type": "string"
@@ -3761,11 +3809,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -3781,7 +3837,9 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
@@ -3848,6 +3906,9 @@
             "alternate_static": {
               "type": "boolean"
             },
+            "alternator": {
+              "type": "boolean"
+            },
             "altimeter_setting_pa": {
               "format": "double",
               "type": "number"
@@ -3863,6 +3924,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -3895,6 +3960,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -3912,6 +3979,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -3980,6 +4050,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -4011,10 +4089,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -4035,6 +4118,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -4061,10 +4146,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -4176,6 +4265,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         },
         "WorldChoice": {
           "type": "string"
@@ -4502,11 +4598,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -4522,13 +4626,18 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
         "SystemControls": {
           "properties": {
             "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
               "type": "boolean"
             },
             "altimeter_setting_pa": {
@@ -4546,6 +4655,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -4578,6 +4691,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -4595,6 +4710,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -4663,6 +4781,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -4694,10 +4820,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -4718,6 +4849,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -4744,10 +4877,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -4801,6 +4938,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4928,6 +5072,26 @@
             {
               "additionalProperties": false,
               "properties": {
+                "heading_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "heading_bug",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "kind": {
                   "const": "altimeter",
                   "type": "string"
@@ -5014,7 +5178,7 @@
             },
             {
               "additionalProperties": false,
-              "description": "Ground servicing / scenario setup; does not change rigid-body mass in flight.",
+              "description": "Ground servicing / scenario setup; mass updates on the next fixed step.",
               "properties": {
                 "kind": {
                   "const": "tank_quantity",
@@ -5068,6 +5232,7 @@
           "enum": [
             "master",
             "avionics",
+            "alternator",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -5294,11 +5459,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -5314,13 +5487,18 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
         "SystemControls": {
           "properties": {
             "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
               "type": "boolean"
             },
             "altimeter_setting_pa": {
@@ -5338,6 +5516,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -5370,6 +5552,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -5387,6 +5571,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -5455,6 +5642,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -5486,10 +5681,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -5510,6 +5710,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -5536,10 +5738,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -5593,6 +5799,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5960,11 +6173,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -5980,13 +6201,18 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
         "SystemControls": {
           "properties": {
             "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
               "type": "boolean"
             },
             "altimeter_setting_pa": {
@@ -6004,6 +6230,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -6036,6 +6266,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -6053,6 +6285,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -6121,6 +6356,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -6152,10 +6395,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -6176,6 +6424,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -6202,10 +6452,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -6259,6 +6513,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -6515,11 +6776,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -6535,13 +6804,18 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
         "SystemControls": {
           "properties": {
             "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
               "type": "boolean"
             },
             "altimeter_setting_pa": {
@@ -6559,6 +6833,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -6591,6 +6869,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -6608,6 +6888,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -6676,6 +6959,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -6707,10 +6998,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -6731,6 +7027,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -6757,10 +7055,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -6814,6 +7116,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -8085,11 +8394,19 @@
               "format": "double",
               "type": "number"
             },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
             "pitch_rad": {
               "format": "double",
               "type": "number"
             },
             "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
               "format": "double",
               "type": "number"
             },
@@ -8105,7 +8422,9 @@
             "roll_rad",
             "pitch_rad",
             "heading_rad",
-            "attitude_valid"
+            "attitude_valid",
+            "turn_rate_rps",
+            "lateral_acceleration_g"
           ],
           "type": "object"
         },
@@ -8172,6 +8491,9 @@
             "alternate_static": {
               "type": "boolean"
             },
+            "alternator": {
+              "type": "boolean"
+            },
             "altimeter_setting_pa": {
               "format": "double",
               "type": "number"
@@ -8187,6 +8509,10 @@
             },
             "fuel_selector": {
               "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
             },
             "lights": {
               "type": "boolean"
@@ -8219,6 +8545,8 @@
           "required": [
             "master",
             "avionics",
+            "alternator",
+            "heading_bug_rad",
             "lights",
             "fuel_pump",
             "pitot_heat",
@@ -8236,6 +8564,9 @@
         },
         "SystemsState": {
           "properties": {
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
             "carb_ice": {
               "format": "double",
               "type": "number"
@@ -8304,6 +8635,14 @@
               "minItems": 3,
               "type": "array"
             },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
             "pitot_heat_powered": {
               "type": "boolean"
             },
@@ -8335,10 +8674,15 @@
                 "$ref": "#/$defs/TankState"
               },
               "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
             }
           },
           "required": [
             "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
             "controls",
             "failures",
             "electrical",
@@ -8359,6 +8703,8 @@
             "carb_ice",
             "egt_c",
             "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
             "primer_charge",
             "cranking_s",
             "sensed"
@@ -8385,10 +8731,14 @@
             "unusable_kg": {
               "format": "double",
               "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
             }
           },
           "required": [
             "id",
+            "wing",
             "capacity_kg",
             "unusable_kg",
             "quantity_kg",
@@ -8500,6 +8850,13 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
         },
         "WorldChoice": {
           "type": "string"

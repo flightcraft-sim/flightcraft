@@ -9,6 +9,7 @@ pub const BORDER: Color32 = Color32::from_rgb(49, 66, 81);
 pub const TEXT: Color32 = Color32::from_rgb(228, 237, 242);
 pub const MUTED: Color32 = Color32::from_rgb(143, 163, 179);
 pub const ACCENT: Color32 = Color32::from_rgb(91, 212, 195);
+pub const GREEN: Color32 = Color32::from_rgb(110, 211, 132);
 pub const AMBER: Color32 = Color32::from_rgb(247, 194, 97);
 pub const DANGER: Color32 = Color32::from_rgb(242, 103, 103);
 pub const DIAL: Color32 = Color32::from_rgb(10, 18, 26);

@@ -10,7 +10,7 @@ to watch a scripted takeoff).
 
 - The Corvid, an original two-seat trainer, flies on a 6-DOF model from textbook aerodynamics:
   takeoff, climb, turns, and landing on one runway in a standard atmosphere with no wind.
-- The desktop app: a 3D chase view, six instruments, keyboard and gamepad controls you can rebind.
+- The desktop app: a 3D chase view, sensed flight and engine instruments, and keyboard and gamepad controls you can rebind.
   `cargo run -p flightcraft-desktop -- --script examples/takeoff.jsonl` flies a scripted takeoff.
 - The same app in the browser: `cargo xtask web` writes static files to `dist/` that any static
   host serves (WebGPU, or WebGL 2 where there is none). `?script=takeoff.jsonl` flies the takeoff.

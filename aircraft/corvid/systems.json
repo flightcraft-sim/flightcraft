@@ -100,6 +100,14 @@
           "amps": 8,
           "breaker_amps": 10,
           "backup_capacity_ah": 0
+        },
+        {
+          "id": "turn_coordinator",
+          "bus": "main",
+          "switch": "always",
+          "amps": 0.8,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
         }
       ]
     },

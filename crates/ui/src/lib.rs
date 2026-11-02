@@ -4,7 +4,7 @@ pub mod actions;
 mod bridge;
 pub mod clock;
 mod input;
-mod instruments;
+pub mod instruments;
 pub mod keymap;
 pub mod script;
 pub mod theme;
@@ -19,6 +19,7 @@ use keymap::{Action, Keymap};
 const PACKS_STORAGE: &str = "flightcraft.packs_directory.v1";
 
 const KEYMAP_STORAGE: &str = "flightcraft.keymap.v1";
+const DISPLAY_OPTIONS_STORAGE: &str = "flightcraft.instrument_units.v1";
 const COMPACT_PANEL_STORAGE: &str = "flightcraft.compact_panel.v1";
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -85,7 +86,7 @@ pub struct FlightCraftApp {
     renderer: &'static str,
     settings: bool,
     compact_panel: bool,
-    slip_ball: instruments::SlipBall,
+    instrument_panel: instruments::InstrumentPanel,
     bindings_json: String,
     airport_search: String,
     glance_origin: Option<[f64; 2]>,
@@ -198,7 +199,12 @@ impl FlightCraftApp {
                 .and_then(|s| s.get_string(COMPACT_PANEL_STORAGE))
                 .as_deref()
                 == Some("true"),
-            slip_ball: instruments::SlipBall::default(),
+            instrument_panel: instruments::InstrumentPanel::with_options(
+                cc.storage
+                    .and_then(|s| s.get_string(DISPLAY_OPTIONS_STORAGE))
+                    .and_then(|json| serde_json::from_str(&json).ok())
+                    .unwrap_or_default(),
+            ),
             bindings_json,
             airport_search: String::new(),
             glance_origin: None,
@@ -215,11 +221,15 @@ impl FlightCraftApp {
         })
     }
 
+    /// Register declarative private skin artwork before loading its panel.
+    pub fn register_instrument_skin(&mut self, json: &str) -> Result<(), String> {
+        self.instrument_panel.registry.register_pack_skin(json)
+    }
+
     fn reset(&mut self) {
         match actions::reset(&mut self.session) {
             Ok(()) => {
                 self.clock.reset();
-                self.slip_ball = instruments::SlipBall::default();
                 self.input.trim = 0.0;
                 self.scene.reset_camera();
                 self.error = None;
@@ -237,6 +247,17 @@ impl FlightCraftApp {
                 && let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
                 self.error = Some(e.to_string());
             }
+            ui.checkbox(&mut self.compact_panel, "Compact panel");
+            ui.horizontal(|ui| {
+                ui.label("Altimeter pressure");
+                ui.selectable_value(&mut self.instrument_panel.options.pressure, instruments::PressureUnit::InHg,"inHg");
+                ui.selectable_value(&mut self.instrument_panel.options.pressure, instruments::PressureUnit::Hpa,"hPa");
+            });
+            ui.horizontal(|ui| {
+                ui.label("Engine and fuel units");
+                ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Us,"US customary");
+                ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Si,"SI");
+            });
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
@@ -353,6 +374,7 @@ impl eframe::App for FlightCraftApp {
             .min(0.25);
         self.last_time = Some(now);
         let frame = self.input.collect(ctx, &self.keymap);
+        self.instrument_panel.starter_key_held = frame.held(Action::Starter);
         if frame.pressed(Action::Pause)
             && let Err(e) = actions::toggle_pause(&mut self.session, &mut self.paused)
         {
@@ -369,6 +391,18 @@ impl eframe::App for FlightCraftApp {
         if frame.pressed(Action::Airspace) {
             let visible = !self.session.airspace_visible();
             if let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
+                self.error = Some(e.to_string());
+            }
+        }
+        for action in Action::SYSTEMS {
+            if frame.pressed(action)
+                && let Some(setting) = instruments::shortcut_with_options(
+                    action,
+                    self.session.sim().systems(),
+                    self.instrument_panel.options,
+                )
+                && let Err(e) = self.session.run(flightcraft_control::SetSystems { setting })
+            {
                 self.error = Some(e.to_string());
             }
         }
@@ -458,7 +492,6 @@ impl eframe::App for FlightCraftApp {
                                                 self.paused = self.session.paused();
                                                 self.input.trim = 0.0;
                                                 self.clock.reset();
-                                                self.slip_ball = instruments::SlipBall::default();
                                                 self.scene.reset_camera();
                                                 self.error = None;
                                             }
@@ -493,7 +526,6 @@ impl eframe::App for FlightCraftApp {
                                         }) {
                                             Ok(_) => {
                                                 self.clock.reset();
-                                                self.slip_ball = instruments::SlipBall::default();
                                                 self.input.trim = 0.0;
                                                 self.scene.reset_camera();
                                                 self.error = None;
@@ -534,7 +566,7 @@ impl eframe::App for FlightCraftApp {
                                                                 start: flightcraft_control::ResetStart::AirportRunway { airport: airport.ident.clone(), end: end.ident.clone() },
                                                                 weather: Some(self.session.sim().weather()), paused: Some(self.paused),
                                                             }) {
-                                                                Ok(_) => { self.clock.reset(); self.slip_ball = instruments::SlipBall::default(); self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
+                                                                Ok(_) => { self.clock.reset(); self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
                                                                 Err(e) => self.error = Some(e.to_string()),
                                                             }
                                                             ui.close();
@@ -652,8 +684,34 @@ impl eframe::App for FlightCraftApp {
                     .inner_margin(egui::Margin::symmetric(12, 5)),
             )
             .show(ctx, |ui| {
-                let ball = self.slip_ball.update(&readout);
-                instruments::panel(ui, &readout, self.input.trim, self.compact_panel, ball);
+                let result = if let Some(configuration) = self.session.aircraft_configuration() {
+                    self.instrument_panel.show(
+                        ui,
+                        &configuration.panel,
+                        instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
+                            .with_aircraft(configuration),
+                        self.session.flight_generation(),
+                    )
+                } else {
+                    self.instrument_panel.show_legacy(
+                        ui,
+                        instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s),
+                        self.session.flight_generation(),
+                    )
+                };
+                match result {
+                    Ok(settings) => {
+                        for setting in settings {
+                            if let Err(e) = self.session.run(flightcraft_control::SetSystems { setting }) {
+                                self.error = Some(e.to_string());
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        ui.colored_label(theme::DANGER, &e);
+                        self.error = Some(e);
+                    }
+                }
             });
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(theme::BACKGROUND))
@@ -765,6 +823,9 @@ impl eframe::App for FlightCraftApp {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
+        if let Ok(json) = serde_json::to_string(&self.instrument_panel.options) {
+            storage.set_string(DISPLAY_OPTIONS_STORAGE, json);
+        }
         #[cfg(not(target_arch = "wasm32"))]
         storage.set_string(PACKS_STORAGE, self.packs_directory.clone());
         if let Ok(json) = self.keymap.json() {

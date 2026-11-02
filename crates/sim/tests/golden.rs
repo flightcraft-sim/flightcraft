@@ -182,7 +182,8 @@ fn fly_pattern(choice: WorldChoice) {
     assert!((1.5..6.0).contains(&climb_rate));
     // FNV fold of every 0.1 s state hash, including rollout. Update only after reviewing
     // an intentional physics or pilot change and the flight's quantitative assertions.
+    // Fuel now reduces rigid-body mass each fixed step; the default fuel station is at the CG.
     if choice == WorldChoice::Flat {
-        assert_eq!(trajectory, 0x4b3c_ea10_0a2f_b15d);
+        assert_eq!(trajectory, 0xf228_fce1_a405_5061);
     }
 }

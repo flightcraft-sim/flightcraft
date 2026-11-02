@@ -24,6 +24,10 @@ impl ActionFrame {
         ]
     }
 
+    pub fn held(&self, action: Action) -> bool {
+        self.value(action) > 0.
+    }
+
     pub fn pressed(&self, action: Action) -> bool {
         self.pressed.contains(&action)
     }

@@ -13,6 +13,18 @@ pub const INSTRUMENT_MODULES: &[&str] = &[
     "turn_coordinator",
     "heading",
     "vertical_speed",
+    "tachometer",
+    "oil_temperature",
+    "oil_pressure",
+    "egt",
+    "cht",
+    "fuel_left",
+    "fuel_right",
+    "fuel_flow",
+    "ammeter",
+    "volts",
+    "suction",
+    "annunciators",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -189,9 +201,16 @@ pub struct Panel {
 pub struct InstrumentInstallation {
     pub id: String,
     pub module: String,
+    /// Runtime skin registry id. Omitted declarations use the original public skin.
+    #[serde(default = "default_skin")]
+    pub skin: String,
     /// Panel grid position and size, in arbitrary panel units.
     pub position: [f64; 2],
     pub size: [f64; 2],
+}
+
+fn default_skin() -> String {
+    "original".into()
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -360,11 +379,15 @@ impl LayerFile {
                         "instruments.module",
                         "unknown instrument module",
                     )?;
+                    id(&instrument.skin, "instruments.skin")?;
                     for size in instrument.size {
                         positive(size, "instruments.size")?;
                     }
                     require(
-                        instrument.position.iter().all(|v| *v >= 0.0),
+                        instrument
+                            .position
+                            .iter()
+                            .all(|v| v.is_finite() && *v >= 0.0 && *v <= 10000.0),
                         "instruments.position",
                         "must be nonnegative",
                     )?;
@@ -587,6 +610,12 @@ impl Variant {
         };
         numeric(&result)?;
         Ok(result)
+    }
+
+    /// Recompute mass, CG, and inertia for a validated station load, including depleted fuel.
+    pub fn loaded_mass(&self, load: &Load) -> Result<Mass, AircraftError> {
+        let balance = self.weight_balance(load)?;
+        Ok(self.mass(load, &balance))
     }
 
     fn mass(&self, load: &Load, balance: &WeightBalance) -> Mass {
@@ -909,10 +938,12 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         identity: make_identity("six"),
         instruments: INSTRUMENT_MODULES
             .iter()
+            .take(6)
             .zip(0_u32..)
             .map(|(module, n)| InstrumentInstallation {
                 id: (*module).into(),
                 module: (*module).into(),
+                skin: default_skin(),
                 position: [f64::from(n % 3), f64::from(n / 3)],
                 size: [1.0, 1.0],
             })

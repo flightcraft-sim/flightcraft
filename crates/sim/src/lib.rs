@@ -397,7 +397,10 @@ impl Sim {
         let name = match self.aircraft.identity.id.as_str() {
             "corvid" | "corvid-standard" => "corvid",
             "larrow" | "larrow-standard" => "larrow",
-            _ => return Ok(()),
+            _ => {
+                self.systems.ideal_sensors(self.readout());
+                return Ok(());
+            }
         };
         let configuration = flightcraft_aero::AircraftCatalog::builtins()?.resolve_aircraft(name)?;
         self.configure_systems(&configuration)
@@ -566,6 +569,40 @@ impl Sim {
             if let Some(model) = &self.systems_model {
                 let readout = self.readout();
                 self.systems.step(model, readout, self.failures);
+                let mut load = model.load.clone();
+                // Tanks can share a station. Sum them in declaration order, once per step.
+                for station in model
+                    .variant
+                    .stations
+                    .iter()
+                    .filter(|s| s.kind == flightcraft_aero::StationKind::Fuel)
+                {
+                    let mass_kg = self
+                        .systems
+                        .tanks
+                        .iter()
+                        .zip(&model.definition.tanks)
+                        .filter(|(_, tank)| tank.station == station.id)
+                        .map(|(tank, _)| tank.quantity_kg)
+                        .sum();
+                    if let Some(entry) = load.stations.iter_mut().find(|e| e.station == station.id) {
+                        entry.mass_kg = mass_kg;
+                    } else {
+                        load.stations.push(flightcraft_aero::StationLoad {
+                            station: station.id.clone(),
+                            mass_kg,
+                        });
+                    }
+                }
+                match model.variant.loaded_mass(&load) {
+                    Ok(mass) => self.aircraft.mass = mass,
+                    Err(_) => {
+                        self.crashed = true;
+                        break;
+                    }
+                }
+            } else {
+                self.systems.ideal_sensors(self.readout());
             }
         }
     }
@@ -642,7 +679,7 @@ impl Sim {
 
     /// FNV-1a over rigid-body state, crash flag, and step count, plus nondefault
     /// weather/process memory, failures, and operated systems. Equal on every platform
-    /// for the same inputs; healthy default systems preserve the original hash stream.
+    /// for the same inputs, including mass changes from fuel burn.
     #[must_use]
     pub fn state_hash(&self) -> u64 {
         let s = &self.state;

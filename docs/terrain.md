@@ -38,7 +38,7 @@ The bundled bytes are included in native and browser binaries, so both work offl
 
 `Sim::new_with_world` and `Sim::from_state_in_world` support terrain experiments; existing
 constructors retain the flat world. Terrain content contributes to replay identity when tiles
-are present. The original flat-world golden trajectory and hash remain unchanged. Rust `Reset` literals now
+are present. Terrain alone preserves the flat-world baseline; fuel-driven mass now uses the baseline in [instruments](instruments.md). Rust `Reset` literals now
 supply `world`; JSON callers may omit it. The UI passes the immutable world through
 `Scene::set_world`, and `Palette` adds `earth` and `water` colour tokens.
 Gear damping uses velocity into the surface normal, spring penetration is measured along that
@@ -179,7 +179,7 @@ regions fail without changing the active flight. The status bar displays the **a
 attribution and changes when the world changes. The SRTM attribution row template is also in
 `ATTRIBUTION.md`; future redistributed regions should keep their provenance there and in metadata.
 `WorldChoice` now includes `Region(String)` and is `Clone` rather than `Copy`; existing built-in Rust
-variants and JSON names remain supported. The original flat-world golden trajectory is preserved.
+variants and JSON names remain supported. Terrain alone preserves the flat-world trajectory; see [instruments](instruments.md) for the fuel-driven baseline.
 
 ### Airspace sidecars
 

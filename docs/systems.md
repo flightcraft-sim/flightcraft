@@ -7,11 +7,13 @@ electric gyro load with a 1 Ah backup battery. Both have a 24 Ah battery, an RPM
 alternator, main and essential buses, and two wing tanks.
 
 `sim.state`, `sim.reset`, and `sim.step` return `systems` beside `state` and `readout`.
-`systems.sensed` contains indicated airspeed, altitude, vertical speed, attitude, heading, and
-an attitude-valid flag. Existing `readout` values remain truth-based for the current UI.
+`systems.sensed` contains indicated airspeed, altitude, vertical speed, attitude, heading,
+electric turn rate, lateral specific force, and an attitude-valid flag. `readout` remains
+truth-based for scripts and diagnostics; the panel uses sensed values.
 Switch positions, failures, breaker states, bus voltages, battery charge, individual equipment
 power and backup charge, tank quantities and indications, suction, gyro spin and errors,
-trapped pressures, fuel flow, engine status, primer charge, carb ice, EGT, and CHT are reported.
+trapped pressures, fuel flow, engine status, primer charge, carb ice, EGT, CHT, oil temperature,
+and oil pressure are reported.
 Units are SI, except RPM, amperes, ampere-hours, volts, and temperatures in degrees Celsius.
 
 Every action uses `systems.set` with a tagged `setting`:
@@ -22,11 +24,12 @@ Every action uses `systems.set` with a tagged `setting`:
 
 | Setting kind | Fields and values |
 |---|---|
-| `switch` | `switch`: `master`, `avionics`, `lights`, `fuel_pump`, `pitot_heat`, `alternate_static`, `carb_heat`, or `starter`; `on`: boolean |
+| `switch` | `switch`: `master`, `avionics`, `alternator`, `lights`, `fuel_pump`, `pitot_heat`, `alternate_static`, `carb_heat`, or `starter`; `on`: boolean |
 | `magnetos` | `position`: `off`, `left`, `right`, or `both` |
 | `fuel_selector` | `position`: `off`, `left`, `right`, or `both` |
 | `mixture` | `value`: 0–1; zero is idle cutoff |
 | `altimeter` | `pressure_pa`: 80000–110000; Kollsman setting |
+| `heading_bug` | `heading_rad`: 0–2π; displayed heading reference |
 | `primer` | `charge`: 0–1; cranking consumes primer charge |
 | `breaker` | `load`: installed load id; `closed`: boolean; closing resets the trip memory |
 | `load_multiplier` | `load`: installed load id; `value`: 0–10; scenario fault, 1 restores rated demand |
@@ -64,9 +67,10 @@ Restored drive spins it up and erects it gradually.
 Systems advance once per fixed flight step, outside RK4 substages. Reading state consumes no
 time or sensor updates. The flight model receives an additional shaft-power fraction only when
 operation reduces available power. Full-rich, both-mag, healthy operation retains the original
-arithmetic, and the Corvid golden trajectory remains `0x4b3cea100a2fb15d`. Fuel burn and servicing
-update tank state, leaving rigid-body mass, CG, and inertia at their reset values for this systems
-slice. All tables and parameters are original fictional engineering estimates.
+shaft-power arithmetic. The Corvid golden trajectory with fuel-driven mass is
+`0xf228fce1a4055061`. Fuel burn and servicing update rigid-body mass, CG, and inertia once per
+fixed step through the existing station-load weight-and-balance calculation. See [instruments](instruments.md) for gauges and the oil model.
+All tables and parameters are original fictional engineering estimates.
 
 Rust callers constructing a flight from a `ResolvedAircraft` call `Sim::configure_systems` on
 the new simulation; the session does this on every aircraft application and reset. Standalone

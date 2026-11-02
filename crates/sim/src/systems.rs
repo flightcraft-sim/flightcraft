@@ -28,6 +28,7 @@ pub enum FuelSelector {
 pub enum SystemSwitch {
     Master,
     Avionics,
+    Alternator,
     Lights,
     FuelPump,
     PitotHeat,
@@ -54,6 +55,10 @@ pub enum SystemSetting {
         #[schemars(range(min = 0, max = 1))]
         value: f64,
     },
+    HeadingBug {
+        #[schemars(range(min = 0, max = core::f64::consts::TAU))]
+        heading_rad: f64,
+    },
     Altimeter {
         #[schemars(range(min = 80000, max = 110000))]
         pressure_pa: f64,
@@ -73,7 +78,7 @@ pub enum SystemSetting {
         #[schemars(range(min = 0, max = 10))]
         value: f64,
     },
-    /// Ground servicing / scenario setup; does not change rigid-body mass in flight.
+    /// Ground servicing / scenario setup; mass updates on the next fixed step.
     TankQuantity {
         tank: String,
         mass_kg: f64,
@@ -90,6 +95,8 @@ pub enum SystemSetting {
 pub struct SystemControls {
     pub master: bool,
     pub avionics: bool,
+    pub alternator: bool,
+    pub heading_bug_rad: f64,
     pub lights: bool,
     pub fuel_pump: bool,
     pub pitot_heat: bool,
@@ -108,6 +115,8 @@ impl Default for SystemControls {
         Self {
             master: true,
             avionics: true,
+            alternator: true,
+            heading_bug_rad: 0.0,
             lights: false,
             fuel_pump: false,
             pitot_heat: false,
@@ -151,6 +160,7 @@ pub struct ElectricalState {
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct TankState {
     pub id: String,
+    pub wing: Wing,
     pub capacity_kg: f64,
     pub unusable_kg: f64,
     pub quantity_kg: f64,
@@ -165,10 +175,14 @@ pub struct SensedInstruments {
     pub pitch_rad: f64,
     pub heading_rad: f64,
     pub attitude_valid: bool,
+    pub turn_rate_rps: f64,
+    pub lateral_acceleration_g: f64,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct SystemsState {
     pub enabled: bool,
+    pub vacuum_installed: bool,
+    pub carb_heat_installed: bool,
     pub controls: SystemControls,
     pub failures: Failures,
     pub electrical: ElectricalState,
@@ -189,6 +203,8 @@ pub struct SystemsState {
     pub carb_ice: f64,
     pub egt_c: f64,
     pub cht_c: f64,
+    pub oil_temperature_c: f64,
+    pub oil_pressure_pa: f64,
     pub primer_charge: f64,
     pub cranking_s: f64,
     pub sensed: SensedInstruments,
@@ -201,12 +217,16 @@ pub(crate) struct SystemsModel {
     pub fuel_flow: Table,
     pub idle_fraction: f64,
     pub power_density: Table,
+    pub variant: flightcraft_aero::Variant,
+    pub load: flightcraft_aero::Load,
 }
 
 impl Default for SystemsState {
     fn default() -> Self {
         Self {
             enabled: false,
+            vacuum_installed: false,
+            carb_heat_installed: false,
             controls: SystemControls::default(),
             failures: Failures::default(),
             electrical: ElectricalState {
@@ -236,6 +256,8 @@ impl Default for SystemsState {
             carb_ice: 0.0,
             egt_c: 700.0,
             cht_c: 150.0,
+            oil_temperature_c: 70.0,
+            oil_pressure_pa: 350000.0,
             primer_charge: 0.0,
             cranking_s: 0.0,
             sensed: SensedInstruments::default(),
@@ -274,6 +296,22 @@ fn altitude(pressure: f64, setting: f64) -> f64 {
 }
 
 impl SystemsState {
+    /// Legacy installations expose ideal sensors through the same presentation interface.
+    pub(crate) fn ideal_sensors(&mut self, r: Readout) {
+        self.sensed = SensedInstruments {
+            indicated_airspeed_mps: r.indicated_airspeed_mps,
+            altitude_msl_m: r.altitude_msl_m,
+            vertical_speed_mps: r.vertical_speed_mps,
+            roll_rad: r.roll_rad,
+            pitch_rad: r.pitch_rad,
+            heading_rad: r.heading_rad,
+            turn_rate_rps: r.turn_rate_rps,
+            lateral_acceleration_g: r.lateral_acceleration_g,
+            attitude_valid: true,
+        };
+        self.engine_rpm = r.engine_rpm;
+    }
+
     pub(crate) fn hash_words(&self) -> Vec<u64> {
         let c = &self.controls;
         let e = &self.electrical;
@@ -282,8 +320,11 @@ impl SystemsState {
         words.extend(
             [
                 self.enabled,
+                self.vacuum_installed,
+                self.carb_heat_installed,
                 c.master,
                 c.avionics,
+                c.alternator,
                 c.lights,
                 c.fuel_pump,
                 c.pitot_heat,
@@ -304,6 +345,11 @@ impl SystemsState {
         words.extend(
             [
                 c.mixture,
+                c.heading_bug_rad,
+                self.oil_temperature_c,
+                self.oil_pressure_pa,
+                sensed.turn_rate_rps,
+                sensed.lateral_acceleration_g,
                 c.altimeter_setting_pa,
                 c.temperature_c,
                 c.relative_humidity,
@@ -358,7 +404,9 @@ impl SystemsState {
         readout: Readout,
     ) -> Result<(Self, Option<SystemsModel>), SimError> {
         let Some(d) = &r.installed_systems.definition else {
-            return Ok((Self::default(), None));
+            let mut state = Self::default();
+            state.ideal_sensors(readout);
+            return Ok((state, None));
         };
         d.validate()?;
         // ResolvedAircraft is public: native callers can mutate metadata after resolution.
@@ -370,6 +418,8 @@ impl SystemsState {
         engine_model.validate()?;
         let mut s = Self {
             enabled: true,
+            vacuum_installed: d.vacuum.is_some(),
+            carb_heat_installed: r.engine.induction == Induction::Carburettor,
             ..Self::default()
         };
         s.electrical.battery_capacity_ah = d.electrical.battery_capacity_ah;
@@ -408,6 +458,7 @@ impl SystemsState {
             let quantity = (mass * tank.capacity_kg / capacity).clamp(0.0, tank.capacity_kg);
             s.tanks.push(TankState {
                 id: tank.id.clone(),
+                wing: tank.wing,
                 capacity_kg: tank.capacity_kg,
                 unusable_kg: tank.unusable_kg,
                 quantity_kg: quantity,
@@ -423,7 +474,15 @@ impl SystemsState {
             fuel_flow: r.engine.fuel_flow_kg_s.clone(),
             idle_fraction: r.engine.propulsion.idle_power_w / r.engine.propulsion.max_power_w,
             power_density: r.engine.propulsion.power_density.clone(),
+            variant: r.variant.clone(),
+            load: r.load.clone(),
         };
+        // Reset establishes electrical indications without consuming a simulation step.
+        for (load, definition) in s.electrical.loads.iter_mut().zip(&d.electrical.loads) {
+            let on = matches!(definition.switch, LoadSwitch::Always | LoadSwitch::Avionics);
+            load.powered = on;
+            load.current_a = if on { definition.amps } else { 0.0 };
+        }
         s.engine_power_fraction = s.power(&model);
         Ok((s, Some(model)))
     }
@@ -442,6 +501,7 @@ impl SystemsState {
                 *match switch {
                     SystemSwitch::Master => &mut self.controls.master,
                     SystemSwitch::Avionics => &mut self.controls.avionics,
+                    SystemSwitch::Alternator => &mut self.controls.alternator,
                     SystemSwitch::Lights => &mut self.controls.lights,
                     SystemSwitch::FuelPump => &mut self.controls.fuel_pump,
                     SystemSwitch::PitotHeat => &mut self.controls.pitot_heat,
@@ -455,6 +515,10 @@ impl SystemsState {
             SystemSetting::Mixture { value } => {
                 bounded(value, 0.0, 1.0)?;
                 self.controls.mixture = value;
+            }
+            SystemSetting::HeadingBug { heading_rad } => {
+                bounded(heading_rad, 0.0, core::f64::consts::TAU)?;
+                self.controls.heading_bug_rad = heading_rad.rem_euclid(core::f64::consts::TAU);
             }
             SystemSetting::Altimeter { pressure_pa } => {
                 bounded(pressure_pa, 80000.0, 110000.0)?;
@@ -659,6 +723,35 @@ impl SystemsState {
             },
             op.cht_lag_s,
         );
+        // Original estimates: warm oil approaches 65–110 C; pressure follows the pump,
+        // with a modest loss as viscosity falls. No type-specific measurements.
+        lag(
+            &mut self.oil_temperature_c,
+            if self.engine_running {
+                ambient + 50.0 + 45.0 * shaft
+            } else {
+                ambient
+            },
+            180.0,
+        );
+        let viscosity = (1.15 - (self.oil_temperature_c - 40.0) * 0.003).clamp(0.5, 1.2);
+        let oil_target = if self.engine_running {
+            (self.engine_rpm / 1800.0).clamp(0.0, 1.0) * 400000.0 * viscosity
+        } else {
+            0.0
+        };
+        lag(&mut self.oil_pressure_pa, oil_target, 2.0);
+        self.sensed.turn_rate_rps = if self
+            .electrical
+            .loads
+            .iter()
+            .any(|l| l.id == "turn_coordinator" && l.powered)
+        {
+            r.turn_rate_rps
+        } else {
+            0.0
+        };
+        self.sensed.lateral_acceleration_g = r.lateral_acceleration_g;
         self.ports(&m.definition, r, false);
         self.gyro(&m.definition, r);
     }
@@ -668,7 +761,7 @@ impl SystemsState {
         let c = &self.controls;
         let e = &mut self.electrical;
         let battery_available = c.master && e.battery_soc > 0.001;
-        let alternator = if c.master && !failures.alternator {
+        let alternator = if c.master && c.alternator && !failures.alternator {
             interpolate(&d.alternator_amps.points, rpm)
         } else {
             0.0
@@ -814,6 +907,8 @@ impl SystemsState {
         );
         self.sensed.altitude_msl_m = altitude(self.static_pressure_pa, self.controls.altimeter_setting_pa);
         if initialize {
+            self.sensed.turn_rate_rps = r.turn_rate_rps;
+            self.sensed.lateral_acceleration_g = r.lateral_acceleration_g;
             self.sensed.roll_rad = r.roll_rad;
             self.sensed.pitch_rad = r.pitch_rad;
             self.sensed.heading_rad = r.heading_rad;
@@ -858,15 +953,23 @@ impl SystemsState {
             *previous = current;
         }
         let [roll, pitch, heading] = &mut self.gyro_error_rad;
-        for (error, rate) in [
+        for (axis, (error, rate)) in [
             (roll, drift * loss * loss),
             (pitch, drift * 0.7 * loss * loss),
-            (heading, drift * 1.5 * loss),
-        ] {
-            let correction = (*error).clamp(
-                -erection * self.gyro_spin * DT_S,
-                erection * self.gyro_spin * DT_S,
-            );
+            (heading, drift * (0.005 + 1.5 * loss)),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            // Erection levels roll and pitch; the free heading gyro retains slow drift.
+            let correction = if axis == 2 {
+                0.0
+            } else {
+                (*error).clamp(
+                    -erection * self.gyro_spin * DT_S,
+                    erection * self.gyro_spin * DT_S,
+                )
+            };
             *error = (*error + rate * DT_S - correction).clamp(-core::f64::consts::PI, core::f64::consts::PI);
         }
         let [roll, pitch, heading] = self.gyro_error_rad;

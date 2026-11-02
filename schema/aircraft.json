@@ -841,6 +841,11 @@
           },
           "maxItems": 2,
           "minItems": 2
+        },
+        "skin": {
+          "description": "Runtime skin registry id. Omitted declarations use the original public skin.",
+          "type": "string",
+          "default": "original"
         }
       },
       "additionalProperties": false,

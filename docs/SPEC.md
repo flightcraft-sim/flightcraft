@@ -119,7 +119,7 @@ standard atmosphere, no wind.
 
 The original training valley now provides bundled height tiles, slope contact, and two renderer
 levels of detail; see [terrain format and commands](terrain.md). The flat world remains the
-default and retains the original golden trajectory.
+default and has a shared native/wasm golden trajectory.
 
 Later, from open data only, each with a row in ATTRIBUTION.md:
 

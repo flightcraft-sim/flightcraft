@@ -25,10 +25,28 @@ pub enum Action {
     LookLeft,
     LookRight,
     LookUp,
+    Master,
+    Avionics,
+    Alternator,
+    FuelPump,
+    Lights,
+    PitotHeat,
+    CarbHeat,
+    AlternateStatic,
+    Starter,
+    Magnetos,
+    FuelSelector,
+    MixtureRich,
+    MixtureLean,
+    Primer,
+    AltimeterUp,
+    AltimeterDown,
+    HeadingBugLeft,
+    HeadingBugRight,
 }
 
 impl Action {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 37] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -48,6 +66,45 @@ impl Action {
         Self::LookLeft,
         Self::LookRight,
         Self::LookUp,
+        Self::Master,
+        Self::Avionics,
+        Self::Alternator,
+        Self::FuelPump,
+        Self::Lights,
+        Self::PitotHeat,
+        Self::CarbHeat,
+        Self::AlternateStatic,
+        Self::Starter,
+        Self::Magnetos,
+        Self::FuelSelector,
+        Self::MixtureRich,
+        Self::MixtureLean,
+        Self::Primer,
+        Self::AltimeterUp,
+        Self::AltimeterDown,
+        Self::HeadingBugLeft,
+        Self::HeadingBugRight,
+    ];
+    /// Systems shortcuts are optional, and can be bound in the same persisted keymap.
+    pub const SYSTEMS: [Self; 18] = [
+        Self::Master,
+        Self::Avionics,
+        Self::Alternator,
+        Self::FuelPump,
+        Self::Lights,
+        Self::PitotHeat,
+        Self::CarbHeat,
+        Self::AlternateStatic,
+        Self::Starter,
+        Self::Magnetos,
+        Self::FuelSelector,
+        Self::MixtureRich,
+        Self::MixtureLean,
+        Self::Primer,
+        Self::AltimeterUp,
+        Self::AltimeterDown,
+        Self::HeadingBugLeft,
+        Self::HeadingBugRight,
     ];
 
     pub fn label(self) -> &'static str {
@@ -71,6 +128,24 @@ impl Action {
             Self::LookLeft => "Glance left",
             Self::LookRight => "Glance right",
             Self::LookUp => "Glance up",
+            Self::Master => "Toggle master",
+            Self::Avionics => "Toggle avionics",
+            Self::Alternator => "Toggle alternator",
+            Self::FuelPump => "Toggle fuel pump",
+            Self::Lights => "Toggle lights",
+            Self::PitotHeat => "Toggle pitot heat",
+            Self::CarbHeat => "Toggle carb heat",
+            Self::AlternateStatic => "Toggle alternate static",
+            Self::Starter => "Hold starter",
+            Self::Magnetos => "Cycle magnetos",
+            Self::FuelSelector => "Cycle fuel selector",
+            Self::MixtureRich => "Mixture richer",
+            Self::MixtureLean => "Mixture leaner",
+            Self::Primer => "Add primer charge",
+            Self::AltimeterUp => "Altimeter setting up",
+            Self::AltimeterDown => "Altimeter setting down",
+            Self::HeadingBugLeft => "Heading bug left",
+            Self::HeadingBugRight => "Heading bug right",
         }
     }
 }
@@ -108,6 +183,7 @@ impl Default for Keymap {
                 (LookUp, vec![Key::I]),
             ]
             .into_iter()
+            .chain(Action::SYSTEMS.into_iter().map(|action| (action, Vec::new())))
             .collect(),
             gamepad_bindings: default_gamepad_bindings(),
         }
@@ -183,6 +259,9 @@ impl Keymap {
                 .ok_or("Assign a key for airspace")?;
             value.bindings.insert(Action::Airspace, vec![key]);
         }
+        for action in Action::SYSTEMS {
+            value.bindings.entry(action).or_default();
+        }
         let mut buttons = Vec::new();
         for assigned in value.gamepad_bindings.values() {
             for button in assigned {
@@ -198,7 +277,7 @@ impl Keymap {
                 .bindings
                 .get(&action)
                 .ok_or_else(|| format!("Missing {}", action.label()))?;
-            if keys.is_empty() {
+            if keys.is_empty() && !Action::SYSTEMS.contains(&action) {
                 return Err(format!("{} needs a key", action.label()));
             }
             for key in keys {

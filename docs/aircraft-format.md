@@ -19,7 +19,7 @@ parts or parts from packs already installed. It cannot replace an existing id wi
 | `variant` | `family`, `engine`, `systems`, `empty_mass`, `min_mass_kg`, `max_mass_kg`, `cg_envelope`, `flap_stages`, `fuel_capacity_kg`, `stations`, `v_speeds` | References and limits for a particular configuration. |
 | `engine` | `propulsion`, `induction`, `fuel_flow_kg_s` | Shaft power, fixed-pitch propeller, induction, and fuel-flow curve. |
 | `systems` | `installed`, optional `definition` | Up to 64 distinct system ids and validated operational vacuum, electrical, pitot-static, fuel, and engine parameters. See [systems](systems.md). |
-| `panel` | `instruments` | Instrument installation ids, module ids, positions, and sizes. |
+| `panel` | `instruments` | Instrument installation ids, module ids, skin ids, positions, and sizes. |
 | `aircraft` | `variant`, `panel`, `load` | A named aircraft with a default panel and station load. |
 
 The [generated schema](../schema/aircraft.json) describes all six document kinds. The
@@ -52,11 +52,12 @@ against advance ratio, and the RPM and windmilling parameters. `induction` is `c
 nonnegative flow. Induction and fuel flow feed the operational engine and fuel systems when the
 systems layer supplies a `definition`; placeholder installations retain legacy behavior.
 
-Each panel instrument has a unique installation `id`, a known `module`, a nonnegative
-`position: [x, y]`, and a positive `size: [width, height]`, in panel grid units. Today's modules
-are `airspeed`, `attitude`, `altimeter`, `turn_coordinator`, `heading`, and `vertical_speed`.
-Panels describe equipment and layout independently of an instrument's eventual skin. The current
-UI still draws its shared instruments; definitions do not install executable code or new skins.
+Each panel instrument has a unique installation `id`, a known `module`, a `skin` id (default
+`original`), a nonnegative `position: [x, y]`, and a positive `size: [width, height]`, in panel
+grid units. Modules include the six-pack, engine gauges, fuel, electrical, suction, and
+annunciators. The UI resolves skin ids against its runtime registry; unknown ids are panel load
+errors. See [instruments and skin registration](instruments.md) for the module catalogue,
+presentation models, controls, and private pack extension point.
 
 ## Loads and weight and balance
 
@@ -228,6 +229,7 @@ before authoring new loads. Each layer is serialized and validated on reload; re
 migrated default gives the exact original physics definition.
 
 The built-ins were authored with explicit default occupants and fuel while preserving their
-original mass, CG, inertia, geometry, controls, and tables. The Corvid golden trajectory remains
-`0x4b3cea100a2fb15d`. CI also checks that trajectory on `wasm32-wasip1` with Wasmtime; the browser
+original reset mass, CG, inertia, geometry, controls, and tables. The Corvid golden trajectory
+with fuel-driven mass is `0xf228fce1a4055061`. CI also checks that trajectory on `wasm32-wasip1`
+with Wasmtime; the browser
 applications build for `wasm32-unknown-unknown`.

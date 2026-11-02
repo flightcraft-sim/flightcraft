@@ -826,12 +826,14 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "eframe",
+ "flightcraft-aero",
  "flightcraft-control",
  "flightcraft-render",
  "flightcraft-sim",
  "flightcraft-world",
  "gilrs",
  "image",
+ "libm",
  "serde",
  "serde_json",
 ]

@@ -66,11 +66,11 @@ fn battery_only_endurance_matches_declared_capacity_and_sheds_loads() {
         alternator: true,
         ..Failures::default()
     };
-    // Default avionics draw 5 A: 24 Ah lasts approximately 4.8 hours.
+    // Avionics (5 A) plus the electric turn coordinator (0.8 A): about 4.14 hours.
     for _ in 0..(4 * 3600 * 120) {
         s.electrical_step(&m, 2000.0, f);
     }
-    assert!((s.electrical.battery_soc - 1.0 / 6.0).abs() < 0.001);
+    assert!((s.electrical.battery_soc - 1.0 / 30.0).abs() < 0.001);
     assert!(s.electrical.main_bus_voltage > 9.0);
     for _ in 0..(3600 * 120) {
         s.electrical_step(&m, 2000.0, f);

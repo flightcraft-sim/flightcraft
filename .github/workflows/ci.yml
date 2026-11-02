@@ -112,7 +112,7 @@ jobs:
           tar -xJf wasmtime.tar.xz
           echo "$PWD/wasmtime-v49.0.5-x86_64-linux" >> "$GITHUB_PATH"
       # WASI preview 1 uses the normal Rust test harness, with one test thread.
-      # The existing test asserts the same fixed hash as native; no separate wasm baseline.
+      # The test asserts the native baseline, including fuel-driven mass: 0xf228fce1a4055061.
       - run: cargo test --locked -p flightcraft-sim --test golden --target wasm32-wasip1 -- --test-threads=1
 
   licences:
