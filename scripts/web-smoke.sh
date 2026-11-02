@@ -35,7 +35,12 @@ run() { # <renderer> <gpu query value> <attempt> <extra chrome flags...>
     "$shots/${renderer// /}-$attempt.png" "$renderer" || status=$?
   kill "$browser" 2>/dev/null || true
   wait "$browser" 2>/dev/null || true
-  rm -rf "$profile"
+  # Chrome's helper processes can outlive the browser for a moment and keep writing the
+  # profile; retry briefly, and never let temporary cleanup decide the result.
+  for _ in 1 2 3 4 5; do
+    rm -rf "$profile" 2>/dev/null && break
+    sleep 1
+  done
   return "$status"
 }
 
