@@ -8,6 +8,14 @@ pub mod glass;
 pub use glass::*;
 mod avionics;
 pub use avionics::*;
+mod navigation;
+pub use navigation::*;
+mod planning;
+pub use planning::*;
+mod geocoding;
+pub use geocoding::*;
+mod location;
+pub use location::*;
 mod aircraft;
 mod airspace;
 pub use airspace::*;
@@ -75,6 +83,7 @@ pub struct Session {
     sim: Sim,
     #[cfg(not(target_arch = "wasm32"))]
     efb: Option<efb::sender::Sender>,
+    navigation: navigation::NavigationState,
     glass: GlassSettings,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
@@ -99,6 +108,7 @@ impl Session {
             selected_configuration: Some(configuration.clone()),
             active_configuration: Some(configuration),
             aircraft_catalog,
+            navigation: navigation::NavigationState::default(),
             sim: Sim::new(&Start::Runway)?,
             #[cfg(not(target_arch = "wasm32"))]
             efb: None,
@@ -209,6 +219,7 @@ impl Session {
             paused: self.paused,
             rate: self.rate,
             world: self.sim.world().choice(),
+            simulation_date: self.navigation.date,
             airspace: self.sim.world().airspace().map(|_| {
                 let [n, e, d] = self.sim.state().position_m;
                 self.sim
@@ -248,6 +259,7 @@ pub struct StateOutput {
     pub paused: bool,
     pub rate: f64,
     pub world: WorldChoice,
+    pub simulation_date: flightcraft_world::geomag::SimulationDate,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub airspace: Option<Vec<flightcraft_world::AirspaceMembership>>,
 }
@@ -269,6 +281,12 @@ pub enum ResetStart {
         end: String,
     },
     AirportAir(AirportAirStart),
+    GeographicAir {
+        position: flightcraft_world::GeoPoint,
+        height_agl_m: f64,
+        airspeed_mps: f64,
+        heading_rad: f64,
+    },
     Air {
         #[schemars(range(min = 0))]
         height_m: f64,
@@ -338,6 +356,42 @@ impl Command for Reset {
                 regions::runway_start(&world, AirportRunwayStart { airport, end })?
             }
             ResetStart::AirportAir(s) => regions::air_start(&world, s)?,
+            ResetStart::GeographicAir {
+                position,
+                height_agl_m,
+                airspeed_mps,
+                heading_rad,
+            } => {
+                position
+                    .validate()
+                    .map_err(|e| CommandError::Failed(e.to_string()))?;
+                range(Self::NAME, "height_agl_m", height_agl_m, 2.0, 15000.0)?;
+                range(Self::NAME, "airspeed_mps", airspeed_mps, 0.0, 300.0)?;
+                range(
+                    Self::NAME,
+                    "heading_rad",
+                    heading_rad,
+                    0.0,
+                    core::f64::consts::TAU,
+                )?;
+                let region = world
+                    .region()
+                    .ok_or_else(|| CommandError::Failed("geographic air start requires a region".into()))?;
+                let projection = flightcraft_world::geo::LocalProjection::new(
+                    region.origin.latitude_deg,
+                    region.origin.longitude_deg,
+                )
+                .map_err(|e| CommandError::Failed(e.to_string()))?;
+                let [n, e] = projection
+                    .project(position.latitude_deg, position.longitude_deg)
+                    .map_err(|e| CommandError::Failed(e.to_string()))?;
+                flightcraft_world::inside(region, [n, e]).map_err(|e| CommandError::Failed(e.to_string()))?;
+                Start::AirAt {
+                    position_m: [n, e, -(world.ground(n, e).height_msl_m + height_agl_m)],
+                    airspeed_mps,
+                    heading_rad,
+                }
+            }
             ResetStart::Runway {} => Start::Runway,
             ResetStart::Air {
                 height_m,
@@ -602,6 +656,30 @@ macro_rules! registry {
 }
 
 registry!(
+    SetSimulationDate,
+    SearchQuery,
+    NearestNavdata,
+    PinsList,
+    PinsAdd,
+    PinsUpdate,
+    PinsRemove,
+    PinsImport,
+    PinsExport,
+    CurrentLocation,
+    GeocodeLookup,
+    PlanNew,
+    PlanAdd,
+    PlanInsert,
+    PlanMove,
+    PlanRemove,
+    PlanSetAltitude,
+    SummaryPlan,
+    ProfilePlan,
+    PlanSave,
+    PlanLoad,
+    PlanImport,
+    PlanExport,
+    PlanActivate,
     Reset,
     WorldHeight,
     ListWorlds,

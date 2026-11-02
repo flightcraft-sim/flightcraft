@@ -20,6 +20,7 @@ pub enum Action {
     Reset,
     Camera,
     Airspace,
+    Search,
     TrimUp,
     TrimDown,
     LookLeft,
@@ -69,7 +70,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 60] = [
+    pub const ALL: [Self; 61] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -84,6 +85,7 @@ impl Action {
         Self::Reset,
         Self::Camera,
         Self::Airspace,
+        Self::Search,
         Self::TrimUp,
         Self::TrimDown,
         Self::LookLeft,
@@ -205,6 +207,7 @@ impl Action {
             Self::Pause => "Pause / resume",
             Self::Reset => "Reset flight",
             Self::Camera => "Change camera",
+            Self::Search => "Focus search",
             Self::Airspace => "Show / hide airspace",
             Self::TrimUp => "Trim up",
             Self::TrimDown => "Trim down",
@@ -282,6 +285,7 @@ impl Default for Keymap {
                 (Reset, vec![Key::R]),
                 (Camera, vec![Key::C]),
                 (Airspace, vec![Key::U]),
+                (Search, vec![Key::Slash]),
                 (TrimUp, vec![Key::Home]),
                 (TrimDown, vec![Key::End]),
                 (LookLeft, vec![Key::J]),
@@ -404,6 +408,7 @@ impl Keymap {
                 && !Action::SYSTEMS.contains(&action)
                 && !Action::AUTOPILOT.contains(&action)
                 && !Action::AVIONICS.contains(&action)
+                && action != Action::Search
                 && !Action::GLASS.contains(&action)
             {
                 return Err(format!("{} needs a key", action.label()));

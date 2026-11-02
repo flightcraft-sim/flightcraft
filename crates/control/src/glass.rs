@@ -20,6 +20,7 @@ pub struct GlassSettings {
     pub orientation: MapOrientation,
     pub page: GlassPage,
     pub flight_plan: Vec<String>,
+    pub waypoints: Vec<GpsWaypoint>,
     pub active_leg: usize,
     pub leg_origin_deg: Option<[f64; 2]>,
     #[serde(skip)]
@@ -40,6 +41,7 @@ impl Default for GlassSettings {
             orientation: MapOrientation::NorthUp,
             page: GlassPage::Map,
             flight_plan: Vec::new(),
+            waypoints: Vec::new(),
             active_leg: 0,
             leg_origin_deg: None,
             generation: 0,
@@ -194,6 +196,8 @@ impl Session {
             GlassSetting::Page { page } => self.glass.page = page,
             GlassSetting::DirectTo { airport } => self.set_glass_plan(vec![airport])?,
             GlassSetting::FlightPlan { airports } => self.set_glass_plan(airports)?,
+            GlassSetting::FlightPlanWaypoints { waypoints } => self.set_gps_waypoints(waypoints)?,
+            GlassSetting::DirectToWaypoint { waypoint } => self.set_gps_waypoints(vec![waypoint])?,
             GlassSetting::ActiveLeg { index } => {
                 if index >= self.glass.flight_plan.len() {
                     return Err(invalid(NAME, "active leg outside flight plan"));
@@ -224,6 +228,7 @@ impl Session {
         }
         let [n, e, _] = self.sim.state().position_m;
         let origin = self.sim.world().geodetic(n, e);
+        self.glass.waypoints.clear();
         self.glass.flight_plan = canonical;
         self.glass.course_manual = false;
         self.glass.active_leg = 0;
@@ -232,27 +237,55 @@ impl Session {
     }
     fn sync_receiver_leg(&mut self) {
         let world = self.sim.world();
+        // Resolved waypoints (navaids, fixes, pins, coordinates) when present, else airport idents.
+        let point = |index: usize| -> Option<[f64; 2]> {
+            if self.glass.waypoints.len() == self.glass.flight_plan.len()
+                && let Some(w) = self.glass.waypoints.get(index)
+            {
+                return Some([w.position.latitude_deg, w.position.longitude_deg]);
+            }
+            let id = self.glass.flight_plan.get(index)?;
+            let a = crate::regions::airport(world, id).ok()?;
+            Some([a.latitude_deg, a.longitude_deg])
+        };
         let leg = (|| {
             let region = world.region()?;
-            let id = self.glass.flight_plan.get(self.glass.active_leg)?;
-            let end = crate::regions::airport(world, id).ok()?;
+            let end = point(self.glass.active_leg)?;
             let start = if self.glass.active_leg == 0 {
                 self.glass.leg_origin_deg?
             } else {
-                let id = self
-                    .glass
-                    .flight_plan
-                    .get(self.glass.active_leg.saturating_sub(1))?;
-                let a = crate::regions::airport(world, id).ok()?;
-                [a.latitude_deg, a.longitude_deg]
+                point(self.glass.active_leg.saturating_sub(1))?
             };
             Some(flightcraft_sim::nav_source::ReceiverLeg {
                 start_deg: start,
-                end_deg: [end.latitude_deg, end.longitude_deg],
+                end_deg: end,
                 projection_origin_deg: [region.origin.latitude_deg, region.origin.longitude_deg],
             })
         })();
         self.sim.set_receiver_leg(leg);
+    }
+
+    /// Replace GPS navigation atomically with resolved airports, navaids, fixes, pins, or coordinates.
+    pub fn set_gps_waypoints(&mut self, waypoints: Vec<GpsWaypoint>) -> Result<(), CommandError> {
+        if waypoints.len() > 64 {
+            return Err(invalid("avionics.set", "flight plan exceeds 64 waypoints"));
+        }
+        for w in &waypoints {
+            if !flightcraft_world::navdata::text_ok(&w.ident, 64) {
+                return Err(invalid("avionics.set", "invalid waypoint ident"));
+            }
+            w.position
+                .validate()
+                .map_err(|e| CommandError::Failed(e.to_string()))?;
+        }
+        let [n, e, _] = self.sim.state().position_m;
+        self.glass.flight_plan = waypoints.iter().map(|w| w.ident.clone()).collect();
+        self.glass.waypoints = waypoints;
+        self.glass.active_leg = 0;
+        self.glass.course_manual = false;
+        self.glass.leg_origin_deg = self.sim.world().geodetic(n, e);
+        self.glass.generation = self.flight_generation;
+        Ok(())
     }
     pub(crate) fn reset_glass_generation(&mut self) {
         if self.glass.generation != self.flight_generation {
@@ -272,10 +305,12 @@ impl Session {
             let Some(id) = self.glass.flight_plan.get(self.glass.active_leg) else {
                 break;
             };
-            let Ok(destination) = crate::regions::airport(self.sim.world(), id) else {
+            let Some(destination) = gps_destination(&self.glass, self.sim.world(), self.glass.active_leg)
+            else {
                 break;
             };
-            if inverse(position, [destination.latitude_deg, destination.longitude_deg]).0 > 0.3 * NM {
+            let _ = id;
+            if inverse(position, destination).0 > 0.3 * NM {
                 break;
             }
             self.glass.active_leg += 1;
@@ -478,6 +513,15 @@ impl Session {
 fn ete(distance: f64, speed: f64) -> Option<f64> {
     (speed > 1.0).then_some(distance / speed.max(1.0))
 }
+fn gps_destination(s: &GlassSettings, world: &flightcraft_world::World, index: usize) -> Option<[f64; 2]> {
+    if let Some(w) = s.waypoints.get(index) {
+        return Some([w.position.latitude_deg, w.position.longitude_deg]);
+    }
+    let id = s.flight_plan.get(index)?;
+    crate::regions::airport(world, id)
+        .ok()
+        .map(|a| [a.latitude_deg, a.longitude_deg])
+}
 fn gps(
     world: &flightcraft_world::World,
     s: &GlassSettings,
@@ -486,9 +530,8 @@ fn gps(
 ) -> GpsState {
     let mut legs = Vec::new();
     let mut previous = s.leg_origin_deg;
-    for id in &s.flight_plan {
-        if let Ok(a) = crate::regions::airport(world, id) {
-            let dest = [a.latitude_deg, a.longitude_deg];
+    for (index, id) in s.flight_plan.iter().enumerate() {
+        if let Some(dest) = gps_destination(s, world, index) {
             let (d, b) = previous.map_or((0.0, 0.0), |p| inverse(p, dest));
             legs.push(NavigationLeg {
                 airport: id.clone(),
@@ -518,18 +561,14 @@ fn gps(
     let Some(id) = s.flight_plan.get(s.active_leg) else {
         return result;
     };
-    let Ok(a) = crate::regions::airport(world, id) else {
+    let Some(dest) = gps_destination(s, world, s.active_leg) else {
         return result;
     };
-    let dest = [a.latitude_deg, a.longitude_deg];
     let (d, b) = inverse(position, dest);
     let start = if s.active_leg == 0 {
         s.leg_origin_deg
     } else {
-        s.flight_plan
-            .get(s.active_leg - 1)
-            .and_then(|id| crate::regions::airport(world, id).ok())
-            .map(|a| [a.latitude_deg, a.longitude_deg])
+        gps_destination(s, world, s.active_leg - 1)
     };
     let Some(start) = start else {
         return result;

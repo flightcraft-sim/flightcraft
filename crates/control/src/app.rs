@@ -158,6 +158,8 @@ impl Command for Wait {
 /// Validated work for the UI to complete without blocking the frame loop.
 #[derive(Clone, Debug, PartialEq)]
 pub enum AppRequest {
+    Geocode(crate::GeocodeLookup),
+    Location,
     Screenshot(AppScreenshot),
     Wait { seconds: f64 },
 }

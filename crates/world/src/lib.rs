@@ -144,3 +144,8 @@ mod tests {
         assert_eq!(atmosphere(1e300), atmosphere(20000.0));
     }
 }
+
+pub mod geomag;
+
+pub mod navdata;
+pub use navdata::{GeoPoint, MAX_NAVDATA_BYTES, Navdata};

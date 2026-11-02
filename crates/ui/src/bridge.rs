@@ -20,6 +20,7 @@ struct Pending {
     work: Work,
 }
 enum Work {
+    Navigation(mpsc::Receiver<Result<Value, String>>),
     Wait {
         start: f64,
         target: f64,
@@ -105,6 +106,18 @@ impl Bridge {
                                 generation: session.flight_generation(),
                             }
                         }
+                        request @ (AppRequest::Location | AppRequest::Geocode(_)) => {
+                            let (tx, rx) = mpsc::channel();
+                            let context = ctx.clone();
+                            std::thread::spawn(move || {
+                                let _ = tx.send(
+                                    flightcraft_control::run_navigation_request(request)
+                                        .map_err(|e| e.to_string()),
+                                );
+                                context.request_repaint();
+                            });
+                            Work::Navigation(rx)
+                        }
                         AppRequest::Screenshot(options) => {
                             self.next_token = self.next_token.wrapping_add(1);
                             let token = self.next_token;
@@ -162,6 +175,13 @@ impl Bridge {
                         Some(session.execute("sim.state", json!({})).map_err(|e| e.to_string()))
                     }
                     Work::Wait { .. } => None,
+                    Work::Navigation(rx) => match rx.try_recv() {
+                        Ok(result) => Some(result),
+                        Err(mpsc::TryRecvError::Empty) => None,
+                        Err(mpsc::TryRecvError::Disconnected) => {
+                            Some(Err("navigation request interrupted".into()))
+                        }
+                    },
                     Work::Screenshot { options, token } => {
                         let image = ctx.input(|i| {
                             i.events.iter().find_map(|event| {

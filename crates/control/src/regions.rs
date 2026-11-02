@@ -162,6 +162,15 @@ pub fn read_region(directory: &std::path::Path) -> Result<World, String> {
         .map(|name| bounded(&directory.join(name), MAX_AIRPORT_BYTES))
         .transpose()?;
     let world = region_world_with_airports(region, tiles, airports).map_err(|e| e.to_string())?;
+    let world = match std::fs::symlink_metadata(directory.join("navdata.json")) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => world,
+        Err(e) => return Err(e.to_string()),
+        Ok(_) => {
+            let bytes = bounded(&directory.join("navdata.json"), MAX_NAVDATA_BYTES)?;
+            attach_region_navdata(world, std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
+        }
+    };
     let path = directory.join("airspace.json");
     match std::fs::symlink_metadata(&path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(world),
@@ -415,3 +424,9 @@ pub(crate) fn air_start(
         heading_rad: start.heading_rad,
     })
 }
+
+/// Shared bounded navigation sidecar loader.
+pub fn attach_region_navdata(world: World, text: &str) -> Result<World, TerrainError> {
+    world.with_navdata(flightcraft_world::Navdata::from_json(text)?)
+}
+pub use flightcraft_world::MAX_NAVDATA_BYTES;

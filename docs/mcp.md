@@ -290,3 +290,55 @@ its old hold-target shape for compatibility.
 single heading bug shared with the gauges and HDG mode. NAV receivers implement
 `sim::nav_source::NavSource`. See [installed autopilots](autopilot.md) for panel choices, all
 setting kinds, failure behaviour, sensor attachment, and receiver integration.
+
+## Search, pins, location, addresses, and flight plans
+
+Every command below is also an MCP tool with dots replaced by underscores. `commands.list`
+provides the complete generated input and output schemas. Geographic positions are
+`{latitude_deg, longitude_deg}`; all altitudes are MSL metres unless named AGL.
+
+| Command | Input and behavior |
+|---|---|
+| `sim.set_date` | `date: {year, month, day}` in 2025–2029. Default 2026-01-01; reset preserves it. `sim.state` reports `simulation_date`. |
+| `search.query` | `text`, optional `reference` position, optional `limit` (1–100, default 20). Ranked local results, source dates, and disclaimer. Coordinates and magnetic radial forms are parsed offline. Location and address matches return actions, never implicit requests. |
+| `navdata.nearest` | `position`, optional `limit` (1–100). Nearest airports, navaids, and fixes, with distances in metres. |
+| `pins.list`, `pins.export` | `{}`. Return the versioned pins document. |
+| `pins.add` | `pin: {id, name, note, position, altitude_m}`. Unique ID required; altitude may be null. |
+| `pins.update` | `pin` with an existing ID. Replaces that pin atomically. |
+| `pins.remove` | `id`. Unknown IDs are errors. |
+| `pins.import` | `document` following `schema/pins.json`, optional `replace` (default false). Merge rejects duplicates; replace discards old pins only after validation and persistence succeed. |
+| `location.current` | `request_permission: true` explicitly requests OS/browser permission. Returns position, accuracy, and source; never writes the position to disk. Missing consent is an error. Linux uses GeoClue2; browser uses Geolocation; macOS and Windows currently return unavailable. |
+| `geocode.lookup` | `address`, `provider: "census"` or `"nominatim"`, and explicit `allow_network: true`. Returns attributed positions and a `cached` flag. No automatic address lookup, bulk endpoint, or permission dialog in a programmatic call. |
+| `plan.new` | `name`, optional `cruise: {airspeed_mps, fuel_flow_kg_s}`, optional `reserve_s` (default 2700). Replaces the current editable plan with an empty one. |
+| `plan.add` | `point: {waypoint: {ident, kind, position}, altitude_m}`. Kinds are `airport`, `navaid`, `fix`, `pin`, and `coordinate`. |
+| `plan.insert` | `index`, `point`. Insert at a zero-based index, including the end. |
+| `plan.move` | `from`, `to`. Reorder a waypoint; `to` is the final index. |
+| `plan.remove` | `index`. Remove a waypoint. |
+| `plan.set_altitude` | `index`, `altitude_m`. Set a planned MSL altitude; endpoints interpolate along legs. |
+| `plan.summary` | `{}`. Legs, magnetic and true courses, WGS84 distances, wind-corrected ETE, trip fuel, reserve, required fuel, performance source, and sampled conflicts. Impossible winds produce null ETE/fuel and a conflict. |
+| `plan.profile` | Optional `spacing_m` (100–10,000, default 1000). Terrain and lateral airspace floors/ceilings along the route, with terrain-clearance, B/C/D entry, and coverage conflicts. |
+| `plan.save`, `plan.load` | `name` containing only ASCII letters, digits, hyphens, or underscores. Use local app storage; no arbitrary path or dialog. |
+| `plan.import` | `format: "json"`, `"gpx"`, or `"fpl"`, and `text`. Validates before replacement. |
+| `plan.export` | `format`. Returns `{format, text}` without writing an arbitrary file. |
+| `plan.activate` | `{}`. Copies resolved waypoints to the glass GPS flight plan and resets its active leg. |
+
+`sim.reset` additionally accepts `start: {kind: "geographic_air", position, height_agl_m,
+airspeed_mps, heading_rad}` in a geographic region. The point must lie inside its terrain grid.
+The search panel's **Start here** action uses this command.
+
+The glass avionics family accepts `flight_plan_waypoints` with `waypoints: [{ident, kind,
+position}, ...]` and `direct_to_waypoint` with one `waypoint`. Original `flight_plan` with
+`airports` and `direct_to` with `airport` remain supported. Resolved positions drive the same
+sequencing, CDI, desired track, ETE, and MFD flight-plan list. `GlassSettings.waypoints` exposes
+these positions alongside the existing ident list.
+
+Desktop location and geocoding execute off the app frame loop. Headless calls perform the
+requested operation synchronously with bounded timeouts. In the browser, the app completes
+asynchronous requests. Programmatic consent flags authorize the specified lookup; they do not
+open a FlightCraft confirmation dialog. The OS/browser may still require its own permission.
+Nominatim requests are serialized and limited to one per second, cached locally, and always
+carry “© OpenStreetMap contributors”. Repeated uncached requests within the interval return an
+error asking the caller to retry later.
+
+See [map and planning](map-and-planning.md#implementation-reference) for storage limits, date
+provenance, profile sampling limitations, cruise estimates, and the implemented GPX/FPL subset.

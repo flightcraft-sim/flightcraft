@@ -34,6 +34,24 @@ pub enum BearingPointer {
     Off,
     Gps,
 }
+/// A resolved GPS waypoint; independent of a region's airport catalogue.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct GpsWaypoint {
+    #[schemars(length(min = 1, max = 64))]
+    pub ident: String,
+    pub kind: WaypointKind,
+    pub position: flightcraft_world::GeoPoint,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WaypointKind {
+    Airport,
+    Navaid,
+    Fix,
+    Pin,
+    Coordinate,
+}
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum GlassSetting {
@@ -80,6 +98,13 @@ pub enum GlassSetting {
     FlightPlan {
         #[schemars(length(max = 64))]
         airports: Vec<String>,
+    },
+    FlightPlanWaypoints {
+        #[schemars(length(max = 64))]
+        waypoints: Vec<GpsWaypoint>,
+    },
+    DirectToWaypoint {
+        waypoint: GpsWaypoint,
     },
     ActiveLeg {
         index: usize,

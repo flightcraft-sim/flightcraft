@@ -231,6 +231,7 @@ pub struct World {
     region: Option<Arc<crate::Region>>,
     airspace: Option<Arc<crate::Airspace>>,
     airports: Option<Arc<crate::Airports>>,
+    navdata: Option<Arc<crate::Navdata>>,
     strips: Arc<[crate::RunwayStrip]>,
 }
 impl Default for World {
@@ -240,6 +241,7 @@ impl Default for World {
             region: None,
             airspace: None,
             airports: None,
+            navdata: None,
             strips: Arc::from([]),
             tiles: Arc::from([]),
             fingerprint: 0xcbf2_9ce4_8422_2325,
@@ -332,6 +334,7 @@ impl World {
             region: None,
             airspace: None,
             airports: None,
+            navdata: None,
             strips: Arc::from([]),
         })
     }
@@ -377,6 +380,16 @@ impl World {
         }
         self.airspace = Some(Arc::new(airspace));
         Ok(self)
+    }
+    /// Navigation is immutable metadata and does not change the physics replay identity.
+    pub fn with_navdata(mut self, data: crate::Navdata) -> Result<Self, TerrainError> {
+        self.region().ok_or(TerrainError("navdata requires a region"))?;
+        data.validate()?;
+        self.navdata = Some(Arc::new(data));
+        Ok(self)
+    }
+    pub fn navdata(&self) -> Option<&crate::Navdata> {
+        self.navdata.as_deref()
     }
     pub fn airspace(&self) -> Option<&crate::Airspace> {
         self.airspace.as_deref()

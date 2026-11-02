@@ -9,6 +9,7 @@ pub mod glass;
 mod input;
 pub mod instruments;
 pub mod keymap;
+mod navigation;
 pub mod script;
 pub mod theme;
 
@@ -98,6 +99,7 @@ pub struct FlightCraftApp {
     glass_popout_knob: instruments::heading::Knob,
     bindings_json: String,
     airport_search: String,
+    navigation: navigation::SearchPanel,
     glance_origin: Option<[f64; 2]>,
     autopilot_controller: autopilot::Controller,
     audio: audio::Audio,
@@ -148,6 +150,16 @@ impl FlightCraftApp {
         let bindings_json = keymap.json()?;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(directory) = flightcraft_control::navigation_data_directory()
+            && let Err(e) = session.load_navigation_storage(&directory)
+        {
+            error = Some(e.to_string());
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Err(e) = session.load_browser_pins() {
+            error = Some(e.to_string());
+        }
         let mut pack_errors = options.packs.errors;
         pack_errors.extend(options.regions.errors);
         #[cfg(not(target_arch = "wasm32"))]
@@ -262,6 +274,7 @@ impl FlightCraftApp {
             ),
             bindings_json,
             airport_search: String::new(),
+            navigation: navigation::SearchPanel::default(),
             glance_origin: None,
             autopilot_controller: autopilot::Controller::default(),
             audio: audio::Audio::with_preferences(
@@ -486,6 +499,9 @@ impl eframe::App for FlightCraftApp {
         {
             self.error = Some(e.to_string());
         }
+        if frame.pressed(Action::Search) {
+            self.navigation.focus = true;
+        }
         if frame.pressed(Action::Reset) {
             self.reset();
         }
@@ -660,6 +676,7 @@ impl eframe::App for FlightCraftApp {
                         egui::Stroke::new(2.5_f32, theme::ACCENT),
                     );
                     ui.label(RichText::new("FlightCraft").size(23.0).strong());
+                    self.navigation.show(ui, &mut self.session);
                     ui.add_space(12.0);
                     let identity = self.session.sim().aircraft().identity.clone();
                     ui.menu_button(

@@ -68,6 +68,19 @@ async fn load_one(
     };
     let world =
         region_world_with_airports(region, tiles, airports).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let nav_url = web_sys::Url::new_with_base("navdata.json", &url.href())?;
+    let world = if let Some(bytes) =
+        crate::packs::fetch_optional_bytes(window, &nav_url.href(), flightcraft_control::MAX_NAVDATA_BYTES)
+            .await?
+    {
+        flightcraft_control::attach_region_navdata(
+            world,
+            std::str::from_utf8(&bytes).map_err(|e| JsValue::from_str(&e.to_string()))?,
+        )
+        .map_err(|e| JsValue::from_str(&e.to_string()))?
+    } else {
+        world
+    };
     let airspace_url = web_sys::Url::new_with_base("airspace.json", &url.href())?;
     if let Some(bytes) =
         crate::packs::fetch_optional_bytes(window, &airspace_url.href(), MAX_AIRSPACE_BYTES).await?

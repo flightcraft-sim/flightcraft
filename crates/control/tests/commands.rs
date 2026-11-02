@@ -52,15 +52,16 @@ fn every_schema_is_a_valid_json_schema_object_and_matches_a_result() {
         ),
     ];
     let registry = Session::commands();
-    // App and geographic commands are exercised with their own session setup.
-    assert_eq!(registry.len(), examples.len() + 10);
+    // App, geographic, and navigation commands have their own session and storage setup.
+    let names: std::collections::BTreeSet<_> = registry.iter().map(|c| c.name).collect();
+    assert_eq!(names.len(), registry.len());
     for command in &registry {
         for schema in [&command.input_schema, &command.output_schema] {
             jsonschema::meta::validate(schema).unwrap();
         }
     }
-    for (command, (name, input)) in registry.iter().zip(examples) {
-        assert_eq!(command.name, name);
+    for (name, input) in examples {
+        let command = registry.iter().find(|c| c.name == name).unwrap();
         for schema in [&command.input_schema, &command.output_schema] {
             assert!(schema.is_object());
             assert_eq!(schema["type"], "object");

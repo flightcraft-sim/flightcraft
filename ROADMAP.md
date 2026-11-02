@@ -52,7 +52,7 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 29 | External hardware and home-built panels: HID yokes and quadrants with device profiles, a device protocol for custom boards, layouts on extra screens, and physical panels with cut-template export ([spec](docs/hardware-and-panels.md)) | 21 |
 | 30 | Installed autopilots: wing leveler, two-axis legacy, and digital two-axis with flight director, envelope protection, and mode annunciation | 21 |
 | 31 | The crew: a deterministic virtual pilot, watching, demonstrating, and instructing modes, intercom and kneeboard instead of a chat box, ACS-graded lessons, and an optional AI link ([spec](docs/crew.md)) | 30 |
-| 32 | Map, search, and planning: navaids, fixes, airways, magnetic variation, one search box for anything, your location, addresses, pins, and a planning map with profile and conflicts ([spec](docs/map-and-planning.md)) | 18, 21 |
+| 32 | Navigation data, WMM2025, search, pins, opt-in location and geocoding, flight-plan commands, and glass GPS activation (done); full planning map and charts remain planned ([spec](docs/map-and-planning.md)) | 18, 21 |
 | 33 | Tablet apps, plates, charts, and procedures: desktop GDL 90 and simulator position broadcast to EFB apps (done; traffic encoders ready, no traffic source yet), FAA plates with georeferenced overlay, sectional and terminal charts, CIFP procedures in the GPS with ILS and VOR signals, and opt-in live weather and TFRs ([spec](docs/efb-and-charts.md)) | 30, 32 |
 
 ## Aircraft equipment

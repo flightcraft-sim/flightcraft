@@ -1,5 +1,3543 @@
 [
   {
+    "name": "sim.set_date",
+    "description": "Set the deterministic WMM simulation date (2025–2029); default 2026-01-01.",
+    "input_schema": {
+      "$defs": {
+        "SimulationDate": {
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "format": "uint8",
+              "maximum": 31,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint8",
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "year": {
+              "format": "uint16",
+              "maximum": 2029,
+              "minimum": 2025,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "$ref": "#/$defs/SimulationDate"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "title": "SetSimulationDate",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "day": {
+          "format": "uint8",
+          "maximum": 31,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "month": {
+          "format": "uint8",
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "year": {
+          "format": "uint16",
+          "maximum": 2029,
+          "minimum": 2025,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "year",
+        "month",
+        "day"
+      ],
+      "title": "SimulationDate",
+      "type": "object"
+    }
+  },
+  {
+    "name": "search.query",
+    "description": "Search local airports, navaids, fixes, airways, pins, coordinates, and magnetic radials; return network actions without running them.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 20,
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "SearchQuery",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "SearchKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "airway",
+            "pin",
+            "coordinate",
+            "radial",
+            "location_action",
+            "geocode_action"
+          ],
+          "type": "string"
+        },
+        "SearchResult": {
+          "properties": {
+            "details": {
+              "type": "string"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ident": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/SearchKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "ident",
+            "name",
+            "details"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "effective_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notice": {
+          "type": "string"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/SearchResult"
+          },
+          "type": "array"
+        },
+        "snapshot_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "results",
+        "notice"
+      ],
+      "title": "SearchOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "navdata.nearest",
+    "description": "Return nearest airports, navaids, and fixes in the active region.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 20,
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "required": [
+        "position"
+      ],
+      "title": "NearestNavdata",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "SearchKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "airway",
+            "pin",
+            "coordinate",
+            "radial",
+            "location_action",
+            "geocode_action"
+          ],
+          "type": "string"
+        },
+        "SearchResult": {
+          "properties": {
+            "details": {
+              "type": "string"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ident": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/SearchKind"
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "ident",
+            "name",
+            "details"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "effective_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notice": {
+          "type": "string"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/SearchResult"
+          },
+          "type": "array"
+        },
+        "snapshot_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "results",
+        "notice"
+      ],
+      "title": "SearchOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.list",
+    "description": "List locally saved user pins.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "PinsList",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.add",
+    "description": "Add a unique user pin and persist locally.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pin": {
+          "$ref": "#/$defs/Pin"
+        }
+      },
+      "required": [
+        "pin"
+      ],
+      "title": "PinsAdd",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.update",
+    "description": "Replace an existing pin, including its name, note, or altitude.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pin": {
+          "$ref": "#/$defs/Pin"
+        }
+      },
+      "required": [
+        "pin"
+      ],
+      "title": "PinsUpdate",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.remove",
+    "description": "Remove a saved user pin.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "PinsRemove",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.import",
+    "description": "Validate and import a pins document, merging unless replace is true.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PinsFile": {
+          "additionalProperties": false,
+          "properties": {
+            "pins": {
+              "items": {
+                "$ref": "#/$defs/Pin"
+              },
+              "maxItems": 1000,
+              "type": "array"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "pins"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/PinsFile"
+        },
+        "replace": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "document"
+      ],
+      "title": "PinsImport",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "pins.export",
+    "description": "Export the complete pins document.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "PinsExport",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "Pin": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "name": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "note": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "note",
+            "position"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "pins": {
+          "items": {
+            "$ref": "#/$defs/Pin"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "pins"
+      ],
+      "title": "PinsFile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "location.current",
+    "description": "Request device location explicitly with request_permission:true; never save the position unless made into a pin.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "request_permission": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "CurrentLocation",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "accuracy_m": {
+          "format": "double",
+          "type": "number"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "position",
+        "accuracy_m",
+        "source"
+      ],
+      "title": "DeviceLocation",
+      "type": "object"
+    }
+  },
+  {
+    "name": "geocode.lookup",
+    "description": "Look up one address with Census or Nominatim only with explicit allow_network:true; cache locally and attribute every result.",
+    "input_schema": {
+      "$defs": {
+        "GeocodeProvider": {
+          "enum": [
+            "census",
+            "nominatim"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "allow_network": {
+          "default": false,
+          "type": "boolean"
+        },
+        "provider": {
+          "$ref": "#/$defs/GeocodeProvider"
+        }
+      },
+      "required": [
+        "address",
+        "provider"
+      ],
+      "title": "GeocodeLookup",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GeocodeProvider": {
+          "enum": [
+            "census",
+            "nominatim"
+          ],
+          "type": "string"
+        },
+        "GeocodeResult": {
+          "properties": {
+            "attribution": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "name",
+            "position",
+            "attribution"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "cached": {
+          "type": "boolean"
+        },
+        "provider": {
+          "$ref": "#/$defs/GeocodeProvider"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/GeocodeResult"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "provider",
+        "results",
+        "cached"
+      ],
+      "title": "GeocodeOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.new",
+    "description": "Create an empty plan with cruise performance and a default 45-minute reserve.",
+    "input_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "reserve_s": {
+          "default": 2700.0,
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "PlanNew",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.add",
+    "description": "Append a resolved waypoint to the plan.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/PlanWaypoint"
+        }
+      },
+      "required": [
+        "point"
+      ],
+      "title": "PlanAdd",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.insert",
+    "description": "Insert a waypoint at a zero-based position.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "point": {
+          "$ref": "#/$defs/PlanWaypoint"
+        }
+      },
+      "required": [
+        "index",
+        "point"
+      ],
+      "title": "PlanInsert",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.move",
+    "description": "Reorder a waypoint; to is its final zero-based position.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "to": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "title": "PlanMove",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.remove",
+    "description": "Remove a waypoint at a zero-based index.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "index"
+      ],
+      "title": "PlanRemove",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.set_altitude",
+    "description": "Set a waypoint's planned MSL altitude; profiles interpolate between endpoints.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "altitude_m": {
+          "format": "double",
+          "type": "number"
+        },
+        "index": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "index",
+        "altitude_m"
+      ],
+      "title": "PlanSetAltitude",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.summary",
+    "description": "Compute WMM magnetic courses, geodesic legs, wind-corrected ETE, fuel, reserve, and sampled conflicts.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "SummaryPlan",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "PlanConflict": {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "leg",
+            "kind",
+            "detail"
+          ],
+          "type": "object"
+        },
+        "PlanLeg": {
+          "properties": {
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "ete_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "from": {
+              "type": "string"
+            },
+            "fuel_kg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ground_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "magnetic_course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "to": {
+              "type": "string"
+            },
+            "true_course_deg": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "distance_m",
+            "true_course_deg",
+            "magnetic_course_deg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/$defs/PlanConflict"
+          },
+          "type": "array"
+        },
+        "cruise": {
+          "$ref": "#/$defs/CruisePerformance"
+        },
+        "distance_m": {
+          "format": "double",
+          "type": "number"
+        },
+        "ete_s": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "legs": {
+          "items": {
+            "$ref": "#/$defs/PlanLeg"
+          },
+          "type": "array"
+        },
+        "performance_source": {
+          "type": "string"
+        },
+        "required_fuel_kg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reserve_fuel_kg": {
+          "format": "double",
+          "type": "number"
+        },
+        "trip_fuel_kg": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "legs",
+        "distance_m",
+        "reserve_fuel_kg",
+        "cruise",
+        "performance_source",
+        "conflicts"
+      ],
+      "title": "PlanSummary",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.profile",
+    "description": "Sample planned altitude, terrain, and lateral airspace floors/ceilings; report terrain, airspace, and coverage conflicts.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "spacing_m": {
+          "default": 1000.0,
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "title": "ProfilePlan",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspaceClass": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PlanConflict": {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "leg",
+            "kind",
+            "detail"
+          ],
+          "type": "object"
+        },
+        "ProfileAirspace": {
+          "properties": {
+            "ceiling_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "class": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AirspaceClass"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "floor_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "floor_m",
+            "ceiling_m"
+          ],
+          "type": "object"
+        },
+        "ProfileSample": {
+          "properties": {
+            "airspace": {
+              "items": {
+                "$ref": "#/$defs/ProfileAirspace"
+              },
+              "type": "array"
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "outside_region": {
+              "type": "boolean"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "terrain_m": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "leg",
+            "distance_m",
+            "position",
+            "altitude_m",
+            "airspace",
+            "outside_region"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "conflicts": {
+          "items": {
+            "$ref": "#/$defs/PlanConflict"
+          },
+          "type": "array"
+        },
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/ProfileSample"
+          },
+          "type": "array"
+        },
+        "spacing_m": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "samples",
+        "conflicts",
+        "spacing_m"
+      ],
+      "title": "PlanProfile",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.save",
+    "description": "Save a named plan in local app storage.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "PlanSave",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.load",
+    "description": "Load and validate a named plan from local app storage.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "PlanLoad",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.import",
+    "description": "Import bounded JSON, GPX route/track points, or Garmin flight-plan v1 XML.",
+    "input_schema": {
+      "$defs": {
+        "PlanFormat": {
+          "enum": [
+            "json",
+            "gpx",
+            "fpl"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/PlanFormat"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "text"
+      ],
+      "title": "PlanImport",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CruisePerformance": {
+          "additionalProperties": false,
+          "properties": {
+            "airspeed_mps": {
+              "format": "double",
+              "maximum": 300,
+              "minimum": 10,
+              "type": "number"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "airspeed_mps",
+            "fuel_flow_kg_s"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
+        },
+        "PlanWaypoint": {
+          "additionalProperties": false,
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "maximum": 20000,
+              "minimum": -500,
+              "type": "number"
+            },
+            "waypoint": {
+              "$ref": "#/$defs/GpsWaypoint"
+            }
+          },
+          "required": [
+            "waypoint",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cruise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CruisePerformance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reserve_s": {
+          "format": "double",
+          "maximum": 86400,
+          "minimum": 0,
+          "type": "number"
+        },
+        "version": {
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "waypoints": {
+          "items": {
+            "$ref": "#/$defs/PlanWaypoint"
+          },
+          "maxItems": 64,
+          "type": "array"
+        }
+      },
+      "required": [
+        "version",
+        "name",
+        "waypoints",
+        "reserve_s"
+      ],
+      "title": "FlightPlan",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.export",
+    "description": "Export FlightCraft JSON, GPX 1.1 route XML, or Garmin flight-plan v1 XML.",
+    "input_schema": {
+      "$defs": {
+        "PlanFormat": {
+          "enum": [
+            "json",
+            "gpx",
+            "fpl"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/PlanFormat"
+        }
+      },
+      "required": [
+        "format"
+      ],
+      "title": "PlanExport",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "PlanFormat": {
+          "enum": [
+            "json",
+            "gpx",
+            "fpl"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/PlanFormat"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "text"
+      ],
+      "title": "PlanDocument",
+      "type": "object"
+    }
+  },
+  {
+    "name": "plan.activate",
+    "description": "Send resolved airports, navaids, fixes, pins, and coordinates to the glass GPS flight plan.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "PlanActivate",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "waypoints": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "waypoints",
+        "target"
+      ],
+      "title": "PlanActivated",
+      "type": "object"
+    }
+  },
+  {
     "name": "sim.reset",
     "description": "Start on the runway or in the air, in SI units.",
     "input_schema": {
@@ -67,6 +3605,28 @@
           "required": [
             "airport",
             "end"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
           ],
           "type": "object"
         },
@@ -145,6 +3705,38 @@
                 "distance_m",
                 "bearing_deg",
                 "height_m",
+                "airspeed_mps",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "height_agl_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "geographic_air",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "height_agl_m",
                 "airspeed_mps",
                 "heading_rad"
               ],
@@ -1019,6 +4611,35 @@
           ],
           "type": "object"
         },
+        "SimulationDate": {
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "format": "uint8",
+              "maximum": 31,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint8",
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "year": {
+              "format": "uint16",
+              "maximum": 2029,
+              "minimum": 2025,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -1500,6 +5121,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulation_date": {
+          "$ref": "#/$defs/SimulationDate"
+        },
         "state": {
           "$ref": "#/$defs/State"
         },
@@ -1516,7 +5140,8 @@
         "systems",
         "paused",
         "rate",
-        "world"
+        "world",
+        "simulation_date"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -4338,6 +7963,35 @@
           ],
           "type": "object"
         },
+        "SimulationDate": {
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "format": "uint8",
+              "maximum": 31,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint8",
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "year": {
+              "format": "uint16",
+              "maximum": 2029,
+              "minimum": 2025,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -4819,6 +8473,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulation_date": {
+          "$ref": "#/$defs/SimulationDate"
+        },
         "state": {
           "$ref": "#/$defs/State"
         },
@@ -4835,7 +8492,8 @@
         "systems",
         "paused",
         "rate",
-        "world"
+        "world",
+        "simulation_date"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -7127,6 +10785,28 @@
           ],
           "type": "string"
         },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
         "GlassFailure": {
           "enum": [
             "ahrs",
@@ -7379,6 +11059,44 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "flight_plan_waypoints",
+                  "type": "string"
+                },
+                "waypoints": {
+                  "items": {
+                    "$ref": "#/$defs/GpsWaypoint"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "kind",
+                "waypoints"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "direct_to_waypoint",
+                  "type": "string"
+                },
+                "waypoint": {
+                  "$ref": "#/$defs/GpsWaypoint"
+                }
+              },
+              "required": [
+                "kind",
+                "waypoint"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "index": {
                   "format": "uint",
                   "minimum": 0,
@@ -7417,6 +11135,29 @@
               "type": "object"
             }
           ]
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
+          ],
+          "type": "object"
         },
         "LateralMode": {
           "enum": [
@@ -7753,6 +11494,16 @@
             "ias",
             "gp",
             "gs"
+          ],
+          "type": "string"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
           ],
           "type": "string"
         }
@@ -8445,6 +12196,28 @@
           ],
           "type": "object"
         },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
         "GlassPage": {
           "enum": [
             "map",
@@ -8514,6 +12287,12 @@
             },
             "transponder_mode": {
               "$ref": "#/$defs/TransponderMode"
+            },
+            "waypoints": {
+              "items": {
+                "$ref": "#/$defs/GpsWaypoint"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -8529,6 +12308,7 @@
             "orientation",
             "page",
             "flight_plan",
+            "waypoints",
             "active_leg"
           ],
           "type": "object"
@@ -8711,6 +12491,29 @@
             "cdi_full_scale_nm",
             "cdi_deviation",
             "legs"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
           ],
           "type": "object"
         },
@@ -8915,6 +12718,16 @@
             "ias",
             "gp",
             "gs"
+          ],
+          "type": "string"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
           ],
           "type": "string"
         }
@@ -9638,6 +13451,28 @@
           ],
           "type": "object"
         },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
         "GlassPage": {
           "enum": [
             "map",
@@ -9707,6 +13542,12 @@
             },
             "transponder_mode": {
               "$ref": "#/$defs/TransponderMode"
+            },
+            "waypoints": {
+              "items": {
+                "$ref": "#/$defs/GpsWaypoint"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -9722,6 +13563,7 @@
             "orientation",
             "page",
             "flight_plan",
+            "waypoints",
             "active_leg"
           ],
           "type": "object"
@@ -9904,6 +13746,29 @@
             "cdi_full_scale_nm",
             "cdi_deviation",
             "legs"
+          ],
+          "type": "object"
+        },
+        "GpsWaypoint": {
+          "additionalProperties": false,
+          "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+          "properties": {
+            "ident": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/WaypointKind"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            }
+          },
+          "required": [
+            "ident",
+            "kind",
+            "position"
           ],
           "type": "object"
         },
@@ -10108,6 +13973,16 @@
             "ias",
             "gp",
             "gs"
+          ],
+          "type": "string"
+        },
+        "WaypointKind": {
+          "enum": [
+            "airport",
+            "navaid",
+            "fix",
+            "pin",
+            "coordinate"
           ],
           "type": "string"
         }
@@ -13489,6 +17364,35 @@
           ],
           "type": "object"
         },
+        "SimulationDate": {
+          "additionalProperties": false,
+          "properties": {
+            "day": {
+              "format": "uint8",
+              "maximum": 31,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "month": {
+              "format": "uint8",
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "year": {
+              "format": "uint16",
+              "maximum": 2029,
+              "minimum": 2025,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "type": "object"
+        },
         "State": {
           "description": "The full rigid-body state.",
           "properties": {
@@ -13970,6 +17874,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulation_date": {
+          "$ref": "#/$defs/SimulationDate"
+        },
         "state": {
           "$ref": "#/$defs/State"
         },
@@ -13986,7 +17893,8 @@
         "systems",
         "paused",
         "rate",
-        "world"
+        "world",
+        "simulation_date"
       ],
       "title": "StateOutput",
       "type": "object"

@@ -1,6 +1,7 @@
 # Map, search, and flight planning
 
-Status: specification, not yet implemented.
+Status: navigation data, magnetic variation, search, pins, explicit location/address actions,
+and the command-driven flight-plan model are implemented. The full planning map and charts remain planned.
 
 A planning map you can open at any time, a single search box that finds anything, and flight plans
 that the GPS, the autopilot, and the virtual pilot all fly.
@@ -192,3 +193,140 @@ FlightCraft's own design, not a copy of any app's styling.
    files, and activation into the GPS.
 4. **Base maps:** Aero (vector), sectional, terminal area, IFR low and high, terrain, satellite, and
    street, plus the overlays above as their data arrives.
+
+## Implementation reference
+
+Phases 1 and 2, the plan model and commands from phase 3, and a small top-bar search panel are
+implemented. The full planning map, charts, and graphical plan editor remain planned. Use the
+configurable **Focus search** action (default `/`) for the search field. Results show their kind,
+distance, details, source dates, and the navigation disclaimer. **Start here** makes a paused air
+start 600 m above local terrain, **Direct to** selects a resolved glass GPS waypoint, **Add to plan**
+uses 1,000 m MSL initially, and **Pin** saves the result locally.
+
+### Navigation sidecars and magnetism
+
+The sibling offline importer leaves the existing airport/runway importer unchanged:
+
+```sh
+cargo xtask navigation-faa --region assets/terrain/example-region/region.json \
+  --layers downloads/faa --snapshot-date 2026-11-01 \
+  --out assets/terrain/example-region/navdata.json
+```
+
+The layer directory contains `NAVAIDSystem.geojson`, `NavaidComponent.geojson`,
+`DesignatedPoint.geojson`, `ILS_Component.geojson`, `ATS_Route.geojson`, and
+`HoldingPattern.geojson`. Source paths are never embedded in the output. The output must be new.
+An optional `--effective-date YYYY-MM-DD` records a verified dataset cycle date. Without it,
+`effective_date` is null: component and fix record dates are historical edits, not evidence of a
+current FAA cycle. `snapshot_date` is a separate required date. The supplied snapshot has no
+verified cycle date; the app displays **cycle unknown**. These data are not for real-world navigation.
+
+Systems join components by ident, equipment family in the FAA client key, and proximity, avoiding
+VOTs or localisers sharing an ident. VOR/DME and VORTAC component families are compatible for
+joining historical records; each component retains its source client key and subtype so snapshot
+disagreements remain visible. System type codes 3, 5, 6, and 8 in the bundled source mean
+NDB/locator, DME, VOR/DME, and VORTAC. Component subtype codes, frequencies converted to Hz,
+channels, source magnetic variation, and original effective timestamps are retained. Missing
+frequency units use kHz for NDB components and MHz for VHF components, as in the FAA source.
+Fix DMS positions are checked against point geometry. ILS system/type codes and magnetic bearing
+are retained. Airways preserve whole intersecting segments, endpoint UUIDs, resolved endpoint idents
+when available, and geometry. Holds preserve reference UUID, inbound course, and turn direction.
+Navaids within 40 nm of the grid are retained for radial searches; other point features must be
+inside the grid. Segment crossings are retained even when both endpoints are outside.
+
+`schema/navdata.json` publishes the version 1 document. Runtime files are bounded to 8 MiB,
+4,096 navaids, 20,000 fixes, 4,096 ILS components, 20,000 route segments, 100,000 route vertices,
+and 4,096 holds. IDs are unique, coordinates and optional frequencies are checked, and malformed
+or transfer-limited GeoJSON is rejected. Native and browser region loaders validate the optional
+sidecar before installation. Browser static packaging includes it automatically.
+
+`world::geomag::MagneticModel` evaluates the degree-12 WMM2025 spherical harmonic expansion in
+Rust with `libm`. Coordinates use WGS84 and ellipsoidal altitude; declination is east positive.
+Dates must be within 2025–2029. `sim.set_date` sets a validated deterministic calendar date,
+defaulting to 2026-01-01 and preserved by resets. `sim.state.simulation_date` reports it.
+All 100 NOAA test vectors check the field and annual change. Search radial destinations use
+magnetic radial plus WMM declination. GPS guidance retains its documented true-bearing convention;
+plan summaries provide both true and magnetic courses.
+
+### Local storage and explicit external actions
+
+`schema/pins.json` defines up to 1,000 pins with unique IDs, names, notes, positions, and optional
+MSL altitudes, bounded to 1 MiB. Desktop hosts configure `Session::load_navigation_storage`; the
+apps use the operating system's local data directory. Browser pins use local storage, catching
+denied access and quota failures through the browser bindings. A failed write leaves session
+pins unchanged. Import merges by default and rejects duplicate IDs; `replace: true` replaces them.
+Export returns the complete document without opening a file dialog.
+
+**My location** requests permission only after its button or result action is selected. The browser
+uses Geolocation with a ten-second timeout. Linux uses GeoClue2 over pure-Rust D-Bus (`zbus`),
+requests city-level accuracy, and stops/deletes its client after the lookup. The application identity
+is `flightcraft`; the desktop service's policy must allow it. macOS and Windows currently return
+“unavailable on this platform, enter a location”. No returned device position is written to disk
+unless the user explicitly saves a pin.
+
+An unmatched address offers provider buttons and shows the exact query before sending it.
+`geocode.lookup` requires `allow_network: true`, even for cached results. Census requests use the
+public current address benchmark. Nominatim uses a globally serialized one-request-per-second gate,
+an identifying desktop User-Agent, no bulk API, a bounded local cache, and **© OpenStreetMap
+contributors** on every result. The browser supplies its normal Referer. Both providers accept one
+address per call and at most 20 results; responses and the 128-entry cache are bounded to 1 MiB.
+Desktop HTTP uses `ureq` and Rustls; its `ring` cryptography backend includes C and assembly, so
+this optional network transport is an exception to the pure-Rust dependency goal. Provider fixtures
+are original hand-written examples of their documented JSON formats. Live network and permission
+services require platform testing; no external lookup runs during tests.
+
+### Plans and interchange
+
+`schema/plan.json` defines version 1 plans of at most 64 resolved waypoints, with an MSL altitude
+per waypoint and a reserve in seconds (45 minutes by default). Waypoints distinguish airports,
+navaids, fixes, pins, and coordinates. Indices are zero based. Invalid edits leave the plan intact.
+`plan.move` uses the final index after reordering. Altitudes interpolate between adjacent waypoints.
+
+Summaries use WGS84 inverse geodesics, WMM courses at leg origins, a wind triangle from the current
+mean wind at each leg's mean altitude, and cruise fuel flow. Gusts are excluded from estimates.
+An impossible wind triangle yields null ETE and fuel, with a conflict. Totals include reserve fuel.
+A plan may supply explicit `cruise: {airspeed_mps, fuel_flow_kg_s}`; otherwise the current aircraft's
+Vno × 0.8 and engine flow table at 65% power are used as an explicitly labelled planning estimate,
+because aircraft definitions do not yet publish measured cruise tables.
+
+Profiles sample great-circle positions at a requested 100–10,000 m spacing, default 1,000 m, with
+at most 20,000 samples. Each sample includes terrain, planned altitude, and the floors and ceilings
+of all lateral airspace footprints. SFC limits follow terrain. Conflicts identify B/C/D containment
+between floor and ceiling, clearance below 1,000 ft, and missing region coverage. Narrow terrain
+or airspace features between samples can be missed; these profiles are advisory, not a clearance
+or obstacle-avoidance system.
+
+`plan.save/load` use a simple local name (letters, digits, hyphens, and underscores), never an
+arbitrary path. `plan.import/export` exchange documents directly:
+
+- **JSON:** the complete FlightCraft plan schema, preserving kinds, cruise, and reserve.
+- **GPX 1.1:** exactly one route (`rte/rtept`) or track (`trk/trkseg/trkpt`) on import; export writes
+  a route. Latitude/longitude attributes, `ele` in metres MSL, and waypoint `name` are supported.
+  Missing elevations become 1,000 m. GPX waypoints import as coordinates.
+- **Garmin FlightPlan v1 XML:** namespace `http://www8.garmin.com/xmlschemas/FlightPlan/v1`,
+  a `waypoint-table`, and one `route` with `route-point` references. Identifier, type, and country
+  code jointly resolve references. Export uses unique `W000` identifiers and `USER WAYPOINT`
+  records, with lat/lon and display idents in `comment`. FPL does not preserve planned altitudes;
+  imported points default to 1,000 m. The importer also accepts an optional `elevation` extension
+  in metres. This is the documented FlightCraft subset, not an implementation of every device
+  extension.
+
+XML is limited to 1 MiB and 10,000 nodes, with DTD/entity expansion disabled. GPX and FPL do not
+preserve the FlightCraft reserve or cruise override; JSON does. `plan.activate` copies all resolved
+waypoints into the merged glass GPS plan through `Session::set_gps_waypoints`, resetting active
+leg and course selection. GPS sequencing, CDI, ETE, and flight-plan display use those positions.
+The original airport-only avionics commands remain supported. Activation also retains the active
+plan in the session; the glass display must be installed to see its guidance.
+
+Bundled snapshot counts:
+
+| Region | Navaids | Fixes | ILS components | Route segments | Holds |
+|---|---:|---:|---:|---:|---:|
+| New York area | 21 | 887 | 7 | 316 | 15 |
+| Eastern Pennsylvania and New Jersey | 20 | 760 | 3 | 378 | 15 |
+
+Unidentified ILS markers retain a null ident rather than acquiring a fabricated navigation ident.
+
+The source snapshot provides no DME component for the EWR system; its component array remains
+empty. Some airway endpoint UUIDs have no record in the supplied point layers and retain null
+endpoint idents, while their UUIDs and segment geometry remain available.

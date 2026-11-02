@@ -36,6 +36,9 @@ fn serve() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--connect is unavailable on wasm".into());
     }
     let mut session = Session::new()?;
+    if let Some(dir) = flightcraft_control::navigation_data_directory() {
+        session.load_navigation_storage(&dir)?;
+    }
     // Regions from the working directory, else those shipped beside the executable.
     #[cfg(not(target_arch = "wasm32"))]
     {

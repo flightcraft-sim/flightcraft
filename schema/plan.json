@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FlightPlan",
+  "type": "object",
+  "properties": {
+    "cruise": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CruisePerformance"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "reserve_s": {
+      "type": "number",
+      "format": "double",
+      "maximum": 86400,
+      "minimum": 0
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 1,
+      "minimum": 1
+    },
+    "waypoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PlanWaypoint"
+      },
+      "maxItems": 64
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "waypoints",
+    "reserve_s"
+  ],
+  "$defs": {
+    "CruisePerformance": {
+      "type": "object",
+      "properties": {
+        "airspeed_mps": {
+          "type": "number",
+          "format": "double",
+          "maximum": 300,
+          "minimum": 10
+        },
+        "fuel_flow_kg_s": {
+          "type": "number",
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "airspeed_mps",
+        "fuel_flow_kg_s"
+      ]
+    },
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "GpsWaypoint": {
+      "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
+      "type": "object",
+      "properties": {
+        "ident": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "kind": {
+          "$ref": "#/$defs/WaypointKind"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ident",
+        "kind",
+        "position"
+      ]
+    },
+    "PlanWaypoint": {
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "type": "number",
+          "format": "double",
+          "maximum": 20000,
+          "minimum": -500
+        },
+        "waypoint": {
+          "$ref": "#/$defs/GpsWaypoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "waypoint",
+        "altitude_m"
+      ]
+    },
+    "WaypointKind": {
+      "type": "string",
+      "enum": [
+        "airport",
+        "navaid",
+        "fix",
+        "pin",
+        "coordinate"
+      ]
+    }
+  }
+}

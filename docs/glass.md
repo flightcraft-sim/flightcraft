@@ -154,3 +154,18 @@ A detent is 1°. Supplying an inter-event interval below 80 ms accelerates it to
 the interval retains 1°. Counts are bounded to ±360 per command, and selection wraps through
 north. Timing is supplied by the controller, so replay does not read a clock. Tests exercise
 359 + 2 = 001, reverse wrap, sync, acceleration, all display readouts, and heading-hold coupling.
+
+## Resolved navigation waypoints
+
+`avionics.set` additionally accepts glass settings `flight_plan_waypoints` and
+`direct_to_waypoint`. Each waypoint carries `ident`, `kind` (`airport`, `navaid`, `fix`, `pin`,
+or `coordinate`), and `position: {latitude_deg, longitude_deg}`. The original airport-only
+settings remain available. `plan.activate` sends the editable plan through this same resolved
+GPS hook. `GlassSettings.waypoints` contains positions in plan order; the existing `flight_plan`
+ident list remains available. Repeated idents can occupy different positions, because guidance
+resolves by leg index. Automatic sequencing, desired track, CDI, and the MFD flight-plan list
+use these resolved positions. The legacy `NavigationLeg.airport` field is retained for compatibility
+and now carries the waypoint ident for every kind.
+
+The GPS continues to report true bearings. Planning summaries additionally report magnetic courses
+using WMM2025 and the deterministic simulation date; see [map and planning](map-and-planning.md).

@@ -304,3 +304,14 @@ Current bundled sizes (tiles, manifests, and catalogues) are approximately 29.1 
 and 36.3 MB for `eastern-pa`. Together their elevation tiles use 65,293,272 bytes. New York has
 26 public airports and 46 runways; Eastern Pennsylvania and New Jersey has 43 public airports
 and 61 runways.
+
+### Navigation sidecars
+
+Both geographic regions also ship an optional `navdata.json`, validated and loaded alongside
+airport and airspace data by native and browser hosts. It contains FAA navaids and components,
+fixes, ILS components, intersecting airway segments, and holds. Navaids retain a 40 nm margin
+outside the terrain grid. The sibling `cargo xtask navigation-faa` importer and the published
+`schema/navdata.json` are described in [map and planning](map-and-planning.md#navigation-sidecars-and-magnetism).
+The snapshot date and unknown-or-verified cycle date are distinct; source record edit dates never
+silently become a dataset cycle date. Search and route planning are advisory and not for real-world
+navigation.

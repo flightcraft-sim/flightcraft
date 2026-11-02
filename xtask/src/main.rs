@@ -9,6 +9,7 @@ use syn::visit::Visit;
 
 mod airspace_faa;
 mod navdata_faa;
+mod navigation_faa;
 mod terrain_srtm;
 mod web;
 
@@ -83,6 +84,7 @@ fn main() -> ExitCode {
         "terrain-srtm" => terrain_srtm::run(),
         "airspace-faa" => airspace_faa::run(),
         "navdata-faa" => navdata_faa::run(),
+        "navigation-faa" => navigation_faa::run(),
         "aircraft" => migrate_aircraft(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
@@ -151,6 +153,18 @@ fn root() -> Result<PathBuf, String> {
 
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
+        (
+            "pins.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::PinsFile)),
+        ),
+        (
+            "plan.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::FlightPlan)),
+        ),
+        (
+            "navdata.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Navdata)),
+        ),
         (
             "airspace.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::AirspaceFile)),

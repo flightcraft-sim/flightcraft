@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PinsFile",
+  "type": "object",
+  "properties": {
+    "pins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Pin"
+      },
+      "maxItems": 1000
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "pins"
+  ],
+  "$defs": {
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "Pin": {
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "maximum": 20000,
+          "minimum": -500
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "note",
+        "position"
+      ]
+    }
+  }
+}

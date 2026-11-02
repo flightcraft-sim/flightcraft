@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Navdata",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string",
+      "maxLength": 2048,
+      "minLength": 1
+    },
+    "effective_date": {
+      "description": "ISO cycle date, or null when the provider supplied no dataset effective date.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "fixes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Fix"
+      },
+      "maxItems": 20000
+    },
+    "holds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/HoldingPattern"
+      },
+      "maxItems": 4096
+    },
+    "ils": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/IlsComponent"
+      },
+      "maxItems": 4096
+    },
+    "navaids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Navaid"
+      },
+      "maxItems": 4096
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RouteSegment"
+      },
+      "maxItems": 20000
+    },
+    "snapshot_date": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "attribution",
+    "snapshot_date",
+    "navaids",
+    "fixes",
+    "ils",
+    "routes",
+    "holds"
+  ],
+  "$defs": {
+    "Fix": {
+      "type": "object",
+      "properties": {
+        "effective_unix_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ident": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ident",
+        "name",
+        "position"
+      ]
+    },
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "HoldingPattern": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "inbound_course_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "reference_id": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "position",
+        "reference_id",
+        "inbound_course_deg",
+        "turn"
+      ]
+    },
+    "IlsComponent": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ident": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "magnetic_bearing_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "magnetic_variation_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "type_code": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "position",
+        "system_id",
+        "type_code"
+      ]
+    },
+    "Navaid": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NavaidComponent"
+          },
+          "maxItems": 32
+        },
+        "id": {
+          "type": "string"
+        },
+        "ident": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/NavaidKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ident",
+        "name",
+        "kind",
+        "position",
+        "components"
+      ]
+    },
+    "NavaidComponent": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_unix_ms": {
+          "description": "Original source record date, distinct from the dataset cycle date.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "magnetic_variation_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "source_key": {
+          "type": "string"
+        },
+        "subtype_code": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source_key",
+        "subtype_code",
+        "position"
+      ]
+    },
+    "NavaidKind": {
+      "type": "string",
+      "enum": [
+        "vor",
+        "vor_dme",
+        "vortac",
+        "ndb",
+        "dme",
+        "tacan",
+        "marker"
+      ]
+    },
+    "RouteSegment": {
+      "type": "object",
+      "properties": {
+        "end_id": {
+          "type": "string"
+        },
+        "end_ident": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "geometry": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GeoPoint"
+          },
+          "maxItems": 4096,
+          "minItems": 2
+        },
+        "id": {
+          "type": "string"
+        },
+        "ident": {
+          "type": "string"
+        },
+        "start_id": {
+          "type": "string"
+        },
+        "start_ident": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ident",
+        "start_id",
+        "end_id",
+        "geometry"
+      ]
+    }
+  }
+}
