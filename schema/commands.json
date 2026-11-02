@@ -991,6 +991,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -1009,6 +1014,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -2508,7 +2514,7 @@
   },
   {
     "name": "autopilot.set",
-    "description": "Patch SI hold targets; null or false disengages a hold. Pitch airspeed mode uses full power.",
+    "description": "Deprecated alias for assist.set; removed after one release.",
     "input_schema": {
       "$defs": {
         "AirspeedMode": {
@@ -2660,10 +2666,11 @@
   },
   {
     "name": "autopilot.off",
-    "description": "Disengage all holds, leaving the last controls in place.",
+    "description": "Deprecated alias for assist.off; removed after one release.",
     "input_schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
+      "description": "Deprecated for one release; use `assist.off` for script holds.",
       "title": "AutopilotOff",
       "type": "object"
     },
@@ -4303,6 +4310,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -4321,6 +4333,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -5335,6 +5348,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -5353,6 +5371,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -6439,6 +6458,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -6457,6 +6481,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -6812,6 +6837,46 @@
               "additionalProperties": false,
               "properties": {
                 "kind": {
+                  "const": "autopilot",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/PanelSetting"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "east_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "direct_to_local",
+                  "type": "string"
+                },
+                "north_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "north_m",
+                "east_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
                   "const": "glass",
                   "type": "string"
                 },
@@ -7048,6 +7113,17 @@
           "enum": [
             "off",
             "gps"
+          ],
+          "type": "string"
+        },
+        "EquipmentFailure": {
+          "enum": [
+            "roll_servo",
+            "pitch_servo",
+            "trim",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor"
           ],
           "type": "string"
         },
@@ -7342,12 +7418,316 @@
             }
           ]
         },
+        "LateralMode": {
+          "enum": [
+            "rol",
+            "hdg",
+            "trk",
+            "nav",
+            "apr",
+            "rev",
+            "loc_bc"
+          ],
+          "type": "string"
+        },
         "MapOrientation": {
           "enum": [
             "north_up",
             "track_up"
           ],
           "type": "string"
+        },
+        "PanelSetting": {
+          "description": "All controls are tagged actions, including momentary yoke buttons and knob pushes.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "engage",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "disconnect",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_director",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "lateral",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/LateralMode"
+                }
+              },
+              "required": [
+                "kind",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vertical",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/VerticalMode"
+                }
+              },
+              "required": [
+                "kind",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "level",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "turn",
+                  "type": "string"
+                },
+                "rate_rps": {
+                  "format": "double",
+                  "maximum": 0.05236,
+                  "minimum": -0.05236,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "rate_rps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "track",
+                  "type": "string"
+                },
+                "track_rad": {
+                  "format": "double",
+                  "maximum": 6.283185307179586,
+                  "minimum": 0.0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "track_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "selected_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 10000.0,
+                  "minimum": 2.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "vertical_speed",
+                  "type": "string"
+                },
+                "vertical_speed_mps": {
+                  "format": "double",
+                  "maximum": 8.0,
+                  "minimum": -8.0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "vertical_speed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airspeed_mps": {
+                  "format": "double",
+                  "maximum": 90.0,
+                  "minimum": 20.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "airspeed",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airspeed_mps"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pitch",
+                  "type": "string"
+                },
+                "pitch_rad": {
+                  "format": "double",
+                  "maximum": 0.35,
+                  "minimum": -0.25,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "pitch_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "yaw_damper",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "control_wheel_steering",
+                  "type": "string"
+                },
+                "pressed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "pressed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "failed": {
+                  "type": "boolean"
+                },
+                "failure": {
+                  "$ref": "#/$defs/EquipmentFailure"
+                },
+                "kind": {
+                  "const": "failure",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "failure",
+                "failed"
+              ],
+              "type": "object"
+            }
+          ]
         },
         "TransponderMode": {
           "enum": [
@@ -7362,6 +7742,17 @@
           "enum": [
             "electronic_attitude",
             "electronic_hsi"
+          ],
+          "type": "string"
+        },
+        "VerticalMode": {
+          "enum": [
+            "pit",
+            "alt",
+            "vs",
+            "ias",
+            "gp",
+            "gs"
           ],
           "type": "string"
         }
@@ -7485,10 +7876,120 @@
           ],
           "type": "string"
         },
+        "AutopilotFamily": {
+          "enum": [
+            "wing_leveler",
+            "two_axis_legacy",
+            "digital_two_axis"
+          ],
+          "type": "string"
+        },
+        "AutopilotInstallation": {
+          "additionalProperties": false,
+          "description": "Normalised control force is used for servo torque: 1 is full pilot authority.",
+          "properties": {
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_preselect": {
+              "type": "boolean"
+            },
+            "bank_limit_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "electric_trim": {
+              "type": "boolean"
+            },
+            "family": {
+              "$ref": "#/$defs/AutopilotFamily"
+            },
+            "lateral_modes": {
+              "items": {
+                "$ref": "#/$defs/LateralMode"
+              },
+              "type": "array"
+            },
+            "max_load_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "maximum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "minimum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rate_limit_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "power_load": {
+              "type": "string"
+            },
+            "roll_sensor_load": {
+              "type": "string"
+            },
+            "servo_rate_per_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "servo_torque": {
+              "format": "double",
+              "type": "number"
+            },
+            "stability_protection": {
+              "type": "boolean"
+            },
+            "vertical_modes": {
+              "items": {
+                "$ref": "#/$defs/VerticalMode"
+              },
+              "type": "array"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "family",
+            "lateral_modes",
+            "vertical_modes",
+            "power_load",
+            "roll_sensor_load",
+            "bank_limit_rad",
+            "pitch_rate_limit_rps",
+            "max_load_g",
+            "servo_torque",
+            "servo_rate_per_s",
+            "electric_trim",
+            "altitude_preselect",
+            "altitude_alert",
+            "stability_protection",
+            "yaw_damper",
+            "minimum_ias_mps",
+            "maximum_ias_mps"
+          ],
+          "type": "object"
+        },
         "BearingPointer": {
           "enum": [
             "off",
             "gps"
+          ],
+          "type": "string"
+        },
+        "DisconnectReason": {
+          "enum": [
+            "pilot",
+            "power",
+            "servo",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor",
+            "navigation"
           ],
           "type": "string"
         },
@@ -7719,6 +8220,228 @@
             "min",
             "max",
             "normal"
+          ],
+          "type": "object"
+        },
+        "EquipmentFailure": {
+          "enum": [
+            "roll_servo",
+            "pitch_servo",
+            "trim",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor"
+          ],
+          "type": "string"
+        },
+        "EquipmentState": {
+          "properties": {
+            "active_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "alts_armed": {
+              "type": "boolean"
+            },
+            "ap_flash": {
+              "type": "boolean"
+            },
+            "ap_flash_visible": {
+              "type": "boolean"
+            },
+            "armed_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "armed_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "captured_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_bank_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "control_wheel_steering": {
+              "type": "boolean"
+            },
+            "disconnect_reason": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DisconnectReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "disconnect_sequence": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "disconnect_tone": {
+              "type": "boolean"
+            },
+            "engaged": {
+              "type": "boolean"
+            },
+            "failures": {
+              "items": {
+                "$ref": "#/$defs/EquipmentFailure"
+              },
+              "type": "array"
+            },
+            "flight_director": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "installation": {
+              "$ref": "#/$defs/AutopilotInstallation"
+            },
+            "mistrim": {
+              "type": "boolean"
+            },
+            "overspeed": {
+              "type": "boolean"
+            },
+            "pilot_overpower": {
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_servo_engaged": {
+              "type": "boolean"
+            },
+            "roll_servo_engaged": {
+              "type": "boolean"
+            },
+            "servo_deflection": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "stability_active": {
+              "type": "boolean"
+            },
+            "track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim_in_motion": {
+              "type": "boolean"
+            },
+            "turn_rate_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "underspeed": {
+              "type": "boolean"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            },
+            "yaw_servo_engaged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installation",
+            "engaged",
+            "flight_director",
+            "alts_armed",
+            "heading_rad",
+            "track_rad",
+            "altitude_m",
+            "captured_altitude_m",
+            "vertical_speed_mps",
+            "airspeed_mps",
+            "pitch_rad",
+            "turn_rate_rps",
+            "command_bank_rad",
+            "command_pitch_rad",
+            "roll_servo_engaged",
+            "pitch_servo_engaged",
+            "yaw_servo_engaged",
+            "servo_deflection",
+            "trim",
+            "trim_in_motion",
+            "mistrim",
+            "altitude_alert",
+            "underspeed",
+            "overspeed",
+            "stability_active",
+            "pilot_overpower",
+            "control_wheel_steering",
+            "yaw_damper",
+            "failures",
+            "disconnect_tone",
+            "disconnect_sequence",
+            "ap_flash",
+            "ap_flash_visible"
           ],
           "type": "object"
         },
@@ -7991,6 +8714,18 @@
           ],
           "type": "object"
         },
+        "LateralMode": {
+          "enum": [
+            "rol",
+            "hdg",
+            "trk",
+            "nav",
+            "apr",
+            "rev",
+            "loc_bc"
+          ],
+          "type": "string"
+        },
         "MapAirport": {
           "properties": {
             "ident": {
@@ -8171,10 +8906,31 @@
             "alt"
           ],
           "type": "string"
+        },
+        "VerticalMode": {
+          "enum": [
+            "pit",
+            "alt",
+            "vs",
+            "ias",
+            "gp",
+            "gs"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "autopilot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EquipmentState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "electronic_attitude": {
           "$ref": "#/$defs/ElectronicAttitude"
         },
@@ -8313,10 +9069,120 @@
           ],
           "type": "string"
         },
+        "AutopilotFamily": {
+          "enum": [
+            "wing_leveler",
+            "two_axis_legacy",
+            "digital_two_axis"
+          ],
+          "type": "string"
+        },
+        "AutopilotInstallation": {
+          "additionalProperties": false,
+          "description": "Normalised control force is used for servo torque: 1 is full pilot authority.",
+          "properties": {
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_preselect": {
+              "type": "boolean"
+            },
+            "bank_limit_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "electric_trim": {
+              "type": "boolean"
+            },
+            "family": {
+              "$ref": "#/$defs/AutopilotFamily"
+            },
+            "lateral_modes": {
+              "items": {
+                "$ref": "#/$defs/LateralMode"
+              },
+              "type": "array"
+            },
+            "max_load_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "maximum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "minimum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rate_limit_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "power_load": {
+              "type": "string"
+            },
+            "roll_sensor_load": {
+              "type": "string"
+            },
+            "servo_rate_per_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "servo_torque": {
+              "format": "double",
+              "type": "number"
+            },
+            "stability_protection": {
+              "type": "boolean"
+            },
+            "vertical_modes": {
+              "items": {
+                "$ref": "#/$defs/VerticalMode"
+              },
+              "type": "array"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "family",
+            "lateral_modes",
+            "vertical_modes",
+            "power_load",
+            "roll_sensor_load",
+            "bank_limit_rad",
+            "pitch_rate_limit_rps",
+            "max_load_g",
+            "servo_torque",
+            "servo_rate_per_s",
+            "electric_trim",
+            "altitude_preselect",
+            "altitude_alert",
+            "stability_protection",
+            "yaw_damper",
+            "minimum_ias_mps",
+            "maximum_ias_mps"
+          ],
+          "type": "object"
+        },
         "BearingPointer": {
           "enum": [
             "off",
             "gps"
+          ],
+          "type": "string"
+        },
+        "DisconnectReason": {
+          "enum": [
+            "pilot",
+            "power",
+            "servo",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor",
+            "navigation"
           ],
           "type": "string"
         },
@@ -8547,6 +9413,228 @@
             "min",
             "max",
             "normal"
+          ],
+          "type": "object"
+        },
+        "EquipmentFailure": {
+          "enum": [
+            "roll_servo",
+            "pitch_servo",
+            "trim",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor"
+          ],
+          "type": "string"
+        },
+        "EquipmentState": {
+          "properties": {
+            "active_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "alts_armed": {
+              "type": "boolean"
+            },
+            "ap_flash": {
+              "type": "boolean"
+            },
+            "ap_flash_visible": {
+              "type": "boolean"
+            },
+            "armed_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "armed_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "captured_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_bank_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "control_wheel_steering": {
+              "type": "boolean"
+            },
+            "disconnect_reason": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DisconnectReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "disconnect_sequence": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "disconnect_tone": {
+              "type": "boolean"
+            },
+            "engaged": {
+              "type": "boolean"
+            },
+            "failures": {
+              "items": {
+                "$ref": "#/$defs/EquipmentFailure"
+              },
+              "type": "array"
+            },
+            "flight_director": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "installation": {
+              "$ref": "#/$defs/AutopilotInstallation"
+            },
+            "mistrim": {
+              "type": "boolean"
+            },
+            "overspeed": {
+              "type": "boolean"
+            },
+            "pilot_overpower": {
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_servo_engaged": {
+              "type": "boolean"
+            },
+            "roll_servo_engaged": {
+              "type": "boolean"
+            },
+            "servo_deflection": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "stability_active": {
+              "type": "boolean"
+            },
+            "track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim_in_motion": {
+              "type": "boolean"
+            },
+            "turn_rate_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "underspeed": {
+              "type": "boolean"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            },
+            "yaw_servo_engaged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installation",
+            "engaged",
+            "flight_director",
+            "alts_armed",
+            "heading_rad",
+            "track_rad",
+            "altitude_m",
+            "captured_altitude_m",
+            "vertical_speed_mps",
+            "airspeed_mps",
+            "pitch_rad",
+            "turn_rate_rps",
+            "command_bank_rad",
+            "command_pitch_rad",
+            "roll_servo_engaged",
+            "pitch_servo_engaged",
+            "yaw_servo_engaged",
+            "servo_deflection",
+            "trim",
+            "trim_in_motion",
+            "mistrim",
+            "altitude_alert",
+            "underspeed",
+            "overspeed",
+            "stability_active",
+            "pilot_overpower",
+            "control_wheel_steering",
+            "yaw_damper",
+            "failures",
+            "disconnect_tone",
+            "disconnect_sequence",
+            "ap_flash",
+            "ap_flash_visible"
           ],
           "type": "object"
         },
@@ -8819,6 +9907,18 @@
           ],
           "type": "object"
         },
+        "LateralMode": {
+          "enum": [
+            "rol",
+            "hdg",
+            "trk",
+            "nav",
+            "apr",
+            "rev",
+            "loc_bc"
+          ],
+          "type": "string"
+        },
         "MapAirport": {
           "properties": {
             "ident": {
@@ -8999,10 +10099,31 @@
             "alt"
           ],
           "type": "string"
+        },
+        "VerticalMode": {
+          "enum": [
+            "pit",
+            "alt",
+            "vs",
+            "ias",
+            "gp",
+            "gs"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "autopilot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EquipmentState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "electronic_attitude": {
           "$ref": "#/$defs/ElectronicAttitude"
         },
@@ -9621,6 +10742,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -9639,6 +10765,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -10467,6 +11594,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -10485,6 +11617,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -12328,6 +13461,11 @@
               "format": "double",
               "type": "number"
             },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
             "turn_rate_rps": {
               "format": "double",
               "type": "number"
@@ -12346,6 +13484,7 @@
             "heading_rad",
             "attitude_valid",
             "turn_rate_rps",
+            "turn_coordinator_rate_rps",
             "lateral_acceleration_g"
           ],
           "type": "object"
@@ -13296,6 +14435,626 @@
         "packets_per_second"
       ],
       "title": "EfbStatus",
+      "type": "object"
+    }
+  },
+  {
+    "name": "assist.set",
+    "description": "Patch SI script hold targets; null or false disengages a hold.",
+    "input_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        },
+        "Disengage": {
+          "const": false,
+          "type": "boolean"
+        },
+        "HoldTarget": {
+          "anyOf": [
+            {
+              "format": "double",
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/Disengage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Numeric target, or `null`/`false` to disengage. Omitted fields keep their current setting."
+        },
+        "SetAutopilot": {
+          "additionalProperties": false,
+          "description": "Patch any subset of holds. Conflicting vertical or lateral holds must be disengaged in the\nsame call. Bounds: pitch -0.25..0.35 rad, altitude 2..10000 m, climb -8..8 m/s, heading 0..2π,\nairspeed 25..80 m/s, and bank limit 0.05..0.6 rad.",
+          "properties": {
+            "airspeed_mode": {
+              "$ref": "#/$defs/AirspeedMode"
+            },
+            "airspeed_mps": {
+              "$ref": "#/$defs/HoldTarget",
+              "maximum": 80.0,
+              "minimum": 25.0
+            },
+            "altitude_m": {
+              "$ref": "#/$defs/HoldTarget",
+              "maximum": 10000.0,
+              "minimum": 2.0
+            },
+            "bank_limit_rad": {
+              "format": "double",
+              "maximum": 0.6,
+              "minimum": 0.05,
+              "type": "number"
+            },
+            "heading_rad": {
+              "$ref": "#/$defs/HoldTarget",
+              "maximum": 6.283185307179586,
+              "minimum": 0.0
+            },
+            "pitch_rad": {
+              "$ref": "#/$defs/HoldTarget",
+              "maximum": 0.35,
+              "minimum": -0.25
+            },
+            "vertical_speed_mps": {
+              "$ref": "#/$defs/HoldTarget",
+              "maximum": 8.0,
+              "minimum": -8.0
+            },
+            "wings_level": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "$ref": "#/$defs/SetAutopilot",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "Canonical script hold command; unrelated to installed equipment.",
+      "title": "SetAssist"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+      "properties": {
+        "airspeed_mode": {
+          "$ref": "#/$defs/AirspeedMode"
+        },
+        "airspeed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bank_limit_rad": {
+          "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pitch_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "vertical_speed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wings_level": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "wings_level",
+        "bank_limit_rad",
+        "airspeed_mode"
+      ],
+      "title": "Targets",
+      "type": "object"
+    }
+  },
+  {
+    "name": "assist.off",
+    "description": "Disengage all holds, leaving the last controls in place.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "AssistOff",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AirspeedMode": {
+          "description": "How airspeed is controlled. Pitch mode trades excess speed for climb at full power.",
+          "enum": [
+            "throttle",
+            "pitch"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Optional holds. Only one vertical hold and one lateral hold may be engaged at a time.",
+      "properties": {
+        "airspeed_mode": {
+          "$ref": "#/$defs/AirspeedMode"
+        },
+        "airspeed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "altitude_m": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bank_limit_rad": {
+          "description": "Maximum commanded bank magnitude, radians (0.05 to 0.6).",
+          "format": "double",
+          "type": "number"
+        },
+        "heading_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "pitch_rad": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "vertical_speed_mps": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "wings_level": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "wings_level",
+        "bank_limit_rad",
+        "airspeed_mode"
+      ],
+      "title": "Targets",
+      "type": "object"
+    }
+  },
+  {
+    "name": "autopilot.state",
+    "description": "Read installed autopilot modes, armed modes, targets, servos, director commands, and failures.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetAutopilot",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AutopilotFamily": {
+          "enum": [
+            "wing_leveler",
+            "two_axis_legacy",
+            "digital_two_axis"
+          ],
+          "type": "string"
+        },
+        "AutopilotInstallation": {
+          "additionalProperties": false,
+          "description": "Normalised control force is used for servo torque: 1 is full pilot authority.",
+          "properties": {
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_preselect": {
+              "type": "boolean"
+            },
+            "bank_limit_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "electric_trim": {
+              "type": "boolean"
+            },
+            "family": {
+              "$ref": "#/$defs/AutopilotFamily"
+            },
+            "lateral_modes": {
+              "items": {
+                "$ref": "#/$defs/LateralMode"
+              },
+              "type": "array"
+            },
+            "max_load_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "maximum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "minimum_ias_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rate_limit_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "power_load": {
+              "type": "string"
+            },
+            "roll_sensor_load": {
+              "type": "string"
+            },
+            "servo_rate_per_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "servo_torque": {
+              "format": "double",
+              "type": "number"
+            },
+            "stability_protection": {
+              "type": "boolean"
+            },
+            "vertical_modes": {
+              "items": {
+                "$ref": "#/$defs/VerticalMode"
+              },
+              "type": "array"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "family",
+            "lateral_modes",
+            "vertical_modes",
+            "power_load",
+            "roll_sensor_load",
+            "bank_limit_rad",
+            "pitch_rate_limit_rps",
+            "max_load_g",
+            "servo_torque",
+            "servo_rate_per_s",
+            "electric_trim",
+            "altitude_preselect",
+            "altitude_alert",
+            "stability_protection",
+            "yaw_damper",
+            "minimum_ias_mps",
+            "maximum_ias_mps"
+          ],
+          "type": "object"
+        },
+        "DisconnectReason": {
+          "enum": [
+            "pilot",
+            "power",
+            "servo",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor",
+            "navigation"
+          ],
+          "type": "string"
+        },
+        "EquipmentFailure": {
+          "enum": [
+            "roll_servo",
+            "pitch_servo",
+            "trim",
+            "roll_sensor",
+            "pressure_sensor",
+            "attitude_sensor"
+          ],
+          "type": "string"
+        },
+        "EquipmentState": {
+          "properties": {
+            "active_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "active_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_alert": {
+              "type": "boolean"
+            },
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "alts_armed": {
+              "type": "boolean"
+            },
+            "ap_flash": {
+              "type": "boolean"
+            },
+            "ap_flash_visible": {
+              "type": "boolean"
+            },
+            "armed_lateral": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LateralMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "armed_vertical": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VerticalMode"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "captured_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_bank_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "command_pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "control_wheel_steering": {
+              "type": "boolean"
+            },
+            "disconnect_reason": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DisconnectReason"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "disconnect_sequence": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "disconnect_tone": {
+              "type": "boolean"
+            },
+            "engaged": {
+              "type": "boolean"
+            },
+            "failures": {
+              "items": {
+                "$ref": "#/$defs/EquipmentFailure"
+              },
+              "type": "array"
+            },
+            "flight_director": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "installation": {
+              "$ref": "#/$defs/AutopilotInstallation"
+            },
+            "mistrim": {
+              "type": "boolean"
+            },
+            "overspeed": {
+              "type": "boolean"
+            },
+            "pilot_overpower": {
+              "type": "boolean"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_servo_engaged": {
+              "type": "boolean"
+            },
+            "roll_servo_engaged": {
+              "type": "boolean"
+            },
+            "servo_deflection": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "stability_active": {
+              "type": "boolean"
+            },
+            "track_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim_in_motion": {
+              "type": "boolean"
+            },
+            "turn_rate_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "underspeed": {
+              "type": "boolean"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "yaw_damper": {
+              "type": "boolean"
+            },
+            "yaw_servo_engaged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installation",
+            "engaged",
+            "flight_director",
+            "alts_armed",
+            "heading_rad",
+            "track_rad",
+            "altitude_m",
+            "captured_altitude_m",
+            "vertical_speed_mps",
+            "airspeed_mps",
+            "pitch_rad",
+            "turn_rate_rps",
+            "command_bank_rad",
+            "command_pitch_rad",
+            "roll_servo_engaged",
+            "pitch_servo_engaged",
+            "yaw_servo_engaged",
+            "servo_deflection",
+            "trim",
+            "trim_in_motion",
+            "mistrim",
+            "altitude_alert",
+            "underspeed",
+            "overspeed",
+            "stability_active",
+            "pilot_overpower",
+            "control_wheel_steering",
+            "yaw_damper",
+            "failures",
+            "disconnect_tone",
+            "disconnect_sequence",
+            "ap_flash",
+            "ap_flash_visible"
+          ],
+          "type": "object"
+        },
+        "LateralMode": {
+          "enum": [
+            "rol",
+            "hdg",
+            "trk",
+            "nav",
+            "apr",
+            "rev",
+            "loc_bc"
+          ],
+          "type": "string"
+        },
+        "VerticalMode": {
+          "enum": [
+            "pit",
+            "alt",
+            "vs",
+            "ias",
+            "gp",
+            "gs"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "autopilot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EquipmentState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "AutopilotOutput",
       "type": "object"
     }
   }

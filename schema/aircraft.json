@@ -214,6 +214,16 @@
     {
       "type": "object",
       "properties": {
+        "autopilot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AutopilotInstallation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "format_version": {
           "type": "integer",
           "format": "uint32",
@@ -473,6 +483,104 @@
         "rolling_other",
         "brake_friction",
         "lateral_friction"
+      ]
+    },
+    "AutopilotFamily": {
+      "type": "string",
+      "enum": [
+        "wing_leveler",
+        "two_axis_legacy",
+        "digital_two_axis"
+      ]
+    },
+    "AutopilotInstallation": {
+      "description": "Normalised control force is used for servo torque: 1 is full pilot authority.",
+      "type": "object",
+      "properties": {
+        "altitude_alert": {
+          "type": "boolean"
+        },
+        "altitude_preselect": {
+          "type": "boolean"
+        },
+        "bank_limit_rad": {
+          "type": "number",
+          "format": "double"
+        },
+        "electric_trim": {
+          "type": "boolean"
+        },
+        "family": {
+          "$ref": "#/$defs/AutopilotFamily"
+        },
+        "lateral_modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LateralMode"
+          }
+        },
+        "max_load_g": {
+          "type": "number",
+          "format": "double"
+        },
+        "maximum_ias_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "minimum_ias_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "pitch_rate_limit_rps": {
+          "type": "number",
+          "format": "double"
+        },
+        "power_load": {
+          "type": "string"
+        },
+        "roll_sensor_load": {
+          "type": "string"
+        },
+        "servo_rate_per_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "servo_torque": {
+          "type": "number",
+          "format": "double"
+        },
+        "stability_protection": {
+          "type": "boolean"
+        },
+        "vertical_modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VerticalMode"
+          }
+        },
+        "yaw_damper": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "family",
+        "lateral_modes",
+        "vertical_modes",
+        "power_load",
+        "roll_sensor_load",
+        "bank_limit_rad",
+        "pitch_rate_limit_rps",
+        "max_load_g",
+        "servo_torque",
+        "servo_rate_per_s",
+        "electric_trim",
+        "altitude_preselect",
+        "altitude_alert",
+        "stability_protection",
+        "yaw_damper",
+        "minimum_ias_mps",
+        "maximum_ias_mps"
       ]
     },
     "Bus": {
@@ -854,6 +962,18 @@
         "module",
         "position",
         "size"
+      ]
+    },
+    "LateralMode": {
+      "type": "string",
+      "enum": [
+        "rol",
+        "hdg",
+        "trk",
+        "nav",
+        "apr",
+        "rev",
+        "loc_bc"
       ]
     },
     "Load": {
@@ -1262,6 +1382,17 @@
         "spin_up_s",
         "erection_rate_rps",
         "drift_rps"
+      ]
+    },
+    "VerticalMode": {
+      "type": "string",
+      "enum": [
+        "pit",
+        "alt",
+        "vs",
+        "ias",
+        "gp",
+        "gs"
       ]
     },
     "Wing": {

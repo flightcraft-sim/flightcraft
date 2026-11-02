@@ -43,6 +43,12 @@ pub enum Action {
     AltimeterDown,
     HeadingBugLeft,
     HeadingBugRight,
+    AutopilotEngage,
+    AutopilotDisconnect,
+    ControlWheelSteering,
+    AutopilotHeading,
+    AutopilotAltitude,
+    AutopilotLevel,
     HeadingBugSync,
     StandbyCourseLeft,
     StandbyCourseRight,
@@ -63,7 +69,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 60] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -101,6 +107,12 @@ impl Action {
         Self::AltimeterDown,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
+        Self::AutopilotEngage,
+        Self::AutopilotDisconnect,
+        Self::ControlWheelSteering,
+        Self::AutopilotHeading,
+        Self::AutopilotAltitude,
+        Self::AutopilotLevel,
         Self::HeadingBugSync,
         Self::StandbyCourseLeft,
         Self::StandbyCourseRight,
@@ -139,6 +151,15 @@ impl Action {
         Self::AltimeterDown,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
+    ];
+    /// Equipment controls are optional bindings, separate from airframe systems.
+    pub const AUTOPILOT: [Self; 6] = [
+        Self::AutopilotEngage,
+        Self::AutopilotDisconnect,
+        Self::ControlWheelSteering,
+        Self::AutopilotHeading,
+        Self::AutopilotAltitude,
+        Self::AutopilotLevel,
     ];
 
     pub const AVIONICS: [Self; 13] = [
@@ -216,6 +237,12 @@ impl Action {
             Self::StandbyReversion => "Toggle attitude reversion",
             Self::StandbyDirectTo => "Open direct to",
             Self::HeadingBugRight => "Heading bug right",
+            Self::AutopilotEngage => "Autopilot engage",
+            Self::AutopilotDisconnect => "Yoke disconnect",
+            Self::ControlWheelSteering => "Hold control wheel steering",
+            Self::AutopilotHeading => "Autopilot HDG",
+            Self::AutopilotAltitude => "Autopilot ALT",
+            Self::AutopilotLevel => "Autopilot LVL",
             Self::HeadingBugSync => "Push heading knob / sync heading",
             Self::GlassRangeIn => "Glass map zoom in",
             Self::GlassRangeOut => "Glass map zoom out",
@@ -265,6 +292,7 @@ impl Default for Keymap {
             .chain(
                 Action::SYSTEMS
                     .into_iter()
+                    .chain(Action::AUTOPILOT)
                     .chain(Action::AVIONICS)
                     .chain(Action::GLASS)
                     .map(|action| (action, Vec::new())),
@@ -351,6 +379,7 @@ impl Keymap {
         }
         for action in Action::SYSTEMS
             .into_iter()
+            .chain(Action::AUTOPILOT)
             .chain(Action::AVIONICS)
             .chain(Action::GLASS)
         {
@@ -373,6 +402,7 @@ impl Keymap {
                 .ok_or_else(|| format!("Missing {}", action.label()))?;
             if keys.is_empty()
                 && !Action::SYSTEMS.contains(&action)
+                && !Action::AUTOPILOT.contains(&action)
                 && !Action::AVIONICS.contains(&action)
                 && !Action::GLASS.contains(&action)
             {

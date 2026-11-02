@@ -316,6 +316,13 @@ impl Instrument for RoundGauge {
                     false,
                 );
                 attitude(&mut d, v, pitch);
+                if valid && let Some(ap) = input.autopilot.filter(|ap| ap.flight_director) {
+                    let x = 100. + ((ap.command_bank_rad - s.sensed.roll_rad) * 70.).clamp(-30., 30.) as f32;
+                    let y =
+                        88. - ((ap.command_pitch_rad - s.sensed.pitch_rad) * 140.).clamp(-30., 30.) as f32;
+                    d.line([x, 64.], [x, 112.], Ink::Needle, 3.);
+                    d.line([76., y], [124., y], Ink::Needle, 3.);
+                }
             }
             "altimeter" => altimeter(&mut d, v, s.controls.altimeter_setting_pa, input.options),
             "heading" => {

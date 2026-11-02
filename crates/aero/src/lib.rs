@@ -4,6 +4,7 @@
 #![deny(clippy::disallowed_methods)]
 
 mod aircraft;
+pub mod autopilot;
 mod layers;
 pub use layers::*;
 mod packs;

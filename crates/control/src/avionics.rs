@@ -17,12 +17,14 @@ pub struct AvionicsState {
     #[serde(flatten)]
     pub standby: flightcraft_sim::avionics::AvionicsState,
     pub glass_suite: GlassState,
+    pub autopilot: Option<flightcraft_sim::equipment::EquipmentState>,
 }
 impl Session {
     fn avionics_snapshot(&self) -> AvionicsState {
         AvionicsState {
             standby: self.sim().systems().avionics.clone(),
             glass_suite: self.glass_state(),
+            autopilot: self.sim().installed_autopilot().cloned(),
         }
     }
 }
@@ -46,5 +48,24 @@ impl Command for GetAvionics {
     type Output = AvionicsState;
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
         Ok(session.avionics_snapshot())
+    }
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct AutopilotOutput {
+    pub autopilot: Option<flightcraft_sim::equipment::EquipmentState>,
+}
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetAutopilot {}
+impl Command for GetAutopilot {
+    const NAME: &'static str = "autopilot.state";
+    const DESCRIPTION: &'static str =
+        "Read installed autopilot modes, armed modes, targets, servos, director commands, and failures.";
+    type Output = AutopilotOutput;
+    fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
+        Ok(AutopilotOutput {
+            autopilot: session.sim.installed_autopilot().cloned(),
+        })
     }
 }

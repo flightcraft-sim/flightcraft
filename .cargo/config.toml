@@ -1,2 +1,6 @@
 [alias]
 xtask = "run --quiet --package xtask --"
+
+# ALSA bindings are pre-generated; link its stable runtime ABI without requiring development headers.
+[target.x86_64-unknown-linux-gnu.alsa]
+rustc-link-lib = ["dylib:+verbatim=libasound.so.2"]

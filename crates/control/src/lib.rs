@@ -633,7 +633,10 @@ registry!(
     AirportQuery,
     Geodetic,
     EfbBroadcast,
-    EfbGetStatus
+    EfbGetStatus,
+    SetAssist,
+    AssistOff,
+    GetAutopilot
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.

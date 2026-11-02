@@ -1,6 +1,6 @@
 # A takeoff and climb-out in the Corvid: flightcraft --script examples/takeoff.jsonl
 # Full power with the nose held level, rotate to 11 degrees, then climb holding 36 m/s on the runway heading.
 {"at_s": 0.0, "command": "sim.set_controls", "input": {"throttle": 1.0, "brake": 0.0, "flaps": 0.0}}
-{"at_s": 0.0, "command": "autopilot.set", "input": {"pitch_rad": 0.0, "heading_rad": 0.0}}
-{"at_s": 9.0, "command": "autopilot.set", "input": {"pitch_rad": 0.20}}
-{"at_s": 14.0, "command": "autopilot.set", "input": {"pitch_rad": null, "airspeed_mps": 36.0, "airspeed_mode": "pitch"}}
+{"at_s": 0.0, "command": "assist.set", "input": {"pitch_rad": 0.0, "heading_rad": 0.0}}
+{"at_s": 9.0, "command": "assist.set", "input": {"pitch_rad": 0.20}}
+{"at_s": 14.0, "command": "assist.set", "input": {"pitch_rad": null, "airspeed_mps": 36.0, "airspeed_mode": "pitch"}}

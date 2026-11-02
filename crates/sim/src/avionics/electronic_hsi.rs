@@ -55,6 +55,21 @@ impl Default for ElectronicHsi {
     }
 }
 impl ElectronicHsi {
+    pub(crate) fn nav_guidance(&self, world: &World, state: State) -> Option<crate::nav_source::NavGuidance> {
+        use crate::nav_source::NavSource;
+        if !self.gps_fix {
+            return None;
+        }
+        let region = world.region()?;
+        let leg = crate::nav_source::ReceiverLeg {
+            start_deg: self.leg_origin?,
+            end_deg: self.destination_position?,
+            projection_origin_deg: [region.origin.latitude_deg, region.origin.longitude_deg],
+        };
+        let [n, e, _] = state.position_m;
+        leg.guidance(n, e)
+    }
+
     pub(crate) fn hash_words(&self) -> Vec<u64> {
         let mut words = self.reversion_attitude.hash_words();
         words.extend([self.gps_fix, self.reversion, self.manual_reversion].map(u64::from));

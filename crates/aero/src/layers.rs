@@ -194,6 +194,8 @@ pub struct InstalledSystems {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Panel {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub autopilot: Option<crate::autopilot::AutopilotInstallation>,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
@@ -366,6 +368,9 @@ impl LayerFile {
         match self {
             Self::Variant(v) => v.validate(),
             Self::Panel(p) => {
+                if let Some(ap) = &p.autopilot {
+                    ap.validate()?;
+                }
                 require(
                     (1..=64).contains(&p.instruments.len()),
                     "instruments",
@@ -963,6 +968,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         ],
     };
     let panel = Panel {
+        autopilot: None,
         format_version: 2,
         identity: make_identity("six"),
         instruments: INSTRUMENT_MODULES
@@ -1001,6 +1007,9 @@ const BUILTIN_LAYERS: &[&str] = &[
     include_str!("../../../aircraft/corvid/engine.json"),
     include_str!("../../../aircraft/corvid/systems.json"),
     include_str!("../../../aircraft/corvid/panel.json"),
+    include_str!("../../../aircraft/corvid/panel-leveler.json"),
+    include_str!("../../../aircraft/corvid/panel-legacy.json"),
+    include_str!("../../../aircraft/corvid/panel-digital.json"),
     include_str!("../../../aircraft/corvid/aircraft.json"),
     include_str!("../../../aircraft/corvid/standby-systems.json"),
     include_str!("../../../aircraft/corvid/standby-variant.json"),

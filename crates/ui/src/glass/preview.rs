@@ -19,6 +19,29 @@ fn render_glass_preview() {
             .unwrap();
     }
 }
+#[test]
+#[ignore = "manual integrated autopilot PFD preview"]
+fn render_autopilot_glass_preview() {
+    let mut s = tests::flight();
+    s.execute("assist.off", serde_json::json!({})).unwrap();
+    for setting in [
+        serde_json::json!({"kind":"heading_bug","degrees":57.}),
+        serde_json::json!({"kind":"autopilot","setting":{"kind":"engage","on":true}}),
+        serde_json::json!({"kind":"autopilot","setting":{"kind":"lateral","mode":"hdg"}}),
+        serde_json::json!({"kind":"autopilot","setting":{"kind":"vertical","mode":"alt"}}),
+        serde_json::json!({"kind":"autopilot","setting":{"kind":"altitude","altitude_m":1493.52}}),
+    ] {
+        s.execute("avionics.set", serde_json::json!({"setting":setting}))
+            .unwrap();
+    }
+    s.run(flightcraft_control::Step { steps: 90 }).unwrap();
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/autopilot");
+    std::fs::create_dir_all(&directory).unwrap();
+    capture(&s, &s.glass_state(), "glass_pfd", 1000, 880)
+        .save(directory.join("glass-pfd.png"))
+        .unwrap();
+}
+
 fn capture(
     session: &flightcraft_control::Session,
     state: &GlassState,
@@ -49,6 +72,7 @@ fn capture(
                         let input =
                             InstrumentInput::new(session.sim().systems(), session.sim().state().time_s)
                                 .with_glass(state)
+                                .with_autopilot(session.sim().installed_autopilot())
                                 .with_aircraft(session.aircraft_configuration().unwrap());
                         let draw = display.update(input);
                         let rect = crate::instruments::fit_size(ui.max_rect(), draw.size);

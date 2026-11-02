@@ -17,7 +17,7 @@ pub(crate) fn clean_zero(text: &str) -> String {
                 }
                 j += 1;
             }
-            if digits && !nonzero {
+            if digits && !nonzero && !(c == '+' && out.ends_with("VS ")) {
                 i += 1;
                 continue;
             }
@@ -27,9 +27,43 @@ pub(crate) fn clean_zero(text: &str) -> String {
     }
     out
 }
+
+pub(crate) fn integer(value: f64) -> String {
+    let raw = format!("{:.0}", if value.abs() < 0.5 { 0.0 } else { value });
+    let (sign, digits) = raw
+        .strip_prefix('-')
+        .map_or(("", raw.as_str()), |digits| ("-", digits));
+    let mut out = String::from(sign);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+pub(crate) fn feet(metres: f64) -> String {
+    integer(metres / 0.3048)
+}
+pub(crate) fn selected_feet(metres: f64) -> String {
+    integer(libm::round(metres / 30.48) * 100.0)
+}
+pub(crate) fn vertical_speed(mps: f64) -> String {
+    let rounded = libm::round(mps / 0.508) * 100.0;
+    format!("{:+.0}", if rounded == 0.0 { 0.0 } else { rounded })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn controller_units_have_explicit_precision() {
+        assert_eq!(feet(1493.52), "4,900");
+        assert_eq!(selected_feet(1500.0), "4,900");
+        assert_eq!(vertical_speed(2.54), "+500");
+        assert_eq!(vertical_speed(-2.54), "-500");
+        assert_eq!(clean_zero(&format!("VS {}", vertical_speed(-0.01))), "VS +0");
+    }
     #[test]
     fn rounded_zero_has_no_sign() {
         for (from, to) in [

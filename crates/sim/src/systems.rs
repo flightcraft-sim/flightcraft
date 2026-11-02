@@ -176,6 +176,8 @@ pub struct SensedInstruments {
     pub heading_rad: f64,
     pub attitude_valid: bool,
     pub turn_rate_rps: f64,
+    /// Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.
+    pub turn_coordinator_rate_rps: f64,
     pub lateral_acceleration_g: f64,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
@@ -308,6 +310,7 @@ impl SystemsState {
             pitch_rad: r.pitch_rad,
             heading_rad: r.heading_rad,
             turn_rate_rps: r.turn_rate_rps,
+            turn_coordinator_rate_rps: r.turn_rate_rps,
             lateral_acceleration_g: r.lateral_acceleration_g,
             attitude_valid: true,
         };
@@ -381,6 +384,7 @@ impl SystemsState {
                 sensed.roll_rad,
                 sensed.pitch_rad,
                 sensed.heading_rad,
+                sensed.turn_coordinator_rate_rps,
             ]
             .into_iter()
             .chain(self.gyro_error_rad)
@@ -753,6 +757,17 @@ impl SystemsState {
         } else {
             0.0
         };
+        let [previous_roll, _, _] = self.gyro_truth_rad;
+        self.sensed.turn_coordinator_rate_rps = if self
+            .electrical
+            .loads
+            .iter()
+            .any(|l| l.id == "turn_coordinator" && l.powered)
+        {
+            r.turn_rate_rps + 0.5773502691896257 * crate::autopilot::wrap(r.roll_rad - previous_roll) / DT_S
+        } else {
+            0.0
+        };
         self.sensed.lateral_acceleration_g = r.lateral_acceleration_g;
         self.ports(&m.definition, r, false);
         self.gyro(&m.definition, r);
@@ -917,6 +932,7 @@ impl SystemsState {
         self.sensed.altitude_msl_m = altitude(self.static_pressure_pa, self.controls.altimeter_setting_pa);
         if initialize {
             self.sensed.turn_rate_rps = r.turn_rate_rps;
+            self.sensed.turn_coordinator_rate_rps = r.turn_rate_rps;
             self.sensed.lateral_acceleration_g = r.lateral_acceleration_g;
             self.sensed.roll_rad = r.roll_rad;
             self.sensed.pitch_rad = r.pitch_rad;

@@ -25,6 +25,7 @@ pub use switches::{shortcut, shortcut_with_options};
 pub struct InstrumentInput<'a> {
     pub systems: &'a SystemsState,
     pub glass: Option<&'a flightcraft_control::GlassState>,
+    pub autopilot: Option<&'a flightcraft_sim::equipment::EquipmentState>,
     /// Simulation time only: paused redraws consume no needle time.
     pub time_s: f64,
     pub options: DisplayOptions,
@@ -36,6 +37,7 @@ impl<'a> InstrumentInput<'a> {
         Self {
             systems,
             glass: None,
+            autopilot: None,
             time_s,
             options: DisplayOptions::default(),
             aircraft: None,
@@ -48,6 +50,10 @@ impl<'a> InstrumentInput<'a> {
     }
     pub fn with_glass(mut self, glass: &'a flightcraft_control::GlassState) -> Self {
         self.glass = Some(glass);
+        self
+    }
+    pub fn with_autopilot(mut self, state: Option<&'a flightcraft_sim::equipment::EquipmentState>) -> Self {
+        self.autopilot = state;
         self
     }
     pub fn with_aircraft(mut self, aircraft: &'a flightcraft_aero::ResolvedAircraft) -> Self {
@@ -390,6 +396,7 @@ impl InstrumentPanel {
         generation: u64,
     ) -> Result<Vec<SystemSetting>, String> {
         let panel = Panel {
+            autopilot: None,
             format_version: 2,
             identity: flightcraft_aero::Identity {
                 id: "legacy-panel".into(),
@@ -509,6 +516,11 @@ impl InstrumentPanel {
                     egui::vec2(24., 24.) * scale,
                 );
                 let response = ui.interact(knob, ui.id().with(&installation.id), Sense::click_and_drag());
+                if installation.module == "heading" && response.clicked() {
+                    settings.push(SystemSetting::HeadingBug {
+                        heading_rad: input.systems.sensed.heading_rad,
+                    });
+                }
                 if response.hovered() {
                     let wheel = ui.input_mut(|i| {
                         let delta = i.raw_scroll_delta.y;
@@ -537,7 +549,7 @@ impl InstrumentPanel {
                             PressureUnit::Hpa => "Wheel: 1 hPa; range 950–1050",
                         }
                     } else {
-                        "Wheel: heading bug, 1 degree"
+                        "Wheel: heading bug, 1 degree; push: sync to heading"
                     });
                 }
             }

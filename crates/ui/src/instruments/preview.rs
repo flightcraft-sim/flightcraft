@@ -97,10 +97,26 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
     let glass = session.glass_state();
     let configuration = session.aircraft_configuration().unwrap();
     let panel = &configuration.panel;
+    let mut runtime = InstrumentPanel::default();
+    rasterize(width, height, |ui| {
+        runtime
+            .show(
+                ui,
+                panel,
+                InstrumentInput::new(session.sim().systems(), 0.)
+                    .with_aircraft(configuration)
+                    .with_glass(&glass)
+                    .with_autopilot(session.sim().installed_autopilot()),
+                0,
+            )
+            .unwrap();
+    })
+}
+
+fn rasterize(width: u32, height: u32, mut paint: impl FnMut(&mut egui::Ui)) -> image::RgbaImage {
     let ctx = egui::Context::default();
     t::install(&ctx);
     ctx.set_pixels_per_point(2.);
-    let mut runtime = InstrumentPanel::default();
     let mut output = None;
     // A second frame lets layout settle and includes the real font atlas updates.
     let mut textures = BTreeMap::<TextureId, ColorImage>::new();
@@ -121,16 +137,7 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
                             .inner_margin(egui::Margin::symmetric(12, 5)),
                     )
                     .show(ctx, |ui| {
-                        runtime
-                            .show(
-                                ui,
-                                panel,
-                                InstrumentInput::new(session.sim().systems(), 0.)
-                                    .with_aircraft(configuration)
-                                    .with_glass(&glass),
-                                0,
-                            )
-                            .unwrap();
+                        paint(ui);
                     });
             },
         );
@@ -221,6 +228,50 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
         }
     }
     image::imageops::resize(&image, width, height, image::imageops::FilterType::Lanczos3)
+}
+
+#[test]
+#[ignore = "manual autopilot equipment preview"]
+fn render_autopilot_previews() {
+    use crate::autopilot;
+    use flightcraft_sim::equipment::{LateralMode, PanelSetting, VerticalMode};
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/autopilot");
+    std::fs::create_dir_all(&directory).unwrap();
+    for name in ["leveler", "legacy", "digital"] {
+        let mut session = Session::new().unwrap();
+        let load = session.aircraft_configuration().unwrap().load.clone();
+        session.execute("aircraft.load",serde_json::json!({"variant":"corvid-standard","panel":format!("corvid-{name}"),"load":load,"reset":true})).unwrap();
+        session.execute("sim.reset",serde_json::json!({"start":{"kind":"air","height_m":1493.52,"airspeed_mps":40.0,"heading_rad":0.0}})).unwrap();
+        session
+            .sim_mut()
+            .set_autopilot_panel(PanelSetting::Engage { on: true })
+            .unwrap();
+        if name != "leveler" {
+            session
+                .sim_mut()
+                .set_autopilot_panel(PanelSetting::Lateral {
+                    mode: LateralMode::Hdg,
+                })
+                .unwrap();
+            session
+                .sim_mut()
+                .set_autopilot_panel(PanelSetting::Vertical {
+                    mode: VerticalMode::Alt,
+                })
+                .unwrap();
+            session
+                .sim_mut()
+                .set_autopilot_panel(PanelSetting::Altitude { altitude_m: 1493.52 })
+                .unwrap();
+        }
+        session.sim_mut().step(1);
+        let state = session.sim().installed_autopilot().unwrap();
+        let mut controller = autopilot::Controller::default();
+        let image = rasterize(1000, 180, |ui| {
+            controller.show(ui, state, session.sim().systems().controls.heading_bug_rad, false);
+        });
+        image.save(directory.join(format!("{name}.png"))).unwrap();
+    }
 }
 
 #[test]

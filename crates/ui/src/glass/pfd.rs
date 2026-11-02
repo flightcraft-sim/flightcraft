@@ -4,7 +4,7 @@ const KNOTS: f64 = 1.9438444924406;
 const FEET: f64 = 1. / 0.3048;
 pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) -> DrawList {
     if standby {
-        return standby_draw(s);
+        return standby_draw(s, input);
     }
     let mut d = canvas();
     d.size = [500., 440.];
@@ -24,23 +24,30 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
         flag(&mut d, [5., 34., 490., 338.], "PFD FAIL");
         return d;
     }
-    label(
-        &mut d,
-        [68., 14.],
-        format!(
-            "HDG {}",
-            crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
-        ),
-        11.,
-        Ink::Needle,
-    );
-    label(
-        &mut d,
-        [434., 14.],
-        format!("SEL {:.0}", s.settings.selected_altitude_m * FEET),
-        11.,
-        Ink::Needle,
-    );
+    if let Some(ap) = input.autopilot {
+        crate::autopilot::strip_draw(&mut d, ap, [0., 0., 500., 28.]);
+    } else {
+        label(
+            &mut d,
+            [68., 14.],
+            format!(
+                "HDG {}",
+                crate::instruments::heading::degrees_text(s.settings.heading_bug_rad)
+            ),
+            11.,
+            Ink::Needle,
+        );
+        label(
+            &mut d,
+            [434., 14.],
+            format!(
+                "SEL {}",
+                crate::instruments::formatting::selected_feet(s.settings.selected_altitude_m)
+            ),
+            11.,
+            Ink::Needle,
+        );
+    }
     // The full-width attitude underlays both tapes, with a fixed viewport at every pitch and bank.
     rect(&mut d, [0., 30., 500., 190.], Ink::Sky);
     let horizon = |x, y| rotated([x, y], [250., 125.], -a.roll_rad);
@@ -99,6 +106,9 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
         line(&mut d, [236., 130.], [243., 137.], Ink::Needle, 3.);
         line(&mut d, [257., 137.], [264., 130.], Ink::Needle, 3.);
         circle(&mut d, [250., 132.], 2., Ink::Needle);
+        if let Some(ap) = input.autopilot {
+            crate::autopilot::command_bars(&mut d, ap, [250., 132.], a.roll_rad, a.pitch_rad, 1.0);
+        }
         line(&mut d, [219., 204.], [281., 204.], Ink::Text, 1.);
         circle(
             &mut d,
@@ -176,10 +186,21 @@ pub(super) fn draw(s: &GlassState, input: InstrumentInput<'_>, standby: bool) ->
             vec![[401., y], [393., y - 4.], [393., y + 4.]],
             Ink::Needle,
         );
+        rect(&mut d, [401., 30., 68., 18.], Ink::Face);
+        label(
+            &mut d,
+            [435., 39.],
+            crate::instruments::formatting::selected_feet(s.settings.selected_altitude_m),
+            11.,
+            Ink::Needle,
+        );
         label(
             &mut d,
             [454., 232.],
-            format!("V/S {:+.0}", a.vertical_speed_mps * FEET * 60.),
+            format!(
+                "VS {}",
+                crate::instruments::formatting::vertical_speed(a.vertical_speed_mps)
+            ),
             10.,
             Ink::Text,
         );
@@ -349,16 +370,29 @@ fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, scale: f32, altitude: b
     for tick in -6..=6 {
         let v = (value / step).floor() * step + f64::from(tick) * step;
         let y = tape_y(v, value, 128., scale);
-        if !(46. ..=210.).contains(&y) || (!altitude && v < 0.) {
+        let top = if altitude { 60. } else { 46. };
+        if !(top..=210.).contains(&y) || (!altitude && v < 0.) {
             continue;
         }
         line(d, [x + 56., y], [x + 65., y], Ink::Text, 1.);
         if (y - 128.).abs() > 16. {
-            label(d, [x + 34., y], format!("{v:.0}"), 12., Ink::Text);
+            label(
+                d,
+                [x + 34., y],
+                crate::instruments::formatting::integer(v),
+                12.,
+                Ink::Text,
+            );
         }
     }
     rect(d, [x + 5., 115., 57., 26.], Ink::Inactive);
-    label(d, [x + 34., 128.], format!("{value:.0}"), 18., Ink::Text);
+    label(
+        d,
+        [x + 34., 128.],
+        crate::instruments::formatting::integer(value),
+        16.,
+        Ink::Text,
+    );
 }
 fn trend(d: &mut DrawList, x: f32, delta: f64) {
     let y = (128. - delta as f32).clamp(41., 213.);
@@ -430,7 +464,7 @@ fn hsi(d: &mut DrawList, s: &GlassState, cy: f32, r: f32, valid: bool, heading: 
     line(d, [250., cy - 7.], [250., cy + 8.], Ink::Text, 2.);
 }
 
-fn standby_draw(s: &GlassState) -> DrawList {
+fn standby_draw(s: &GlassState, input: InstrumentInput<'_>) -> DrawList {
     let a = &s.standby;
     let mut d = DrawList {
         size: [200., 180.],
@@ -471,6 +505,9 @@ fn standby_draw(s: &GlassState) -> DrawList {
         line(&mut d, [67., 80.], [91., 80.], Ink::Needle, 2.);
         line(&mut d, [109., 80.], [133., 80.], Ink::Needle, 2.);
         circle(&mut d, [100., 80.], 2., Ink::Needle);
+        if let Some(ap) = input.autopilot {
+            crate::autopilot::command_bars(&mut d, ap, [100., 80.], a.roll_rad, a.pitch_rad, 0.6);
+        }
         circle(
             &mut d,
             [100. - a.slip_g.clamp(-0.5, 0.5) as f32 * 30., 124.],
@@ -494,7 +531,7 @@ fn standby_draw(s: &GlassState) -> DrawList {
     label(
         &mut d,
         [150., 146.],
-        format!("ALT {:.0}", a.altitude_msl_m * FEET),
+        format!("ALT {}", crate::instruments::formatting::feet(a.altitude_msl_m)),
         10.,
         Ink::Text,
     );

@@ -3,6 +3,6 @@
 {"at_s": 0.0, "command": "aircraft.load", "input": {"source": {"kind": "built_in", "id": "larrow"}}}
 {"at_s": 0.0, "command": "sim.reset", "input": {"start": {"kind": "runway"}, "paused": false}}
 {"at_s": 0.0, "command": "sim.set_controls", "input": {"throttle": 1.0, "brake": 0.0, "flaps": 0.0}}
-{"at_s": 0.0, "command": "autopilot.set", "input": {"pitch_rad": 0.0, "heading_rad": 0.0}}
-{"at_s": 8.0, "command": "autopilot.set", "input": {"pitch_rad": 0.24}}
-{"at_s": 12.0, "command": "autopilot.set", "input": {"pitch_rad": null, "vertical_speed_mps": 5.0, "airspeed_mps": 42.0, "airspeed_mode": "throttle"}}
+{"at_s": 0.0, "command": "assist.set", "input": {"pitch_rad": 0.0, "heading_rad": 0.0}}
+{"at_s": 8.0, "command": "assist.set", "input": {"pitch_rad": 0.24}}
+{"at_s": 12.0, "command": "assist.set", "input": {"pitch_rad": null, "vertical_speed_mps": 5.0, "airspeed_mps": 42.0, "airspeed_mode": "throttle"}}

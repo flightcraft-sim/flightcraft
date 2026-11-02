@@ -54,6 +54,8 @@ impl GlassControls {
                     .add(
                         egui::DragValue::new(&mut heading)
                             .range(0. ..=359.)
+                            .max_decimals(0)
+                            .custom_formatter(|v, _| format!("{:03.0}", v))
                             .suffix("° HDG"),
                     )
                     .changed()
@@ -67,6 +69,8 @@ impl GlassControls {
                     .add(
                         egui::DragValue::new(&mut course)
                             .range(0. ..=359.)
+                            .max_decimals(0)
+                            .custom_formatter(|v, _| format!("{:03.0}", v))
                             .suffix("° CRS"),
                     )
                     .changed()
@@ -80,13 +84,17 @@ impl GlassControls {
                     .add(
                         egui::DragValue::new(&mut altitude)
                             .speed(100.)
-                            .range(-1000. ..=49000.)
+                            .range(100. ..=32800.)
+                            .max_decimals(0)
+                            .custom_formatter(|v, _| {
+                                crate::instruments::formatting::selected_feet(v * 0.3048)
+                            })
                             .suffix(" ft SEL"),
                     )
                     .changed()
                 {
                     commands.push(S::SelectedAltitude {
-                        altitude_m: altitude * 0.3048,
+                        altitude_m: libm::round(altitude / 100.) * 30.48,
                     });
                 }
                 let mut hpa = state.settings.pressure_hpa;

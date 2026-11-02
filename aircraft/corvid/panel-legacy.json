@@ -1,0 +1,274 @@
+{
+  "kind": "panel",
+  "format_version": 2,
+  "identity": {
+    "id": "corvid-legacy",
+    "display_name": "Corvid Legacy",
+    "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
+    "author": "FlightCraft contributors"
+  },
+  "instruments": [
+    {
+      "id": "airspeed",
+      "module": "airspeed",
+      "skin": "original",
+      "position": [
+        0,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "attitude",
+      "module": "attitude",
+      "skin": "original",
+      "position": [
+        1,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "altimeter",
+      "module": "altimeter",
+      "skin": "original",
+      "position": [
+        2,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "turn_coordinator",
+      "module": "turn_coordinator",
+      "skin": "original",
+      "position": [
+        0,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "heading",
+      "module": "heading",
+      "skin": "original",
+      "position": [
+        1,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "vertical_speed",
+      "module": "vertical_speed",
+      "skin": "original",
+      "position": [
+        2,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tachometer",
+      "module": "tachometer",
+      "skin": "original",
+      "position": [
+        3,
+        0
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "annunciators",
+      "module": "annunciators",
+      "skin": "original",
+      "position": [
+        3,
+        1
+      ],
+      "size": [
+        1,
+        1
+      ]
+    },
+    {
+      "id": "oil_temperature",
+      "module": "oil_temperature",
+      "skin": "original",
+      "position": [
+        4,
+        0.0
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "oil_pressure",
+      "module": "oil_pressure",
+      "skin": "original",
+      "position": [
+        4,
+        0.2
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "egt",
+      "module": "egt",
+      "skin": "original",
+      "position": [
+        4,
+        0.4
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "cht",
+      "module": "cht",
+      "skin": "original",
+      "position": [
+        4,
+        0.6
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_left",
+      "module": "fuel_left",
+      "skin": "original",
+      "position": [
+        4,
+        0.8
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_right",
+      "module": "fuel_right",
+      "skin": "original",
+      "position": [
+        4,
+        1.0
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "fuel_flow",
+      "module": "fuel_flow",
+      "skin": "original",
+      "position": [
+        4,
+        1.2
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "ammeter",
+      "module": "ammeter",
+      "skin": "original",
+      "position": [
+        4,
+        1.4
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "volts",
+      "module": "volts",
+      "skin": "original",
+      "position": [
+        4,
+        1.6
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    },
+    {
+      "id": "suction",
+      "module": "suction",
+      "skin": "original",
+      "position": [
+        4,
+        1.8
+      ],
+      "size": [
+        1.8,
+        0.2
+      ]
+    }
+  ],
+  "autopilot": {
+    "family": "two_axis_legacy",
+    "lateral_modes": [
+      "rol",
+      "hdg",
+      "nav",
+      "apr",
+      "rev"
+    ],
+    "vertical_modes": [
+      "alt",
+      "vs"
+    ],
+    "power_load": "avionics",
+    "roll_sensor_load": "turn_coordinator",
+    "bank_limit_rad": 0.4363323129985824,
+    "pitch_rate_limit_rps": 0.12,
+    "max_load_g": 1.5,
+    "servo_torque": 0.65,
+    "servo_rate_per_s": 0.7,
+    "electric_trim": true,
+    "altitude_preselect": true,
+    "altitude_alert": true,
+    "stability_protection": false,
+    "yaw_damper": false,
+    "minimum_ias_mps": 27.0,
+    "maximum_ias_mps": 70.0
+  }
+}

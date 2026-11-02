@@ -1,5 +1,7 @@
 //! The shared eframe application for desktop and browser.
 pub mod actions;
+mod audio;
+pub mod autopilot;
 #[cfg(not(target_arch = "wasm32"))]
 mod bridge;
 pub mod clock;
@@ -97,6 +99,8 @@ pub struct FlightCraftApp {
     bindings_json: String,
     airport_search: String,
     glance_origin: Option<[f64; 2]>,
+    autopilot_controller: autopilot::Controller,
+    audio: audio::Audio,
     binding_message: Option<String>,
     script: script::Script,
     #[cfg(not(target_arch = "wasm32"))]
@@ -259,6 +263,13 @@ impl FlightCraftApp {
             bindings_json,
             airport_search: String::new(),
             glance_origin: None,
+            autopilot_controller: autopilot::Controller::default(),
+            audio: audio::Audio::with_preferences(
+                cc.storage
+                    .and_then(|s| s.get_string("flightcraft.audio.v1"))
+                    .and_then(|json| serde_json::from_str(&json).ok())
+                    .unwrap_or_default(),
+            ),
             binding_message: None,
             script: options.script.unwrap_or_default(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -340,6 +351,10 @@ impl FlightCraftApp {
                 if let Some(reason) = status.reason { ui.label(reason); }
                 if let Some(error) = status.last_error { ui.colored_label(theme::AMBER, error); }
             }
+            ui.label(RichText::new("SOUND").color(theme::ACCENT).size(11.0));
+            ui.checkbox(&mut self.audio.preferences.muted,"Mute warnings");
+            ui.add(egui::Slider::new(&mut self.audio.preferences.volume,0.0..=1.0).text("Warning volume"));
+            if let Some(error)=&self.audio.error {ui.colored_label(theme::AMBER,error);}
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
             egui::Grid::new("binding list").num_columns(2).striped(true).show(ui, |ui| {
@@ -448,6 +463,15 @@ impl eframe::App for FlightCraftApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(not(target_arch = "wasm32"))]
         self.bridge.update(ctx, &mut self.session);
+        if ctx.input(|input| {
+            input.pointer.any_pressed()
+                || input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::Key { pressed: true, .. }))
+        }) {
+            self.audio.user_gesture();
+        }
         self.paused = self.session.paused();
         let now = ctx.input(|i| i.time);
         let elapsed = self
@@ -553,6 +577,16 @@ impl eframe::App for FlightCraftApp {
                 self.error = Some(e.to_string());
             }
         }
+        if let Some(state) = self.session.sim().installed_autopilot().cloned() {
+            for action in Action::AUTOPILOT {
+                if frame.pressed(action)
+                    && let Some(setting) = autopilot::shortcut(action, &state)
+                    && let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting })
+                {
+                    self.error = Some(e.to_string());
+                }
+            }
+        }
         let scripted = self.script.active();
         let sim_time_s = self.session.sim().state().time_s;
         if scripted && let Err(e) = self.script.run_due(&mut self.session, sim_time_s) {
@@ -599,6 +633,13 @@ impl eframe::App for FlightCraftApp {
         if let Err(e) = controlled.and_then(|()| actions::step(&mut self.session, steps)) {
             self.error = Some(e.to_string());
         }
+        let disconnect_sequence = self
+            .session
+            .sim()
+            .installed_autopilot()
+            .map_or(0, |s| s.disconnect_sequence);
+        self.audio
+            .observe(self.session.flight_generation(), disconnect_sequence);
         egui::TopBottomPanel::top("header")
             .exact_height(64.0)
             .frame(
@@ -820,6 +861,20 @@ impl eframe::App for FlightCraftApp {
                     });
                 });
             });
+        if let Some(state) = self.session.sim().installed_autopilot().cloned() {
+            egui::TopBottomPanel::bottom("autopilot-controller").show(ctx, |ui| {
+                for setting in self.autopilot_controller.show(
+                    ui,
+                    &state,
+                    self.session.sim().systems().controls.heading_bug_rad,
+                    frame.held(Action::ControlWheelSteering),
+                ) {
+                    if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                        self.error = Some(e.to_string());
+                    }
+                }
+            });
+        }
         egui::TopBottomPanel::bottom("instruments")
             .exact_height(instruments::panel_height(
                 ctx.content_rect().height(),
@@ -844,7 +899,8 @@ impl eframe::App for FlightCraftApp {
                         instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
                             .with_aircraft(configuration)
                             .with_airports(self.session.sim().world().airports())
-                            .with_glass(&state),
+                            .with_glass(&state)
+                            .with_autopilot(self.session.sim().installed_autopilot()),
                         self.session.flight_generation(),
                     )
                 } else {
@@ -898,7 +954,8 @@ impl eframe::App for FlightCraftApp {
                     if let Ok(mut display) = glass::create(&id) {
                         let mut input =
                             instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
-                                .with_glass(&state);
+                                .with_glass(&state)
+                                .with_autopilot(self.session.sim().installed_autopilot());
                         input.aircraft = self.session.aircraft_configuration();
                         input.options = self.instrument_panel.options;
                         let draw = display.update(input);
@@ -1059,6 +1116,9 @@ impl eframe::App for FlightCraftApp {
             if let Ok(json) = serde_json::to_string(&self.session.efb_status().settings) {
                 storage.set_string("efb.settings", json);
             }
+        }
+        if let Ok(json) = serde_json::to_string(&self.audio.preferences) {
+            storage.set_string("flightcraft.audio.v1", json);
         }
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
         if let Ok(json) = serde_json::to_string(&self.instrument_panel.options) {

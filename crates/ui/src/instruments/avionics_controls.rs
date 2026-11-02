@@ -80,7 +80,9 @@ impl Controls {
                         100.,
                         0,
                     ) {
-                        self.pending.push(AvionicsSetting::SelectedAltitude { feet });
+                        self.pending.push(AvionicsSetting::SelectedAltitude {
+                            feet: libm::round(feet / 100.) * 100.,
+                        });
                     }
                 });
                 ui.separator();
@@ -140,7 +142,16 @@ fn knob(
             egui::DragValue::new(&mut value)
                 .range(range)
                 .speed(step)
-                .max_decimals(decimals),
+                .max_decimals(decimals)
+                .custom_formatter(move |value, _| {
+                    if step == 100. {
+                        super::formatting::selected_feet(value * 0.3048)
+                    } else if label.contains("degrees") {
+                        format!("{}°", super::heading::degrees_text(value.to_radians()))
+                    } else {
+                        format!("{value:.decimals$}")
+                    }
+                }),
         )
         .changed();
     ui.end_row();

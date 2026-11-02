@@ -20,6 +20,13 @@ pub enum Unit {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AvionicsSetting {
+    Autopilot {
+        setting: crate::equipment::PanelSetting,
+    },
+    DirectToLocal {
+        north_m: f64,
+        east_m: f64,
+    },
     Glass {
         setting: glass::GlassSetting,
     },
@@ -121,7 +128,9 @@ impl AvionicsState {
         let a = &mut self.electronic_attitude;
         let h = &mut self.electronic_hsi;
         match setting {
-            AvionicsSetting::Glass { .. }
+            AvionicsSetting::Autopilot { .. }
+            | AvionicsSetting::DirectToLocal { .. }
+            | AvionicsSetting::Glass { .. }
             | AvionicsSetting::HeadingBugStep { .. }
             | AvionicsSetting::HeadingBugSync {} => {
                 return Err(invalid("setting requires the aircraft command handler"));

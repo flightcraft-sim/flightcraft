@@ -12,6 +12,10 @@ repository.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["audio"]
+audio = ["flightcraft-ui/desktop-audio"]
+
 [dependencies]
 flightcraft-ui.workspace = true
 eframe.workspace = true

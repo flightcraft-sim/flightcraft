@@ -16,9 +16,11 @@
 pub mod autopilot;
 pub mod avionics;
 mod dynamics;
+pub mod equipment;
 pub use avionics::navigation as glass_navigation;
 pub use avionics::sensor as glass_air_data;
 mod math;
+pub mod nav_source;
 pub mod systems;
 #[cfg(test)]
 mod systems_tests;
@@ -200,6 +202,11 @@ pub struct Sim {
     steps: u64,
     crashed: bool,
     autopilot: autopilot::Autopilot,
+    equipment: Option<equipment::Equipment>,
+    pilot_controls: Controls,
+    navigation: Option<nav_source::DirectTo>,
+    nav_guidance: Option<nav_source::NavGuidance>,
+    receiver_leg: Option<nav_source::ReceiverLeg>,
     wind: world::Wind,
     failures: Failures,
     systems: systems::SystemsState,
@@ -351,6 +358,11 @@ impl Sim {
             steps: 0,
             crashed: false,
             autopilot: autopilot::Autopilot::default(),
+            equipment: None,
+            pilot_controls: controls,
+            navigation: None,
+            nav_guidance: None,
+            receiver_leg: None,
         };
         sim.controls = sim.limit_controls(sim.controls);
         sim.configure_builtin_systems()?;
@@ -394,6 +406,11 @@ impl Sim {
             steps,
             crashed,
             autopilot: autopilot::Autopilot::default(),
+            equipment: None,
+            pilot_controls: controls,
+            navigation: None,
+            nav_guidance: None,
+            receiver_leg: None,
         };
         sim.configure_builtin_systems()?;
         Ok(sim)
@@ -419,6 +436,17 @@ impl Sim {
         configuration: &flightcraft_aero::ResolvedAircraft,
     ) -> Result<(), SimError> {
         let (state, model) = systems::SystemsState::configure(configuration, self.readout())?;
+        let equipment = configuration
+            .panel
+            .autopilot
+            .clone()
+            .map(|installation| equipment::Equipment::new(installation, &state, self.controls))
+            .transpose()?;
+        self.equipment = equipment;
+        self.pilot_controls = self.controls;
+        self.navigation = None;
+        self.nav_guidance = None;
+        self.receiver_leg = None;
         self.systems = state;
         self.systems.avionics = avionics::AvionicsState::configure(configuration);
         self.systems_model = model;
@@ -453,6 +481,20 @@ impl Sim {
     /// Set a unit control through the same typed path used by the command registry.
     pub fn set_avionics(&mut self, setting: avionics::AvionicsSetting) -> Result<(), SimError> {
         match setting {
+            avionics::AvionicsSetting::Autopilot { setting } => {
+                return self.set_autopilot_panel(setting);
+            }
+            avionics::AvionicsSetting::DirectToLocal { north_m, east_m } => {
+                return self.set_direct_to([north_m, east_m]);
+            }
+            avionics::AvionicsSetting::SelectedAltitude { feet } if self.equipment.is_some() => {
+                if !feet.is_finite() || !(-1000.0..=30000.0).contains(&feet) {
+                    return Err(SimError::InvalidSystems("selected altitude outside range".into()));
+                }
+                return self.set_autopilot_panel(equipment::PanelSetting::Altitude {
+                    altitude_m: feet * 0.3048,
+                });
+            }
             avionics::AvionicsSetting::HeadingBug { degrees } => self.set_heading_bug(degrees)?,
             avionics::AvionicsSetting::HeadingBugStep { detents, interval_ms } => {
                 if !(-360..=360).contains(&detents) {
@@ -574,6 +616,7 @@ impl Sim {
     /// Set the controls (clamped). They hold until set again.
     pub fn set_controls(&mut self, controls: Controls) {
         self.controls = self.limit_controls(controls);
+        self.pilot_controls = self.controls;
     }
 
     fn limit_controls(&self, controls: Controls) -> Controls {
@@ -592,12 +635,21 @@ impl Sim {
 
     #[must_use]
     pub fn controls(&self) -> Controls {
-        self.controls
+        if self.equipment.is_some() {
+            self.pilot_controls
+        } else {
+            self.controls
+        }
     }
 
     /// Replace the engaged holds atomically. Incompatible or hostile targets are errors.
     pub fn set_autopilot(&mut self, targets: autopilot::Targets) -> Result<(), SimError> {
         targets.validate()?;
+        if targets.engaged() && self.equipment.as_ref().is_some_and(|e| e.state.engaged) {
+            return Err(SimError::InvalidAutopilot(
+                "disconnect installed autopilot before engaging assists".into(),
+            ));
+        }
         if let Some(heading) = targets.heading_rad {
             self.systems_changed |=
                 self.systems.controls.heading_bug_rad != heading.rem_euclid(core::f64::consts::TAU);
@@ -607,6 +659,118 @@ impl Sim {
         }
         self.autopilot.set(targets);
         Ok(())
+    }
+
+    /// Installed equipment state. The default panels have no autopilot installed.
+    #[must_use]
+    pub fn installed_autopilot(&self) -> Option<&equipment::EquipmentState> {
+        self.equipment.as_ref().map(|e| &e.state)
+    }
+
+    pub fn set_autopilot_panel(&mut self, setting: equipment::PanelSetting) -> Result<(), SimError> {
+        self.refresh_equipment_sensors();
+        if self.autopilot.targets().engaged()
+            && matches!(
+                setting,
+                equipment::PanelSetting::Engage { on: true } | equipment::PanelSetting::Level
+            )
+        {
+            return Err(SimError::InvalidAutopilot(
+                "disengage assists before coupling installed autopilot".into(),
+            ));
+        }
+        self.equipment
+            .as_mut()
+            .ok_or_else(|| SimError::InvalidAutopilot("no autopilot installed".into()))?
+            .set(setting, &self.systems, self.pilot_controls)?;
+        if let Some(ap) = &self.equipment {
+            let feet = ap.state.altitude_m / 0.3048;
+            self.systems.avionics.electronic_attitude.selected_altitude_ft = feet;
+            self.systems
+                .avionics
+                .electronic_hsi
+                .reversion_attitude
+                .selected_altitude_ft = feet;
+        }
+        Ok(())
+    }
+
+    /// Attach an electronic suite's sensed indications at its fixed-step boundary.
+    /// The host refreshes the snapshot every step; None restores the aircraft systems' sensors.
+    pub fn set_autopilot_sensors(
+        &mut self,
+        sensors: Option<systems::SensedInstruments>,
+    ) -> Result<(), SimError> {
+        self.equipment
+            .as_mut()
+            .ok_or_else(|| SimError::InvalidAutopilot("no autopilot installed".into()))?
+            .set_sensors(sensors)
+    }
+
+    /// Receiver adapters supply guidance at fixed-step boundaries. None flags signal loss.
+    pub fn set_nav_guidance(&mut self, guidance: Option<nav_source::NavGuidance>) -> Result<(), SimError> {
+        if let Some(n) = guidance {
+            n.validate()?;
+        }
+        self.navigation = None;
+        self.nav_guidance = guidance;
+        Ok(())
+    }
+
+    /// Offline direct-to fallback for panels without an installed navigation receiver.
+    pub fn set_direct_to(&mut self, destination: [f64; 2]) -> Result<(), SimError> {
+        let [n, e, _] = self.state.position_m;
+        let source = nav_source::DirectTo::new([n, e], destination)?;
+        self.navigation = Some(source);
+        self.nav_guidance = None;
+        Ok(())
+    }
+
+    /// The flight-plan receiver supplies its active leg; geodesy remains in avionics.
+    pub fn set_receiver_leg(&mut self, leg: Option<nav_source::ReceiverLeg>) {
+        self.receiver_leg = leg;
+    }
+
+    fn refresh_equipment_sensors(&mut self) {
+        let Some(ap) = &self.equipment else {
+            return;
+        };
+        if ap.state.installation.family != equipment::AutopilotFamily::DigitalTwoAxis {
+            return;
+        }
+        let load = ap.state.installation.roll_sensor_load.as_str();
+        let mut sensed = self.systems.sensed;
+        let valid = if load == "glass_ahrs" {
+            let a = &self.glass.primary;
+            sensed.roll_rad = a.roll_rad;
+            sensed.pitch_rad = a.pitch_rad;
+            sensed.heading_rad = a.heading_rad;
+            sensed.indicated_airspeed_mps = a.indicated_airspeed_mps;
+            sensed.altitude_msl_m = a.altitude_msl_m;
+            sensed.vertical_speed_mps = a.vertical_speed_mps;
+            sensed.attitude_valid = a.attitude_valid;
+            Some(a.air_data_valid)
+        } else if load == "electronic_attitude" || load == "electronic_hsi" {
+            let a = if load == "electronic_attitude" {
+                &self.systems.avionics.electronic_attitude
+            } else {
+                &self.systems.avionics.electronic_hsi.reversion_attitude
+            };
+            sensed.roll_rad = a.roll_deg.to_radians();
+            sensed.pitch_rad = a.pitch_deg.to_radians();
+            sensed.heading_rad = a.heading_deg.to_radians();
+            sensed.indicated_airspeed_mps = a.airspeed_kt / 1.9438444924406;
+            sensed.altitude_msl_m = a.altitude_ft * 0.3048;
+            sensed.vertical_speed_mps = a.vertical_speed_fpm * 0.00508;
+            sensed.attitude_valid = a.attitude_valid;
+            Some(a.air_data_valid)
+        } else {
+            None
+        };
+        if let (Some(valid), Some(ap)) = (valid, &mut self.equipment) {
+            let _ = ap.set_sensors(Some(sensed));
+            ap.set_receiver_air_data_valid(valid);
+        }
     }
 
     /// Disengage all holds. The last controls remain available to the pilot.
@@ -625,6 +789,19 @@ impl Sim {
         &mut self.glass
     }
 
+    /// Drive guidance from any receiver at each fixed-step boundary, including test doubles.
+    pub fn step_with_nav_source(&mut self, n: u32, source: &impl nav_source::NavSource) {
+        for _ in 0..n {
+            if self.crashed {
+                break;
+            }
+            let [north, east, _] = self.state.position_m;
+            self.navigation = None;
+            self.nav_guidance = source.guidance(north, east).filter(|n| n.validate().is_ok());
+            self.step(1);
+        }
+    }
+
     /// Advance up to `n` fixed steps of [`DT_S`], stopping at a crash or numerical envelope exit.
     /// The last finite state is retained. Crashed simulations remain frozen.
     pub fn step(&mut self, n: u32) {
@@ -637,6 +814,49 @@ impl Sim {
                 self.controls = self
                     .autopilot
                     .update(&self.aircraft, readout, self.state.angular_rate_rps);
+            }
+            self.refresh_equipment_sensors();
+            if self.equipment.is_some() && !self.autopilot.targets().engaged() {
+                use nav_source::NavSource;
+                let [north, east, _] = self.state.position_m;
+                let [vn, ve, _] = self.state.velocity_mps;
+                let nav = self
+                    .navigation
+                    .as_ref()
+                    .and_then(|n| n.guidance(north, east))
+                    .or(self.nav_guidance)
+                    .or_else(|| {
+                        let powered = self
+                            .systems
+                            .electrical
+                            .loads
+                            .iter()
+                            .any(|l| l.id == "glass_mfd" && l.powered);
+                        if powered && !self.glass.mfd_failed {
+                            self.receiver_leg
+                                .as_ref()
+                                .and_then(|leg| leg.guidance(north, east))
+                        } else {
+                            None
+                        }
+                    })
+                    .or_else(|| {
+                        self.systems
+                            .avionics
+                            .electronic_hsi
+                            .nav_guidance(&self.world, self.state)
+                    });
+                let r = self.readout();
+                if let Some(equipment) = &mut self.equipment {
+                    self.controls = equipment.update(
+                        &self.systems,
+                        self.pilot_controls,
+                        libm::atan2(ve, vn).rem_euclid(core::f64::consts::TAU),
+                        r.ground_speed_mps,
+                        r.load_factor_g,
+                        nav,
+                    );
+                }
             }
             self.controls = self.limit_controls(self.controls);
             let relative = dynamics::relative_velocity(&self.state, &self.wind);
@@ -851,6 +1071,21 @@ impl Sim {
             eat(0x676c_6173_7300_0001);
             for word in self.glass.hash_words() {
                 eat(word);
+            }
+        }
+        if let Some(equipment) = &self.equipment {
+            eat(0x6175_746f_7069_6c01);
+            if let Ok(bytes) = serde_json::to_vec(&(
+                equipment,
+                self.pilot_controls,
+                self.navigation,
+                self.nav_guidance,
+                self.receiver_leg,
+            )) {
+                eat(bytes.len() as u64);
+                for byte in bytes {
+                    eat(u64::from(byte));
+                }
             }
         }
         if !self.world.tiles().is_empty() {

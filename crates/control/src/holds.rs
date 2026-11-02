@@ -109,10 +109,15 @@ pub struct SetAutopilot {
 
 impl Command for SetAutopilot {
     const NAME: &'static str = "autopilot.set";
-    const DESCRIPTION: &'static str =
-        "Patch SI hold targets; null or false disengages a hold. Pitch airspeed mode uses full power.";
+    const DESCRIPTION: &'static str = "Deprecated alias for assist.set; removed after one release.";
     type Output = Targets;
     fn run(self, session: &mut Session) -> Result<Targets, CommandError> {
+        eprintln!("deprecated command autopilot.set: use assist.set");
+        self.apply(session, Self::NAME)
+    }
+}
+impl SetAutopilot {
+    fn apply(self, session: &mut Session, command_name: &'static str) -> Result<Targets, CommandError> {
         let mut t = session.sim.readout().autopilot;
         for (value, target) in [
             (self.pitch_rad, &mut t.pitch_rad),
@@ -137,17 +142,17 @@ impl Command for SetAutopilot {
         session
             .sim
             .set_autopilot(t)
-            .map_err(|e| invalid(Self::NAME, e.to_string()))?;
+            .map_err(|e| invalid(command_name, e.to_string()))?;
         Ok(t)
     }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct AutopilotOff {}
+pub struct AssistOff {}
 
-impl Command for AutopilotOff {
-    const NAME: &'static str = "autopilot.off";
+impl Command for AssistOff {
+    const NAME: &'static str = "assist.off";
     const DESCRIPTION: &'static str = "Disengage all holds, leaving the last controls in place.";
     type Output = Targets;
     fn run(self, session: &mut Session) -> Result<Targets, CommandError> {
@@ -316,5 +321,31 @@ impl Command for RunUntil {
             session.sim.step(1);
             steps += 1;
         }
+    }
+}
+
+/// Canonical script hold command; unrelated to installed equipment.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(transparent)]
+pub struct SetAssist(pub SetAutopilot);
+impl Command for SetAssist {
+    const NAME: &'static str = "assist.set";
+    const DESCRIPTION: &'static str = "Patch SI script hold targets; null or false disengages a hold.";
+    type Output = Targets;
+    fn run(self, session: &mut Session) -> Result<Targets, CommandError> {
+        self.0.apply(session, Self::NAME)
+    }
+}
+/// Deprecated for one release; use `assist.off` for script holds.
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AutopilotOff {}
+impl Command for AutopilotOff {
+    const NAME: &'static str = "autopilot.off";
+    const DESCRIPTION: &'static str = "Deprecated alias for assist.off; removed after one release.";
+    type Output = Targets;
+    fn run(self, session: &mut Session) -> Result<Targets, CommandError> {
+        eprintln!("deprecated command autopilot.off: use assist.off");
+        AssistOff {}.run(session)
     }
 }

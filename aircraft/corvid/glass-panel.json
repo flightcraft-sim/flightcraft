@@ -73,5 +73,38 @@
         1.1
       ]
     }
-  ]
+  ],
+  "autopilot": {
+    "family": "digital_two_axis",
+    "lateral_modes": [
+      "rol",
+      "hdg",
+      "trk",
+      "nav",
+      "apr",
+      "loc_bc"
+    ],
+    "vertical_modes": [
+      "pit",
+      "alt",
+      "vs",
+      "ias",
+      "gp",
+      "gs"
+    ],
+    "power_load": "avionics",
+    "roll_sensor_load": "glass_ahrs",
+    "bank_limit_rad": 0.4363323129985824,
+    "pitch_rate_limit_rps": 0.12,
+    "max_load_g": 1.5,
+    "servo_torque": 0.65,
+    "servo_rate_per_s": 0.7,
+    "electric_trim": true,
+    "altitude_preselect": true,
+    "altitude_alert": true,
+    "stability_protection": true,
+    "yaw_damper": true,
+    "minimum_ias_mps": 27.0,
+    "maximum_ias_mps": 70.0
+  }
 }

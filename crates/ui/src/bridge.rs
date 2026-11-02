@@ -73,7 +73,13 @@ impl Bridge {
             if result.is_ok()
                 && matches!(
                     request.command.as_str(),
-                    "sim.set_controls" | "autopilot.set" | "autopilot.off" | "sim.reset"
+                    "sim.set_controls"
+                        | "autopilot.set"
+                        | "autopilot.off"
+                        | "assist.set"
+                        | "assist.off"
+                        | "avionics.set"
+                        | "sim.reset"
                 )
             {
                 self.last_controls = Some(Instant::now());

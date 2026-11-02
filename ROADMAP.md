@@ -54,3 +54,12 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 31 | The crew: a deterministic virtual pilot, watching, demonstrating, and instructing modes, intercom and kneeboard instead of a chat box, ACS-graded lessons, and an optional AI link ([spec](docs/crew.md)) | 30 |
 | 32 | Map, search, and planning: navaids, fixes, airways, magnetic variation, one search box for anything, your location, addresses, pins, and a planning map with profile and conflicts ([spec](docs/map-and-planning.md)) | 18, 21 |
 | 33 | Tablet apps, plates, charts, and procedures: desktop GDL 90 and simulator position broadcast to EFB apps (done; traffic encoders ready, no traffic source yet), FAA plates with georeferenced overlay, sectional and terminal charts, CIFP procedures in the GPS with ILS and VOR signals, and opt-in live weather and TFRs ([spec](docs/efb-and-charts.md)) | 30, 32 |
+
+## Aircraft equipment
+
+| Item | Status | Depends on |
+|---|---|---|
+| Panel-installed wing leveler, legacy two-axis autopilot, and digital two-axis autopilot | Behaviour modules, command controls, original skins, FD bars, shared HDG bug, servo and trim limits, failures, and New York acceptance flights implemented; [reference](docs/autopilot.md) | Systems, instrument modules, panel layers |
+| Electronic-suite autopilot attachment | Digital equipment installed on Corvid glass and standby panels; shared AHRS/air-data, GPS guidance, PFD mode strip, and FD bars implemented | Standby and glass suites |
+| Autopilot aural warning playback | Original two-tone synthesis, optional CPAL desktop output, Web Audio browser output, and persisted mute/volume implemented | Application audio output |
+| Localizer/back-course and GP/GS receiver capture | Equipment modes and typed guidance boundary ready; operational receiver and approach data remain needed | Navaids and approaches |

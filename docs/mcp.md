@@ -40,8 +40,8 @@ requests `-32600`, and malformed JSON `-32700`.
 | `sim_reset` | `sim.reset` | `start: {kind: "runway"}` or `{kind: "air", height_m, airspeed_mps, heading_rad}`; optional `paused` (defaults to `true`). Returns state, readout, and playback settings. |
 | `sim_set_controls` | `sim.set_controls` | Any subset of `elevator`, `aileron`, `rudder` (-1 to 1), `throttle`, `flaps`, and `brake` (0 to 1). Returns all six controls. |
 | `sim_step` | `sim.step` | Integer `steps` from 0 to 72000 (ten minutes at 120 Hz). Returns the readout. |
-| `autopilot_set` | `autopilot.set` | Any subset of `pitch_rad`, `altitude_m`, `vertical_speed_mps`, `heading_rad`, `airspeed_mps`, `wings_level`, `bank_limit_rad`, and `airspeed_mode` (`throttle` or `pitch`). Returns all engaged holds and targets. |
-| `autopilot_off` | `autopilot.off` | `{}`. Disengages all holds, leaving the last controls in place. |
+| `assist_set` | `assist.set` | Any subset of `pitch_rad`, `altitude_m`, `vertical_speed_mps`, `heading_rad`, `airspeed_mps`, `wings_level`, `bank_limit_rad`, and `airspeed_mode` (`throttle` or `pitch`). Returns all engaged holds and targets. |
+| `assist_off` | `assist.off` | `{}`. Disengages all holds, leaving the last controls in place. |
 | `sim_run_until` | `sim.run_until` | `conditions` array (up to 16), optional `max_steps` (0 to 72000, default 72000). Returns `state`, `readout`, actual `steps`, and `fired`. |
 | `sim_state` | `sim.state` | `{}`. Returns full `state`, instrument `readout`, `paused`, and `rate`. |
 | `sim_pause` | `sim.pause` | `{}`. Pauses the app's real-time loop; returns playback settings. |
@@ -112,9 +112,9 @@ climb to 300 m, level off, turn east, and wait for the heading:
 
 ```jsonl
 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"sim_reset","arguments":{"start":{"kind":"air","height_m":150,"airspeed_mps":36,"heading_rad":0}}}}
-{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"autopilot_set","arguments":{"airspeed_mps":36,"airspeed_mode":"pitch","heading_rad":0}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"assist_set","arguments":{"airspeed_mps":36,"airspeed_mode":"pitch","heading_rad":0}}}
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sim_run_until","arguments":{"conditions":[{"kind":"altitude_above","altitude_m":300}],"max_steps":24000}}}
-{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"autopilot_set","arguments":{"airspeed_mode":"throttle","altitude_m":300,"heading_rad":1.5707963267948966,"bank_limit_rad":0.35}}}
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"assist_set","arguments":{"airspeed_mode":"throttle","altitude_m":300,"heading_rad":1.5707963267948966,"bank_limit_rad":0.35}}}
 {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"sim_run_until","arguments":{"conditions":[{"kind":"heading_within","heading_rad":1.5707963267948966,"tolerance_rad":0.03}],"max_steps":12000}}}
 ```
 
@@ -184,7 +184,7 @@ The synchronous MCP stdio server handles one call at a time.
   slightly later than requested because frames contain several fixed steps.
 - Keyboard and gamepad flight controls are suppressed while a script has commands remaining,
   while any hold is engaged, or for three seconds after a successful external `sim.set_controls`,
-  `autopilot.set`, `autopilot.off`, or `sim.reset`. State reads and waits do not renew this interval.
+  `assist.set`, `assist.off`, or `sim.reset`. State reads and waits do not renew this interval.
   Keep sending controls within three seconds for manual remote flight, or engage holds. Human
   pause, reset, and camera actions remain available.
 - `app.screenshot` requests an eframe viewport capture and replies over the next frames when its
@@ -278,3 +278,15 @@ and `last_error`. `reason` explains disabled, missing geodesy, or stale aircraft
 are emitted without active geographic position. Status remains available headlessly and in the
 browser with `available: false`; browser configuration reports “unavailable in the browser”.
 See [Fly with your tablet app](efb-and-charts.md#fly-with-your-tablet-app) for setup and wire formats.
+
+## Installed autopilots
+
+`assist.set` and `assist.off` are idealised script holds. `autopilot.set` and `autopilot.off` are
+one-release deprecated aliases and emit a stderr notice. The `readout.autopilot` field retains
+its old hold-target shape for compatibility.
+
+`autopilot.state` returns installed equipment or null. `avionics.set` with a tagged
+`autopilot` setting operates its buttons and knobs; `heading_bug` and `heading_bug_sync` operate the
+single heading bug shared with the gauges and HDG mode. NAV receivers implement
+`sim::nav_source::NavSource`. See [installed autopilots](autopilot.md) for panel choices, all
+setting kinds, failure behaviour, sensor attachment, and receiver integration.

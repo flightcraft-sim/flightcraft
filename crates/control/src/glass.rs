@@ -166,6 +166,12 @@ impl Session {
             }
             GlassSetting::SelectedAltitude { altitude_m } => {
                 range(NAME, "altitude_m", altitude_m, -500.0, 15000.0)?;
+                if self.sim.installed_autopilot().is_some() {
+                    self.sim
+                        .set_avionics(flightcraft_sim::avionics::AvionicsSetting::SelectedAltitude {
+                            feet: altitude_m / 0.3048,
+                        })?;
+                }
                 self.glass.selected_altitude_m = altitude_m;
             }
             GlassSetting::Baro { pressure_pa } => self
@@ -204,6 +210,7 @@ impl Session {
                 } = failed;
             }
         }
+        self.sync_receiver_leg();
         self.sim.refresh_glass_computers();
         Ok(())
     }
@@ -222,6 +229,30 @@ impl Session {
         self.glass.active_leg = 0;
         self.glass.leg_origin_deg = origin;
         Ok(())
+    }
+    fn sync_receiver_leg(&mut self) {
+        let world = self.sim.world();
+        let leg = (|| {
+            let region = world.region()?;
+            let id = self.glass.flight_plan.get(self.glass.active_leg)?;
+            let end = crate::regions::airport(world, id).ok()?;
+            let start = if self.glass.active_leg == 0 {
+                self.glass.leg_origin_deg?
+            } else {
+                let id = self
+                    .glass
+                    .flight_plan
+                    .get(self.glass.active_leg.saturating_sub(1))?;
+                let a = crate::regions::airport(world, id).ok()?;
+                [a.latitude_deg, a.longitude_deg]
+            };
+            Some(flightcraft_sim::nav_source::ReceiverLeg {
+                start_deg: start,
+                end_deg: [end.latitude_deg, end.longitude_deg],
+                projection_origin_deg: [region.origin.latitude_deg, region.origin.longitude_deg],
+            })
+        })();
+        self.sim.set_receiver_leg(leg);
     }
     pub(crate) fn reset_glass_generation(&mut self) {
         if self.glass.generation != self.flight_generation {
@@ -249,6 +280,7 @@ impl Session {
             }
             self.glass.active_leg += 1;
         }
+        self.sync_receiver_leg();
     }
     pub fn glass_state(&self) -> GlassState {
         let sim = &self.sim;
@@ -262,6 +294,9 @@ impl Session {
             GlassSettings::default()
         };
         settings.heading_bug_rad = sys.controls.heading_bug_rad;
+        if let Some(ap) = sim.installed_autopilot() {
+            settings.selected_altitude_m = ap.altitude_m;
+        }
         let [n, e, _] = sim.state().position_m;
         let position = world.geodetic(n, e);
         let [vn, ve, _] = sim.state().velocity_mps;

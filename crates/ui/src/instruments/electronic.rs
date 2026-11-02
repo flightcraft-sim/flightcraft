@@ -277,6 +277,18 @@ fn attitude(a: &ElectronicAttitude, input: InstrumentInput<'_>, title: &str) -> 
         let bottom = compass([100., 75.], angle, 35.);
         d.line(top, bottom, Ink::Text, 1.);
     }
+    if a.attitude_valid
+        && let Some(ap) = input.autopilot
+    {
+        crate::autopilot::command_bars(
+            &mut d,
+            ap,
+            [100., 79.],
+            a.roll_deg.to_radians(),
+            a.pitch_deg.to_radians(),
+            0.5,
+        );
+    }
     let bank = a.roll_deg.clamp(-60., 60.);
     d.items.push(DrawItem::Polygon {
         points: vec![
@@ -320,7 +332,10 @@ fn attitude(a: &ElectronicAttitude, input: InstrumentInput<'_>, title: &str) -> 
         Ink::Needle,
         2.,
     );
-    let bug = (79. - (a.selected_altitude_ft - a.altitude_ft) as f32 * 0.13).clamp(34., 124.);
+    let selected_altitude_ft = input
+        .autopilot
+        .map_or(a.selected_altitude_ft, |ap| ap.altitude_m / 0.3048);
+    let bug = (79. - (selected_altitude_ft - a.altitude_ft) as f32 * 0.13).clamp(34., 124.);
     d.line([149., bug], [156., bug], Ink::Needle, 2.);
     d.line([195., 35.], [195., 124.], Ink::Muted, 1.);
     for y in [35., 57., 79., 101., 124.] {
@@ -330,13 +345,19 @@ fn attitude(a: &ElectronicAttitude, input: InstrumentInput<'_>, title: &str) -> 
     d.line([190., vsi], [198., vsi], Ink::Needle, 2.);
     d.label(
         [50., 138.],
-        format!("VS {:+.0}", a.vertical_speed_fpm),
+        format!(
+            "VS {}",
+            super::formatting::vertical_speed(a.vertical_speed_fpm * 0.00508)
+        ),
         7.,
         Ink::Text,
     );
     d.label(
         [152., 138.],
-        format!("SEL {:.0}", a.selected_altitude_ft),
+        format!(
+            "SEL {}",
+            super::formatting::selected_feet(selected_altitude_ft * 0.3048)
+        ),
         7.,
         Ink::Needle,
     );
@@ -391,11 +412,11 @@ fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, unit: &str) {
         let tick = base + f64::from(offset) * step;
         let y = 79. - ((tick - value) / step * 13.) as f32;
         if (37. ..=120.).contains(&y) && (y - 79.).abs() > 11. {
-            d.label([x, y], format!("{tick:.0}"), 7., Ink::Muted);
+            d.label([x, y], super::formatting::integer(tick), 7., Ink::Muted);
         }
     }
     rect(d, [x - 20., 71.], [40., 16.], Ink::Face);
-    d.label([x, 79.], format!("{value:.0}"), 9., Ink::Text);
+    d.label([x, 79.], super::formatting::integer(value), 8., Ink::Text);
     d.label([x, 22.], unit, 7., Ink::Muted);
 }
 fn red_x(d: &mut DrawList, a: [f32; 2], b: [f32; 2]) {
