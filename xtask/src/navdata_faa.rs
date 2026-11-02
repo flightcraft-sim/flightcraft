@@ -238,6 +238,7 @@ pub(super) fn import(
             let [lat, lon] = p.unproject(n, e).map_err(|e| e.to_string())?;
             Ok(RunwayEnd {
                 ident: ident.into(),
+                lighting: None,
                 latitude_deg: lat,
                 longitude_deg: lon,
                 elevation_m: terrain

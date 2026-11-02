@@ -11,6 +11,7 @@ fn catalogue(r: &Region) -> Airports {
     let end = |ident: &str, n, e, height, heading| {
         let [lat, lon] = p.unproject(n, e).unwrap();
         RunwayEnd {
+            lighting: None,
             ident: ident.into(),
             latitude_deg: lat,
             longitude_deg: lon,

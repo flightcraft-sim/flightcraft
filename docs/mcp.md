@@ -443,3 +443,17 @@ lights, and recovery progress. State queries do not advance equipment. See
 CDI-source, and magnetic setting conventions above. Navigator query actions resolve the shared
 offline search into the planning and GPS route; map hosts use `map.set` and `map.state`.
 Generic physical controls expose bounded `panel_control` and `panel_guard` systems actions.
+
+
+## Visual weather and the hood
+
+`weather.set` patches `layers` (at most three, base/top in ft MSL and coverage FEW/SCT/BKN/OVC),
+`visibility_sm` (0.125–100), `obscuration`, `precipitation`, and `time_of_day`, or selects
+`preset: vfr | mvfr | ifr | lifr | night`. Presets retain the current wind. The legacy complete
+wind group (`wind_from_deg`, `wind_speed_mps`, `shear`, `turbulence`, and `seed`) remains supported.
+`weather.state` accepts `{}` and reports visual `conditions`, magnetic wind `weather`, `hood`,
+and independent `simulated_instrument_time.hood_s` and `.imc_s` practice counters.
+`view.hood` accepts `{"enabled":true}` or `{"enabled":false}` in both headless and app sessions.
+It selects cockpit view in the app. These commands also work in offline timed scenario scripts.
+Practice counters use fixed simulation steps and are never labelled as FAA logbook credit.
+See [weather](weather.md) for schemas, examples, preset altitude references, and limitations.

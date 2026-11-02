@@ -58,6 +58,15 @@ impl Mesh {
         }
     }
 
+    // Exterior surfaces visible from the cockpit still belong behind the weather and hood.
+    fn box_exterior(&mut self, low: [f32; 3], high: [f32; 3], color: [f32; 4]) {
+        let start = self.0.len();
+        self.box_body(low, high, color);
+        for vertex in self.0.iter_mut().skip(start) {
+            vertex.kind = -1.;
+        }
+    }
+
     fn ground(&mut self, origin: [f32; 2], size: [f32; 2], height: f32, color: [f32; 4], kind: f32) {
         let [x, z] = origin;
         let [width, length] = size;
@@ -417,7 +426,7 @@ pub(crate) fn build(p: Palette, larrow: bool) -> Geometry {
             p.cockpit_frame,
         );
         let (lo, hi) = if side < 0.0 { (-5.6, -0.46) } else { (0.46, 5.6) };
-        m.box_body([-0.35, lo, -0.74], [1.05, hi, -0.60], p.aircraft);
+        m.box_exterior([-0.35, lo, -0.74], [1.05, hi, -0.60], p.aircraft);
         // A solid rectangular strut from the lower cabin to the high wing.
         let a = Vec3::new(0.10, side * 0.53, 0.25);
         let b = Vec3::new(0.51, side * 3.5, -0.60);
@@ -434,8 +443,8 @@ pub(crate) fn build(p: Palette, larrow: bool) -> Geometry {
     }
     m.box_body([0.60, -0.54, -0.70], [0.67, 0.54, -0.65], p.cockpit_frame);
     // Low nose visible beyond the shield; the full exterior cabin would obstruct the eye.
-    m.box_body([1.10, -0.32, -0.12], [2.3, 0.32, 0.18], p.aircraft);
-    m.box_body([2.27, -0.17, -0.18], [2.36, 0.17, 0.18], p.accent);
+    m.box_exterior([1.10, -0.32, -0.12], [2.3, 0.32, 0.18], p.aircraft);
+    m.box_exterior([2.27, -0.17, -0.18], [2.36, 0.17, 0.18], p.accent);
     let cockpit_end = m.0.len() as u32;
     // One transparent fan, drawn after opaque geometry without depth writes. No animation clock.
     let center = Vec3::new(2.40, 0.0, 0.0);
@@ -567,9 +576,9 @@ fn build_larrow(mut m: Mesh, p: Palette, world_end: u32) -> Geometry {
         );
     }
     for (lo, hi) in [(-4.0, -0.36), (0.36, 4.0)] {
-        m.box_body([-0.65, lo, 0.12], [0.725, hi, 0.22], p.aircraft);
+        m.box_exterior([-0.65, lo, 0.12], [0.725, hi, 0.22], p.aircraft);
     }
-    m.box_body([0.8, -0.27, -0.25], [2.0, 0.27, 0.25], p.aircraft);
+    m.box_exterior([0.8, -0.27, -0.25], [2.0, 0.27, 0.25], p.aircraft);
     let cockpit_end = m.0.len() as u32;
     let center = Vec3::new(2.13, 0.0, 0.0);
     for i in 0..48 {
@@ -777,6 +786,7 @@ pub(crate) mod terrain_tests {
             width_m: 45.0,
             surface: flightcraft_world::RunwaySurface::Concrete,
             end_idents: ["16L".into(), "34R".into()],
+            lighting: [None; 2],
         };
         let mut m = Mesh::default();
         airport_runway(&mut m, &strip, p);
@@ -817,6 +827,9 @@ pub(crate) mod terrain_tests {
             water: [0.1, 0.3, 0.6, 1.0],
             grid: [0.0; 4],
             runway: [0.0; 4],
+            light_red: [1., 0.025, 0.01, 1.],
+            light_green: [0.08, 1., 0.18, 1.],
+            light_amber: [1., 0.65, 0.04, 1.],
             marking: [0.0; 4],
             aircraft: [0.0; 4],
             accent: [0.0; 4],
@@ -857,14 +870,18 @@ pub(crate) mod terrain_tests {
                 .enumerate()
                 .skip(geometry.world_end as usize)
             {
-                assert_eq!(
-                    vertex.kind,
-                    if index < geometry.cockpit_end as usize {
-                        1.0
-                    } else {
-                        2.0
-                    }
-                );
+                if index >= geometry.exterior_end as usize && index < geometry.cockpit_end as usize {
+                    assert!(vertex.kind == 1.0 || vertex.kind == -1.0);
+                } else {
+                    assert_eq!(
+                        vertex.kind,
+                        if index < geometry.cockpit_end as usize {
+                            1.0
+                        } else {
+                            2.0
+                        }
+                    );
+                }
             }
         }
     }
@@ -1132,6 +1149,7 @@ pub(crate) fn vision_runways(world: &flightcraft_world::World, p: Palette) -> Ve
         width_m: runway.width_m,
         surface: flightcraft_world::RunwaySurface::Asphalt,
         end_idents: [String::new(), String::new()],
+        lighting: [None; 2],
     };
     let strips = if world.runway_strips().is_empty() {
         std::slice::from_ref(&fallback)
@@ -1164,4 +1182,204 @@ pub(crate) fn vision_runways(world: &flightcraft_world::World, p: Palette) -> Ve
         }
     }
     vertices
+}
+
+/// Original luminous impostors, separate from pavement so geometry is cached once per world.
+pub(crate) fn runway_lights(world: &flightcraft_world::World, p: Palette) -> Vec<Vertex> {
+    use flightcraft_world::{ApproachLights, VisualGuidance};
+    let mut vertices = Vec::new();
+    let mut entries = Vec::new();
+    let mut strips = world.runway_strips().iter();
+    for airport in world.airports().into_iter().flat_map(|a| &a.airports) {
+        for _ in &airport.runways {
+            if let Some(strip) = strips.next() {
+                entries.push((
+                    strip.clone(),
+                    airport.icao.as_deref().unwrap_or(&airport.ident).to_owned(),
+                ));
+            }
+        }
+    }
+    if entries.is_empty() {
+        let runway = world.runway();
+        let [n, e, d] = runway.threshold_ned_m;
+        let heading = runway.heading_deg.to_radians();
+        entries.push((
+            flightcraft_world::RunwayStrip {
+                ends_m: [
+                    [n, e],
+                    [
+                        n + runway.length_m * heading.cos(),
+                        e + runway.length_m * heading.sin(),
+                    ],
+                ],
+                elevations_m: [-d, -d],
+                width_m: runway.width_m,
+                surface: flightcraft_world::RunwaySurface::Asphalt,
+                end_idents: [String::new(), String::new()],
+                lighting: [Some(flightcraft_world::RunwayLighting {
+                    approach: Some(ApproachLights::Malsr),
+                    visual_guidance: Some(VisualGuidance::Papi),
+                }); 2],
+            },
+            String::new(),
+        ));
+    }
+    for (strip, ident) in &entries {
+        let length = strip.length_m();
+        let [[an, ae], [bn, be]] = strip.ends_m;
+        for (end, ([n, e], height)) in strip.ends_m.into_iter().zip(strip.elevations_m).enumerate() {
+            let direction = Vec3::new((be - ae) as f32, 0., -(bn - an) as f32).normalize_or_zero()
+                * if end == 0 { 1. } else { -1. };
+            let right = Vec3::new(-direction.z, 0., direction.x);
+            let threshold = Vec3::new(e as f32, height as f32 + 0.4, -n as f32);
+            let mut lamp = |along: f32, across: f32, color: [f32; 4], papi: f32| {
+                let point = threshold + direction * along + right * across;
+                for [x, y] in [[-1., -1.], [1., -1.], [1., 1.], [-1., -1.], [1., 1.], [-1., 1.]] {
+                    vertices.push(Vertex {
+                        position: point.to_array(),
+                        normal: [x, y, direction.x.atan2(direction.z)],
+                        color,
+                        kind: if papi > 0. {
+                            12.
+                        } else if papi == -2. {
+                            14.
+                        } else if papi < 0. {
+                            13.
+                        } else {
+                            11.
+                        },
+                        water_coverage: papi,
+                    });
+                }
+            };
+            let white = p.marking;
+            // Edge lights at 60 m intervals; final 600 m are amber.
+            for step in 0..=(length / 60.) as u32 {
+                let along = step as f32 * 60.;
+                let color = if length as f32 - along < 600. {
+                    p.light_amber
+                } else {
+                    white
+                };
+                for side in [-1., 1.] {
+                    lamp(along, side * (strip.width_m as f32 * 0.5 + 1.), color, -2.);
+                }
+            }
+            for across in -4..=4 {
+                lamp(0., across as f32 * strip.width_m as f32 / 8., p.light_green, -1.);
+            }
+            let published = strip.lighting.get(end).copied().flatten();
+            let approach = published.and_then(|l| l.approach).unwrap_or_else(|| {
+                let data = world.procedures();
+                let runway = strip.end_idents.get(end).map(String::as_str).unwrap_or("");
+                if let Some(localizer) = data.and_then(|d| {
+                    d.localizers
+                        .iter()
+                        .find(|l| l.airport == *ident && l.runway.trim_start_matches("RW") == runway)
+                }) {
+                    if localizer.gs_position.is_some() {
+                        ApproachLights::Alsf2
+                    } else {
+                        ApproachLights::Malsr
+                    }
+                } else if data.is_some_and(|d| {
+                    d.procedures.iter().any(|a| {
+                        a.airport == *ident
+                            && a.runway
+                                .as_deref()
+                                .is_some_and(|r| r.trim_start_matches("RW") == runway)
+                            && a.kind == flightcraft_world::procedures::ProcedureKind::Approach
+                    })
+                }) {
+                    ApproachLights::Odals
+                } else {
+                    ApproachLights::None
+                }
+            });
+            match approach {
+                ApproachLights::None => {}
+                ApproachLights::Odals => {
+                    for i in 1..=5 {
+                        lamp(-i as f32 * 91.44, 0., white, 0.);
+                    }
+                    for side in [-1., 1.] {
+                        lamp(-12., side * (strip.width_m as f32 * 0.5 + 12.), white, 0.);
+                    }
+                }
+                ApproachLights::Malsr | ApproachLights::Alsf2 => {
+                    let stations = if approach == ApproachLights::Alsf2 { 24 } else { 12 };
+                    for i in 1..=stations {
+                        if approach == ApproachLights::Malsr && i == 6 {
+                            continue;
+                        }
+                        let along = -i as f32
+                            * if approach == ApproachLights::Alsf2 {
+                                30.48
+                            } else {
+                                60.96
+                            };
+                        let bar = if approach == ApproachLights::Malsr && i >= 7 {
+                            0
+                        } else {
+                            2
+                        };
+                        for j in -bar..=bar {
+                            lamp(along, j as f32, white, 0.);
+                        }
+                        if (along + 304.8).abs() < 16. {
+                            for j in -10..=10 {
+                                lamp(along, j as f32 * 1.5, white, 0.);
+                            }
+                        }
+                        if approach == ApproachLights::Alsf2 && i < 10 {
+                            for side in [-1., 1.] {
+                                lamp(along, side * 9., p.light_red, 0.);
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(guidance) = published.and_then(|l| l.visual_guidance) {
+                for i in 0..4 {
+                    let along = 300.
+                        + if guidance == VisualGuidance::Vasi && i > 1 {
+                            150.
+                        } else {
+                            0.
+                        };
+                    lamp(
+                        along,
+                        -strip.width_m as f32 * 0.5 - 15. - i as f32 * 7.,
+                        white,
+                        (2.5 + i as f32 / 3.).to_radians(),
+                    );
+                }
+            }
+        }
+    }
+    vertices
+}
+
+#[cfg(test)]
+mod weather_light_tests {
+    use super::*;
+    #[test]
+    fn original_field_has_bounded_luminous_approach_and_angle_guidance() {
+        let lights = runway_lights(
+            &flightcraft_world::World::default(),
+            super::terrain_tests::palette(),
+        );
+        assert!(!lights.is_empty() && lights.len() < 20_000);
+        assert!(lights.iter().any(|v| v.kind == 12. && v.water_coverage > 0.));
+        assert!(lights.iter().any(|v| v.kind == 13.));
+        assert!(lights.iter().any(|v| v.kind == 14.));
+        assert!(lights.iter().all(|v| {
+            v.position
+                .iter()
+                .chain(&v.normal)
+                .chain(&v.color)
+                .all(|f| f.is_finite())
+        }));
+    }
 }

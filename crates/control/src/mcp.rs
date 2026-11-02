@@ -149,7 +149,7 @@ fn dispatch(
                 "protocolVersion": version,
                 "capabilities": {"tools": {"listChanged": false}},
                 "serverInfo": {"name": "flightcraft-mcp", "version": env!("CARGO_PKG_VERSION")},
-                "instructions": "Use sim_reset, autopilot_set, sim_run_until, autopilot_off, sim_set_controls, sim_step, and sim_state. Units are SI. In bridged mode pause before sim_step or sim_run_until; sim_wait waits for real-time flight while running. App commands need a desktop connection."
+                "instructions": "Use sim_reset, autopilot_set, sim_run_until, autopilot_off, sim_set_controls, sim_step, and sim_state. Units are SI except weather cloud heights (MSL ft) and visibility (SM). In bridged mode pause before sim_step or sim_run_until; sim_wait waits for real-time flight while running. App commands need a desktop connection."
             }))
         }
         "ping" | "notifications/initialized" => {

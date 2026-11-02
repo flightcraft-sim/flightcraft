@@ -177,3 +177,13 @@ fn garbage_lines_never_panic_and_notifications_are_silent() {
         json!({})
     );
 }
+
+#[test]
+fn weather_and_hood_are_available_as_mcp_tools() {
+    let mut session = Session::new().unwrap();
+    let state = call(&mut session, "weather_set", json!({"preset":"lifr"}));
+    assert_eq!(state["conditions"]["visibility_sm"], 0.5);
+    let hood = call(&mut session, "view_hood", json!({"enabled":true}));
+    assert_eq!(hood["hood"], true);
+    assert_eq!(call(&mut session, "weather_state", json!({})), hood);
+}

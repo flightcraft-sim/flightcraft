@@ -71,6 +71,12 @@ impl Command for SetCamera {
         if let Some(v) = self.look_pitch_rad {
             range(Self::NAME, "look_pitch_rad", v, -1.4, 1.4)?;
         }
+        if self.mode == CameraMode::Chase && session.sim().hood() {
+            return Err(invalid(
+                Self::NAME,
+                "remove the hood with view.hood before selecting chase view",
+            ));
+        }
         let camera = session.camera.as_mut().ok_or_else(needs_app)?;
         *camera = CameraSettings {
             mode: self.mode,

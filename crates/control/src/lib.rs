@@ -228,6 +228,9 @@ impl Session {
             rate: self.rate,
             world: self.sim.world().choice(),
             simulation_date: self.navigation.date,
+            conditions: self.sim.conditions().clone(),
+            hood: self.sim.hood(),
+            simulated_instrument_time: self.sim.instrument_time(),
             airspace: self.sim.world().airspace().map(|_| {
                 let [n, e, d] = self.sim.state().position_m;
                 self.sim
@@ -268,6 +271,9 @@ pub struct StateOutput {
     pub rate: f64,
     pub world: WorldChoice,
     pub simulation_date: flightcraft_world::geomag::SimulationDate,
+    pub conditions: flightcraft_world::Conditions,
+    pub hood: bool,
+    pub simulated_instrument_time: flightcraft_sim::InstrumentTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub airspace: Option<Vec<flightcraft_world::AirspaceMembership>>,
 }
@@ -751,6 +757,8 @@ registry!(
     RunUntil,
     GetState,
     SetWeather,
+    GetWeather,
+    SetHood,
     SetSystems,
     SetAvionics,
     GetAvionics,

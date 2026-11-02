@@ -19,6 +19,7 @@ pub enum Action {
     Pause,
     Reset,
     Camera,
+    Hood,
     Airspace,
     Search,
     PlanningMap,
@@ -73,7 +74,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 64] = [
+    pub const ALL: [Self; 65] = [
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -87,6 +88,7 @@ impl Action {
         Self::Pause,
         Self::Reset,
         Self::Camera,
+        Self::Hood,
         Self::Airspace,
         Self::Search,
         Self::PlanningMap,
@@ -212,6 +214,7 @@ impl Action {
             Self::Brakes => "Hold brakes",
             Self::Pause => "Pause / resume",
             Self::Reset => "Reset flight",
+            Self::Hood => "View-limiting hood",
             Self::Camera => "Change camera",
             Self::PlanningMap => "Show / hide planning map",
             Self::MapZoomIn => "Map zoom in",
@@ -293,6 +296,7 @@ impl Default for Keymap {
                 (Pause, vec![Key::Space, Key::P]),
                 (Reset, vec![Key::R]),
                 (Camera, vec![Key::C]),
+                (Hood, vec![Key::F8]),
                 (Airspace, vec![Key::U]),
                 (Search, vec![Key::Slash]),
                 (PlanningMap, vec![Key::M]),

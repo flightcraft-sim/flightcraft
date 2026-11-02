@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Systems {
     pub weather: Weather,
+    pub conditions: flightcraft_world::Conditions,
+    pub hood: bool,
+    pub simulated_instrument_time: flightcraft_sim::InstrumentTime,
     pub failures: Failures,
     pub systems: flightcraft_sim::systems::SystemsState,
 }
@@ -14,6 +17,9 @@ pub struct Systems {
 fn current(session: &Session) -> Systems {
     Systems {
         weather: session.pilot_weather(),
+        conditions: session.sim().conditions().clone(),
+        hood: session.sim().hood(),
+        simulated_instrument_time: session.sim().instrument_time(),
         failures: session.sim().failures(),
         systems: session.sim().systems().clone(),
     }
@@ -41,21 +47,130 @@ impl Session {
         Ok(())
     }
 }
-/// Full weather replacement; restarts the gust filter at this seed without changing velocity.
-#[derive(Debug, Deserialize, JsonSchema)]
+/// Visual weather patches retain wind; a supplied wind group must be complete.
+#[derive(Debug, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SetWeather {
-    #[serde(flatten)]
-    pub weather: Weather,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default)]
+    #[schemars(range(min = 0, max = 360))]
+    pub wind_from_deg: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default)]
+    #[schemars(range(min = 0, max = 75))]
+    pub wind_speed_mps: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "bool", transform = crate::without_default)]
+    pub shear: Option<bool>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "flightcraft_world::TurbulenceLevel", transform = crate::without_default)]
+    pub turbulence: Option<flightcraft_world::TurbulenceLevel>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "u64", transform = crate::without_default)]
+    pub seed: Option<u64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "flightcraft_world::WeatherPreset", transform = crate::without_default)]
+    pub preset: Option<flightcraft_world::WeatherPreset>,
+    #[schemars(length(max = 3))]
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "Vec<flightcraft_world::CloudLayer>", transform = crate::without_default)]
+    pub layers: Option<Vec<flightcraft_world::CloudLayer>>,
+    #[schemars(range(min = 0.125, max = 100))]
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default)]
+    pub visibility_sm: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "flightcraft_world::Obscuration", transform = crate::without_default)]
+    pub obscuration: Option<flightcraft_world::Obscuration>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "flightcraft_world::Precipitation", transform = crate::without_default)]
+    pub precipitation: Option<flightcraft_world::Precipitation>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "flightcraft_world::TimeOfDay", transform = crate::without_default)]
+    pub time_of_day: Option<flightcraft_world::TimeOfDay>,
 }
-
 impl Command for SetWeather {
     const NAME: &'static str = "weather.set";
-    const DESCRIPTION: &'static str =
-        "Replace wind (from magnetic degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.";
+    const DESCRIPTION: &'static str = "Set cloud layers (MSL ft), visibility (SM), obscuration, precipitation, time of day, or preset; optional complete magnetic wind group.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
-        session.set_pilot_weather(self.weather)?;
+        let mut conditions = self
+            .preset
+            .map(flightcraft_world::Conditions::preset)
+            .unwrap_or_else(|| session.sim().conditions().clone());
+        if let Some(v) = self.layers {
+            conditions.layers = v;
+        }
+        if let Some(v) = self.visibility_sm {
+            conditions.visibility_sm = v;
+        }
+        if let Some(v) = self.obscuration {
+            conditions.obscuration = v;
+        }
+        if let Some(v) = self.precipitation {
+            conditions.precipitation = v;
+        }
+        if let Some(v) = self.time_of_day {
+            conditions.time_of_day = v;
+        }
+        conditions.validate().map_err(flightcraft_sim::SimError::from)?;
+        let has_wind = self.wind_from_deg.is_some()
+            || self.wind_speed_mps.is_some()
+            || self.shear.is_some()
+            || self.turbulence.is_some()
+            || self.seed.is_some();
+        if has_wind {
+            let (Some(wind_from_deg), Some(wind_speed_mps), Some(shear), Some(turbulence), Some(seed)) = (
+                self.wind_from_deg,
+                self.wind_speed_mps,
+                self.shear,
+                self.turbulence,
+                self.seed,
+            ) else {
+                return Err(crate::invalid(Self::NAME, "supply all five wind fields together"));
+            };
+            session.set_pilot_weather(Weather {
+                wind_from_deg,
+                wind_speed_mps,
+                shear,
+                turbulence,
+                seed,
+            })?;
+        }
+        session.sim_mut().set_conditions(conditions)?;
+        Ok(current(session))
+    }
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetWeather {}
+impl Command for GetWeather {
+    const NAME: &'static str = "weather.state";
+    const DESCRIPTION: &'static str =
+        "Read visual weather, wind, turbulence, hood, and simulated instrument practice totals.";
+    type Output = Systems;
+    fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
+        Ok(current(session))
+    }
+}
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetHood {
+    pub enabled: bool,
+}
+impl Command for SetHood {
+    const NAME: &'static str = "view.hood";
+    const DESCRIPTION: &'static str =
+        "Enable or remove the cockpit view-limiting hood; available to offline scenarios.";
+    type Output = Systems;
+    fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
+        if self.enabled
+            && let Some(camera) = session.camera.as_mut()
+        {
+            camera.mode = crate::CameraMode::Cockpit;
+        }
+        session.sim_mut().set_hood(self.enabled);
         Ok(current(session))
     }
 }

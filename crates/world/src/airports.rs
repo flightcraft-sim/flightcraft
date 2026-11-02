@@ -24,6 +24,27 @@ impl RunwaySurface {
         }
     }
 }
+/// Published fixture metadata when supplied by the airport source. None means unknown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ApproachLights {
+    None,
+    Alsf2,
+    Malsr,
+    Odals,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VisualGuidance {
+    Papi,
+    Vasi,
+}
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RunwayLighting {
+    pub approach: Option<ApproachLights>,
+    pub visual_guidance: Option<VisualGuidance>,
+}
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct RunwayEnd {
@@ -32,6 +53,8 @@ pub struct RunwayEnd {
     pub longitude_deg: f64,
     pub elevation_m: f64,
     pub heading_deg: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lighting: Option<RunwayLighting>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -201,6 +224,7 @@ pub struct RunwayStrip {
     pub width_m: f64,
     pub surface: RunwaySurface,
     pub end_idents: [String; 2],
+    pub lighting: [Option<RunwayLighting>; 2],
 }
 impl RunwayStrip {
     pub fn project(runway: &AirportRunway, p: &LocalProjection) -> Result<Self, TerrainError> {
@@ -214,6 +238,7 @@ impl RunwayStrip {
             width_m: runway.width_m,
             surface: runway.surface,
             end_idents: [a.ident.clone(), b.ident.clone()],
+            lighting: [a.lighting, b.lighting],
         })
     }
     pub fn near(&self, north: f64, east: f64, margin: f64) -> bool {

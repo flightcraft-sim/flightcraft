@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Conditions",
+  "type": "object",
+  "properties": {
+    "layers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CloudLayer"
+      },
+      "maxItems": 3
+    },
+    "obscuration": {
+      "$ref": "#/$defs/Obscuration"
+    },
+    "precipitation": {
+      "$ref": "#/$defs/Precipitation"
+    },
+    "time_of_day": {
+      "$ref": "#/$defs/TimeOfDay"
+    },
+    "visibility_sm": {
+      "type": "number",
+      "format": "double",
+      "maximum": 100,
+      "minimum": 0.125
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "layers",
+    "visibility_sm",
+    "obscuration",
+    "precipitation",
+    "time_of_day"
+  ],
+  "$defs": {
+    "CloudLayer": {
+      "type": "object",
+      "properties": {
+        "base_ft_msl": {
+          "type": "number",
+          "format": "double",
+          "maximum": 60000,
+          "minimum": -1500
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "top_ft_msl": {
+          "type": "number",
+          "format": "double",
+          "maximum": 60000,
+          "minimum": -1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "base_ft_msl",
+        "top_ft_msl",
+        "coverage"
+      ]
+    },
+    "Coverage": {
+      "type": "string",
+      "enum": [
+        "FEW",
+        "SCT",
+        "BKN",
+        "OVC"
+      ]
+    },
+    "Obscuration": {
+      "type": "string",
+      "enum": [
+        "none",
+        "mist",
+        "fog",
+        "haze"
+      ]
+    },
+    "Precipitation": {
+      "type": "string",
+      "enum": [
+        "none",
+        "rain",
+        "snow"
+      ]
+    },
+    "TimeOfDay": {
+      "type": "string",
+      "enum": [
+        "day",
+        "dusk",
+        "night",
+        "dawn"
+      ]
+    }
+  }
+}

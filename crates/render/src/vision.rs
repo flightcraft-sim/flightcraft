@@ -165,6 +165,11 @@ impl SyntheticVision {
         projection.z_axis.x = 1. - 2. * (250. - x) / w;
         projection.z_axis.y = 2. * (125. - y) / h - 1.;
         gpu::Uniform {
+            atmosphere: [0., 1., 0., 0.],
+            fog_color: palette.sky_horizon,
+            clouds: [[0.; 4]; 3],
+            light_red: palette.light_red,
+            viewport: [750., 285., 0., 0.],
             view_projection: (projection * view).to_cols_array_2d(),
             aircraft: Mat4::IDENTITY.to_cols_array_2d(),
             world_from_clip: (projection * Mat4::from_mat3(Mat3::from_mat4(view)))

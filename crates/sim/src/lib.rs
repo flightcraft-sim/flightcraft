@@ -202,6 +202,13 @@ pub enum SimError {
     Failure(#[from] flightcraft_aero::FailureError),
 }
 
+/// Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct InstrumentTime {
+    pub hood_s: f64,
+    pub imc_s: f64,
+}
+
 /// One simulation: an aircraft, a world, and its state.
 #[derive(Clone, Debug)]
 pub struct Sim {
@@ -221,6 +228,9 @@ pub struct Sim {
     procedures: avionics::procedures::ProcedureReceiver,
     radios: avionics::radio::Radios,
     wind: world::Wind,
+    conditions: world::Conditions,
+    hood: bool,
+    instrument_time: InstrumentTime,
     failures: Failures,
     systems: systems::SystemsState,
     systems_model: Option<systems::SystemsModel>,
@@ -362,6 +372,9 @@ impl Sim {
             aircraft,
             world,
             magnetism,
+            conditions: world::Conditions::default(),
+            hood: false,
+            instrument_time: InstrumentTime::default(),
             wind,
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
@@ -414,6 +427,9 @@ impl Sim {
             aircraft,
             world,
             magnetism,
+            conditions: world::Conditions::default(),
+            hood: false,
+            instrument_time: InstrumentTime::default(),
             wind: world::Wind::new(Weather::default())?,
             failures: Failures::default(),
             systems: systems::SystemsState::default(),
@@ -683,8 +699,27 @@ impl Sim {
         &self.world
     }
 
-    /// Replace weather atomically and restart the gust process at its supplied seed.
-    /// In-flight changes preserve ground velocity; only an air start adds mean wind.
+    /// Read-only visual conditions; independent of forces and seeded wind.
+    pub fn conditions(&self) -> &world::Conditions {
+        &self.conditions
+    }
+    /// Validate before atomically replacing visual conditions.
+    pub fn set_conditions(&mut self, conditions: world::Conditions) -> Result<(), SimError> {
+        conditions.validate()?;
+        self.conditions = conditions;
+        Ok(())
+    }
+    pub fn hood(&self) -> bool {
+        self.hood
+    }
+    pub fn set_hood(&mut self, enabled: bool) {
+        self.hood = enabled;
+    }
+    pub fn instrument_time(&self) -> InstrumentTime {
+        self.instrument_time
+    }
+
+    /// Replace wind atomically and restart gusts without changing ground velocity.
     pub fn set_weather(&mut self, weather: Weather) -> Result<(), SimError> {
         self.wind = world::Wind::new(weather)?;
         Ok(())
@@ -1064,6 +1099,12 @@ impl Sim {
                 self.crashed = true;
                 break;
             }
+            if self.hood {
+                self.instrument_time.hood_s += DT_S;
+            }
+            if self.conditions.imc(self.state.position_m) {
+                self.instrument_time.imc_s += DT_S;
+            }
             self.steps = self.steps.saturating_add(1);
             next.time_s = self.steps as f64 * DT_S;
             self.crashed = dynamics::crash(&self.aircraft, &next, &self.world)
@@ -1250,6 +1291,18 @@ impl Sim {
             .chain(&s.angular_rate_rps)
         {
             eat(v.to_bits());
+        }
+        if self.conditions != world::Conditions::default()
+            || self.hood
+            || self.instrument_time != InstrumentTime::default()
+        {
+            eat(0x636c_6f75_6473_0001);
+            for word in self.conditions.hash_words() {
+                eat(word);
+            }
+            eat(u64::from(self.hood));
+            eat(self.instrument_time.hood_s.to_bits());
+            eat(self.instrument_time.imc_s.to_bits());
         }
         // Preserve the original hash stream for the default calm, healthy scenario.
         let weather = self.weather();

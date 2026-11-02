@@ -17,6 +17,7 @@ pub mod panel_preview;
 mod procedures;
 pub mod script;
 pub mod theme;
+mod weather;
 
 use eframe::egui::{self, Align2, FontId, RichText};
 use flightcraft_control::Session;
@@ -534,6 +535,12 @@ impl eframe::App for FlightCraftApp {
         {
             self.error = Some(e.to_string());
         }
+        if frame.pressed(Action::Hood) {
+            let enabled = !self.session.sim().hood();
+            if let Err(e) = self.session.run(flightcraft_control::SetHood { enabled }) {
+                self.error = Some(e.to_string());
+            }
+        }
         if frame.pressed(Action::Airspace) {
             let visible = !self.session.airspace_visible();
             if let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
@@ -702,6 +709,9 @@ impl eframe::App for FlightCraftApp {
                     ui.label(RichText::new("FlightCraft").size(23.0).strong());
                     if ui.button(format!("Map [{}]", self.keymap.label(Action::PlanningMap))).clicked() { self.planning_map.open = !self.planning_map.open; }
                     self.navigation.show(ui, &mut self.session);
+                    ui.menu_button("Weather", |ui| {
+                        if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) { self.error = Some(e.to_string()); }
+                    });
                     for setting in self.procedure_controls.show(ui,&self.session){
                         if let Err(error)=self.session.run(flightcraft_control::SetAvionics{setting}){self.error=Some(error.to_string());}
                     }
@@ -1100,6 +1110,8 @@ impl eframe::App for FlightCraftApp {
                         .set_cockpit_look(camera.look_yaw_rad as f32, camera.look_pitch_rad as f32);
                 }
                 self.scene.set_world(self.session.sim().world());
+                self.scene
+                    .set_weather(self.session.sim().conditions(), self.session.sim().hood());
                 self.scene.airspace_visible = self.session.airspace_visible();
                 self.scene.set_propeller_power(
                     (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
@@ -1122,6 +1134,19 @@ impl eframe::App for FlightCraftApp {
                 );
                 ctx.set_sublayer(layer, egui::LayerId::background());
                 let rect = ui.max_rect().shrink(24.0);
+                let conditions = ui.painter().layout(
+                    weather::note(&self.session),
+                    FontId::monospace(12.),
+                    theme::TEXT,
+                    ui.max_rect().width() * 0.7,
+                );
+                let origin = ui.max_rect().center_top() + egui::vec2(-conditions.size().x * 0.5, 12.);
+                ui.painter().rect_filled(
+                    egui::Rect::from_min_size(origin, conditions.size()).expand(5.),
+                    3.,
+                    theme::PANEL,
+                );
+                ui.painter().galley(origin, conditions, theme::TEXT);
                 let painter = ui.painter();
                 painter.text(
                     rect.left_top(),
@@ -1317,3 +1342,7 @@ fn runway_label(world: &flightcraft_control::TerrainWorld, [n, e, _]: [f64; 3]) 
 mod layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod panel_fidelity_tests;
+#[cfg(test)]
+mod test_capture;
+#[cfg(test)]
+mod weather_preview;

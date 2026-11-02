@@ -135,7 +135,9 @@ bundled with the page; no tile server we run is required. The simulation reads g
 `world` only, so terrain changes nothing in `sim`.
 
 Weather, in order: constant wind, gusts and turbulence (a Dryden-style model from its published
-spectra), then cloud layers and visibility for the renderer.
+spectra). Deterministic visual weather, cloud boundaries, distance fog, runway lights, and the
+cockpit hood are implemented; see [weather](weather.md) for units, commands, practice totals,
+and limitations. Synthetic vision ignores visual weather.
 
 ## 8. Aircraft format
 

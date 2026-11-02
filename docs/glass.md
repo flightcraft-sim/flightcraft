@@ -61,6 +61,9 @@ legacy procedural map artwork for consumers that do not host the interactive wid
 
 ### Synthetic vision
 
+Synthetic vision ignores [visual weather](weather.md), cloud, visibility, and night. The cockpit
+hood masks the outside view while leaving this instrument image visible.
+
 The **SVT** control enables pilot-eye terrain behind the PFD's pitch ladder, tapes, and flight
 director. It is off by default. Every touch display has its own SVT soft key; changing one display
 leaves the other displays' selections alone. AHRS or ADC invalidity inhibits synthetic vision,

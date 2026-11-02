@@ -11,6 +11,8 @@ pub use region::*;
 pub mod srtm;
 mod terrain;
 pub use terrain::*;
+mod conditions;
+pub use conditions::*;
 mod weather;
 pub use weather::*;
 

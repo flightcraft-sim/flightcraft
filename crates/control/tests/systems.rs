@@ -196,10 +196,12 @@ fn hostile_systems_inputs_are_atomic_errors() {
     for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
         assert!(
             s.run(SetWeather {
-                weather: Weather {
-                    wind_speed_mps: value,
-                    ..Weather::default()
-                }
+                wind_speed_mps: Some(value),
+                wind_from_deg: Some(0.),
+                shear: Some(false),
+                turbulence: Some(flightcraft_world::TurbulenceLevel::Off),
+                seed: Some(0),
+                ..Default::default()
             })
             .is_err()
         );

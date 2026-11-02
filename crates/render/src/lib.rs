@@ -4,6 +4,7 @@ mod camera;
 mod gpu;
 mod mesh;
 mod vision;
+mod weather;
 pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_vision_stats};
 pub use vision::{PFD_FOCAL_LENGTH, SyntheticVision, pfd_pitch_y};
 
@@ -36,6 +37,9 @@ pub struct Palette {
     pub grid: [f32; 4],
     pub runway: [f32; 4],
     pub marking: [f32; 4],
+    pub light_red: [f32; 4],
+    pub light_green: [f32; 4],
+    pub light_amber: [f32; 4],
     pub aircraft: [f32; 4],
     pub accent: [f32; 4],
     pub glass: [f32; 4],
@@ -57,6 +61,8 @@ pub enum CameraMode {
 pub struct Scene {
     world: flightcraft_world::World,
     pub airspace_visible: bool,
+    /// Read-only presentation switch for comparative lighting captures.
+    pub lights_visible: bool,
     eye: Option<Vec3>,
     target: Option<Vec3>,
     pub camera: CameraMode,
@@ -66,6 +72,8 @@ pub struct Scene {
     look: Vec2,
     propeller_power: f32,
     larrow: bool,
+    conditions: flightcraft_world::Conditions,
+    hood: bool,
 }
 
 impl Default for Scene {
@@ -73,6 +81,7 @@ impl Default for Scene {
         Self {
             world: flightcraft_world::World::default(),
             airspace_visible: true,
+            lights_visible: true,
             eye: None,
             target: None,
             camera: CameraMode::Chase,
@@ -82,6 +91,8 @@ impl Default for Scene {
             look: Vec2::ZERO,
             propeller_power: 0.0,
             larrow: false,
+            conditions: Default::default(),
+            hood: false,
         }
     }
 }
@@ -91,6 +102,13 @@ fn drawing(v: Vec3) -> Vec3 {
 }
 
 impl Scene {
+    pub fn set_weather(&mut self, conditions: &flightcraft_world::Conditions, hood: bool) {
+        if conditions.validate().is_ok() {
+            self.conditions = conditions.clone();
+        }
+        self.hood = hood;
+    }
+
     /// Select the built-in display mesh by the active definition's identity.
     /// Unknown identities use the default trainer outline.
     pub fn set_aircraft(&mut self, id: &str) {
@@ -198,7 +216,12 @@ impl Scene {
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
         let projection = Mat4::perspective_rh(camera::VERTICAL_FOV_RAD, aspect, 0.05, 16000.0);
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
-        let uniform = gpu::Uniform {
+        let mut uniform = gpu::Uniform {
+            atmosphere: [0.; 4],
+            fog_color: [0.; 4],
+            clouds: [[0.; 4]; 3],
+            light_red: palette.light_red,
+            viewport: [rect.width().max(1.), rect.height().max(1.), 0., 0.],
             vision: [0.; 4],
             caution: palette.terrain_caution,
             warning: palette.terrain_warning,
@@ -216,11 +239,17 @@ impl Scene {
             grid: palette.grid,
             eye: Vec4::new(eye.x, eye.y, eye.z, self.propeller_power).to_array(),
         };
+        weather::apply(&mut uniform, &self.conditions, palette);
+        if self.hood && self.camera == CameraMode::Cockpit {
+            uniform.atmosphere[3] = 1.;
+            uniform.fog_color = palette.glare_shield;
+        }
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
             gpu::SceneCallback {
                 uniform,
                 show_airspace: self.airspace_visible,
+                show_lights: self.lights_visible,
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera == CameraMode::Chase,

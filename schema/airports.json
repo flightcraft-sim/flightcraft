@@ -98,6 +98,16 @@
         "ends"
       ]
     },
+    "ApproachLights": {
+      "description": "Published fixture metadata when supplied by the airport source. None means unknown.",
+      "type": "string",
+      "enum": [
+        "none",
+        "alsf2",
+        "malsr",
+        "odals"
+      ]
+    },
     "RunwayEnd": {
       "type": "object",
       "properties": {
@@ -116,6 +126,16 @@
           "type": "number",
           "format": "double"
         },
+        "lighting": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunwayLighting"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "longitude_deg": {
           "type": "number",
           "format": "double"
@@ -130,6 +150,32 @@
         "heading_deg"
       ]
     },
+    "RunwayLighting": {
+      "type": "object",
+      "properties": {
+        "approach": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApproachLights"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "visual_guidance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VisualGuidance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "RunwaySurface": {
       "type": "string",
       "enum": [
@@ -139,6 +185,13 @@
         "gravel",
         "water",
         "other"
+      ]
+    },
+    "VisualGuidance": {
+      "type": "string",
+      "enum": [
+        "papi",
+        "vasi"
       ]
     }
   }

@@ -17,6 +17,9 @@ looked up on `PATH`; set `WASM_BINDGEN` to use a specific executable. If using a
 the entire `cargo xtask web` command through that queue so its nested build shares the same slot
 and target directory.
 
+For an unoptimized local measurement build, use `cargo xtask web --debug`. Its output also
+goes to `dist/`; record the build profile alongside any timing results.
+
 Upload the contents of `dist/` to any static HTTP(S) host. Relative asset URLs also work under a
 subdirectory, with no route rewrites, backend, or cross-origin isolation headers. Serve `.wasm`
 as `application/wasm`. The simulator runs locally after the page loads. Opening `index.html`

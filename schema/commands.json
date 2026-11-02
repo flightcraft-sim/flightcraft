@@ -6826,6 +6826,67 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -6869,6 +6930,15 @@
             "brake"
           ],
           "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
         },
         "ElectricalState": {
           "properties": {
@@ -7187,6 +7257,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -7421,6 +7509,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -7450,6 +7547,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -8201,6 +8306,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -8278,6 +8392,12 @@
             "null"
           ]
         },
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "hood": {
+          "type": "boolean"
+        },
         "latitude_deg": {
           "format": "double",
           "type": [
@@ -8302,6 +8422,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
+        },
         "simulation_date": {
           "$ref": "#/$defs/SimulationDate"
         },
@@ -8322,7 +8445,10 @@
         "paused",
         "rate",
         "world",
-        "simulation_date"
+        "simulation_date",
+        "conditions",
+        "hood",
+        "simulated_instrument_time"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -10587,6 +10713,67 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -10630,6 +10817,15 @@
             "brake"
           ],
           "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
         },
         "ElectricalState": {
           "properties": {
@@ -10948,6 +11144,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -11182,6 +11396,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -11211,6 +11434,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -11962,6 +12193,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -12039,6 +12279,12 @@
             "null"
           ]
         },
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "hood": {
+          "type": "boolean"
+        },
         "latitude_deg": {
           "format": "double",
           "type": [
@@ -12063,6 +12309,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
+        },
         "simulation_date": {
           "$ref": "#/$defs/SimulationDate"
         },
@@ -12083,7 +12332,10 @@
         "paused",
         "rate",
         "world",
-        "simulation_date"
+        "simulation_date",
+        "conditions",
+        "hood",
+        "simulated_instrument_time"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -12091,9 +12343,70 @@
   },
   {
     "name": "weather.set",
-    "description": "Replace wind (from magnetic degrees, m/s at 10 m), shear, turbulence, and seed; restart gusts.",
+    "description": "Set cloud layers (MSL ft), visibility (SM), obscuration, precipitation, time of day, or preset; optional complete magnetic wind group.",
     "input_schema": {
       "$defs": {
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -12103,12 +12416,38 @@
             "severe"
           ],
           "type": "string"
+        },
+        "WeatherPreset": {
+          "enum": [
+            "vfr",
+            "mvfr",
+            "ifr",
+            "lifr",
+            "night"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Full weather replacement; restarts the gust filter at this seed without changing velocity.",
+      "description": "Visual weather patches retain wind; a supplied wind group must be complete.",
       "properties": {
+        "layers": {
+          "items": {
+            "$ref": "#/$defs/CloudLayer"
+          },
+          "maxItems": 3,
+          "type": "array"
+        },
+        "obscuration": {
+          "$ref": "#/$defs/Obscuration"
+        },
+        "precipitation": {
+          "$ref": "#/$defs/Precipitation"
+        },
+        "preset": {
+          "$ref": "#/$defs/WeatherPreset"
+        },
         "seed": {
           "format": "uint64",
           "minimum": 0,
@@ -12117,8 +12456,17 @@
         "shear": {
           "type": "boolean"
         },
+        "time_of_day": {
+          "$ref": "#/$defs/TimeOfDay"
+        },
         "turbulence": {
           "$ref": "#/$defs/TurbulenceLevel"
+        },
+        "visibility_sm": {
+          "format": "double",
+          "maximum": 100,
+          "minimum": 0.125,
+          "type": "number"
         },
         "wind_from_deg": {
           "format": "double",
@@ -12133,13 +12481,6 @@
           "type": "number"
         }
       },
-      "required": [
-        "wind_from_deg",
-        "wind_speed_mps",
-        "shear",
-        "turbulence",
-        "seed"
-      ],
       "title": "SetWeather",
       "type": "object"
     },
@@ -12228,6 +12569,76 @@
           "enum": [
             "ems",
             "efis"
+          ],
+          "type": "string"
+        },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
           ],
           "type": "string"
         },
@@ -12548,6 +12959,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -12782,6 +13211,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -12811,6 +13249,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -13226,6 +13672,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -13283,8 +13738,17 @@
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
         "failures": {
           "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
         },
         "systems": {
           "$ref": "#/$defs/SystemsState"
@@ -13295,6 +13759,2605 @@
       },
       "required": [
         "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
+        "failures",
+        "systems"
+      ],
+      "title": "Systems",
+      "type": "object"
+    }
+  },
+  {
+    "name": "weather.state",
+    "description": "Read visual weather, wind, turbulence, hood, and simulated instrument practice totals.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetWeather",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
+          ],
+          "type": "object"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid",
+            "turn_rate_rps",
+            "turn_coordinator_rate_rps",
+            "lateral_acceleration_g"
+          ],
+          "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "alternator",
+            "heading_bug_rad",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "avionics",
+            "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "gyro_heading_reference_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
+            }
+          },
+          "required": [
+            "id",
+            "wing",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
+          ],
+          "type": "object"
+        },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
+        },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
+        "failures",
+        "systems"
+      ],
+      "title": "Systems",
+      "type": "object"
+    }
+  },
+  {
+    "name": "view.hood",
+    "description": "Enable or remove the cockpit view-limiting hood; available to offline scenarios.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "SetHood",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Annunciation": {
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "label": {
+              "type": "string"
+            },
+            "severity": {
+              "$ref": "#/$defs/Severity"
+            },
+            "source": {
+              "$ref": "#/$defs/AnnunciationSource"
+            }
+          },
+          "required": [
+            "source",
+            "severity",
+            "label",
+            "active"
+          ],
+          "type": "object"
+        },
+        "AnnunciationSource": {
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ],
+          "type": "string"
+        },
+        "AvionicsState": {
+          "properties": {
+            "electronic_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "electronic_hsi": {
+              "$ref": "#/$defs/ElectronicHsi"
+            },
+            "installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "installed",
+            "electronic_attitude",
+            "electronic_hsi"
+          ],
+          "type": "object"
+        },
+        "BackupBusState": {
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "circuit",
+            "on",
+            "remaining_ah",
+            "voltage"
+          ],
+          "type": "object"
+        },
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "ElectricalState": {
+          "properties": {
+            "alternator_current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_capacity_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_current_a": {
+              "description": "Positive discharges the battery; negative charges it.",
+              "format": "double",
+              "type": "number"
+            },
+            "battery_soc": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "essential_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            },
+            "loads": {
+              "items": {
+                "$ref": "#/$defs/LoadState"
+              },
+              "type": "array"
+            },
+            "main_bus_voltage": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "battery_capacity_ah",
+            "battery_soc",
+            "battery_voltage",
+            "battery_current_a",
+            "alternator_current_a",
+            "main_bus_voltage",
+            "essential_bus_voltage",
+            "loads"
+          ],
+          "type": "object"
+        },
+        "ElectronicAttitude": {
+          "properties": {
+            "air_data_valid": {
+              "type": "boolean"
+            },
+            "airspeed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "airspeed_trend_kt": {
+              "description": "Six-second prediction, in knots relative to the current tape value.",
+              "format": "double",
+              "type": "number"
+            },
+            "aligning": {
+              "type": "boolean"
+            },
+            "alignment_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "altitude_trend_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "baro_inhg": {
+              "format": "double",
+              "type": "number"
+            },
+            "heading_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "power": {
+              "$ref": "#/$defs/Power"
+            },
+            "roll_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "selected_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "slip_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_deg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_fpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "power",
+            "aligning",
+            "alignment_remaining_s",
+            "attitude_valid",
+            "air_data_valid",
+            "roll_deg",
+            "pitch_deg",
+            "heading_deg",
+            "airspeed_kt",
+            "airspeed_trend_kt",
+            "altitude_ft",
+            "altitude_trend_ft",
+            "vertical_speed_fpm",
+            "selected_altitude_ft",
+            "baro_inhg",
+            "slip_g",
+            "turn_rate_deg_s"
+          ],
+          "type": "object"
+        },
+        "ElectronicHsi": {
+          "properties": {
+            "bearing_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cdi": {
+              "description": "Positive right of course, clamped at the displayed full-scale stops.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "destination": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "full_scale_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "gps_fix": {
+              "type": "boolean"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "heading_bug_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_deviation_nm": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "manual_reversion": {
+              "type": "boolean"
+            },
+            "reversion": {
+              "type": "boolean"
+            },
+            "reversion_attitude": {
+              "$ref": "#/$defs/ElectronicAttitude"
+            },
+            "track_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "wind_speed_kt": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "reversion_attitude",
+            "heading_bug_deg",
+            "course_deg",
+            "gps_fix",
+            "full_scale_nm",
+            "reversion",
+            "manual_reversion"
+          ],
+          "type": "object"
+        },
+        "Failures": {
+          "additionalProperties": false,
+          "description": "Actual deflections override pilot/autopilot demands until cleared. Zero power\nmeans a failed engine, including removal of idle shaft power.",
+          "properties": {
+            "aileron": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "alternator": {
+              "default": false,
+              "type": "boolean"
+            },
+            "elevator": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "flaps": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "pitot_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "rudder": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "static_blocked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "vacuum_pump": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "engine_power_fraction"
+          ],
+          "type": "object"
+        },
+        "FuelSelector": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
+        "KeyPosition": {
+          "enum": [
+            "off",
+            "on",
+            "start"
+          ],
+          "type": "string"
+        },
+        "LaneState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "light": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running",
+            "light"
+          ],
+          "type": "object"
+        },
+        "LoadState": {
+          "properties": {
+            "backup_remaining_ah": {
+              "format": "double",
+              "type": "number"
+            },
+            "breaker_closed": {
+              "type": "boolean"
+            },
+            "current_a": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "multiplier": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_backup": {
+              "type": "boolean"
+            },
+            "overload_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "tripped": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "breaker_closed",
+            "tripped",
+            "overload_s",
+            "multiplier",
+            "current_a",
+            "powered",
+            "on_backup",
+            "backup_remaining_ah"
+          ],
+          "type": "object"
+        },
+        "LoadSwitch": {
+          "enum": [
+            "beacon",
+            "nav",
+            "strobe",
+            "taxi",
+            "landing",
+            "avionics",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "always"
+          ],
+          "type": "string"
+        },
+        "Magnetos": {
+          "enum": [
+            "off",
+            "left",
+            "right",
+            "both"
+          ],
+          "type": "string"
+        },
+        "ModernState": {
+          "properties": {
+            "annunciations": {
+              "items": {
+                "$ref": "#/$defs/Annunciation"
+              },
+              "type": "array"
+            },
+            "backup_buses": {
+              "items": {
+                "$ref": "#/$defs/BackupBusState"
+              },
+              "type": "array"
+            },
+            "coolant_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "door_open": {
+              "type": "boolean"
+            },
+            "electronic": {
+              "type": "boolean"
+            },
+            "engine_control_warning": {
+              "type": "boolean"
+            },
+            "fuel_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "key": {
+              "$ref": "#/$defs/KeyPosition"
+            },
+            "lane_a": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "lane_b": {
+              "$ref": "#/$defs/LaneState"
+            },
+            "light_switches": {
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/$defs/LoadSwitch"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "manifold_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "master_caution": {
+              "type": "boolean"
+            },
+            "master_warning": {
+              "type": "boolean"
+            },
+            "panel_controls": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "panel_guards": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            },
+            "propeller_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump_1": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "pump_2": {
+              "$ref": "#/$defs/PumpState"
+            },
+            "recovery": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RecoveryState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wigwag": {
+              "type": "boolean"
+            },
+            "wigwag_elapsed_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "backup_buses",
+            "wigwag",
+            "wigwag_elapsed_s",
+            "panel_controls",
+            "panel_guards",
+            "light_switches",
+            "electronic",
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2",
+            "key",
+            "propeller_rpm",
+            "fuel_pressure_pa",
+            "coolant_temperature_c",
+            "manifold_pressure_pa",
+            "engine_control_warning",
+            "door_open",
+            "master_caution",
+            "master_warning",
+            "annunciations"
+          ],
+          "type": "object"
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "Power": {
+          "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
+          "properties": {
+            "battery_endurance_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "battery_remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "on_battery": {
+              "type": "boolean"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "switch_on": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "switch_on",
+            "powered",
+            "on_battery",
+            "battery_remaining_s",
+            "battery_endurance_s"
+          ],
+          "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "PumpState": {
+          "properties": {
+            "failed": {
+              "type": "boolean"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "on",
+            "failed",
+            "running"
+          ],
+          "type": "object"
+        },
+        "RecoveryPhase": {
+          "enum": [
+            "stowed",
+            "deploying",
+            "inflating",
+            "descending",
+            "impact"
+          ],
+          "type": "string"
+        },
+        "RecoveryState": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "handle_held": {
+              "type": "boolean"
+            },
+            "hold_progress": {
+              "format": "double",
+              "type": "number"
+            },
+            "impact_vertical_speed_mps": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "inflation": {
+              "format": "double",
+              "type": "number"
+            },
+            "phase": {
+              "$ref": "#/$defs/RecoveryPhase"
+            },
+            "pin_inserted": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "pin_inserted",
+            "handle_held",
+            "hold_progress",
+            "phase",
+            "elapsed_s",
+            "inflation"
+          ],
+          "type": "object"
+        },
+        "SensedInstruments": {
+          "properties": {
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "attitude_valid": {
+              "type": "boolean"
+            },
+            "heading_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "indicated_airspeed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "lateral_acceleration_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitch_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "roll_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "turn_coordinator_rate_rps": {
+              "description": "Canted electric gyro: yaw rate plus roll-rate sensitivity for a rate autopilot.",
+              "format": "double",
+              "type": "number"
+            },
+            "turn_rate_rps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "indicated_airspeed_mps",
+            "altitude_msl_m",
+            "vertical_speed_mps",
+            "roll_rad",
+            "pitch_rad",
+            "heading_rad",
+            "attitude_valid",
+            "turn_rate_rps",
+            "turn_coordinator_rate_rps",
+            "lateral_acceleration_g"
+          ],
+          "type": "object"
+        },
+        "Severity": {
+          "enum": [
+            "caution",
+            "warning"
+          ],
+          "type": "string"
+        },
+        "SystemControls": {
+          "properties": {
+            "alternate_static": {
+              "type": "boolean"
+            },
+            "alternator": {
+              "type": "boolean"
+            },
+            "altimeter_setting_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "avionics": {
+              "type": "boolean"
+            },
+            "carb_heat": {
+              "type": "boolean"
+            },
+            "fuel_pump": {
+              "type": "boolean"
+            },
+            "fuel_selector": {
+              "$ref": "#/$defs/FuelSelector"
+            },
+            "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "lights": {
+              "type": "boolean"
+            },
+            "magnetos": {
+              "$ref": "#/$defs/Magnetos"
+            },
+            "master": {
+              "type": "boolean"
+            },
+            "mixture": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat": {
+              "type": "boolean"
+            },
+            "relative_humidity": {
+              "format": "double",
+              "type": "number"
+            },
+            "starter": {
+              "type": "boolean"
+            },
+            "temperature_c": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "master",
+            "avionics",
+            "alternator",
+            "heading_bug_rad",
+            "lights",
+            "fuel_pump",
+            "pitot_heat",
+            "alternate_static",
+            "carb_heat",
+            "starter",
+            "magnetos",
+            "mixture",
+            "fuel_selector",
+            "altimeter_setting_pa",
+            "temperature_c",
+            "relative_humidity"
+          ],
+          "type": "object"
+        },
+        "SystemsState": {
+          "properties": {
+            "avionics": {
+              "$ref": "#/$defs/AvionicsState"
+            },
+            "carb_heat_installed": {
+              "type": "boolean"
+            },
+            "carb_ice": {
+              "format": "double",
+              "type": "number"
+            },
+            "cht_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "controls": {
+              "$ref": "#/$defs/SystemControls"
+            },
+            "cranking_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "egt_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "electrical": {
+              "$ref": "#/$defs/ElectricalState"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "engine_power_fraction": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "engine_running": {
+              "type": "boolean"
+            },
+            "failures": {
+              "$ref": "#/$defs/Failures"
+            },
+            "fuel_flow_kg_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "fuel_starved": {
+              "type": "boolean"
+            },
+            "gyro_error_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "gyro_heading_reference_rad": {
+              "description": "Free heading gyro is aligned to the compass at reset, then retains this reference.",
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_spin": {
+              "format": "double",
+              "type": "number"
+            },
+            "gyro_truth_rad": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "modern": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModernState"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "oil_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "oil_temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "pitot_heat_powered": {
+              "type": "boolean"
+            },
+            "pitot_total_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "primer_charge": {
+              "format": "double",
+              "type": "number"
+            },
+            "sensed": {
+              "$ref": "#/$defs/SensedInstruments"
+            },
+            "static_pressure_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "suction_pa": {
+              "format": "double",
+              "type": "number"
+            },
+            "tanks": {
+              "items": {
+                "$ref": "#/$defs/TankState"
+              },
+              "type": "array"
+            },
+            "vacuum_installed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "avionics",
+            "enabled",
+            "vacuum_installed",
+            "carb_heat_installed",
+            "controls",
+            "failures",
+            "electrical",
+            "tanks",
+            "suction_pa",
+            "gyro_spin",
+            "gyro_error_rad",
+            "gyro_truth_rad",
+            "gyro_heading_reference_rad",
+            "pitot_total_pressure_pa",
+            "static_pressure_pa",
+            "pressure_altitude_m",
+            "pitot_heat_powered",
+            "engine_running",
+            "engine_rpm",
+            "engine_power_fraction",
+            "fuel_flow_kg_s",
+            "fuel_starved",
+            "carb_ice",
+            "egt_c",
+            "cht_c",
+            "oil_temperature_c",
+            "oil_pressure_pa",
+            "primer_charge",
+            "cranking_s",
+            "sensed"
+          ],
+          "type": "object"
+        },
+        "TankState": {
+          "properties": {
+            "capacity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "indicated_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "quantity_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "unusable_kg": {
+              "format": "double",
+              "type": "number"
+            },
+            "wing": {
+              "$ref": "#/$defs/Wing"
+            }
+          },
+          "required": [
+            "id",
+            "wing",
+            "capacity_kg",
+            "unusable_kg",
+            "quantity_kg",
+            "indicated_kg"
+          ],
+          "type": "object"
+        },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
+        "TurbulenceLevel": {
+          "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+          "enum": [
+            "off",
+            "light",
+            "moderate",
+            "severe"
+          ],
+          "type": "string"
+        },
+        "Weather": {
+          "additionalProperties": false,
+          "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+          "properties": {
+            "seed": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "shear": {
+              "type": "boolean"
+            },
+            "turbulence": {
+              "$ref": "#/$defs/TurbulenceLevel"
+            },
+            "wind_from_deg": {
+              "format": "double",
+              "maximum": 360,
+              "minimum": 0,
+              "type": "number"
+            },
+            "wind_speed_mps": {
+              "format": "double",
+              "maximum": 75,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "wind_from_deg",
+            "wind_speed_mps",
+            "shear",
+            "turbulence",
+            "seed"
+          ],
+          "type": "object"
+        },
+        "Wing": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "failures": {
+          "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
+        },
+        "systems": {
+          "$ref": "#/$defs/SystemsState"
+        },
+        "weather": {
+          "$ref": "#/$defs/Weather"
+        }
+      },
+      "required": [
+        "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
         "failures",
         "systems"
       ],
@@ -14025,6 +17088,76 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -14342,6 +17475,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -14576,6 +17727,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -14605,6 +17765,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -15020,6 +18188,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -15077,8 +18254,17 @@
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
         "failures": {
           "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
         },
         "systems": {
           "$ref": "#/$defs/SystemsState"
@@ -15089,6 +18275,9 @@
       },
       "required": [
         "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
         "failures",
         "systems"
       ],
@@ -21022,6 +24211,76 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -21339,6 +24598,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -21573,6 +24850,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -21602,6 +24888,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -22017,6 +25311,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -22074,8 +25377,17 @@
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
         "failures": {
           "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
         },
         "systems": {
           "$ref": "#/$defs/SystemsState"
@@ -22086,6 +25398,9 @@
       },
       "required": [
         "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
         "failures",
         "systems"
       ],
@@ -22212,6 +25527,76 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
         "ElectricalState": {
           "properties": {
             "alternator_current_a": {
@@ -22529,6 +25914,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -22763,6 +26166,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -22792,6 +26204,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -23207,6 +26627,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -23264,8 +26693,17 @@
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
         "failures": {
           "$ref": "#/$defs/Failures"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
         },
         "systems": {
           "$ref": "#/$defs/SystemsState"
@@ -23276,6 +26714,9 @@
       },
       "required": [
         "weather",
+        "conditions",
+        "hood",
+        "simulated_instrument_time",
         "failures",
         "systems"
       ],
@@ -24205,6 +27646,67 @@
           ],
           "type": "string"
         },
+        "CloudLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            },
+            "top_ft_msl": {
+              "format": "double",
+              "maximum": 60000,
+              "minimum": -1500,
+              "type": "number"
+            }
+          },
+          "required": [
+            "base_ft_msl",
+            "top_ft_msl",
+            "coverage"
+          ],
+          "type": "object"
+        },
+        "Conditions": {
+          "additionalProperties": false,
+          "properties": {
+            "layers": {
+              "items": {
+                "$ref": "#/$defs/CloudLayer"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation"
+            },
+            "time_of_day": {
+              "$ref": "#/$defs/TimeOfDay"
+            },
+            "visibility_sm": {
+              "format": "double",
+              "maximum": 100,
+              "minimum": 0.125,
+              "type": "number"
+            }
+          },
+          "required": [
+            "layers",
+            "visibility_sm",
+            "obscuration",
+            "precipitation",
+            "time_of_day"
+          ],
+          "type": "object"
+        },
         "Controls": {
           "description": "Pilot controls. Each value is clamped to its range when set.",
           "properties": {
@@ -24248,6 +27750,15 @@
             "brake"
           ],
           "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
         },
         "ElectricalState": {
           "properties": {
@@ -24566,6 +28077,24 @@
           ],
           "type": "string"
         },
+        "InstrumentTime": {
+          "description": "Fixed-step flight record totals. These are simulated practice, never FAA logbook credit.",
+          "properties": {
+            "hood_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "imc_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "hood_s",
+            "imc_s"
+          ],
+          "type": "object"
+        },
         "KeyPosition": {
           "enum": [
             "off",
@@ -24800,6 +28329,15 @@
           ],
           "type": "object"
         },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -24829,6 +28367,14 @@
             "battery_endurance_s"
           ],
           "type": "object"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
         },
         "PumpState": {
           "properties": {
@@ -25580,6 +29126,15 @@
           ],
           "type": "object"
         },
+        "TimeOfDay": {
+          "enum": [
+            "day",
+            "dusk",
+            "night",
+            "dawn"
+          ],
+          "type": "string"
+        },
         "TurbulenceLevel": {
           "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
           "enum": [
@@ -25657,6 +29212,12 @@
             "null"
           ]
         },
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "hood": {
+          "type": "boolean"
+        },
         "latitude_deg": {
           "format": "double",
           "type": [
@@ -25681,6 +29242,9 @@
         "readout": {
           "$ref": "#/$defs/Readout"
         },
+        "simulated_instrument_time": {
+          "$ref": "#/$defs/InstrumentTime"
+        },
         "simulation_date": {
           "$ref": "#/$defs/SimulationDate"
         },
@@ -25701,7 +29265,10 @@
         "paused",
         "rate",
         "world",
-        "simulation_date"
+        "simulation_date",
+        "conditions",
+        "hood",
+        "simulated_instrument_time"
       ],
       "title": "StateOutput",
       "type": "object"
@@ -25813,6 +29380,16 @@
           ],
           "type": "object"
         },
+        "ApproachLights": {
+          "description": "Published fixture metadata when supplied by the airport source. None means unknown.",
+          "enum": [
+            "none",
+            "alsf2",
+            "malsr",
+            "odals"
+          ],
+          "type": "string"
+        },
         "RunwayEnd": {
           "additionalProperties": false,
           "properties": {
@@ -25831,6 +29408,16 @@
               "format": "double",
               "type": "number"
             },
+            "lighting": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RunwayLighting"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "longitude_deg": {
               "format": "double",
               "type": "number"
@@ -25845,6 +29432,32 @@
           ],
           "type": "object"
         },
+        "RunwayLighting": {
+          "additionalProperties": false,
+          "properties": {
+            "approach": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ApproachLights"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visual_guidance": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VisualGuidance"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
         "RunwaySurface": {
           "enum": [
             "asphalt",
@@ -25853,6 +29466,13 @@
             "gravel",
             "water",
             "other"
+          ],
+          "type": "string"
+        },
+        "VisualGuidance": {
+          "enum": [
+            "papi",
+            "vasi"
           ],
           "type": "string"
         }

@@ -1,6 +1,7 @@
 # Training: radio, emergencies, and instrument flying
 
-Status: specification, not yet implemented.
+Status: phase-one weather, IMC visuals, and the hood are implemented; see [weather](weather.md).
+The remaining radio, scenario, emergency, and grading features below are specifications.
 
 FlightCraft is built to do what flight students actually need between lessons. In priority order:
 
@@ -140,6 +141,9 @@ before the flight. The app runs it locally, so nothing waits on a model during t
 
 ## 6. Instrument flying
 
+Phase-one controls, presets, simulated practice totals, lighting fallbacks, and previews are
+documented in [weather and simulated instrument practice](weather.md).
+
 ### View-limiting device ("foggles")
 
 - A view-limiting overlay that hides the outside view above the instrument panel while keeping the
@@ -178,7 +182,7 @@ Each command has input and output schemas from the start.
 
 ## 8. Phases
 
-1. **Weather and IMC visuals, plus the hood:** cloud layers, fog, visibility, breaking out at the
+1. **Weather and IMC visuals, plus the hood (implemented; [details and limitations](weather.md)):** cloud layers, fog, visibility, breaking out at the
    ceiling, runway and approach lights, and `weather.set` and `view.hood`.
 2. **Radios and untowered airports:** the audio panel, reception and line of sight, NAV Morse
    identifiers, CTAF calls with simulated pattern traffic, the recorded events, text input, and

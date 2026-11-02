@@ -150,3 +150,30 @@ mod larrow_tests {
         assert!(!script.active());
     }
 }
+
+#[cfg(test)]
+mod weather_tests {
+    use super::*;
+    #[test]
+    fn timed_scenario_changes_conditions_and_removes_the_hood() {
+        let mut session = Session::new().unwrap();
+        session.enable_app();
+        let mut script = Script::parse(
+            r#"{"at_s":0,"command":"weather.set","input":{"preset":"ifr"}}
+{"at_s":0,"command":"view.hood","input":{"enabled":true}}
+{"at_s":30,"command":"view.hood","input":{"enabled":false}}"#,
+        )
+        .unwrap();
+        script.run_due(&mut session, 0.).unwrap();
+        assert!(session.sim().hood());
+        assert_eq!(
+            session.camera().unwrap().mode,
+            flightcraft_control::CameraMode::Cockpit
+        );
+        assert_eq!(session.sim().conditions().visibility_sm, 2.);
+        script.run_due(&mut session, 29.).unwrap();
+        assert!(session.sim().hood());
+        script.run_due(&mut session, 30.).unwrap();
+        assert!(!session.sim().hood());
+    }
+}

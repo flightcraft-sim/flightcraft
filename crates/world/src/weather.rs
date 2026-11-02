@@ -49,6 +49,10 @@ pub struct Weather {
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum WeatherError {
+    #[error(
+        "weather requires at most three layers with finite base below top (-1500..60000 ft MSL) and visibility 0.125..100 SM"
+    )]
+    Conditions,
     #[error("weather requires finite wind_from_deg in 0..=360 and wind_speed_mps in 0..=75")]
     Settings,
     #[error("gust step requires finite dt in 0..=1 s and airspeed in 0..=1000 m/s")]

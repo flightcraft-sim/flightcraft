@@ -4,10 +4,11 @@ use std::process::Command;
 
 pub fn build() -> Result<(), String> {
     let root = super::root()?;
+    let debug = std::env::args().nth(2).as_deref() == Some("--debug");
     let check = match (std::env::args().nth(2).as_deref(), std::env::args().nth(3)) {
-        (None, None) => false,
+        (None | Some("--debug"), None) => false,
         (Some("--check"), None) => true,
-        _ => return Err("usage: cargo xtask web [--check]".into()),
+        _ => return Err("usage: cargo xtask web [--check|--debug]".into()),
     };
     super::data::fetch(
         false,
@@ -86,20 +87,24 @@ pub fn build() -> Result<(), String> {
         .get("target_directory")
         .and_then(serde_json::Value::as_str)
         .ok_or("Cargo metadata has no target_directory")?;
-    super::cargo(&[
+    let mut build = vec![
         "build",
         "--locked",
-        "--release",
         "--target",
         "wasm32-unknown-unknown",
         "-p",
         "flightcraft-web",
-    ])?;
+    ];
+    if !debug {
+        build.push("--release");
+    }
+    super::cargo(&build)?;
+    let profile = if debug { "debug" } else { "release" };
 
     let dist = root.join("dist");
     std::fs::create_dir_all(&dist).map_err(|e| e.to_string())?;
     let status = Command::new(bindgen)
-        .arg(PathBuf::from(target).join("wasm32-unknown-unknown/release/flightcraft-web.wasm"))
+        .arg(PathBuf::from(target).join(format!("wasm32-unknown-unknown/{profile}/flightcraft-web.wasm")))
         .args(["--target", "web", "--out-name", "flightcraft_web", "--out-dir"])
         .arg(&dist)
         .status()

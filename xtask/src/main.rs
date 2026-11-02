@@ -178,6 +178,10 @@ fn root() -> Result<PathBuf, String> {
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
         (
+            "weather.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Conditions)),
+        ),
+        (
             "cell-index.json",
             serde_json::to_string_pretty(&schemars::schema_for!(region::CellIndex)),
         ),

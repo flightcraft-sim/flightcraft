@@ -25,6 +25,11 @@ pub(crate) struct Uniform {
     pub vision: [f32; 4],
     pub caution: [f32; 4],
     pub warning: [f32; 4],
+    pub atmosphere: [f32; 4],
+    pub fog_color: [f32; 4],
+    pub clouds: [[f32; 4]; 3],
+    pub light_red: [f32; 4],
+    pub viewport: [f32; 4],
 }
 
 pub(crate) struct SceneCallback {
@@ -33,6 +38,7 @@ pub(crate) struct SceneCallback {
     pub size: [f32; 2],
     pub show_aircraft: bool,
     pub show_airspace: bool,
+    pub show_lights: bool,
     pub larrow: bool,
 }
 
@@ -78,6 +84,7 @@ struct Gpu {
     vision_bind: wgpu::BindGroup,
     vision_schedule: VisionSchedule,
     vision_runways: Option<(wgpu::Buffer, u32)>,
+    runway_lights: Option<(wgpu::Buffer, u32)>,
 }
 
 /// Install resources in egui's callback store; there is one scene per viewport.
@@ -365,6 +372,7 @@ impl Gpu {
             vision_bind,
             vision_schedule: VisionSchedule::default(),
             vision_runways: None,
+            runway_lights: None,
         }
     }
 }
@@ -417,6 +425,17 @@ impl Gpu {
                     vertices.len() as u32,
                 ))
             };
+            let lights = mesh::runway_lights(world, self.palette);
+            self.runway_lights = (!lights.is_empty()).then(|| {
+                (
+                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("runway and approach light impostors"),
+                        contents: bytemuck::cast_slice(&lights),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    lights.len() as u32,
+                )
+            });
             let outlines = mesh::vision_runways(world, self.palette);
             self.vision_runways = (!outlines.is_empty()).then(|| {
                 (
@@ -508,6 +527,13 @@ impl CallbackTrait for SceneCallback {
         if self.uniform.eye.get(3).is_some_and(|power| *power > 0.01) {
             pass.set_pipeline(&gpu.transparent);
             pass.draw(mesh.cockpit_end..mesh.vertex_count, 0..1);
+        }
+        if self.show_lights
+            && let Some((vertices, count)) = &gpu.runway_lights
+        {
+            pass.set_pipeline(&gpu.scene);
+            pass.set_vertex_buffer(0, vertices.slice(..));
+            pass.draw(0..*count, 0..1);
         }
         if self.show_airspace
             && let Some((vertices, count)) = &gpu.airspace
