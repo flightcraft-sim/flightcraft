@@ -533,6 +533,7 @@ impl InstrumentPanel {
         generation: u64,
     ) -> Result<Vec<SystemSetting>, String> {
         let panel = Panel {
+            audio_panel: Default::default(),
             equipment: None,
             autopilot: None,
             format_version: 2,
@@ -541,6 +542,8 @@ impl InstrumentPanel {
                 display_name: "Legacy panel".into(),
                 description: "Standard sensed instruments for fixed-mass aircraft.".into(),
                 author: "FlightCraft contributors".into(),
+                registration: String::new(),
+                spoken_type: String::new(),
             },
             instruments: flightcraft_aero::INSTRUMENT_MODULES
                 .iter()
@@ -789,4 +792,4 @@ pub(crate) fn panel_height(window_height: f32, compact: bool) -> f32 {
 mod tests;
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod preview;
+pub(crate) mod preview;

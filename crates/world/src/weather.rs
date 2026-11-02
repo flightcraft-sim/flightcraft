@@ -50,7 +50,7 @@ pub struct Weather {
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum WeatherError {
     #[error(
-        "weather requires at most three layers with finite base below top (-1500..60000 ft MSL) and visibility 0.125..100 SM"
+        "weather requires at most three layers with finite base below top (-1500..60000 ft MSL) and visibility 0.125..100 SM; temperature -60..60 C, dewpoint -100 C up to temperature, and sea-level pressure 80000..110000 Pa"
     )]
     Conditions,
     #[error("weather requires finite wind_from_deg in 0..=360 and wind_speed_mps in 0..=75")]

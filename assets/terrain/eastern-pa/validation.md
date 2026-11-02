@@ -1,10 +1,11 @@
 # Validation: eastern-pa
 
-Dataset bytes: 49671412. Procedure parse failures: 0.
+Dataset bytes: 49874760. Procedure parse failures: 0.
 
 | Type | Count |
 |---|---:|
 | airports | 43 |
+| comms | 224 |
 | fixes | 760 |
 | holds | 15 |
 | ils | 3 |

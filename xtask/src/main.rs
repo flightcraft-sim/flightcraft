@@ -9,8 +9,10 @@ use syn::visit::Visit;
 
 mod airspace_faa;
 mod charts_faa;
+mod comms_faa;
 mod data;
 mod download;
+mod nasr;
 mod national;
 mod navdata_faa;
 mod navigation_faa;
@@ -104,6 +106,8 @@ fn main() -> ExitCode {
         "navdata-faa" => navdata_faa::run(),
         "procedures-faa" => procedures_faa::run(),
         "navigation-faa" => navigation_faa::run(),
+        "comms-faa" => comms_faa::run(),
+        "comms-nasr" => nasr::run(),
         "aircraft" => migrate_aircraft(),
         "schemas" => match std::env::args().nth(2).as_deref() {
             None => schemas(false),
@@ -220,6 +224,10 @@ fn schemas(check: bool) -> Result<(), String> {
         (
             "plan.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::FlightPlan)),
+        ),
+        (
+            "flight-record.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::FlightRecord)),
         ),
         (
             "navdata.json",

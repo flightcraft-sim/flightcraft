@@ -133,7 +133,15 @@ pub struct EngineValue {
     pub normal: [f64; 2],
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
+pub struct MapTraffic {
+    pub callsign: String,
+    pub position: [f64; 2],
+    pub relative_altitude_m: f64,
+}
+#[derive(Clone, Debug, Serialize, JsonSchema)]
 pub struct GlassState {
+    pub comms: crate::CommsSnapshot,
+    pub traffic: Vec<MapTraffic>,
     pub touch: crate::TouchState,
     pub settings: GlassSettings,
     pub air_data: flightcraft_sim::avionics::sensor::AirDataComputer,
@@ -590,6 +598,20 @@ impl Session {
         let mfd_failed = computers.mfd_failed || !installed_power("glass_mfd");
         let [wind_n, wind_e, _] = r.wind_ned_mps;
         GlassState {
+            comms: self.comms_state(),
+            traffic: self
+                .traffic_state()
+                .aircraft
+                .into_iter()
+                .map(|a| {
+                    let [north, east, _] = a.position_m;
+                    MapTraffic {
+                        callsign: a.callsign,
+                        position: project([north, east]),
+                        relative_altitude_m: a.altitude_msl_m - r.altitude_msl_m,
+                    }
+                })
+                .collect(),
             touch: self.touch_state(),
             settings,
             air_data: computers.primary.clone(),

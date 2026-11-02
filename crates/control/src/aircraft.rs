@@ -194,6 +194,9 @@ impl Command for LoadAircraft {
             if let Some(configuration) = &configuration {
                 sim.configure_systems(configuration)?;
             }
+            if session.flight_archive.autosave_enabled {
+                session.save_flight()?;
+            }
             session.sim = sim;
             session.active_configuration = configuration.clone();
             session.paused = true;

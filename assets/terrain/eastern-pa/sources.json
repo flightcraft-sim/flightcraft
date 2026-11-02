@@ -140,6 +140,13 @@
       "downloaded_at": "2026-11-02T14:50:19.095878429Z",
       "bytes": 26841,
       "sha256": "ed3dd9f756bec11c46f7b1a0819096bd70feb95eb781595f2c295e930e32296a"
+    },
+    {
+      "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/29_Oct_2026_CSV.zip",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T22:47:43.391904Z",
+      "bytes": 21964145,
+      "sha256": "60b072454319f166797c5f4667520e4cf9c54d2e4e5faffbcdbae846aea276da"
     }
   ]
 }

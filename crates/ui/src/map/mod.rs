@@ -1213,6 +1213,42 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
             }
         }
     }
+    for traffic in s.traffic_state().aircraft {
+        if let Some((latitude_deg, longitude_deg)) = traffic.latitude_deg.zip(traffic.longitude_deg)
+            && let Some(pos) = v
+                .point(GeoPoint {
+                    latitude_deg,
+                    longitude_deg,
+                })
+                .filter(|p| v.rect.contains(*p))
+        {
+            let color = if state.night {
+                theme::ACCENT
+            } else {
+                theme::MAP_DAY_TEXT
+            };
+            p.add(egui::Shape::closed_line(
+                vec![
+                    pos + egui::vec2(0., -6.),
+                    pos + egui::vec2(6., 0.),
+                    pos + egui::vec2(0., 6.),
+                    pos + egui::vec2(-6., 0.),
+                ],
+                Stroke::new(1.5, color),
+            ));
+            p.text(
+                pos + egui::vec2(9., 0.),
+                Align2::LEFT_CENTER,
+                format!(
+                    "{} {:+.0}",
+                    traffic.callsign,
+                    (traffic.altitude_msl_m - s.sim().readout().altitude_msl_m) / 30.48
+                ),
+                FontId::proportional(11.),
+                color,
+            );
+        }
+    }
     features
 }
 fn route(

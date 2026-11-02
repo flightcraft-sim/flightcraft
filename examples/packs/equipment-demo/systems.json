@@ -176,6 +176,30 @@
           "amps": 5,
           "breaker_amps": 10,
           "backup_capacity_ah": 0
+        },
+        {
+          "id": "audio_panel",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "com1",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "com2",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
         }
       ]
     },

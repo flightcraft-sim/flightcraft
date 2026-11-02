@@ -356,6 +356,15 @@ fn old_keymaps_gain_optional_systems_bindings_without_changing_custom_keys() {
     for action in Action::SYSTEMS {
         old.bindings.remove(&action);
     }
+    for action in [
+        Action::ComPtt,
+        Action::IntercomPtt,
+        Action::RadioPanel,
+        Action::Kneeboard,
+        Action::RadioTransmit,
+    ] {
+        old.bindings.remove(&action);
+    }
     old.bindings.insert(Action::Camera, vec![egui::Key::V]);
     let upgraded = Keymap::from_json(&old.json().unwrap()).unwrap();
     assert_eq!(upgraded.bindings.get(&Action::Camera), Some(&vec![egui::Key::V]));

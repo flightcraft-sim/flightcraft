@@ -31,6 +31,9 @@ pub struct Lock {
     pub version: u8,
     pub base_url: String,
     pub assets: Vec<Asset>,
+    /// Immutable upstream payloads used by scripted importers, separate from release assets.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<download::Source>,
 }
 
 pub fn safe_path(name: &str) -> bool {
@@ -80,6 +83,15 @@ fn validate(lock: &Lock) -> Result<(), String> {
         return Err("invalid data lock".into());
     }
     let mut names = BTreeSet::new();
+    for source in &lock.sources {
+        if !source.url.starts_with("https://")
+            || source.url.contains('@')
+            || !checksum(&source.sha256)
+            || source.bytes > MAX_DOWNLOAD as u64
+        {
+            return Err("invalid pinned upstream source".into());
+        }
+    }
     for asset in &lock.assets {
         if !flightcraft_world::region_id(&asset.region)
             || !matches!(asset.dataset.as_str(), "terrain" | "charts" | "navigation")
@@ -260,6 +272,7 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
         version: 1,
         base_url: "https://github.com/flightcraft-sim/flightcraft/releases/download".into(),
         assets: Vec::new(),
+        sources: download::json::<Lock>(&root.join("data.lock"))?.sources,
     };
     std::fs::create_dir_all(output).map_err(|e| e.to_string())?;
     for region in std::fs::read_dir(assets.join("terrain")).map_err(|e| e.to_string())? {
@@ -272,14 +285,16 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
             .to_str()
             .ok_or("region ID requires UTF-8")?
             .to_owned();
-        for dataset in ["terrain", "charts"] {
+        for dataset in ["terrain", "charts", "navigation"] {
             let paths: Vec<_> = files(&region.path())?
                 .into_iter()
                 .filter(|p| {
                     if dataset == "terrain" {
                         p.extension().is_some_and(|e| e == "fcht")
-                    } else {
+                    } else if dataset == "charts" {
                         p.extension().is_some_and(|e| e == "png" || e == "webp")
+                    } else {
+                        p.extension().is_some_and(|e| e == "json" || e == "md")
                     }
                 })
                 .collect();
@@ -493,6 +508,7 @@ mod tests {
             version: 1,
             base_url: "https://example.test/data".into(),
             assets: vec![asset.clone()],
+            sources: Vec::new(),
         };
         let url = format!("{}/{}/{}", lock.base_url, asset.tag, asset.asset);
         let mut http = download::Recorded(BTreeMap::from([(url, bytes)]));

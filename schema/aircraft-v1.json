@@ -300,6 +300,12 @@
         },
         "id": {
           "type": "string"
+        },
+        "registration": {
+          "type": "string"
+        },
+        "spoken_type": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

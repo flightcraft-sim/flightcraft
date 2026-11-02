@@ -1,5 +1,7 @@
 //! On-demand chart reads with a fixed GPU/CPU footprint. No chart mosaic is decoded at once.
 use super::*;
+#[cfg(target_arch = "wasm32")]
+type PendingTiles = std::sync::Arc<std::sync::Mutex<BTreeMap<String, Option<Result<Vec<u8>, String>>>>>;
 use flightcraft_control::{ChartIndex, ChartTile, inverse_mercator};
 use std::collections::{BTreeMap, VecDeque};
 #[derive(Default)]
@@ -9,7 +11,7 @@ pub struct Tiles {
     textures: BTreeMap<String, egui::TextureHandle>,
     lru: VecDeque<String>,
     #[cfg(target_arch = "wasm32")]
-    pending: std::sync::Arc<std::sync::Mutex<BTreeMap<String, Option<Result<Vec<u8>, String>>>>>,
+    pending: PendingTiles,
     failures: std::collections::BTreeSet<String>,
 }
 impl Tiles {

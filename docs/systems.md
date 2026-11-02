@@ -76,3 +76,8 @@ Rust callers constructing a flight from a `ResolvedAircraft` call `Sim::configur
 the new simulation; the session does this on every aircraft application and reset. Standalone
 Corvid and Larrow constructors install their built-in defaults. `Sim::systems` exposes sensor
 and operating state, and `Sim::set_systems` accepts the same typed panel actions as commands.
+
+The [audio panel](radio.md) reads the declared panel and COM electrical loads, including breaker,
+avionics-switch, and bus power. Existing aircraft share the existing `avionics` load by default;
+the equipment demo declares independent loads. Communications stay outside systems state and its
+hash, so default aircraft demand and the golden trajectory are unchanged.

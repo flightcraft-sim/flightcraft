@@ -318,7 +318,7 @@ impl Command for RunUntil {
                     fired,
                 });
             }
-            session.sim.step(1);
+            session.step_with_comms(1);
             steps += 1;
         }
     }

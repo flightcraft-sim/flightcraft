@@ -52,6 +52,15 @@ impl Session {
 #[serde(deny_unknown_fields)]
 pub struct SetWeather {
     #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default, range(min = -60, max = 60))]
+    pub temperature_c: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default, range(min = -100, max = 60))]
+    pub dewpoint_c: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
+    #[schemars(with = "f64", transform = crate::without_default, range(min = 80000, max = 110000))]
+    pub sea_level_pressure_pa: Option<f64>,
+    #[serde(default, deserialize_with = "crate::provided")]
     #[schemars(with = "f64", transform = crate::without_default)]
     #[schemars(range(min = 0, max = 360))]
     pub wind_from_deg: Option<f64>,
@@ -98,6 +107,15 @@ impl Command for SetWeather {
             .preset
             .map(flightcraft_world::Conditions::preset)
             .unwrap_or_else(|| session.sim().conditions().clone());
+        if let Some(v) = self.temperature_c {
+            conditions.temperature_c = v;
+        }
+        if let Some(v) = self.dewpoint_c {
+            conditions.dewpoint_c = v;
+        }
+        if let Some(v) = self.sea_level_pressure_pa {
+            conditions.sea_level_pressure_pa = v;
+        }
         if let Some(v) = self.layers {
             conditions.layers = v;
         }

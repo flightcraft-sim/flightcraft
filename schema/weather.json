@@ -3,6 +3,11 @@
   "title": "Conditions",
   "type": "object",
   "properties": {
+    "dewpoint_c": {
+      "type": "number",
+      "format": "double",
+      "default": 5.0
+    },
     "layers": {
       "type": "array",
       "items": {
@@ -15,6 +20,17 @@
     },
     "precipitation": {
       "$ref": "#/$defs/Precipitation"
+    },
+    "sea_level_pressure_pa": {
+      "type": "number",
+      "format": "double",
+      "default": 101325.0
+    },
+    "temperature_c": {
+      "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+      "type": "number",
+      "format": "double",
+      "default": 15.0
     },
     "time_of_day": {
       "$ref": "#/$defs/TimeOfDay"

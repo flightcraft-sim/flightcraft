@@ -141,6 +141,9 @@ pub struct HoldingPattern {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Navdata {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(length(max = 20000))]
+    pub comms: Vec<crate::ComStation>,
     #[schemars(range(min = 1, max = 1))]
     pub version: u8,
     #[schemars(length(min = 1, max = 2048))]
@@ -218,6 +221,16 @@ impl Navdata {
             || self.holds.len() > 4096
         {
             return Err(TerrainError("navdata metadata or count bounds"));
+        }
+        let mut station_ids = BTreeSet::new();
+        if self.comms.len() > 20000 {
+            return Err(TerrainError("too many communications stations"));
+        }
+        for station in &self.comms {
+            station.validate()?;
+            if !station_ids.insert(&station.id) {
+                return Err(TerrainError("duplicate communications station"));
+            }
         }
         let mut ids = BTreeSet::new();
         let mut check = |id: &str, name: &str, p: GeoPoint| -> Result<(), TerrainError> {

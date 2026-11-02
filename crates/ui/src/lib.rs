@@ -15,6 +15,8 @@ mod navigation;
 mod panel_art;
 pub mod panel_preview;
 mod procedures;
+pub mod radio;
+mod radio_speech;
 pub mod script;
 pub mod theme;
 mod weather;
@@ -112,6 +114,8 @@ pub struct FlightCraftApp {
     glance_origin: Option<[f64; 2]>,
     autopilot_controller: autopilot::Controller,
     audio: audio::Audio,
+    radio: radio::RadioUi,
+    radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
     script: script::Script,
     #[cfg(not(target_arch = "wasm32"))]
@@ -160,6 +164,12 @@ impl FlightCraftApp {
         let bindings_json = keymap.json()?;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
+        if let Some(json) = cc.storage.and_then(|s| s.get_string("flightcraft.callsign.v1"))
+            && let Ok(value) = serde_json::from_str(&json)
+            && let Err(e) = session.execute("comms.callsign", value)
+        {
+            error = Some(e.to_string());
+        }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(directory) = flightcraft_control::navigation_data_directory()
             && let Err(e) = session.load_navigation_storage(&directory)
@@ -291,6 +301,8 @@ impl FlightCraftApp {
             navigation: navigation::SearchPanel::default(),
             glance_origin: None,
             autopilot_controller: autopilot::Controller::default(),
+            radio: radio::RadioUi::default(),
+            radio_ptt_held: [false; 2],
             audio: audio::Audio::with_preferences(
                 cc.storage
                     .and_then(|s| s.get_string("flightcraft.audio.v1"))
@@ -379,8 +391,8 @@ impl FlightCraftApp {
                 if let Some(error) = status.last_error { ui.colored_label(theme::AMBER, error); }
             }
             ui.label(RichText::new("SOUND").color(theme::ACCENT).size(11.0));
-            ui.checkbox(&mut self.audio.preferences.muted,"Mute warnings");
-            ui.add(egui::Slider::new(&mut self.audio.preferences.volume,0.0..=1.0).text("Warning volume"));
+            ui.checkbox(&mut self.audio.preferences.muted,"Mute sound");
+            ui.add(egui::Slider::new(&mut self.audio.preferences.volume,0.0..=1.0).text("Master volume"));
             if let Some(error)=&self.audio.error {ui.colored_label(theme::AMBER,error);}
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
@@ -508,6 +520,29 @@ impl eframe::App for FlightCraftApp {
         self.last_time = Some(now);
         let frame = self.input.collect(ctx, &self.keymap);
         self.instrument_panel.starter_key_held = frame.held(Action::Starter);
+        for action in [
+            Action::ComPtt,
+            Action::IntercomPtt,
+            Action::RadioPanel,
+            Action::Kneeboard,
+            Action::RadioTransmit,
+        ] {
+            if frame.pressed(action) {
+                self.radio.shortcut(action);
+            }
+        }
+        let held = [frame.held(Action::ComPtt), frame.held(Action::IntercomPtt)];
+        if held != self.radio_ptt_held {
+            let setting = flightcraft_control::CommsAudioPanel {
+                ptt: (held[0] != self.radio_ptt_held[0]).then_some(held[0]),
+                intercom_ptt: (held[1] != self.radio_ptt_held[1]).then_some(held[1]),
+                ..Default::default()
+            };
+            self.radio_ptt_held = held;
+            if let Err(error) = self.session.run(setting) {
+                self.error = Some(error.to_string());
+            }
+        }
         if frame.pressed(Action::Pause)
             && let Err(e) = actions::toggle_pause(&mut self.session, &mut self.paused)
         {
@@ -687,6 +722,12 @@ impl eframe::App for FlightCraftApp {
             .map_or(0, |s| s.disconnect_sequence);
         self.audio
             .observe(self.session.flight_generation(), disconnect_sequence);
+        self.radio.show(
+            ctx,
+            &mut self.session,
+            &self.keymap,
+            self.audio.preferences.gain(),
+        );
         egui::TopBottomPanel::top("header")
             .exact_height(64.0)
             .frame(
@@ -712,6 +753,7 @@ impl eframe::App for FlightCraftApp {
                     ui.menu_button("Weather", |ui| {
                         if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) { self.error = Some(e.to_string()); }
                     });
+                    self.radio.button(ui, &self.keymap);
                     for setting in self.procedure_controls.show(ui,&self.session){
                         if let Err(error)=self.session.run(flightcraft_control::SetAvionics{setting}){self.error=Some(error.to_string());}
                     }
@@ -1231,6 +1273,17 @@ impl eframe::App for FlightCraftApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.session.autosave_flight();
+        let callsign = self.session.pilot_callsign();
+        storage.set_string(
+            "flightcraft.callsign.v1",
+            if callsign.overridden {
+                serde_json::json!({"registration":callsign.registration,"spoken_type":callsign.spoken_type})
+                    .to_string()
+            } else {
+                "{}".into()
+            },
+        );
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(serial) = self.efb_serial {

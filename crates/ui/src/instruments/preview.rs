@@ -117,7 +117,7 @@ fn capture(name: &str, width: u32, height: u32) -> image::RgbaImage {
     })
 }
 
-fn rasterize(width: u32, height: u32, mut paint: impl FnMut(&mut egui::Ui)) -> image::RgbaImage {
+pub(crate) fn rasterize(width: u32, height: u32, mut paint: impl FnMut(&mut egui::Ui)) -> image::RgbaImage {
     let ctx = egui::Context::default();
     t::install(&ctx);
     ctx.set_pixels_per_point(2.);

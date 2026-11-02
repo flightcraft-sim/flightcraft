@@ -170,3 +170,8 @@ Each command has input and output schemas from the start, like every other comma
 Each phase ships with docs, tests (the virtual pilot is tested by flying: it must land on the
 runway within stated touchdown limits in calm and in gusty crosswind, from every runway in the
 bundled regions), and an agent skill so an MCP client knows how to be a good crew member.
+
+The [radio implementation](radio.md) supplies a shared caption strip, an intercom channel, typed
+PTT entry, and a kneeboard transcript. Its role and event models are ready for crew messages;
+virtual-pilot conversation, handover, speech recognition, and instructor lesson rules above remain
+separate work.

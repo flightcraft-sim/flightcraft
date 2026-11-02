@@ -455,3 +455,9 @@ FlightCraft" should then know exactly what to do.
    need appears that a local socket cannot meet.
 3. **Binary protocol:** no. Text at serial speeds is enough, and a terminal can debug it.
 4. **UDP:** dropped. It would add an unauthenticated path, and WebSocket covers the same use.
+
+Radio bindings are available now through the existing keymap/gamepad action path: `ComPtt`,
+`IntercomPtt`, `RadioPanel`, and `Kneeboard`. Their defaults are T, Y, V, and K, respectively.
+Hardware adapters can set `ptt` and `intercom_ptt` with `comms.audio_panel`, and submit recognized or
+typed text using `comms.transmit`. Speech recognition and the broader device protocol above remain
+future work. See [radios](radio.md).

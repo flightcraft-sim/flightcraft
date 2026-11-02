@@ -3,6 +3,7 @@
   "dataset": "new-york",
   "counts": {
     "airports": 26,
+    "comms": 226,
     "fixes": 887,
     "holds": 15,
     "ils": 7,
@@ -14,7 +15,7 @@
     "terrain_tiles": 88,
     "volumes": 32
   },
-  "bytes": 50127078,
+  "bytes": 50339002,
   "checks": [
     {
       "airport": "12N",

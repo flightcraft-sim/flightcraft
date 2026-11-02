@@ -81,7 +81,7 @@ turn anticipation remain open.
 - [x] Original touch navigator with shared GPS and COM/NAV tuning, independently arranged touch
   displays, failure reversion, bounded panel backgrounds, and a fictional example pack.
 - [x] Shared NAV1 tuning and CDI selection, CIFP procedure controls, magnetic indications, and
-  planning-map hosts on the navigator and touch displays. COM audio remains future work.
+  planning-map hosts on the navigator and touch displays. COM audio uses the session radio service; see [radio coverage](docs/radio.md).
 - [x] Millimetre shell artwork, placards, physical controls, guarded selectors, full controller
   faceplates, and configurable display compositions, with previews at both sizes.
 
@@ -96,3 +96,5 @@ source and normalized type/state shards with an index; fixed 2° terrain cells c
 origins, checksums, and validation reports. See [the build guide](docs/terrain.md#build-a-region).
 The first data release still requires maintainer publication before merging. Nationwide runtime
 catalogue discovery and streaming between cells remain follow-up engine/application integration.
+
+Radio foundations and untowered training are implemented with explicit data, weather, audio, and preview limitations; see [radios](docs/radio.md).

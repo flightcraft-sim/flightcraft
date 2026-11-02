@@ -4,6 +4,8 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+pub mod comms;
+pub use comms::*;
 mod modern;
 pub use modern::*;
 pub mod glass;
@@ -84,6 +86,8 @@ pub enum CommandError {
 /// One flight session: the simulation and the settings commands change.
 #[derive(Debug)]
 pub struct Session {
+    flight_archive: comms::archive::FlightArchive,
+    comms: comms::Comms,
     sim: Sim,
     #[cfg(not(target_arch = "wasm32"))]
     efb: Option<efb::sender::Sender>,
@@ -111,6 +115,8 @@ impl Session {
             .resolve_aircraft("corvid")
             .map_err(SimError::from)?;
         Ok(Self {
+            flight_archive: Default::default(),
+            comms: comms::Comms::default(),
             selected_configuration: Some(configuration.clone()),
             active_configuration: Some(configuration),
             aircraft_catalog,
@@ -187,8 +193,10 @@ impl Session {
     /// Run a typed command.
     pub fn run<C: Command>(&mut self, command: C) -> Result<C::Output, CommandError> {
         self.sequence_glass();
+        self.sequence_comms();
         let result = command.run(self);
         self.sequence_glass();
+        self.sequence_comms();
         #[cfg(not(target_arch = "wasm32"))]
         self.update_efb();
         result
@@ -484,6 +492,9 @@ impl Command for Reset {
         if let Some(configuration) = &session.selected_configuration {
             replacement.configure_systems(configuration)?;
         }
+        if session.flight_archive.autosave_enabled {
+            session.save_flight()?;
+        }
         session.sim = replacement;
         session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
@@ -572,7 +583,7 @@ impl Command for Step {
         if self.steps > MAX_STEPS {
             return Err(invalid(Self::NAME, "steps must be between 0 and 72000"));
         }
-        session.sim.step(self.steps);
+        session.step_with_comms(self.steps);
         Ok(session.sim.readout())
     }
 }
@@ -717,6 +728,18 @@ macro_rules! registry {
 }
 
 registry!(
+    CommsCallsign,
+    CommsTune,
+    CommsAudioPanel,
+    CommsTransmit,
+    CommsListen,
+    CommsFacilities,
+    SetTraffic,
+    FlightSave,
+    FlightRecords,
+    FlightLoad,
+    FlightExport,
+    FlightEvents,
     SetEquipment,
     SetSimulationDate,
     SearchQuery,

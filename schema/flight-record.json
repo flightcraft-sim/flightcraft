@@ -1,0 +1,563 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FlightRecord",
+  "type": "object",
+  "properties": {
+    "dropped_events": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "dropped_inputs": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Transmission"
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RecordedInput"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "events",
+    "inputs",
+    "dropped_events",
+    "dropped_inputs"
+  ],
+  "$defs": {
+    "CallGrade": {
+      "type": "object",
+      "properties": {
+        "airport_correct": {
+          "type": "boolean"
+        },
+        "expected_leg": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "feedback": {
+          "type": "string"
+        },
+        "frequency_correct": {
+          "type": "boolean"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "received": {
+          "type": "boolean"
+        },
+        "runway_correct": {
+          "type": "boolean"
+        },
+        "timely": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "airport_correct",
+        "runway_correct",
+        "frequency_correct",
+        "timely",
+        "received",
+        "passed",
+        "feedback"
+      ]
+    },
+    "Channel": {
+      "type": "string",
+      "enum": [
+        "com",
+        "intercom",
+        "nav"
+      ]
+    },
+    "Controls": {
+      "description": "Pilot controls. Each value is clamped to its range when set.",
+      "type": "object",
+      "properties": {
+        "aileron": {
+          "description": "Aileron, -1 (roll left) to 1 (roll right).",
+          "type": "number",
+          "format": "double"
+        },
+        "brake": {
+          "description": "Wheel brakes, 0 to 1.",
+          "type": "number",
+          "format": "double"
+        },
+        "elevator": {
+          "description": "Elevator, -1 (nose down) to 1 (nose up).",
+          "type": "number",
+          "format": "double"
+        },
+        "flaps": {
+          "description": "Flaps, 0 (up) to 1 (fully down).",
+          "type": "number",
+          "format": "double"
+        },
+        "rudder": {
+          "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+          "type": "number",
+          "format": "double"
+        },
+        "throttle": {
+          "description": "Throttle, 0 to 1.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "elevator",
+        "aileron",
+        "rudder",
+        "throttle",
+        "flaps",
+        "brake"
+      ]
+    },
+    "Coverage": {
+      "type": "string",
+      "enum": [
+        "FEW",
+        "SCT",
+        "BKN",
+        "OVC"
+      ]
+    },
+    "EventSource": {
+      "type": "string",
+      "enum": [
+        "rules",
+        "scenario",
+        "ai",
+        "pilot"
+      ]
+    },
+    "FacilityKind": {
+      "type": "string",
+      "enum": [
+        "ctaf",
+        "unicom",
+        "awos",
+        "asos",
+        "atis",
+        "tower",
+        "ground",
+        "approach",
+        "departure",
+        "clearance"
+      ]
+    },
+    "Meaning": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "position"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "airport",
+            "runway",
+            "leg"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "altimeter_pa": {
+              "type": "number",
+              "format": "double"
+            },
+            "ceiling_agl_m": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "dewpoint_c": {
+              "type": "number",
+              "format": "double",
+              "default": 0.0
+            },
+            "layers": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReportedLayer"
+              }
+            },
+            "obscuration": {
+              "$ref": "#/$defs/Obscuration",
+              "default": "none"
+            },
+            "precipitation": {
+              "$ref": "#/$defs/Precipitation",
+              "default": "none"
+            },
+            "temperature_c": {
+              "type": "number",
+              "format": "double",
+              "default": 0.0
+            },
+            "type": {
+              "type": "string",
+              "const": "weather"
+            },
+            "visibility_m": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "wind_from_deg": {
+              "type": "number",
+              "format": "double"
+            },
+            "wind_speed_mps": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "airport",
+            "wind_from_deg",
+            "wind_speed_mps",
+            "altimeter_pa"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ident": {
+              "type": "string"
+            },
+            "morse": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "ident"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "ident",
+            "morse"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "message": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "cue"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "airport",
+            "leg",
+            "message"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "text"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "Obscuration": {
+      "type": "string",
+      "enum": [
+        "none",
+        "mist",
+        "fog",
+        "haze"
+      ]
+    },
+    "PatternLeg": {
+      "type": "string",
+      "enum": [
+        "taxi",
+        "departing",
+        "crosswind",
+        "downwind",
+        "base",
+        "final",
+        "clear"
+      ]
+    },
+    "Precipitation": {
+      "type": "string",
+      "enum": [
+        "none",
+        "rain",
+        "snow"
+      ]
+    },
+    "Reception": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "heard",
+        "blocked",
+        "not_received"
+      ]
+    },
+    "RecordedInput": {
+      "type": "object",
+      "properties": {
+        "controls": {
+          "$ref": "#/$defs/Controls"
+        },
+        "time_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "time_s",
+        "controls"
+      ]
+    },
+    "ReportedLayer": {
+      "type": "object",
+      "properties": {
+        "base_agl_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "coverage",
+        "base_agl_m"
+      ]
+    },
+    "Speaker": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pilot"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "instructor"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "facility"
+            },
+            "role": {
+              "$ref": "#/$defs/FacilityKind"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id",
+            "role"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "traffic"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "callsign"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ident": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "nav"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "ident"
+          ]
+        }
+      ]
+    },
+    "Transmission": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "$ref": "#/$defs/Channel"
+        },
+        "duration_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "frequency_hz": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CallGrade"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "meaning": {
+          "$ref": "#/$defs/Meaning"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reception": {
+          "$ref": "#/$defs/Reception"
+        },
+        "source": {
+          "$ref": "#/$defs/EventSource"
+        },
+        "speaker": {
+          "$ref": "#/$defs/Speaker"
+        },
+        "text": {
+          "type": "string"
+        },
+        "time_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "time_s",
+        "duration_s",
+        "channel",
+        "speaker",
+        "text",
+        "meaning",
+        "source",
+        "reception"
+      ]
+    }
+  }
+}

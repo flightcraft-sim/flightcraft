@@ -1,10 +1,11 @@
 # Validation: new-york
 
-Dataset bytes: 50127078. Procedure parse failures: 0.
+Dataset bytes: 50339002. Procedure parse failures: 0.
 
 | Type | Count |
 |---|---:|
 | airports | 26 |
+| comms | 226 |
 | fixes | 887 |
 | holds | 15 |
 | ils | 7 |

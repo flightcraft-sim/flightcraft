@@ -5,7 +5,9 @@
     "id": "equipment-demonstrator",
     "display_name": "Equipment Demonstrator",
     "description": "Original fictional equipment demonstrator; all values are engineering estimates.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N1234B",
+    "spoken_type": "Corvid"
   },
   "variant": "demo-equipment-variant",
   "panel": "demo-touch-panel",

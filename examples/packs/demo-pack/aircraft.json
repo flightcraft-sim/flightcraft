@@ -5,7 +5,9 @@
     "id": "corvid-tourer",
     "display_name": "Corvid Tourer",
     "description": "Original touring variant with injection and a compact three-instrument panel.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N526R",
+    "spoken_type": "Corvid"
   },
   "variant": "corvid-tourer",
   "panel": "tourer-panel",

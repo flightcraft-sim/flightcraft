@@ -193,3 +193,8 @@ Each command has input and output schemas from the start.
    clearances, and lost-communication procedures.
 5. **Speech in, AI as ATC, and IFR tasks:** Whisper with a radio-phraseology grammar, `comms.atc`
    from an AI, and graded instrument approaches, holds, and partial panel.
+
+Phase 2 implementation and current coverage are described in [radios](radio.md): electrical audio
+panel, typed calls and records, reception, deterministic CTAF traffic, captions, transcript, and
+speech adapters. FAA COM frequencies still require offline import, weather observations await the
+visibility/cloud model, and browser speech filtering and macOS distinct voices remain incomplete.

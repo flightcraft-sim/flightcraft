@@ -144,6 +144,26 @@ fn map(d: &mut DrawList, s: &GlassState) {
             clipped_line(d, point([0.5, 0.5]), point(dest.position), bounds, Ink::Gps, 1.);
         }
     }
+    for traffic in &s.traffic {
+        if traffic.position.iter().all(|v| (0.0..=1.0).contains(v)) {
+            let [x, y] = point(traffic.position);
+            for (a, b) in [
+                ([x, y - 5.], [x + 5., y]),
+                ([x + 5., y], [x, y + 5.]),
+                ([x, y + 5.], [x - 5., y]),
+                ([x - 5., y], [x, y - 5.]),
+            ] {
+                line(d, a, b, Ink::Needle, 1.2);
+            }
+            label(
+                d,
+                [x, y - 13.],
+                format!("{} {:+.0}", traffic.callsign, traffic.relative_altitude_m / 30.48),
+                8.,
+                Ink::Text,
+            );
+        }
+    }
     let center = point([0.5, 0.5]);
     let [center_x, center_y] = center;
     let mut previous = point([0.5, 0.125]);

@@ -159,3 +159,13 @@ Render hosts pass `Scene::set_weather(conditions, hood)` before drawing. `Palett
 serialized airport files remain compatible. Rust constructors should initialize unknown lighting
 to `None` or `[None; 2]`. The optional `Scene::lights_visible` presentation switch supports
 controlled light-contrast captures. Synthetic-vision hosts retain their existing API.
+
+## Automated weather observations
+
+The [radio service](radio.md) announces the active wind, effective visibility, sky layers, station
+AGL ceiling, temperature, dewpoint, and altimeter setting on imported NASR AWOS/ASOS channels.
+`weather.set` accepts sea-level reference `temperature_c` (-60–60), `dewpoint_c` (-100 up to
+temperature), and `sea_level_pressure_pa` (80000–110000). Defaults are 15 C, 5 C, and 101325 Pa;
+old condition JSON remains readable. Station temperatures use standard lapse approximations.
+QNH scales pressure-port readings, making altimeter-setting practice possible. Temperature and
+dewpoint changes update the systems environment; aerodynamic density still follows ISA.

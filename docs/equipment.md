@@ -69,8 +69,9 @@ a held handle. The UI releases only starter and handle commands it owns.
 ## Navigator and displays
 
 The panel-mount navigator has COM and NAV active/standby channels, independent flip-flops,
-an outer MHz and inner channel knob, and a touch home screen. COM uses 25 kHz channels from
-118.000 through 136.975 MHz; NAV uses 50 kHz channels from 108.000 through 117.950 MHz.
+an outer MHz and inner channel knob, and a touch home screen. COM defaults to 25 kHz channels from
+118.000 through 136.975 MHz; the radio panel can select 8.33 kHz channel labels. NAV uses 50 kHz
+channels from 108.000 through 117.950 MHz.
 Channel-grid violations and out-of-range frequencies are errors. The outer knob steps 1 MHz;
 the inner knob steps a channel. Both wrap within their band.
 
@@ -83,7 +84,7 @@ NAV active and standby frequencies read and operate the shared NAV1 radio; tunin
 or NAV1 for both the displays and the installed autopilot. The Procedures tile embeds the
 existing procedure/NAV controls: load CIFP procedures and transitions, activate an approach,
 select vectors, command a missed approach, sequence legs, and exit holds. Receiver power follows
-the navigator breaker when it is installed. COM audio is not modelled.
+the navigator breaker when it is installed. COM audio and reception use the [radio service](radio.md).
 
 Direct-to and flight-plan query actions resolve airports, navaids, fixes, pins, and coordinates
 through the shared offline search. Plans update both the editable planning route and the shared
@@ -349,3 +350,14 @@ Corvid PFD and MFD, and an optional external pack at 1920×1080 under `out/layou
 used by equipment captures, so comparison tools can locate crops after vertical anchoring.
 The ignored `render_layout_cockpit_previews` test adds GPU captures of the outside scene
 behind the demo panels and optional external pack under `out/layout/after/`.
+## Audio panel and COM reception
+
+The equipment demo now declares separate audio-panel, COM1, and COM2 electrical loads and an
+`audio_panel` equipment face. MIC, receive, NAV ident, intercom, volume, and squelch controls use
+`comms.audio_panel` through the same command registry. The toolbar radio window adds typed PTT,
+tuning, spacing, captions, and the kneeboard. Navigator COM1 active/standby tuning is shared with
+`comms.tune`. See [radios](radio.md) for FAA frequency import, reception, traffic, audio, and limits.
+
+Aircraft identity objects may declare `registration` and `spoken_type` for radio identification.
+The shared radio service expands them into spoken GA callsigns; pilots can override them with
+`comms.callsign`. See [radio identity and flight history](radio.md#radio-identity).

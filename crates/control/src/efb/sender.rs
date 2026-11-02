@@ -14,6 +14,7 @@ use std::{
 struct Shared {
     status: EfbStatus,
     aircraft: Option<(encode::Aircraft, Instant)>,
+    traffic: Vec<(encode::Aircraft, u32, String)>,
 }
 #[derive(Debug)]
 pub(crate) struct Sender {
@@ -32,6 +33,7 @@ impl Sender {
                 ..Default::default()
             },
             aircraft: None,
+            traffic: Vec::new(),
         }));
         let stop = Arc::new(AtomicBool::new(false));
         let worker_shared = shared.clone();
@@ -58,6 +60,11 @@ impl Sender {
         if let Ok(mut shared) = self.shared.lock() {
             shared.aircraft = aircraft.map(|a| (a, Instant::now()));
             shared.status.reason = reason(&shared, Instant::now());
+        }
+    }
+    pub fn update_traffic(&self, traffic: Vec<(encode::Aircraft, u32, String)>) {
+        if let Ok(mut shared) = self.shared.lock() {
+            shared.traffic = traffic;
         }
     }
     pub fn status(&self) -> EfbStatus {
@@ -163,14 +170,20 @@ fn worker(
                             .destination
                             .parse::<Ipv4Addr>()
                             .map_err(|e| e.to_string())?;
-                        for (gdl, bytes) in packets(
+                        let mut outgoing = packets(
                             &shared.status.settings,
                             &aircraft,
                             serial,
                             utc as u32,
                             second,
                             attitude,
-                        ) {
+                        );
+                        if second && shared.status.settings.gdl90 {
+                            outgoing.extend(shared.traffic.iter().map(|(a, address, callsign)| {
+                                (true, encode::frame(&encode::report(a, false, *address, callsign)))
+                            }));
+                        }
+                        for (gdl, bytes) in outgoing {
                             let port = if gdl { gdl_port } else { simulator_port };
                             if let Err(error) = udp.send_to(&bytes, SocketAddrV4::new(destination, port)) {
                                 shared.status.last_error = Some(error.to_string());
@@ -266,6 +279,7 @@ mod tests {
         let mut shared = Shared {
             status: EfbStatus::default(),
             aircraft: None,
+            traffic: Vec::new(),
         };
         assert_eq!(reason(&shared, now).as_deref(), Some("disabled"));
         shared.status.settings.enabled = true;
@@ -273,6 +287,43 @@ mod tests {
         shared.aircraft = Some((super::super::encode_tests::truth(), now));
         assert!(reason(&shared, now).is_none());
         assert!(reason(&shared, now + Duration::from_secs(3)).is_some_and(|r| r.contains("stale")));
+    }
+    #[test]
+    fn worker_broadcasts_traffic_reports_with_stable_addresses() {
+        let socket = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let sender = Sender::with_ports(42, socket.local_addr().unwrap().port(), 49002).unwrap();
+        let truth = super::super::encode_tests::truth();
+        sender.update(Some(truth));
+        sender.update_traffic(vec![
+            (truth, 0xf10001, "TRAINER1".into()),
+            (truth, 0xf10002, "TRAINER2".into()),
+        ]);
+        sender
+            .configure(EfbSettings {
+                enabled: true,
+                destination: "127.0.0.1".into(),
+                gdl90: true,
+                simulator: false,
+            })
+            .unwrap();
+        let mut found = Vec::new();
+        for _ in 0..10 {
+            let mut bytes = [0; 256];
+            let size = socket.recv(&mut bytes).unwrap();
+            if bytes.get(1) == Some(&0x14) {
+                assert!(
+                    bytes
+                        .get(..size)
+                        .is_some_and(|b| b.windows(7).any(|w| w == b"TRAINER"))
+                );
+                found.push(bytes.get(3..6).unwrap().to_vec());
+            }
+            if found.len() == 2 {
+                break;
+            }
+        }
+        assert_eq!(found, vec![vec![0xf1, 0x00, 0x01], vec![0xf1, 0x00, 0x02]]);
     }
     #[test]
     fn worker_sends_both_protocols_on_loopback_and_stops_when_disabled() {

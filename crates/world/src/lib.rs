@@ -154,3 +154,6 @@ pub use navdata::{GeoPoint, MAX_NAVDATA_BYTES, Navdata};
 
 pub mod procedures;
 pub use procedures::{MAX_PROCEDURES_BYTES, Procedures};
+
+pub mod comms;
+pub use comms::{ComStation, FacilityKind};

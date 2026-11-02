@@ -52,6 +52,35 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
                 .text("Visibility SM"),
         )
         .changed();
+    ui.horizontal(|ui| {
+        changed |= ui
+            .add(
+                egui::DragValue::new(&mut c.temperature_c)
+                    .range(-60.0..=60.0)
+                    .prefix("Sea-level temp C "),
+            )
+            .changed();
+        changed |= ui
+            .add(
+                egui::DragValue::new(&mut c.dewpoint_c)
+                    .range(-100.0..=c.temperature_c)
+                    .prefix("Dew point C "),
+            )
+            .changed();
+    });
+    let mut altimeter = c.sea_level_pressure_pa / 3386.389;
+    if ui
+        .add(
+            egui::DragValue::new(&mut altimeter)
+                .range(23.63..=32.48)
+                .speed(0.01)
+                .prefix("Altimeter inHg "),
+        )
+        .changed()
+    {
+        c.sea_level_pressure_pa = altimeter * 3386.389;
+        changed = true;
+    }
     for (index, layer) in c.layers.iter_mut().enumerate() {
         ui.push_id(index, |ui| {
             ui.horizontal(|ui| {
@@ -129,6 +158,9 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
         });
     if changed {
         session.run(SetWeather {
+            temperature_c: Some(c.temperature_c),
+            dewpoint_c: Some(c.dewpoint_c),
+            sea_level_pressure_pa: Some(c.sea_level_pressure_pa),
             layers: Some(c.layers),
             visibility_sm: Some(c.visibility_sm),
             precipitation: Some(c.precipitation),

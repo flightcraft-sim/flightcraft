@@ -448,7 +448,8 @@ Generic physical controls expose bounded `panel_control` and `panel_guard` syste
 ## Visual weather and the hood
 
 `weather.set` patches `layers` (at most three, base/top in ft MSL and coverage FEW/SCT/BKN/OVC),
-`visibility_sm` (0.125–100), `obscuration`, `precipitation`, and `time_of_day`, or selects
+`visibility_sm` (0.125–100), `obscuration`, `precipitation`, `time_of_day`, sea-level `temperature_c`
+(-60–60), `dewpoint_c` (-100 up to temperature), and `sea_level_pressure_pa` (80000–110000), or selects
 `preset: vfr | mvfr | ifr | lifr | night`. Presets retain the current wind. The legacy complete
 wind group (`wind_from_deg`, `wind_speed_mps`, `shear`, `turbulence`, and `seed`) remains supported.
 `weather.state` accepts `{}` and reports visual `conditions`, magnetic wind `weather`, `hood`,
@@ -457,3 +458,27 @@ and independent `simulated_instrument_time.hood_s` and `.imc_s` practice counter
 It selects cockpit view in the app. These commands also work in offline timed scenario scripts.
 Practice counters use fixed simulation steps and are never labelled as FAA logbook credit.
 See [weather](weather.md) for schemas, examples, preset altitude references, and limitations.
+
+## Radios, untowered traffic, and flight events
+
+See [radio behaviour, data import, previews, and limitations](radio.md). MCP replaces dots with
+underscores, for example `comms_tune`. Every entry has generated input and output schemas.
+
+| Command | Input and result |
+|---|---|
+| `comms.callsign` | Optional `registration`, `spoken_type`, `abbreviate_after_contact`, and `reset_to_pack`; `{}` reads full, abbreviated, and current spoken identity. |
+| `comms.tune` | `radio` (1 or 2), optional `channel_khz`, `standby`, `swap`, and `spacing` (`khz25` or `khz833`); optional `adf_khz` (190–1750). Returns tuning, panel power, facilities, and traffic. |
+| `comms.audio_panel` | Optional `transmit` (1 or 2), `receive_com1`, `receive_com2`, `nav_ident`, `intercom`, `volume`, `squelch`, `speech`, `captions`, `ptt`, and `intercom_ptt`. `{}` reads state. |
+| `comms.transmit` | `text` (1–1024 printable bytes), optional `intercom` (false). Returns a queued typed pilot transmission; grade and overlap finalize at its end. |
+| `comms.listen` | `{}`. Consumes the next completed heard event, or returns `transmission: null`; also returns pending count. Does not advance time. |
+| `comms.facilities` | `{}` lists current stations. Optional `stations` installs a bounded normalized offline FAA catalogue for the session. The source field retains provenance; the command does not certify it. |
+| `traffic.set` | `count` (0–3), `airport`, optional `runway` end, and optional `right_pattern` (false). Requires an imported CTAF for nonzero count; returns circuit targets. |
+| `flight.events` | Optional `after` event id, `limit` (1–1000, default 100), and `input_offset`. Returns typed events, control changes, cursors, pending count, and overflow counters. Cursors restart with each flight reset. Pending event grades can change; re-read their ids after simulated time advances. |
+| `flight.save` | `{}` checkpoints the current flight in desktop app data or browser IndexedDB. |
+| `flight.records` | Optional `refresh` (false). Lists summaries and polls `busy`, `pending_operations`, `error`, and the loaded debrief. Browser storage is asynchronous. |
+| `flight.load` | `id` loads a past flight for debrief without replacing the running simulation. Poll `flight.records` for browser completion. |
+| `flight.export` | Optional `id` for an already loaded flight; omission exports the current record. Returns `filename` and `json`, with no dialog. |
+
+Speech, captions, and traffic targets do not enter the physics hash. Event sources and facility roles
+are typed for later scenarios and towered rules. Towered clearances and speech recognition are not
+implemented by these commands. There are no modal dialogs in any radio command.

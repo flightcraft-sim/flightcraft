@@ -67,6 +67,13 @@ pub enum WeatherPreset {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Conditions {
+    /// Sea-level reference observations; station temperature uses a standard lapse rate.
+    #[serde(default = "default_temperature")]
+    pub temperature_c: f64,
+    #[serde(default = "default_dewpoint")]
+    pub dewpoint_c: f64,
+    #[serde(default = "default_pressure")]
+    pub sea_level_pressure_pa: f64,
     #[schemars(length(max = 3))]
     pub layers: Vec<CloudLayer>,
     #[schemars(range(min = 0.125, max = 100))]
@@ -75,9 +82,21 @@ pub struct Conditions {
     pub precipitation: Precipitation,
     pub time_of_day: TimeOfDay,
 }
+fn default_temperature() -> f64 {
+    15.0
+}
+fn default_dewpoint() -> f64 {
+    5.0
+}
+fn default_pressure() -> f64 {
+    101325.0
+}
 impl Default for Conditions {
     fn default() -> Self {
         Self {
+            temperature_c: default_temperature(),
+            dewpoint_c: default_dewpoint(),
+            sea_level_pressure_pa: default_pressure(),
             layers: Vec::new(),
             visibility_sm: 10.,
             obscuration: Obscuration::None,
@@ -88,7 +107,13 @@ impl Default for Conditions {
 }
 impl Conditions {
     pub fn validate(&self) -> Result<(), crate::WeatherError> {
-        if !self.visibility_sm.is_finite()
+        if !self.temperature_c.is_finite()
+            || !(-60.0..=60.0).contains(&self.temperature_c)
+            || !self.dewpoint_c.is_finite()
+            || !(-100.0..=self.temperature_c).contains(&self.dewpoint_c)
+            || !self.sea_level_pressure_pa.is_finite()
+            || !(80000.0..=110000.0).contains(&self.sea_level_pressure_pa)
+            || !self.visibility_sm.is_finite()
             || !(0.125..=100.).contains(&self.visibility_sm)
             || self.layers.len() > 3
             || self.layers.iter().any(|l| {
@@ -151,6 +176,9 @@ impl Conditions {
     /// Stable words for session hashing, emitted only for nondefault visual weather.
     pub fn hash_words(&self) -> Vec<u64> {
         let mut words = vec![
+            self.temperature_c.to_bits(),
+            self.dewpoint_c.to_bits(),
+            self.sea_level_pressure_pa.to_bits(),
             self.visibility_sm.to_bits(),
             self.obscuration as u64,
             self.precipitation as u64,

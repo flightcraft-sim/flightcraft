@@ -1316,7 +1316,26 @@
           "kind": "label",
           "text": "EQUIPMENT CIRCUIT BREAKERS"
         }
+      },
+      {
+        "id": "audio_panel",
+        "position": [
+          490,
+          18
+        ],
+        "size": [
+          295,
+          45
+        ],
+        "element": {
+          "kind": "audio_panel"
+        }
       }
     ]
+  },
+  "audio_panel": {
+    "power_load": "audio_panel",
+    "com1_load": "com1",
+    "com2_load": "com2"
   }
 }

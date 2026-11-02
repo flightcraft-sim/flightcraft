@@ -5,7 +5,7 @@
     {
       "region": "eastern-pa",
       "dataset": "charts",
-      "tag": "region-data-2611",
+      "tag": "region-data-2611-radio-20261029",
       "asset": "eastern-pa-charts.zip",
       "bytes": 38362133,
       "sha256": "84fb17329931114ebe6eaca75544cb6827eaf5f24363c86c649f6fcac7503246",
@@ -2729,8 +2729,68 @@
     },
     {
       "region": "eastern-pa",
+      "dataset": "navigation",
+      "tag": "region-data-2611-radio-20261029",
+      "asset": "eastern-pa-navigation.zip",
+      "bytes": 2674083,
+      "sha256": "19e9d698e49a6da221de51cc1fac38e61d981871d6a0519de161963b027a0dc1",
+      "files": [
+        {
+          "path": "terrain/eastern-pa/airports.json",
+          "bytes": 51536,
+          "sha256": "9ad98ee8320c8b6d9ba48fe53902bb1429dd248c5811e5ae0dc97b8107276eb5"
+        },
+        {
+          "path": "terrain/eastern-pa/airspace.json",
+          "bytes": 290402,
+          "sha256": "6e1e890df5f47e1b905998c12e9e8268ba8f73c52686e015322927069e00bec8"
+        },
+        {
+          "path": "terrain/eastern-pa/charts/sectional/index.json",
+          "bytes": 32297,
+          "sha256": "e6a2dfefbcf1671955e5af31f89db8bb132ac15d6faef854a80f68c8e478ff28"
+        },
+        {
+          "path": "terrain/eastern-pa/comms-manifest.json",
+          "bytes": 1048,
+          "sha256": "17f79946a8a412f29265fc815859a0898e8d0d593347087ec5ea027254c96ec0"
+        },
+        {
+          "path": "terrain/eastern-pa/navdata.json",
+          "bytes": 738912,
+          "sha256": "747f78bacdbe187caeca16fc2d669857b806daee8e66b1e31f207d1d2fb28939"
+        },
+        {
+          "path": "terrain/eastern-pa/procedures.json",
+          "bytes": 1520631,
+          "sha256": "6729fe93bc9114e844f46986e12e103bf993d65d26caa42e16de72be846edd4c"
+        },
+        {
+          "path": "terrain/eastern-pa/region.json",
+          "bytes": 2496,
+          "sha256": "23f67dae62be6ef97c6bd502a23a6d11cbb5b325fa15d2485f7718984aed3537"
+        },
+        {
+          "path": "terrain/eastern-pa/sources.json",
+          "bytes": 8647,
+          "sha256": "8d2bd627c8363fedba558799ce408ee3c37379427a93e18bd02522590cbc9fe4"
+        },
+        {
+          "path": "terrain/eastern-pa/validation.json",
+          "bytes": 24298,
+          "sha256": "c79c5230749c6d463085ef22f8bdbcefcc16b5758100a872f4ec0fd7b8216eeb"
+        },
+        {
+          "path": "terrain/eastern-pa/validation.md",
+          "bytes": 651,
+          "sha256": "afcd4d34674a1ae54288f258b1e160672452e12549a53e0e513a716bfc420574"
+        }
+      ]
+    },
+    {
+      "region": "eastern-pa",
       "dataset": "terrain",
-      "tag": "region-data-2611",
+      "tag": "region-data-2611-radio-20261029",
       "asset": "eastern-pa-terrain.zip",
       "bytes": 9090631,
       "sha256": "8f853b11eb9460c71f03a41e33875a6fda00c75cdc1771db46a5ab37c64a5a6e",
@@ -3290,7 +3350,7 @@
     {
       "region": "new-york",
       "dataset": "charts",
-      "tag": "region-data-2611",
+      "tag": "region-data-2611-radio-20261029",
       "asset": "new-york-charts.zip",
       "bytes": 41377308,
       "sha256": "9cb7b1f58af27cccd38d4a5c6463ef49d99ca8ccd2460946356772e416baee8c",
@@ -6614,8 +6674,73 @@
     },
     {
       "region": "new-york",
+      "dataset": "navigation",
+      "tag": "region-data-2611-radio-20261029",
+      "asset": "new-york-navigation.zip",
+      "bytes": 3716446,
+      "sha256": "0e4a4ce177efe884c71a4ea73157e6298d1f44b0a6a7f0024a3b6ebaa4f65a86",
+      "files": [
+        {
+          "path": "terrain/new-york/airports.json",
+          "bytes": 37380,
+          "sha256": "7904d618e1e3cbeadf15bb07b4c3522024b440b7afac2c175820aaca621e1e8e"
+        },
+        {
+          "path": "terrain/new-york/airspace.json",
+          "bytes": 350954,
+          "sha256": "3cf84f968004f60db35e4a02910b0432132aa345c2fa503607a503165b3eb43c"
+        },
+        {
+          "path": "terrain/new-york/charts/sectional/index.json",
+          "bytes": 28880,
+          "sha256": "d52a2f3f418f86379ecf52ce7a5d1d2516c6a4b194e84acbcaa55a96e4abae90"
+        },
+        {
+          "path": "terrain/new-york/charts/tac/index.json",
+          "bytes": 10800,
+          "sha256": "3332969552a02e6917e2cccbe6b32f1509e75d22fa94678f44c73f604169ae07"
+        },
+        {
+          "path": "terrain/new-york/comms-manifest.json",
+          "bytes": 1050,
+          "sha256": "2d9f2a67e716084491973f049cd7e1663c0666c03c1d48303dab135936dd79d5"
+        },
+        {
+          "path": "terrain/new-york/navdata.json",
+          "bytes": 726925,
+          "sha256": "16b3543769a414d4aa1d7f475b59c6784b017f64aeeba99b095ab47e8d97d950"
+        },
+        {
+          "path": "terrain/new-york/procedures.json",
+          "bytes": 2525937,
+          "sha256": "aebdb99dc427e5a204e501e437e7e47668ceb41705083dab1cdc6811796a5873"
+        },
+        {
+          "path": "terrain/new-york/region.json",
+          "bytes": 2118,
+          "sha256": "05b5e2b7c9b73a9c893b27ac3c1f253a9cf4fe30e9a2de1dac6a6ced6780f2b3"
+        },
+        {
+          "path": "terrain/new-york/sources.json",
+          "bytes": 9617,
+          "sha256": "ea8df94a899f78c9d611e758126591b64ac2ba4dd6ea9117c909bfe0a99e3543"
+        },
+        {
+          "path": "terrain/new-york/validation.json",
+          "bytes": 18768,
+          "sha256": "7aee6128879823525d348dd0af8ec8670ba5234a6063c1a20a1efe628d54431c"
+        },
+        {
+          "path": "terrain/new-york/validation.md",
+          "bytes": 596,
+          "sha256": "ab8ef46cc21cf214bb01d1fd35c47bcbe15059bdca155e150dfa6e220e956635"
+        }
+      ]
+    },
+    {
+      "region": "new-york",
       "dataset": "terrain",
-      "tag": "region-data-2611",
+      "tag": "region-data-2611-radio-20261029",
       "asset": "new-york-terrain.zip",
       "bytes": 5520624,
       "sha256": "3a96075254f8c1f0688078457df441180006c31b9c5dfb285201b2af85d67c2e",
@@ -7061,6 +7186,15 @@
           "sha256": "160508d07ced698ec0a8845ab4970a44d757b46a9e2b40caf2fc1fdf44406a75"
         }
       ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/29_Oct_2026_CSV.zip",
+      "edition": "2026-10-29",
+      "downloaded_at": "2026-11-02T22:47:43.391904Z",
+      "bytes": 21964145,
+      "sha256": "60b072454319f166797c5f4667520e4cf9c54d2e4e5faffbcdbae846aea276da"
     }
   ]
 }

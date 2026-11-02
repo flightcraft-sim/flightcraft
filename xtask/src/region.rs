@@ -227,6 +227,13 @@ pub fn run() -> Result<(), String> {
     build(parse(std::env::args().skip(2))?, Http)
 }
 pub fn build<T: Transport>(request: Request, transport: T) -> Result<(), String> {
+    build_with_nasr(request, transport, None)
+}
+fn build_with_nasr<T: Transport>(
+    request: Request,
+    transport: T,
+    nasr_source: Option<Source>,
+) -> Result<(), String> {
     if request.out.exists() {
         return Err("region output must be a new directory".into());
     }
@@ -243,7 +250,7 @@ pub fn build<T: Transport>(request: Request, transport: T) -> Result<(), String>
     let result = if request.national {
         super::national::build(&request, &inputs, &mut cache)
     } else {
-        build_region(&request, &inputs, &mut cache)
+        build_region(&request, &inputs, &mut cache, nasr_source.as_ref())
     };
     let _ = std::fs::remove_dir_all(&inputs);
     if result.is_err() {
@@ -472,7 +479,12 @@ fn args(pairs: &[(&str, PathBuf)]) -> std::vec::IntoIter<String> {
         .collect::<Vec<_>>()
         .into_iter()
 }
-fn build_region<T: Transport>(request: &Request, inputs: &Path, cache: &mut Cache<T>) -> Result<(), String> {
+fn build_region<T: Transport>(
+    request: &Request,
+    inputs: &Path,
+    cache: &mut Cache<T>,
+    nasr_source: Option<&Source>,
+) -> Result<(), String> {
     let bundled: Vec<Bundled> = download::json(&super::root()?.join("datasets/regions.json"))?;
     let id = request
         .cell
@@ -557,6 +569,16 @@ fn build_region<T: Transport>(request: &Request, inputs: &Path, cache: &mut Cach
             .extend(download::json::<Sources>(&national.join("sources.json"))?.sources);
     }
     super::navigation_faa::run_args(navigation.drain(..))?;
+    // Offline legacy fixtures can omit NASR; production builds fetch the immutable locked cycle.
+    let nasr_local = request.offline.as_ref().map(|p| p.join("nasr.zip"));
+    if request.offline.is_none() || nasr_local.as_ref().is_some_and(|p| p.exists()) {
+        let (stations, source) = if let Some(pin) = nasr_source {
+            super::nasr::acquire_pinned(cache, nasr_local.as_deref(), pin)?
+        } else {
+            super::nasr::acquire(cache, nasr_local.as_deref())?
+        };
+        super::nasr::install(&request.out, &stations, &source)?;
+    }
     if let Some(national) = &request.national_data {
         let airports: flightcraft_world::Airports = download::json(&request.out.join("airports.json"))?;
         let ids = airports
@@ -1114,7 +1136,39 @@ mod tests {
             "https://s3.amazonaws.com/elevation-tiles-prod/skadi/N00/N00E000.hgt.gz".into(),
             encoder.finish().unwrap(),
         );
-        build(request, Recorded(responses)).unwrap();
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let options = zip::write::SimpleFileOptions::default();
+        for (name, text) in [
+            (
+                "APT_BASE.csv",
+                "ARPT_ID,ICAO_ID,ARPT_NAME,LAT_DECIMAL,LONG_DECIMAL,ELEV\nT01,,FIXTURE,0.5,0.5,492.126\n",
+            ),
+            (
+                "FRQ.csv",
+                "EFF_DATE,FACILITY,SERVICED_FACILITY,FREQ,FREQ_USE\n2026/10/29,T01,T01,123.45,CTAF\n",
+            ),
+            ("AWOS.csv", "ASOS_AWOS_ID,LAT_DECIMAL,LONG_DECIMAL,ELEV\n"),
+            ("ATC_BASE.csv", "FACILITY_ID,TWR_HRS,CTL_PRVDING_HRS\n"),
+            ("ATC_ATIS.csv", "FACILITY_ID,ATIS_HRS\n"),
+            ("ATC_SVC.csv", "FACILITY_ID,CTL_SVC\n"),
+        ] {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(text.as_bytes()).unwrap();
+        }
+        let nasr = writer.finish().unwrap().into_inner();
+        let pin = Source {
+            url: "https://example.test/nasr-fixture.zip".into(),
+            edition: Some("2026-10-29".into()),
+            downloaded_at: "2026-11-02T12:00:00Z".into(),
+            bytes: nasr.len() as u64,
+            sha256: download::sha256(&nasr),
+        };
+        responses.insert(pin.url.clone(), nasr);
+        build_with_nasr(request, Recorded(responses), Some(pin)).unwrap();
+        let nav: flightcraft_world::Navdata = download::json(&output.join("navdata.json")).unwrap();
+        assert_eq!(nav.comms.len(), 1);
+        assert_eq!(nav.comms.first().unwrap().channel_khz, 123450);
+        assert!(output.join("comms-manifest.json").is_file());
         for name in [
             "region.json",
             "airports.json",

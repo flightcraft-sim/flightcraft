@@ -8,6 +8,13 @@
       "maxLength": 2048,
       "minLength": 1
     },
+    "comms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ComStation"
+      },
+      "maxItems": 20000
+    },
     "effective_date": {
       "description": "ISO cycle date, or null when the provider supplied no dataset effective date.",
       "type": [
@@ -72,6 +79,136 @@
     "holds"
   ],
   "$defs": {
+    "ComMetadata": {
+      "type": "object",
+      "properties": {
+        "callsign": {
+          "type": "string"
+        },
+        "effective_date": {
+          "type": "string"
+        },
+        "hours": {
+          "type": "string"
+        },
+        "position_estimated": {
+          "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+          "type": "boolean"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "published_use": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weather_sensor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "callsign",
+        "hours",
+        "sector",
+        "services",
+        "effective_date",
+        "position_estimated"
+      ]
+    },
+    "ComStation": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "antenna_agl_m": {
+          "description": "Engineering estimate, not an FAA-published antenna height.",
+          "type": "number",
+          "format": "double"
+        },
+        "channel_khz": {
+          "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "elevation_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/FacilityKind"
+        },
+        "metadata": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "range_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "source": {
+          "description": "FAA source URL or file/record identifier, retained by the importer.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "airport",
+        "name",
+        "kind",
+        "channel_khz",
+        "position",
+        "elevation_m",
+        "antenna_agl_m",
+        "range_nm",
+        "source"
+      ]
+    },
+    "FacilityKind": {
+      "type": "string",
+      "enum": [
+        "ctaf",
+        "unicom",
+        "awos",
+        "asos",
+        "atis",
+        "tower",
+        "ground",
+        "approach",
+        "departure",
+        "clearance"
+      ]
+    },
     "Fix": {
       "type": "object",
       "properties": {

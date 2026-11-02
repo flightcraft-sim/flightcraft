@@ -29,6 +29,33 @@ pub struct Identity {
     pub display_name: String,
     pub description: String,
     pub author: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub registration: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub spoken_type: String,
+}
+impl Identity {
+    pub(crate) fn validate_radio(&self) -> Result<(), AircraftError> {
+        require(
+            self.registration.is_empty()
+                || (self.registration.len() <= 12
+                    && self
+                        .registration
+                        .bytes()
+                        .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'-')),
+            "identity.registration",
+            "use up to twelve uppercase registration characters",
+        )?;
+        require(
+            self.spoken_type.len() <= 64
+                && self
+                    .spoken_type
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '-'),
+            "identity.spoken_type",
+            "use up to 64 spoken type characters",
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -293,6 +320,7 @@ impl Aircraft {
 
     /// Validate Rust-created definitions as well as decoded files.
     pub fn validate(&self) -> Result<(), AircraftError> {
+        self.identity.validate_radio()?;
         require(
             self.format_version == 1,
             "format_version",

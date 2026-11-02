@@ -110,6 +110,8 @@ pub struct Readout {
     pub indicated_airspeed_mps: f64,
     /// True airspeed, m/s.
     pub true_airspeed_mps: f64,
+    /// Scenario sea-level pressure (QNH), used by pressure instruments.
+    pub sea_level_pressure_pa: f64,
     /// Ground speed, m/s.
     pub ground_speed_mps: f64,
     /// Altitude above mean sea level, metres.
@@ -706,6 +708,19 @@ impl Sim {
     /// Validate before atomically replacing visual conditions.
     pub fn set_conditions(&mut self, conditions: world::Conditions) -> Result<(), SimError> {
         conditions.validate()?;
+        if conditions.temperature_c != self.conditions.temperature_c
+            || conditions.dewpoint_c != self.conditions.dewpoint_c
+        {
+            let exponent = 17.625 * conditions.dewpoint_c / (243.04 + conditions.dewpoint_c)
+                - 17.625 * conditions.temperature_c / (243.04 + conditions.temperature_c);
+            self.systems.set(
+                systems::SystemSetting::Environment {
+                    temperature_c: conditions.temperature_c,
+                    relative_humidity: libm::exp(exponent).clamp(0.0, 1.0),
+                },
+                self.systems_model.as_ref(),
+            )?;
+        }
         self.conditions = conditions;
         Ok(())
     }
@@ -1230,6 +1245,7 @@ impl Sim {
             indicated_airspeed_mps: speed
                 * libm::sqrt(world::atmosphere(-z).density_kg_m3 / world::SEA_LEVEL_DENSITY),
             true_airspeed_mps: speed,
+            sea_level_pressure_pa: self.conditions.sea_level_pressure_pa,
             ground_speed_mps: libm::sqrt(vn * vn + ve * ve),
             altitude_msl_m: -z,
             height_agl_m: h.max(0.0),

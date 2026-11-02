@@ -86,3 +86,34 @@ fn deterministic_separate_practice_totals_and_default_trajectory() {
     assert_eq!(cloudy.sim().instrument_time(), Default::default());
     assert!(!cloudy.sim().hood());
 }
+
+#[test]
+fn report_qnh_matches_the_pressure_instruments() {
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "sim.reset",
+        json!({"start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":0.}}),
+    )
+    .unwrap();
+    s.execute("weather.set", json!({"sea_level_pressure_pa":99000.}))
+        .unwrap();
+    s.execute("sim.step", json!({"steps":1})).unwrap();
+    let error = (s.sim().systems().sensed.altitude_msl_m - s.sim().readout().altitude_msl_m).abs();
+    assert!(error > 100.);
+    s.execute(
+        "systems.set",
+        json!({"setting":{"kind":"altimeter","pressure_pa":99000.}}),
+    )
+    .unwrap();
+    s.execute("sim.step", json!({"steps":1})).unwrap();
+    assert!((s.sim().systems().sensed.altitude_msl_m - s.sim().readout().altitude_msl_m).abs() < 0.1);
+    let before = s.execute("weather.state", json!({})).unwrap();
+    for input in [
+        json!({"temperature_c":f64::NAN}),
+        json!({"temperature_c":5.,"dewpoint_c":6.}),
+        json!({"sea_level_pressure_pa":79000.}),
+    ] {
+        assert!(s.execute("weather.set", input).is_err());
+        assert_eq!(s.execute("weather.state", json!({})).unwrap(), before);
+    }
+}

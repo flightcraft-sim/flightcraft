@@ -226,6 +226,7 @@ impl PanelUi {
                     ui.set_opacity(0.);
                 }
                 match &e.element {
+                    PanelElement::AudioPanel => self.audio_panel(ui, cell, &glass.comms, font),
                     PanelElement::TouchDisplay {
                         composition,
                         layout: default_layout,
@@ -1556,4 +1557,139 @@ fn navigator_columns_rect(cell: Rect, r: Rect) -> Rect {
     }
     // Four explicit encoder step buttons remain available along the bottom edge.
     part(cell, 0.79 + (x - 0.26) * 0.34, 0.65, w * 0.30, 0.08)
+}
+
+impl PanelUi {
+    fn audio_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: Rect,
+        state: &flightcraft_control::CommsSnapshot,
+        font: f32,
+    ) {
+        use flightcraft_control::CommsAudioPanel as Setting;
+        ui.painter().rect_filled(rect, 3., t::DIAL);
+        let p = &state.panel;
+        let first = [
+            (
+                "MIC1",
+                p.transmit == 1,
+                Setting {
+                    transmit: Some(1),
+                    ..Default::default()
+                },
+            ),
+            (
+                "MIC2",
+                p.transmit == 2,
+                Setting {
+                    transmit: Some(2),
+                    ..Default::default()
+                },
+            ),
+            (
+                "RX1",
+                p.receive_com1,
+                Setting {
+                    receive_com1: Some(!p.receive_com1),
+                    ..Default::default()
+                },
+            ),
+            (
+                "RX2",
+                p.receive_com2,
+                Setting {
+                    receive_com2: Some(!p.receive_com2),
+                    ..Default::default()
+                },
+            ),
+            (
+                "NAV ID",
+                p.nav_ident,
+                Setting {
+                    nav_ident: Some(!p.nav_ident),
+                    ..Default::default()
+                },
+            ),
+            (
+                "ICS",
+                p.intercom,
+                Setting {
+                    intercom: Some(!p.intercom),
+                    ..Default::default()
+                },
+            ),
+        ];
+        let second = [
+            (
+                "VOL −",
+                false,
+                Setting {
+                    volume: Some((p.volume - 0.1).max(0.0)),
+                    ..Default::default()
+                },
+            ),
+            (
+                "VOL +",
+                false,
+                Setting {
+                    volume: Some((p.volume + 0.1).min(1.0)),
+                    ..Default::default()
+                },
+            ),
+            (
+                "SQ −",
+                false,
+                Setting {
+                    squelch: Some((p.squelch - 0.1).max(0.0)),
+                    ..Default::default()
+                },
+            ),
+            (
+                "SQ +",
+                false,
+                Setting {
+                    squelch: Some((p.squelch + 0.1).min(1.0)),
+                    ..Default::default()
+                },
+            ),
+            (
+                "VOICE",
+                p.speech,
+                Setting {
+                    speech: Some(!p.speech),
+                    ..Default::default()
+                },
+            ),
+            (
+                "CAP",
+                p.captions,
+                Setting {
+                    captions: Some(!p.captions),
+                    ..Default::default()
+                },
+            ),
+        ];
+        for (row, controls) in [first, second].into_iter().enumerate() {
+            for (column, (label, selected, setting)) in controls.into_iter().enumerate() {
+                let cell = Rect::from_min_size(
+                    rect.min + egui::vec2(column as f32 * rect.width() / 6., row as f32 * rect.height() / 2.),
+                    egui::vec2(rect.width() / 6., rect.height() / 2.),
+                )
+                .shrink(1.);
+                if button(
+                    ui,
+                    (row, column),
+                    cell,
+                    label,
+                    selected && state.powered,
+                    font * 0.85,
+                )
+                .clicked()
+                {
+                    self.commands.push(EquipmentSetting::AudioPanel { setting });
+                }
+            }
+        }
+    }
 }

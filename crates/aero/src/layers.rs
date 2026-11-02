@@ -196,9 +196,30 @@ pub struct InstalledSystems {
     pub definition: Option<crate::SystemsDefinition>,
 }
 
+/// A pack may give the audio panel and each COM an independent breaker load.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AudioPanelInstallation {
+    pub power_load: String,
+    pub com1_load: String,
+    pub com2_load: String,
+}
+impl Default for AudioPanelInstallation {
+    fn default() -> Self {
+        Self {
+            power_load: "avionics".into(),
+            com1_load: "avionics".into(),
+            com2_load: "avionics".into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Panel {
+    /// Omitted installations share the existing avionics load and retain legacy power demand.
+    #[serde(default)]
+    pub audio_panel: AudioPanelInstallation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub equipment: Option<crate::modern::EquipmentPanel>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -364,6 +385,7 @@ impl LayerFile {
             "only version 2 is supported",
         )?;
         let identity = self.identity();
+        identity.validate_radio()?;
         id(&identity.id, "identity.id")?;
         for (name, text) in [
             ("display_name", &identity.display_name),
@@ -379,6 +401,13 @@ impl LayerFile {
         match self {
             Self::Variant(v) => v.validate(),
             Self::Panel(p) => {
+                for load in [
+                    &p.audio_panel.power_load,
+                    &p.audio_panel.com1_load,
+                    &p.audio_panel.com2_load,
+                ] {
+                    id(load, "audio_panel.load")?;
+                }
                 if let Some(e) = &p.equipment {
                     e.validate()?;
                 }
@@ -773,6 +802,19 @@ impl AircraftCatalog {
             return Err(error("systems", "wrong file kind"));
         };
         crate::modern::validate_installation(e, s.definition.as_ref(), p)?;
+        if let Some(d) = &s.definition {
+            for load in [
+                &p.audio_panel.power_load,
+                &p.audio_panel.com1_load,
+                &p.audio_panel.com2_load,
+            ] {
+                require(
+                    d.electrical.loads.iter().any(|l| &l.id == load),
+                    "audio_panel",
+                    "audio and COM loads must exist",
+                )?;
+            }
+        }
         let electronic = ["electronic_attitude", "electronic_hsi"];
         if p.instruments
             .iter()
@@ -997,6 +1039,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         ],
     };
     let panel = Panel {
+        audio_panel: Default::default(),
         equipment: None,
         autopilot: None,
         format_version: 2,

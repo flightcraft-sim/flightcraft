@@ -53,7 +53,10 @@ pub fn region(directory: &Path, inputs: &Path) -> Result<Report, String> {
         .counts
         .insert("terrain_tiles".into(), region.tiles.len() as u64);
     for (file, keys) in [
-        ("navdata.json", vec!["navaids", "fixes", "routes", "holds", "ils"]),
+        (
+            "navdata.json",
+            vec!["navaids", "fixes", "routes", "holds", "ils", "comms"],
+        ),
         ("procedures.json", vec!["procedures", "points"]),
         ("airspace.json", vec!["volumes"]),
     ] {

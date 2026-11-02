@@ -6,6 +6,11 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Action {
+    RadioTransmit,
+    ComPtt,
+    IntercomPtt,
+    RadioPanel,
+    Kneeboard,
     ElevatorUp,
     ElevatorDown,
     AileronLeft,
@@ -74,7 +79,12 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 65] = [
+    pub const ALL: [Self; 70] = [
+        Self::RadioTransmit,
+        Self::ComPtt,
+        Self::IntercomPtt,
+        Self::RadioPanel,
+        Self::Kneeboard,
         Self::ElevatorUp,
         Self::ElevatorDown,
         Self::AileronLeft,
@@ -202,6 +212,11 @@ impl Action {
     ];
     pub fn label(self) -> &'static str {
         match self {
+            Self::RadioTransmit => "Transmit typed call",
+            Self::ComPtt => "Push to talk: selected COM",
+            Self::IntercomPtt => "Push to talk: intercom",
+            Self::RadioPanel => "Audio panel and radios",
+            Self::Kneeboard => "Kneeboard transcript",
             Self::ElevatorUp => "Pitch up",
             Self::ElevatorDown => "Pitch down",
             Self::AileronLeft => "Roll left",
@@ -283,6 +298,11 @@ impl Default for Keymap {
         use Action::*;
         Self {
             bindings: [
+                (RadioTransmit, vec![Key::Enter]),
+                (ComPtt, vec![Key::T]),
+                (IntercomPtt, vec![Key::Y]),
+                (RadioPanel, vec![Key::V]),
+                (Kneeboard, vec![Key::K]),
                 (ElevatorUp, vec![Key::ArrowDown, Key::S]),
                 (ElevatorDown, vec![Key::ArrowUp, Key::W]),
                 (AileronLeft, vec![Key::ArrowLeft, Key::A]),
@@ -405,7 +425,16 @@ impl Keymap {
         {
             value.bindings.entry(action).or_default();
         }
-        for action in [Action::PlanningMap, Action::MapZoomIn, Action::MapZoomOut] {
+        for action in [
+            Action::PlanningMap,
+            Action::MapZoomIn,
+            Action::MapZoomOut,
+            Action::ComPtt,
+            Action::IntercomPtt,
+            Action::RadioPanel,
+            Action::Kneeboard,
+            Action::RadioTransmit,
+        ] {
             if !value.bindings.contains_key(&action) {
                 let keys = Self::default()
                     .bindings
@@ -441,6 +470,11 @@ impl Keymap {
                     Action::PlanningMap,
                     Action::MapZoomIn,
                     Action::MapZoomOut,
+                    Action::ComPtt,
+                    Action::IntercomPtt,
+                    Action::RadioPanel,
+                    Action::Kneeboard,
+                    Action::RadioTransmit,
                 ]
                 .contains(&action)
                 && !Action::GLASS.contains(&action)
@@ -473,6 +507,7 @@ mod tests {
     #[test]
     fn custom_bindings_round_trip() {
         let mut map = Keymap::default();
+        map.bindings.insert(Action::RadioPanel, vec![]);
         map.bindings.insert(Action::Camera, vec![Key::V]);
         let restored = Keymap::from_json(&map.json().expect("serialize")).expect("parse");
         assert_eq!(restored, map);
@@ -487,6 +522,11 @@ mod tests {
             Action::LookRight,
             Action::LookUp,
             Action::Airspace,
+            Action::ComPtt,
+            Action::IntercomPtt,
+            Action::RadioPanel,
+            Action::Kneeboard,
+            Action::RadioTransmit,
         ] {
             legacy.bindings.remove(&action);
         }

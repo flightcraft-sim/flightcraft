@@ -1,0 +1,34 @@
+{
+  "counts": {
+    "Approach": 89,
+    "Asos": 5,
+    "Atis": 10,
+    "Awos": 2,
+    "Clearance": 16,
+    "Ctaf": 22,
+    "Departure": 34,
+    "Ground": 13,
+    "Tower": 13,
+    "Unicom": 22
+  },
+  "cycle": "2026-10-29",
+  "discovery": "https://external-api.faa.gov/apra/nasr/chart?edition=current",
+  "navdata_sha256": "16b3543769a414d4aa1d7f475b59c6784b017f64aeeba99b095ab47e8d97d950",
+  "notes": "FRQ channels, APT facility locations, AWOS surveyed sites, ATC hours and services. Facility coordinates approximate remote transmitters. Hours are metadata, not an operational schedule model. Phones are not exported.",
+  "source": {
+    "bytes": 21964145,
+    "downloaded_at": "2026-11-02T22:47:43.391904Z",
+    "edition": "2026-10-29",
+    "sha256": "60b072454319f166797c5f4667520e4cf9c54d2e4e5faffbcdbae846aea276da",
+    "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/29_Oct_2026_CSV.zip"
+  },
+  "tables": [
+    "APT_BASE.csv",
+    "FRQ.csv",
+    "AWOS.csv",
+    "ATC_BASE.csv",
+    "ATC_ATIS.csv",
+    "ATC_SVC.csv"
+  ],
+  "version": 1
+}

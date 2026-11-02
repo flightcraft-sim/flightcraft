@@ -3,6 +3,7 @@
   "dataset": "eastern-pa",
   "counts": {
     "airports": 43,
+    "comms": 224,
     "fixes": 760,
     "holds": 15,
     "ils": 3,
@@ -14,7 +15,7 @@
     "terrain_tiles": 110,
     "volumes": 27
   },
-  "bytes": 49671412,
+  "bytes": 49874760,
   "checks": [
     {
       "airport": "06N",

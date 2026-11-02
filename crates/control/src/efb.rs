@@ -132,6 +132,41 @@ impl Session {
     pub fn update_efb(&self) {
         if let Some(sender) = &self.efb {
             sender.update(aircraft(self));
+            let traffic = self
+                .traffic_state()
+                .aircraft
+                .into_iter()
+                .filter_map(|a| {
+                    let [n, e, _] = a.position_m;
+                    let reference = flightcraft_sim::magnetic::reference_at(
+                        self.sim.world(),
+                        [n, e, -a.altitude_msl_m],
+                        self.simulation_date(),
+                    )
+                    .ok()?;
+                    let heading = reference
+                        .magnetic_to_true(reference.grid_to_magnetic(a.heading_grid_rad))
+                        .to_degrees();
+                    Some((
+                        encode::Aircraft {
+                            latitude_deg: a.latitude_deg?,
+                            longitude_deg: a.longitude_deg?,
+                            altitude_msl_m: a.altitude_msl_m,
+                            pressure_altitude_m: Some(a.altitude_msl_m),
+                            track_deg: heading,
+                            heading_deg: heading,
+                            ground_speed_mps: a.speed_mps,
+                            vertical_speed_mps: a.vertical_speed_mps,
+                            pitch_deg: 0.0,
+                            roll_deg: 0.0,
+                            airborne: true,
+                        },
+                        a.address,
+                        a.registration,
+                    ))
+                })
+                .collect();
+            sender.update_traffic(traffic);
         }
     }
 }
@@ -168,7 +203,9 @@ fn aircraft(session: &Session) -> Option<encode::Aircraft> {
     } else {
         heading
     };
-    let p = flightcraft_world::atmosphere(r.altitude_msl_m).pressure_pa;
+    let p = flightcraft_world::atmosphere(r.altitude_msl_m).pressure_pa
+        * session.sim().conditions().sea_level_pressure_pa
+        / 101325.0;
     // Invert the same ISA lapse-rate/isothermal atmosphere used by the simulation.
     let p11 = flightcraft_world::atmosphere(11000.0).pressure_pa;
     let pressure_altitude = if p >= p11 {

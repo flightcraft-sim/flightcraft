@@ -1188,7 +1188,10 @@ impl SystemsState {
     }
 
     fn ports(&mut self, d: &SystemsDefinition, r: Readout, initialize: bool) {
-        let a = atmosphere(r.altitude_msl_m);
+        let mut a = atmosphere(r.altitude_msl_m);
+        if (80000.0..=110000.0).contains(&r.sea_level_pressure_pa) {
+            a.pressure_pa *= r.sea_level_pressure_pa / 101325.0;
+        }
         let error = interpolate(
             &d.pitot_static.position_error_pa.points,
             r.effective_controls.flaps,

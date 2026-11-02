@@ -1,5 +1,5615 @@
 [
   {
+    "name": "comms.callsign",
+    "description": "Read aircraft radio identity, override registration/type, or opt into abbreviation after first contact.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "abbreviate_after_contact": {
+          "default": null,
+          "description": "Disable to retain full identification; ATC abbreviations require controller initiation.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "registration": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reset_to_pack": {
+          "default": false,
+          "type": "boolean"
+        },
+        "spoken_type": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "CommsCallsign",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "abbreviated": {
+          "type": "string"
+        },
+        "current": {
+          "type": "string"
+        },
+        "full": {
+          "type": "string"
+        },
+        "overridden": {
+          "type": "boolean"
+        },
+        "registration": {
+          "type": "string"
+        },
+        "spoken_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "overridden",
+        "registration",
+        "spoken_type",
+        "full",
+        "abbreviated",
+        "current"
+      ],
+      "title": "PilotCallsign",
+      "type": "object"
+    }
+  },
+  {
+    "name": "comms.tune",
+    "description": "Tune COM1 or COM2 using a 25 or 8.33 kHz channel designator; optionally tune standby or swap.",
+    "input_schema": {
+      "$defs": {
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adf_khz": {
+          "default": null,
+          "description": "Optional ADF tuning for NDB identification, 190–1750 kHz.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "channel_khz": {
+          "default": null,
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "radio": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "spacing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "standby": {
+          "default": false,
+          "type": "boolean"
+        },
+        "swap": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "radio"
+      ],
+      "title": "CommsTune",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "type": "boolean"
+            },
+            "intercom": {
+              "type": "boolean"
+            },
+            "intercom_ptt": {
+              "type": "boolean"
+            },
+            "nav_ident": {
+              "type": "boolean"
+            },
+            "ptt": {
+              "type": "boolean"
+            },
+            "receive_com1": {
+              "type": "boolean"
+            },
+            "receive_com2": {
+              "type": "boolean"
+            },
+            "speech": {
+              "type": "boolean"
+            },
+            "squelch": {
+              "format": "double",
+              "type": "number"
+            },
+            "transmit": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "volume": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "transmit",
+            "receive_com1",
+            "receive_com2",
+            "nav_ident",
+            "intercom",
+            "volume",
+            "squelch",
+            "speech",
+            "captions",
+            "ptt",
+            "intercom_ptt"
+          ],
+          "type": "object"
+        },
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spacing": {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            "standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_khz",
+            "standby_khz",
+            "spacing"
+          ],
+          "type": "object"
+        },
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "PilotCallsign": {
+          "additionalProperties": false,
+          "properties": {
+            "abbreviated": {
+              "type": "string"
+            },
+            "current": {
+              "type": "string"
+            },
+            "full": {
+              "type": "string"
+            },
+            "overridden": {
+              "type": "boolean"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "overridden",
+            "registration",
+            "spoken_type",
+            "full",
+            "abbreviated",
+            "current"
+          ],
+          "type": "object"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        },
+        "TrafficState": {
+          "properties": {
+            "aircraft": {
+              "items": {
+                "$ref": "#/$defs/TrafficAircraft"
+              },
+              "type": "array"
+            },
+            "airport": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runway": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "aircraft"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "adf_khz": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "callsign": {
+          "$ref": "#/$defs/PilotCallsign"
+        },
+        "com1": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com1_powered": {
+          "type": "boolean"
+        },
+        "com2": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com2_powered": {
+          "type": "boolean"
+        },
+        "expected_call": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "panel": {
+          "$ref": "#/$defs/AudioPanel"
+        },
+        "powered": {
+          "type": "boolean"
+        },
+        "stations": {
+          "items": {
+            "$ref": "#/$defs/ComStation"
+          },
+          "type": "array"
+        },
+        "traffic": {
+          "$ref": "#/$defs/TrafficState"
+        }
+      },
+      "required": [
+        "callsign",
+        "powered",
+        "com1_powered",
+        "com2_powered",
+        "com1",
+        "com2",
+        "panel",
+        "stations",
+        "traffic"
+      ],
+      "title": "CommsSnapshot",
+      "type": "object"
+    }
+  },
+  {
+    "name": "comms.audio_panel",
+    "description": "Read or change transmit/receive selects, NAV ident, intercom, volume, squelch, PTT, speech, and captions.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "captions": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "intercom": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "intercom_ptt": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "nav_ident": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "ptt": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "receive_com1": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "receive_com2": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "speech": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "squelch": {
+          "default": null,
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "transmit": {
+          "default": null,
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "volume": {
+          "default": null,
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "title": "CommsAudioPanel",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "type": "boolean"
+            },
+            "intercom": {
+              "type": "boolean"
+            },
+            "intercom_ptt": {
+              "type": "boolean"
+            },
+            "nav_ident": {
+              "type": "boolean"
+            },
+            "ptt": {
+              "type": "boolean"
+            },
+            "receive_com1": {
+              "type": "boolean"
+            },
+            "receive_com2": {
+              "type": "boolean"
+            },
+            "speech": {
+              "type": "boolean"
+            },
+            "squelch": {
+              "format": "double",
+              "type": "number"
+            },
+            "transmit": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "volume": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "transmit",
+            "receive_com1",
+            "receive_com2",
+            "nav_ident",
+            "intercom",
+            "volume",
+            "squelch",
+            "speech",
+            "captions",
+            "ptt",
+            "intercom_ptt"
+          ],
+          "type": "object"
+        },
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spacing": {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            "standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_khz",
+            "standby_khz",
+            "spacing"
+          ],
+          "type": "object"
+        },
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "PilotCallsign": {
+          "additionalProperties": false,
+          "properties": {
+            "abbreviated": {
+              "type": "string"
+            },
+            "current": {
+              "type": "string"
+            },
+            "full": {
+              "type": "string"
+            },
+            "overridden": {
+              "type": "boolean"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "overridden",
+            "registration",
+            "spoken_type",
+            "full",
+            "abbreviated",
+            "current"
+          ],
+          "type": "object"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        },
+        "TrafficState": {
+          "properties": {
+            "aircraft": {
+              "items": {
+                "$ref": "#/$defs/TrafficAircraft"
+              },
+              "type": "array"
+            },
+            "airport": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runway": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "aircraft"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "adf_khz": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "callsign": {
+          "$ref": "#/$defs/PilotCallsign"
+        },
+        "com1": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com1_powered": {
+          "type": "boolean"
+        },
+        "com2": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com2_powered": {
+          "type": "boolean"
+        },
+        "expected_call": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "panel": {
+          "$ref": "#/$defs/AudioPanel"
+        },
+        "powered": {
+          "type": "boolean"
+        },
+        "stations": {
+          "items": {
+            "$ref": "#/$defs/ComStation"
+          },
+          "type": "array"
+        },
+        "traffic": {
+          "$ref": "#/$defs/TrafficState"
+        }
+      },
+      "required": [
+        "callsign",
+        "powered",
+        "com1_powered",
+        "com2_powered",
+        "com1",
+        "com2",
+        "panel",
+        "stations",
+        "traffic"
+      ],
+      "title": "CommsSnapshot",
+      "type": "object"
+    }
+  },
+  {
+    "name": "comms.transmit",
+    "description": "Send a typed pilot call on selected COM or intercom; grade airport, runway, phase, reception, and overlap.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "intercom": {
+          "default": false,
+          "type": "boolean"
+        },
+        "text": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "CommsTransmit",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "$ref": "#/$defs/Channel"
+        },
+        "duration_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "frequency_hz": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "grade": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CallGrade"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "meaning": {
+          "$ref": "#/$defs/Meaning"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reception": {
+          "$ref": "#/$defs/Reception"
+        },
+        "source": {
+          "$ref": "#/$defs/EventSource"
+        },
+        "speaker": {
+          "$ref": "#/$defs/Speaker"
+        },
+        "text": {
+          "type": "string"
+        },
+        "time_s": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "time_s",
+        "duration_s",
+        "channel",
+        "speaker",
+        "text",
+        "meaning",
+        "source",
+        "reception"
+      ],
+      "title": "Transmission",
+      "type": "object"
+    }
+  },
+  {
+    "name": "comms.listen",
+    "description": "Consume the next completed heard transmission, with typed meaning; step or wait when empty.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "CommsListen",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Transmission": {
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/Channel"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_hz": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CallGrade"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "meaning": {
+              "$ref": "#/$defs/Meaning"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reception": {
+              "$ref": "#/$defs/Reception"
+            },
+            "source": {
+              "$ref": "#/$defs/EventSource"
+            },
+            "speaker": {
+              "$ref": "#/$defs/Speaker"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "time_s",
+            "duration_s",
+            "channel",
+            "speaker",
+            "text",
+            "meaning",
+            "source",
+            "reception"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "pending": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "transmission": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transmission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "pending"
+      ],
+      "title": "HeardTransmission",
+      "type": "object"
+    }
+  },
+  {
+    "name": "comms.facilities",
+    "description": "List region FAA communications, or install a validated offline station catalogue for this session.",
+    "input_schema": {
+      "$defs": {
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "stations": {
+          "default": null,
+          "description": "Optional bounded FAA-normalized catalogue; omission only lists the active world's stations.",
+          "items": {
+            "$ref": "#/$defs/ComStation"
+          },
+          "maxItems": 20000,
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "title": "CommsFacilities",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "type": "boolean"
+            },
+            "intercom": {
+              "type": "boolean"
+            },
+            "intercom_ptt": {
+              "type": "boolean"
+            },
+            "nav_ident": {
+              "type": "boolean"
+            },
+            "ptt": {
+              "type": "boolean"
+            },
+            "receive_com1": {
+              "type": "boolean"
+            },
+            "receive_com2": {
+              "type": "boolean"
+            },
+            "speech": {
+              "type": "boolean"
+            },
+            "squelch": {
+              "format": "double",
+              "type": "number"
+            },
+            "transmit": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "volume": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "transmit",
+            "receive_com1",
+            "receive_com2",
+            "nav_ident",
+            "intercom",
+            "volume",
+            "squelch",
+            "speech",
+            "captions",
+            "ptt",
+            "intercom_ptt"
+          ],
+          "type": "object"
+        },
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spacing": {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            "standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_khz",
+            "standby_khz",
+            "spacing"
+          ],
+          "type": "object"
+        },
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "PilotCallsign": {
+          "additionalProperties": false,
+          "properties": {
+            "abbreviated": {
+              "type": "string"
+            },
+            "current": {
+              "type": "string"
+            },
+            "full": {
+              "type": "string"
+            },
+            "overridden": {
+              "type": "boolean"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "overridden",
+            "registration",
+            "spoken_type",
+            "full",
+            "abbreviated",
+            "current"
+          ],
+          "type": "object"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        },
+        "TrafficState": {
+          "properties": {
+            "aircraft": {
+              "items": {
+                "$ref": "#/$defs/TrafficAircraft"
+              },
+              "type": "array"
+            },
+            "airport": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runway": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "aircraft"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "adf_khz": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "callsign": {
+          "$ref": "#/$defs/PilotCallsign"
+        },
+        "com1": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com1_powered": {
+          "type": "boolean"
+        },
+        "com2": {
+          "$ref": "#/$defs/ComRadio"
+        },
+        "com2_powered": {
+          "type": "boolean"
+        },
+        "expected_call": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "panel": {
+          "$ref": "#/$defs/AudioPanel"
+        },
+        "powered": {
+          "type": "boolean"
+        },
+        "stations": {
+          "items": {
+            "$ref": "#/$defs/ComStation"
+          },
+          "type": "array"
+        },
+        "traffic": {
+          "$ref": "#/$defs/TrafficState"
+        }
+      },
+      "required": [
+        "callsign",
+        "powered",
+        "com1_powered",
+        "com2_powered",
+        "com1",
+        "com2",
+        "panel",
+        "stations",
+        "traffic"
+      ],
+      "title": "CommsSnapshot",
+      "type": "object"
+    }
+  },
+  {
+    "name": "traffic.set",
+    "description": "Set zero to three deterministic circuit aircraft at an FAA airport with a published CTAF.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint8",
+          "maximum": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "right_pattern": {
+          "default": false,
+          "description": "Conventional left traffic by default; select right only from published local information.",
+          "type": "boolean"
+        },
+        "runway": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "count",
+        "airport"
+      ],
+      "title": "SetTraffic",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aircraft": {
+          "items": {
+            "$ref": "#/$defs/TrafficAircraft"
+          },
+          "type": "array"
+        },
+        "airport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runway": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "aircraft"
+      ],
+      "title": "TrafficState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "flight.save",
+    "description": "Save the current flight to durable local storage; poll flight.records for browser completion.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "FlightSave",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "FlightRecord": {
+          "additionalProperties": false,
+          "properties": {
+            "dropped_events": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "dropped_inputs": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "events": {
+              "items": {
+                "$ref": "#/$defs/Transmission"
+              },
+              "type": "array"
+            },
+            "inputs": {
+              "items": {
+                "$ref": "#/$defs/RecordedInput"
+              },
+              "type": "array"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "events",
+            "inputs",
+            "dropped_events",
+            "dropped_inputs"
+          ],
+          "type": "object"
+        },
+        "FlightSummary": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "type": "string"
+            },
+            "created_unix_ms": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "events": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "registration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "created_unix_ms",
+            "aircraft",
+            "registration",
+            "duration_s",
+            "events"
+          ],
+          "type": "object"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "RecordedInput": {
+          "additionalProperties": false,
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "SavedFlight": {
+          "additionalProperties": false,
+          "properties": {
+            "record": {
+              "$ref": "#/$defs/FlightRecord"
+            },
+            "summary": {
+              "$ref": "#/$defs/FlightSummary"
+            }
+          },
+          "required": [
+            "summary",
+            "record"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Transmission": {
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/Channel"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_hz": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CallGrade"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "meaning": {
+              "$ref": "#/$defs/Meaning"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reception": {
+              "$ref": "#/$defs/Reception"
+            },
+            "source": {
+              "$ref": "#/$defs/EventSource"
+            },
+            "speaker": {
+              "$ref": "#/$defs/Speaker"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "time_s",
+            "duration_s",
+            "channel",
+            "speaker",
+            "text",
+            "meaning",
+            "source",
+            "reception"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "busy": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flights": {
+          "items": {
+            "$ref": "#/$defs/FlightSummary"
+          },
+          "type": "array"
+        },
+        "last_saved": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loaded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SavedFlight"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_operations": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "busy",
+        "pending_operations",
+        "flights"
+      ],
+      "title": "ArchiveStatus",
+      "type": "object"
+    }
+  },
+  {
+    "name": "flight.records",
+    "description": "List saved flights and poll archive operations; refresh starts a storage listing.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "refresh": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "title": "FlightRecords",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "FlightRecord": {
+          "additionalProperties": false,
+          "properties": {
+            "dropped_events": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "dropped_inputs": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "events": {
+              "items": {
+                "$ref": "#/$defs/Transmission"
+              },
+              "type": "array"
+            },
+            "inputs": {
+              "items": {
+                "$ref": "#/$defs/RecordedInput"
+              },
+              "type": "array"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "events",
+            "inputs",
+            "dropped_events",
+            "dropped_inputs"
+          ],
+          "type": "object"
+        },
+        "FlightSummary": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "type": "string"
+            },
+            "created_unix_ms": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "events": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "registration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "created_unix_ms",
+            "aircraft",
+            "registration",
+            "duration_s",
+            "events"
+          ],
+          "type": "object"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "RecordedInput": {
+          "additionalProperties": false,
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "SavedFlight": {
+          "additionalProperties": false,
+          "properties": {
+            "record": {
+              "$ref": "#/$defs/FlightRecord"
+            },
+            "summary": {
+              "$ref": "#/$defs/FlightSummary"
+            }
+          },
+          "required": [
+            "summary",
+            "record"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Transmission": {
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/Channel"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_hz": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CallGrade"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "meaning": {
+              "$ref": "#/$defs/Meaning"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reception": {
+              "$ref": "#/$defs/Reception"
+            },
+            "source": {
+              "$ref": "#/$defs/EventSource"
+            },
+            "speaker": {
+              "$ref": "#/$defs/Speaker"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "time_s",
+            "duration_s",
+            "channel",
+            "speaker",
+            "text",
+            "meaning",
+            "source",
+            "reception"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "busy": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flights": {
+          "items": {
+            "$ref": "#/$defs/FlightSummary"
+          },
+          "type": "array"
+        },
+        "last_saved": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loaded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SavedFlight"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_operations": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "busy",
+        "pending_operations",
+        "flights"
+      ],
+      "title": "ArchiveStatus",
+      "type": "object"
+    }
+  },
+  {
+    "name": "flight.load",
+    "description": "Load a saved flight for debrief without changing live simulation; browser completion is asynchronous.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "FlightLoad",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "FlightRecord": {
+          "additionalProperties": false,
+          "properties": {
+            "dropped_events": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "dropped_inputs": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "events": {
+              "items": {
+                "$ref": "#/$defs/Transmission"
+              },
+              "type": "array"
+            },
+            "inputs": {
+              "items": {
+                "$ref": "#/$defs/RecordedInput"
+              },
+              "type": "array"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "events",
+            "inputs",
+            "dropped_events",
+            "dropped_inputs"
+          ],
+          "type": "object"
+        },
+        "FlightSummary": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "type": "string"
+            },
+            "created_unix_ms": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "events": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "registration": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "created_unix_ms",
+            "aircraft",
+            "registration",
+            "duration_s",
+            "events"
+          ],
+          "type": "object"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "RecordedInput": {
+          "additionalProperties": false,
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "SavedFlight": {
+          "additionalProperties": false,
+          "properties": {
+            "record": {
+              "$ref": "#/$defs/FlightRecord"
+            },
+            "summary": {
+              "$ref": "#/$defs/FlightSummary"
+            }
+          },
+          "required": [
+            "summary",
+            "record"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Transmission": {
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/Channel"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_hz": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CallGrade"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "meaning": {
+              "$ref": "#/$defs/Meaning"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reception": {
+              "$ref": "#/$defs/Reception"
+            },
+            "source": {
+              "$ref": "#/$defs/EventSource"
+            },
+            "speaker": {
+              "$ref": "#/$defs/Speaker"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "time_s",
+            "duration_s",
+            "channel",
+            "speaker",
+            "text",
+            "meaning",
+            "source",
+            "reception"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "busy": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flights": {
+          "items": {
+            "$ref": "#/$defs/FlightSummary"
+          },
+          "type": "array"
+        },
+        "last_saved": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loaded": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SavedFlight"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_operations": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "busy",
+        "pending_operations",
+        "flights"
+      ],
+      "title": "ArchiveStatus",
+      "type": "object"
+    }
+  },
+  {
+    "name": "flight.export",
+    "description": "Export current flight record JSON, or an already loaded saved flight, without dialogs.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "FlightExport",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "json": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename",
+        "json"
+      ],
+      "title": "FlightJson",
+      "type": "object"
+    }
+  },
+  {
+    "name": "flight.events",
+    "description": "Page typed flight transmissions and recorded control changes; cursors are flight-local.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "default": 0,
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "input_offset": {
+          "default": 0,
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "limit": {
+          "default": 100,
+          "format": "uint",
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "title": "FlightEvents",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CallGrade": {
+          "additionalProperties": false,
+          "properties": {
+            "airport_correct": {
+              "type": "boolean"
+            },
+            "expected_leg": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "feedback": {
+              "type": "string"
+            },
+            "frequency_correct": {
+              "type": "boolean"
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "received": {
+              "type": "boolean"
+            },
+            "runway_correct": {
+              "type": "boolean"
+            },
+            "timely": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "airport_correct",
+            "runway_correct",
+            "frequency_correct",
+            "timely",
+            "received",
+            "passed",
+            "feedback"
+          ],
+          "type": "object"
+        },
+        "Channel": {
+          "enum": [
+            "com",
+            "intercom",
+            "nav"
+          ],
+          "type": "string"
+        },
+        "Controls": {
+          "description": "Pilot controls. Each value is clamped to its range when set.",
+          "properties": {
+            "aileron": {
+              "description": "Aileron, -1 (roll left) to 1 (roll right).",
+              "format": "double",
+              "type": "number"
+            },
+            "brake": {
+              "description": "Wheel brakes, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            },
+            "elevator": {
+              "description": "Elevator, -1 (nose down) to 1 (nose up).",
+              "format": "double",
+              "type": "number"
+            },
+            "flaps": {
+              "description": "Flaps, 0 (up) to 1 (fully down).",
+              "format": "double",
+              "type": "number"
+            },
+            "rudder": {
+              "description": "Rudder, -1 (yaw left) to 1 (yaw right).",
+              "format": "double",
+              "type": "number"
+            },
+            "throttle": {
+              "description": "Throttle, 0 to 1.",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder",
+            "throttle",
+            "flaps",
+            "brake"
+          ],
+          "type": "object"
+        },
+        "Coverage": {
+          "enum": [
+            "FEW",
+            "SCT",
+            "BKN",
+            "OVC"
+          ],
+          "type": "string"
+        },
+        "EventSource": {
+          "enum": [
+            "rules",
+            "scenario",
+            "ai",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
+        "Meaning": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "runway": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "position",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "runway",
+                "leg"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altimeter_pa": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "ceiling_agl_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "dewpoint_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "layers": {
+                  "default": [],
+                  "items": {
+                    "$ref": "#/$defs/ReportedLayer"
+                  },
+                  "type": "array"
+                },
+                "obscuration": {
+                  "$ref": "#/$defs/Obscuration",
+                  "default": "none"
+                },
+                "precipitation": {
+                  "$ref": "#/$defs/Precipitation",
+                  "default": "none"
+                },
+                "temperature_c": {
+                  "default": 0.0,
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": {
+                  "const": "weather",
+                  "type": "string"
+                },
+                "visibility_m": {
+                  "format": "double",
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "wind_from_deg": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "wind_speed_mps": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "wind_from_deg",
+                "wind_speed_mps",
+                "altimeter_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "morse": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "ident",
+                "morse"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "leg": {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "type": {
+                  "const": "cue",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "airport",
+                "leg",
+                "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Obscuration": {
+          "enum": [
+            "none",
+            "mist",
+            "fog",
+            "haze"
+          ],
+          "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "Precipitation": {
+          "enum": [
+            "none",
+            "rain",
+            "snow"
+          ],
+          "type": "string"
+        },
+        "Reception": {
+          "enum": [
+            "pending",
+            "heard",
+            "blocked",
+            "not_received"
+          ],
+          "type": "string"
+        },
+        "RecordedInput": {
+          "additionalProperties": false,
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/Controls"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "ReportedLayer": {
+          "additionalProperties": false,
+          "properties": {
+            "base_agl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "coverage": {
+              "$ref": "#/$defs/Coverage"
+            }
+          },
+          "required": [
+            "coverage",
+            "base_agl_m"
+          ],
+          "type": "object"
+        },
+        "Speaker": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "pilot",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "facility",
+                  "type": "string"
+                },
+                "role": {
+                  "$ref": "#/$defs/FacilityKind"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "role"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "callsign": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "traffic",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "callsign"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "ident": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "nav",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "ident"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "Transmission": {
+          "additionalProperties": false,
+          "properties": {
+            "channel": {
+              "$ref": "#/$defs/Channel"
+            },
+            "duration_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_hz": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "grade": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CallGrade"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "meaning": {
+              "$ref": "#/$defs/Meaning"
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reception": {
+              "$ref": "#/$defs/Reception"
+            },
+            "source": {
+              "$ref": "#/$defs/EventSource"
+            },
+            "speaker": {
+              "$ref": "#/$defs/Speaker"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "id",
+            "time_s",
+            "duration_s",
+            "channel",
+            "speaker",
+            "text",
+            "meaning",
+            "source",
+            "reception"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "dropped_events": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "dropped_inputs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Transmission"
+          },
+          "type": "array"
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/RecordedInput"
+          },
+          "type": "array"
+        },
+        "next": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "next_input_offset": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pending": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "events",
+        "inputs",
+        "next",
+        "next_input_offset",
+        "pending",
+        "dropped_events",
+        "dropped_inputs"
+      ],
+      "title": "EventPage",
+      "type": "object"
+    }
+  },
+  {
     "name": "equipment.set",
     "description": "Operate electronic engine controls, recovery, the touch navigator, or an installed touch display.",
     "input_schema": {
@@ -457,6 +6067,94 @@
           ],
           "type": "string"
         },
+        "CommsAudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "intercom": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "intercom_ptt": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "nav_ident": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "ptt": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "receive_com1": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "receive_com2": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "speech": {
+              "default": null,
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "squelch": {
+              "default": null,
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "transmit": {
+              "default": null,
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "volume": {
+              "default": null,
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "Component": {
           "enum": [
             "lane_a",
@@ -551,6 +6249,23 @@
         },
         "EquipmentSetting": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "audio_panel",
+                  "type": "string"
+                },
+                "setting": {
+                  "$ref": "#/$defs/CommsAudioPanel"
+                }
+              },
+              "required": [
+                "kind",
+                "setting"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -6855,6 +12570,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -6867,6 +12587,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -7698,6 +13429,11 @@
               "format": "double",
               "type": "number"
             },
+            "sea_level_pressure_pa": {
+              "description": "Scenario sea-level pressure (QNH), used by pressure instruments.",
+              "format": "double",
+              "type": "number"
+            },
             "time_s": {
               "format": "double",
               "type": "number"
@@ -7736,6 +13472,7 @@
             "time_s",
             "indicated_airspeed_mps",
             "true_airspeed_mps",
+            "sea_level_pressure_pa",
             "ground_speed_mps",
             "altitude_msl_m",
             "height_agl_m",
@@ -9398,6 +15135,11 @@
           "format": "double",
           "type": "number"
         },
+        "sea_level_pressure_pa": {
+          "description": "Scenario sea-level pressure (QNH), used by pressure instruments.",
+          "format": "double",
+          "type": "number"
+        },
         "time_s": {
           "format": "double",
           "type": "number"
@@ -9436,6 +15178,7 @@
         "time_s",
         "indicated_airspeed_mps",
         "true_airspeed_mps",
+        "sea_level_pressure_pa",
         "ground_speed_mps",
         "altitude_msl_m",
         "height_agl_m",
@@ -10123,6 +15866,11 @@
               "format": "double",
               "type": "number"
             },
+            "sea_level_pressure_pa": {
+              "description": "Scenario sea-level pressure (QNH), used by pressure instruments.",
+              "format": "double",
+              "type": "number"
+            },
             "time_s": {
               "format": "double",
               "type": "number"
@@ -10161,6 +15909,7 @@
             "time_s",
             "indicated_airspeed_mps",
             "true_airspeed_mps",
+            "sea_level_pressure_pa",
             "ground_speed_mps",
             "altitude_msl_m",
             "height_agl_m",
@@ -10742,6 +16491,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -10754,6 +16508,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -11585,6 +17350,11 @@
               "format": "double",
               "type": "number"
             },
+            "sea_level_pressure_pa": {
+              "description": "Scenario sea-level pressure (QNH), used by pressure instruments.",
+              "format": "double",
+              "type": "number"
+            },
             "time_s": {
               "format": "double",
               "type": "number"
@@ -11623,6 +17393,7 @@
             "time_s",
             "indicated_airspeed_mps",
             "true_airspeed_mps",
+            "sea_level_pressure_pa",
             "ground_speed_mps",
             "altitude_msl_m",
             "height_agl_m",
@@ -12432,6 +18203,12 @@
       "additionalProperties": false,
       "description": "Visual weather patches retain wind; a supplied wind group must be complete.",
       "properties": {
+        "dewpoint_c": {
+          "format": "double",
+          "maximum": 60,
+          "minimum": -100,
+          "type": "number"
+        },
         "layers": {
           "items": {
             "$ref": "#/$defs/CloudLayer"
@@ -12448,6 +18225,12 @@
         "preset": {
           "$ref": "#/$defs/WeatherPreset"
         },
+        "sea_level_pressure_pa": {
+          "format": "double",
+          "maximum": 110000,
+          "minimum": 80000,
+          "type": "number"
+        },
         "seed": {
           "format": "uint64",
           "minimum": 0,
@@ -12455,6 +18238,12 @@
         },
         "shear": {
           "type": "boolean"
+        },
+        "temperature_c": {
+          "format": "double",
+          "maximum": 60,
+          "minimum": -60,
+          "type": "number"
         },
         "time_of_day": {
           "$ref": "#/$defs/TimeOfDay"
@@ -12601,6 +18390,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -12613,6 +18407,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -13895,6 +19700,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -13907,6 +19717,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -15197,6 +21018,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -15209,6 +21035,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -17117,6 +22954,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -17129,6 +22971,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -19784,6 +25637,63 @@
           ],
           "type": "string"
         },
+        "AudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "type": "boolean"
+            },
+            "intercom": {
+              "type": "boolean"
+            },
+            "intercom_ptt": {
+              "type": "boolean"
+            },
+            "nav_ident": {
+              "type": "boolean"
+            },
+            "ptt": {
+              "type": "boolean"
+            },
+            "receive_com1": {
+              "type": "boolean"
+            },
+            "receive_com2": {
+              "type": "boolean"
+            },
+            "speech": {
+              "type": "boolean"
+            },
+            "squelch": {
+              "format": "double",
+              "type": "number"
+            },
+            "transmit": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "volume": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "transmit",
+            "receive_com1",
+            "receive_com2",
+            "nav_ident",
+            "intercom",
+            "volume",
+            "squelch",
+            "speech",
+            "captions",
+            "ptt",
+            "intercom_ptt"
+          ],
+          "type": "object"
+        },
         "AutopilotFamily": {
           "enum": [
             "wing_leveler",
@@ -19895,6 +25805,216 @@
             "nav1"
           ],
           "type": "string"
+        },
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spacing": {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            "standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_khz",
+            "standby_khz",
+            "spacing"
+          ],
+          "type": "object"
+        },
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "CommsSnapshot": {
+          "properties": {
+            "adf_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "callsign": {
+              "$ref": "#/$defs/PilotCallsign"
+            },
+            "com1": {
+              "$ref": "#/$defs/ComRadio"
+            },
+            "com1_powered": {
+              "type": "boolean"
+            },
+            "com2": {
+              "$ref": "#/$defs/ComRadio"
+            },
+            "com2_powered": {
+              "type": "boolean"
+            },
+            "expected_call": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "panel": {
+              "$ref": "#/$defs/AudioPanel"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "stations": {
+              "items": {
+                "$ref": "#/$defs/ComStation"
+              },
+              "type": "array"
+            },
+            "traffic": {
+              "$ref": "#/$defs/TrafficState"
+            }
+          },
+          "required": [
+            "callsign",
+            "powered",
+            "com1_powered",
+            "com2_powered",
+            "com1",
+            "com2",
+            "panel",
+            "stations",
+            "traffic"
+          ],
+          "type": "object"
         },
         "DisconnectReason": {
           "enum": [
@@ -20360,6 +26480,21 @@
           ],
           "type": "object"
         },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
         "FlightLeg": {
           "properties": {
             "center": {
@@ -20571,6 +26706,9 @@
               "format": "double",
               "type": "number"
             },
+            "comms": {
+              "$ref": "#/$defs/CommsSnapshot"
+            },
             "engine": {
               "items": {
                 "$ref": "#/$defs/EngineValue"
@@ -20635,6 +26773,12 @@
             "touch": {
               "$ref": "#/$defs/TouchState"
             },
+            "traffic": {
+              "items": {
+                "$ref": "#/$defs/MapTraffic"
+              },
+              "type": "array"
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -20645,6 +26789,8 @@
             }
           },
           "required": [
+            "comms",
+            "traffic",
             "touch",
             "settings",
             "air_data",
@@ -20953,6 +27099,32 @@
           ],
           "type": "object"
         },
+        "MapTraffic": {
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "relative_altitude_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "callsign",
+            "position",
+            "relative_altitude_m"
+          ],
+          "type": "object"
+        },
         "NavGuidance": {
           "additionalProperties": false,
           "properties": {
@@ -21161,6 +27333,50 @@
             "HM"
           ],
           "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "PilotCallsign": {
+          "additionalProperties": false,
+          "properties": {
+            "abbreviated": {
+              "type": "string"
+            },
+            "current": {
+              "type": "string"
+            },
+            "full": {
+              "type": "string"
+            },
+            "overridden": {
+              "type": "boolean"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "overridden",
+            "registration",
+            "spoken_type",
+            "full",
+            "abbreviated",
+            "current"
+          ],
+          "type": "object"
         },
         "PlateLink": {
           "additionalProperties": false,
@@ -21718,6 +27934,116 @@
           },
           "required": [
             "displays"
+          ],
+          "type": "object"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        },
+        "TrafficState": {
+          "properties": {
+            "aircraft": {
+              "items": {
+                "$ref": "#/$defs/TrafficAircraft"
+              },
+              "type": "array"
+            },
+            "airport": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runway": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "aircraft"
           ],
           "type": "object"
         },
@@ -21950,6 +28276,63 @@
           ],
           "type": "string"
         },
+        "AudioPanel": {
+          "additionalProperties": false,
+          "properties": {
+            "captions": {
+              "type": "boolean"
+            },
+            "intercom": {
+              "type": "boolean"
+            },
+            "intercom_ptt": {
+              "type": "boolean"
+            },
+            "nav_ident": {
+              "type": "boolean"
+            },
+            "ptt": {
+              "type": "boolean"
+            },
+            "receive_com1": {
+              "type": "boolean"
+            },
+            "receive_com2": {
+              "type": "boolean"
+            },
+            "speech": {
+              "type": "boolean"
+            },
+            "squelch": {
+              "format": "double",
+              "type": "number"
+            },
+            "transmit": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "volume": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "transmit",
+            "receive_com1",
+            "receive_com2",
+            "nav_ident",
+            "intercom",
+            "volume",
+            "squelch",
+            "speech",
+            "captions",
+            "ptt",
+            "intercom_ptt"
+          ],
+          "type": "object"
+        },
         "AutopilotFamily": {
           "enum": [
             "wing_leveler",
@@ -22061,6 +28444,216 @@
             "nav1"
           ],
           "type": "string"
+        },
+        "ComMetadata": {
+          "additionalProperties": false,
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "effective_date": {
+              "type": "string"
+            },
+            "hours": {
+              "type": "string"
+            },
+            "position_estimated": {
+              "description": "NASR gives a facility/airport reference point, not necessarily a remote antenna site.",
+              "type": "boolean"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "published_use": {
+              "type": "string"
+            },
+            "sector": {
+              "type": "string"
+            },
+            "services": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "weather_sensor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "callsign",
+            "hours",
+            "sector",
+            "services",
+            "effective_date",
+            "position_estimated"
+          ],
+          "type": "object"
+        },
+        "ComRadio": {
+          "additionalProperties": false,
+          "properties": {
+            "active_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spacing": {
+              "$ref": "#/$defs/ComSpacing"
+            },
+            "standby_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "active_khz",
+            "standby_khz",
+            "spacing"
+          ],
+          "type": "object"
+        },
+        "ComSpacing": {
+          "enum": [
+            "khz25",
+            "khz833"
+          ],
+          "type": "string"
+        },
+        "ComStation": {
+          "additionalProperties": false,
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "antenna_agl_m": {
+              "description": "Engineering estimate, not an FAA-published antenna height.",
+              "format": "double",
+              "type": "number"
+            },
+            "channel_khz": {
+              "description": "Channel designator in kHz, not the rounded 8.33 kHz carrier.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "elevation_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            "metadata": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ComMetadata"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            "range_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "source": {
+              "description": "FAA source URL or file/record identifier, retained by the importer.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "airport",
+            "name",
+            "kind",
+            "channel_khz",
+            "position",
+            "elevation_m",
+            "antenna_agl_m",
+            "range_nm",
+            "source"
+          ],
+          "type": "object"
+        },
+        "CommsSnapshot": {
+          "properties": {
+            "adf_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "callsign": {
+              "$ref": "#/$defs/PilotCallsign"
+            },
+            "com1": {
+              "$ref": "#/$defs/ComRadio"
+            },
+            "com1_powered": {
+              "type": "boolean"
+            },
+            "com2": {
+              "$ref": "#/$defs/ComRadio"
+            },
+            "com2_powered": {
+              "type": "boolean"
+            },
+            "expected_call": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PatternLeg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "panel": {
+              "$ref": "#/$defs/AudioPanel"
+            },
+            "powered": {
+              "type": "boolean"
+            },
+            "stations": {
+              "items": {
+                "$ref": "#/$defs/ComStation"
+              },
+              "type": "array"
+            },
+            "traffic": {
+              "$ref": "#/$defs/TrafficState"
+            }
+          },
+          "required": [
+            "callsign",
+            "powered",
+            "com1_powered",
+            "com2_powered",
+            "com1",
+            "com2",
+            "panel",
+            "stations",
+            "traffic"
+          ],
+          "type": "object"
         },
         "DisconnectReason": {
           "enum": [
@@ -22526,6 +29119,21 @@
           ],
           "type": "object"
         },
+        "FacilityKind": {
+          "enum": [
+            "ctaf",
+            "unicom",
+            "awos",
+            "asos",
+            "atis",
+            "tower",
+            "ground",
+            "approach",
+            "departure",
+            "clearance"
+          ],
+          "type": "string"
+        },
         "FlightLeg": {
           "properties": {
             "center": {
@@ -22737,6 +29345,9 @@
               "format": "double",
               "type": "number"
             },
+            "comms": {
+              "$ref": "#/$defs/CommsSnapshot"
+            },
             "engine": {
               "items": {
                 "$ref": "#/$defs/EngineValue"
@@ -22801,6 +29412,12 @@
             "touch": {
               "$ref": "#/$defs/TouchState"
             },
+            "traffic": {
+              "items": {
+                "$ref": "#/$defs/MapTraffic"
+              },
+              "type": "array"
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -22811,6 +29428,8 @@
             }
           },
           "required": [
+            "comms",
+            "traffic",
             "touch",
             "settings",
             "air_data",
@@ -23119,6 +29738,32 @@
           ],
           "type": "object"
         },
+        "MapTraffic": {
+          "properties": {
+            "callsign": {
+              "type": "string"
+            },
+            "position": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "relative_altitude_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "callsign",
+            "position",
+            "relative_altitude_m"
+          ],
+          "type": "object"
+        },
         "NavGuidance": {
           "additionalProperties": false,
           "properties": {
@@ -23327,6 +29972,50 @@
             "HM"
           ],
           "type": "string"
+        },
+        "PatternLeg": {
+          "enum": [
+            "taxi",
+            "departing",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "PilotCallsign": {
+          "additionalProperties": false,
+          "properties": {
+            "abbreviated": {
+              "type": "string"
+            },
+            "current": {
+              "type": "string"
+            },
+            "full": {
+              "type": "string"
+            },
+            "overridden": {
+              "type": "boolean"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "overridden",
+            "registration",
+            "spoken_type",
+            "full",
+            "abbreviated",
+            "current"
+          ],
+          "type": "object"
         },
         "PlateLink": {
           "additionalProperties": false,
@@ -23884,6 +30573,116 @@
           },
           "required": [
             "displays"
+          ],
+          "type": "object"
+        },
+        "TrafficAircraft": {
+          "properties": {
+            "address": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "aircraft_type": {
+              "type": "string"
+            },
+            "altitude_msl_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "following_pilot": {
+              "type": "boolean"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "leg": {
+              "$ref": "#/$defs/PatternLeg"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "speed_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "vertical_speed_mps": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "address",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "position_m",
+            "altitude_msl_m",
+            "heading_grid_rad",
+            "speed_mps",
+            "vertical_speed_mps",
+            "leg",
+            "sequence",
+            "following_pilot"
+          ],
+          "type": "object"
+        },
+        "TrafficState": {
+          "properties": {
+            "aircraft": {
+              "items": {
+                "$ref": "#/$defs/TrafficAircraft"
+              },
+              "type": "array"
+            },
+            "airport": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runway": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "aircraft"
           ],
           "type": "object"
         },
@@ -24240,6 +31039,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -24252,6 +31056,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -25556,6 +32371,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -25568,6 +32388,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -27162,6 +33993,12 @@
             },
             "id": {
               "type": "string"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "spoken_type": {
+              "type": "string"
             }
           },
           "required": [
@@ -27675,6 +34512,11 @@
         "Conditions": {
           "additionalProperties": false,
           "properties": {
+            "dewpoint_c": {
+              "default": 5.0,
+              "format": "double",
+              "type": "number"
+            },
             "layers": {
               "items": {
                 "$ref": "#/$defs/CloudLayer"
@@ -27687,6 +34529,17 @@
             },
             "precipitation": {
               "$ref": "#/$defs/Precipitation"
+            },
+            "sea_level_pressure_pa": {
+              "default": 101325.0,
+              "format": "double",
+              "type": "number"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+              "format": "double",
+              "type": "number"
             },
             "time_of_day": {
               "$ref": "#/$defs/TimeOfDay"
@@ -28518,6 +35371,11 @@
               "format": "double",
               "type": "number"
             },
+            "sea_level_pressure_pa": {
+              "description": "Scenario sea-level pressure (QNH), used by pressure instruments.",
+              "format": "double",
+              "type": "number"
+            },
             "time_s": {
               "format": "double",
               "type": "number"
@@ -28556,6 +35414,7 @@
             "time_s",
             "indicated_airspeed_mps",
             "true_airspeed_mps",
+            "sea_level_pressure_pa",
             "ground_speed_mps",
             "altitude_msl_m",
             "height_agl_m",

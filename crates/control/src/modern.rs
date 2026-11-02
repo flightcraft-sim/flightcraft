@@ -122,6 +122,9 @@ pub enum DisplayAction {
 #[derive(Clone, Debug, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EquipmentSetting {
+    AudioPanel {
+        setting: crate::CommsAudioPanel,
+    },
     Systems {
         setting: flightcraft_sim::modern::ModernSetting,
     },
@@ -175,6 +178,8 @@ impl Session {
                         NavigatorState::default()
                     };
                     if let Some(radio) = self.sim.radios().receivers.first() {
+                        nav.com_active_khz = self.comms.radios.first().map_or(122800, |r| r.active_khz);
+                        nav.com_standby_khz = self.comms.radios.first().map_or(124000, |r| r.standby_khz);
                         nav.nav_active_khz = radio.active_hz / 1000;
                         nav.nav_standby_khz = radio.standby_hz / 1000;
                     }
@@ -281,6 +286,9 @@ impl Session {
             };
         }
         match setting {
+            EquipmentSetting::AudioPanel { setting } => {
+                setting.run(self)?;
+            }
             EquipmentSetting::Systems { setting } => self
                 .sim
                 .set_systems(flightcraft_sim::systems::SystemSetting::Equipment { setting })?,
@@ -316,6 +324,60 @@ impl Session {
                     return Ok(());
                 }
                 match action {
+                    NavigatorAction::Tune {
+                        band: RadioBand::Com,
+                        frequency_khz,
+                    } => {
+                        self.run(crate::CommsTune {
+                            radio: 1,
+                            standby: true,
+                            channel_khz: Some(frequency_khz),
+                            ..Default::default()
+                        })?;
+                        return Ok(());
+                    }
+                    NavigatorAction::Flip { band: RadioBand::Com } => {
+                        self.run(crate::CommsTune {
+                            radio: 1,
+                            swap: true,
+                            ..Default::default()
+                        })?;
+                        return Ok(());
+                    }
+                    NavigatorAction::Knob { outer, detents }
+                        if self.touch.navigator.knob_band == RadioBand::Com =>
+                    {
+                        if !(-100..=100).contains(&detents) {
+                            return Err(invalid(NAME, "at most 100 knob detents"));
+                        }
+                        let current = self.comms.radios.first().cloned().unwrap_or_default();
+                        let eight = current.spacing == crate::ComSpacing::Khz833;
+                        let mut channel = current.standby_khz;
+                        if outer {
+                            channel = (i64::from(channel) + i64::from(detents) * 1000 - 118000)
+                                .rem_euclid(19000) as u32
+                                + 118000;
+                        } else {
+                            for _ in 0..detents.unsigned_abs() {
+                                loop {
+                                    channel = (i64::from(channel) + if detents < 0 { -5 } else { 5 } - 118000)
+                                        .rem_euclid(19000)
+                                        as u32
+                                        + 118000;
+                                    if flightcraft_world::comms::valid_channel(channel, eight) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        self.run(crate::CommsTune {
+                            radio: 1,
+                            standby: true,
+                            channel_khz: Some(channel),
+                            ..Default::default()
+                        })?;
+                        return Ok(());
+                    }
                     NavigatorAction::Avionics { setting } => {
                         self.run(crate::SetAvionics { setting: *setting })?;
                         return Ok(());
@@ -370,6 +432,10 @@ impl Session {
                     }
                     _ => {}
                 }
+                if let Some(radio) = self.comms.radios.first() {
+                    self.touch.navigator.com_active_khz = radio.active_khz;
+                    self.touch.navigator.com_standby_khz = radio.standby_khz;
+                }
                 let n = &mut self.touch.navigator;
                 match action {
                     NavigatorAction::Page { page } => {
@@ -406,6 +472,11 @@ impl Session {
                     | NavigatorAction::DirectTo { .. }
                     | NavigatorAction::FlightPlan { .. } => {}
                 }
+                if let Some(radio) = self.comms.radios.first_mut() {
+                    radio.active_khz = n.com_active_khz;
+                    radio.standby_khz = n.com_standby_khz;
+                }
+                self.comms.next_weather = self.sim.state().time_s;
             }
         }
         Ok(())

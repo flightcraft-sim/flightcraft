@@ -12,6 +12,13 @@
     "base_url": {
       "type": "string"
     },
+    "sources": {
+      "description": "Immutable upstream payloads used by scripted importers, separate from release assets.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Source"
+      }
+    },
     "version": {
       "type": "integer",
       "format": "uint8",
@@ -85,6 +92,38 @@
       "additionalProperties": false,
       "required": [
         "path",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "downloaded_at": {
+          "type": "string"
+        },
+        "edition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "downloaded_at",
         "bytes",
         "sha256"
       ]
