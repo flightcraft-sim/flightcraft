@@ -50,6 +50,8 @@ jobs:
           path: .cache/data
           key: region-data-${{ hashFiles('data.lock') }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install native libraries for xtask
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev libasound2-dev
       - run: cargo xtask data fetch
       - run: cargo check --target wasm32-unknown-unknown -p flightcraft-world -p flightcraft-aero -p flightcraft-sim -p flightcraft-control -p flightcraft-web -p flightcraft-mcp
       - name: Install the wasm-bindgen CLI version from Cargo.lock
