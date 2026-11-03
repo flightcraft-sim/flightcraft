@@ -32,7 +32,7 @@ def main(lock_path: str, out_dir: str) -> None:
             if dest.exists():
                 shutil.rmtree(dest)
             paths = ["pack.json"] + [f["path"] for f in manifest.get("files", [])] + [p for p in EXTRA if (src / p).is_file()]
-            paths += sorted({e[k] for e in manifest.get("exterior", []) for k in ("model", "lod1")})
+            paths += sorted(exterior_files(manifest))
             for rel in paths:
                 path = (src / rel).resolve()
                 if src.resolve() not in path.parents:
@@ -40,7 +40,20 @@ def main(lock_path: str, out_dir: str) -> None:
                 target = dest / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
+            missing = sorted(rel for rel in exterior_files(manifest) if not (dest / rel).is_file())
+            if missing:
+                sys.exit(f"bundle-packs: {pin['id']} is missing exterior files {missing}")
             print(f"bundle-packs: {pin['id']} at {pin['commit'][:7]}: {len(paths)} files")
+
+
+def exterior_files(manifest: dict) -> set:
+    """Every model level an exterior entry names: `model` and any `lodN`, present or future."""
+    return {
+        value
+        for entry in manifest.get("exterior", [])
+        for key, value in entry.items()
+        if isinstance(value, str) and (key == "model" or (key.startswith("lod") and key[3:].isdigit()))
+    }
 
 
 if __name__ == "__main__":
