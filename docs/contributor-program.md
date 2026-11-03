@@ -47,7 +47,10 @@ enforces.
 ## 3. Agent skills
 
 One skill per contribution type, under `skills/` in the repository, written for coding agents and
-humans alike:
+humans alike. `AGENTS.md` stays a short router: the hard rules, what enforces each, and a table of
+skills. `cargo xtask skills` checks in CI that `AGENTS.md` and `skills/` match the code (commands,
+paths, and schemas they name exist). Skills say to extend the area's existing test file rather than
+add one file per change, and to show real screenshots for anything visible.
 
 - `contribute-aircraft`:
   1. find the POH and published data;
@@ -73,8 +76,10 @@ Modelled on SolidCraft's claim bot, so two people do not build the same aircraft
 
 - `/claim` on an issue assigns it. A draft PR that references the issue also claims it.
 - If two PRs race for the same issue, the lowest-numbered PR wins.
-- `/unclaim` releases a claim. A daily sweep frees claims with no activity for 14 days, after a
-  warning comment.
+- `/unclaim` releases a claim. A daily sweep frees a claim with no draft PR after 72 hours, or with
+  no pushes for 14 days, after a warning comment.
+- The bot is `.github/workflows/claim.yml` with `scripts/claim/claim.js` and its tests, reused from
+  SolidCraft (the owner's own permissively licensed project).
 - Wanted aircraft and scenarios are issues with labels (`aircraft`, `scenario`,
   `airport-detail`), so contributors can browse what is open.
 
