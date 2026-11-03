@@ -19,6 +19,8 @@ pub struct PageUi {
     crew: crate::crew::CrewUi,
     picture: picture::Picture,
     scene: flightcraft_render::Scene,
+    camera_time: Option<f64>,
+    camera_generation: Option<u64>,
     panel: instruments::InstrumentPanel,
     map: map::PlanningMap,
     instructor: scenario::ScenarioUi,
@@ -568,6 +570,17 @@ fn mask_circle(ui: &egui::Ui, rect: Rect) {
     }
 }
 impl PageUi {
+    fn camera_elapsed(&mut self, now: f64, generation: u64) -> f32 {
+        if self.camera_generation != Some(generation) {
+            self.scene.reset_camera();
+            self.camera_time = None;
+            self.camera_generation = Some(generation);
+        }
+        let elapsed = self.camera_time.map_or(0., |previous| (now - previous).max(0.));
+        self.camera_time = now.is_finite().then_some(now);
+        if elapsed.is_finite() { elapsed as f32 } else { 0. }
+    }
+
     pub fn show(&mut self, ui: &mut egui::Ui, page: &Page, s: &mut Session, id: &str) -> Result<(), String> {
         theme::page(ui);
         let readout = s.sim().readout();
@@ -762,7 +775,8 @@ impl PageUi {
                 self.scene.set_exterior_state(s.sim());
                 self.scene
                     .set_propeller_power(readout.effective_controls.throttle as f32);
-                self.scene.show(ui, s.sim().state(), 1. / 60., theme::scene());
+                let dt = self.camera_elapsed(ui.ctx().input(|i| i.time), s.flight_generation());
+                self.scene.show(ui, s.sim().state(), dt, theme::scene());
                 radio::captions(ui, s);
                 ui.painter().text(
                     ui.max_rect().center_bottom() - egui::vec2(0., 10.),
@@ -1887,3 +1901,6 @@ mod interaction_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod camera_tests;

@@ -78,6 +78,7 @@ pub struct Scene {
     pub lights_visible: bool,
     eye: Option<Vec3>,
     target: Option<Vec3>,
+    chase_position: Option<Vec3>,
     pub camera: CameraMode,
     screen_view: Option<ScreenView>,
     chase_distance_m: f32,
@@ -110,6 +111,7 @@ impl Default for Scene {
             lights_visible: true,
             eye: None,
             target: None,
+            chase_position: None,
             camera: CameraMode::Chase,
             screen_view: None,
             chase_distance_m: 19.0,
@@ -285,6 +287,7 @@ impl Scene {
     pub fn reset_camera(&mut self) {
         self.eye = None;
         self.target = None;
+        self.chase_position = None;
     }
 
     fn smooth_look(&mut self, dt: f32) {
@@ -292,9 +295,8 @@ impl Scene {
         self.look = self.look.lerp(self.look_target, 1.0 - (-dt * 9.0).exp());
     }
 
-    /// Enqueue the wgpu callback. The camera follows the body's quaternion, not UI readouts.
-    pub fn show(&mut self, ui: &mut egui::Ui, state: &State, dt: f32, palette: Palette) {
-        let rect = ui.max_rect();
+    // Shared by the viewport and headless motion tests.
+    fn camera_frame(&mut self, state: &State, dt: f32) -> (Vec3, Mat4, Mat4, f32) {
         if self.previous_camera != Some(self.camera) {
             self.reset_camera();
             self.previous_camera = Some(self.camera);
@@ -318,7 +320,9 @@ impl Scene {
         let axis = |v| drawing(attitude * v).extend(0.0);
         let model = Mat4::from_cols(axis(Vec3::X), axis(Vec3::Y), axis(Vec3::Z), position.extend(1.0));
         self.smooth_look(dt);
-        let blend = 1.0 - (-dt.clamp(0.0, 0.25) * 7.0).exp();
+        // Exponential smoothing is stable across long paint gaps; invalid time freezes the slew.
+        let dt = if dt.is_finite() { dt.max(0.0) } else { 0.0 };
+        let blend = 1.0 - (-dt * 7.0).exp();
         let pilot_eye = if self.larrow {
             Vec3::new(-0.1, 0.0, -0.63)
         } else if self.sling {
@@ -331,10 +335,19 @@ impl Scene {
                 let desired_eye = position
                     + drawing(attitude * Vec3::new(-self.chase_distance_m, 0.0, -self.chase_height_m));
                 let desired_target = position + drawing(attitude * Vec3::new(10.0, 0.0, -0.3));
-                let eye = self.eye.map_or(desired_eye, |v| v.lerp(desired_eye, blend));
+                // Carry the camera with every aircraft translation, including sparse session
+                // snapshots and zero-time repaints. Slew only the relative offset and aim;
+                // smoothing world positions adds speed-dependent lag behind the aircraft.
+                let translation = self
+                    .chase_position
+                    .map_or(Vec3::ZERO, |previous| position - previous);
+                self.chase_position = Some(position);
+                let eye = self
+                    .eye
+                    .map_or(desired_eye, |v| (v + translation).lerp(desired_eye, blend));
                 let target = self
                     .target
-                    .map_or(desired_target, |v| v.lerp(desired_target, blend));
+                    .map_or(desired_target, |v| (v + translation).lerp(desired_target, blend));
                 self.eye = Some(eye);
                 self.target = Some(target);
                 (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
@@ -365,8 +378,9 @@ impl Scene {
                     f64::from(e - 450. * sin - 30. * cos),
                 );
                 let eye = Vec3::new(eye.x, eye.y.max(ground.height_msl_m as f32 + 12.), eye.z);
-                // Keep the aircraft large, with the threshold and airport behind it in the same view.
-                let target = position.lerp(threshold, 0.08);
+                // Pan from the fixed airport observer. Biasing aim toward the threshold
+                // loses a climbing aircraft outside this deliberately narrow field of view.
+                let target = position;
                 vertical_fov = (2. * (2.3 / (2. * eye.distance(position).max(1.) * 0.065)).atan())
                     .clamp(4_f32.to_radians(), 35_f32.to_radians());
                 self.eye = Some(eye);
@@ -422,6 +436,13 @@ impl Scene {
         } else {
             (eye, view)
         };
+        (eye, view, model, vertical_fov)
+    }
+
+    /// Enqueue the wgpu callback. The camera follows the body's quaternion, not UI readouts.
+    pub fn show(&mut self, ui: &mut egui::Ui, state: &State, dt: f32, palette: Palette) {
+        let rect = ui.max_rect();
+        let (eye, view, model, vertical_fov) = self.camera_frame(state, dt);
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
         let projection = Mat4::perspective_rh(
             self.screen_view.map_or(vertical_fov, |s| {
@@ -627,3 +648,6 @@ mod aircraft_tests {
 
 #[cfg(test)]
 mod exterior_proof;
+
+#[cfg(test)]
+mod camera_motion_tests;
