@@ -105,13 +105,42 @@ Declare both in new aircraft packs, for example:
 {"registration":"N371FC","spoken_type":"Sling"}
 ```
 
-`comms.callsign` reads the identity or overrides either field. The radio window exposes the same
-controls, and the app persists the choice. A typed `{callsign}` placeholder expands to the current
-spoken form. US registrations use the aircraft type in place of November: “Sling One Two Three
-Four Bravo,” then “Sling One Foxtrot Charlie” after a completed, unblocked call on that carrier.
-Changing frequency starts a new contact. `abbreviate_after_contact:false` retains full callsigns.
-On actual ATC frequencies, use an abbreviation only after the controller initiates it. The
-[tower and approach rules](atc.md) initiate the abbreviated reply after hearing the full first call. Traffic uses fictional civil GA registrations with
+In **Radios**, enter a registration and spoken type, and choose **Set callsign**. Lowercase input
+becomes uppercase. The choice is saved per aircraft variant in the existing desktop preferences or
+browser storage, restored on launch and aircraft load, and painted at the pack's registration node
+on both sides of the Corvid, Larrow, and installed Sling. Original procedural stroke-and-arc glyphs
+preserve the pack's color, placement, and letter height at both detail levels; no font is required.
+**Use pack** clears that variant's saved choice and restores its baked lettering and radio identity.
+
+US civil N-numbers follow the FAA rules associated with 14 CFR 45.21–45.29: N plus one to five
+characters, starting with 1–9, then digits and at most two trailing letters. I and O are excluded,
+and letters cannot precede digits. N371FC and N12345 are valid. N0FC explains that a number can't
+start with zero; N12IO explains that I and O aren't used; NFC1 explains that letters belong at the end.
+Select **Not a US registration** for a prefix-dash registration such as C-GABC or G-ABCD, up to
+12 characters using A–Z, 0–9, and one separating hyphen. Foreign registrations retain their nationality
+prefix in speech, use the ICAO alphabet (including India and Oscar), and omit the hyphen in speech.
+This validates the number's format; it does not check availability or establish real registration.
+
+`comms.callsign` reads the identity or overrides either field. It accepts `not_us`, `persist`
+(default `true`), `reset_to_pack`, and `abbreviate_after_contact`. For example:
+
+```json
+{"registration":"n371fc","spoken_type":"Sling","persist":true}
+```
+
+`persist:false` changes the current session without replacing the saved choice. Validation failures
+return typed `CallsignError` reasons through `CommandError::Callsign` and leave the current identity
+and preferences intact. MCP tool errors expose `error.kind: "callsign_validation"` and a typed
+`error.reason` in `structuredContent`, including when bridged to the desktop. Headless clients can serialize `Session::callsign_preferences()` and restore
+it with `restore_callsign_preferences`; the app stores it automatically on desktop and web.
+
+A typed `{callsign}` placeholder expands to the current spoken form. Following AIM 4-2-4, the
+aircraft type replaces November in a US call: “Sling Three Seven One Foxtrot Charlie.” The pilot
+uses “Sling One Foxtrot Charlie” only after receiving a controller's abbreviated call on that carrier.
+A pending, blocked, or unheard reply, a pilot's first transmission, traffic, or automated weather
+does not enable abbreviation. Changing frequency starts a new contact.
+`abbreviate_after_contact:false` retains full callsigns. The [tower and approach rules](atc.md)
+initiate the abbreviated reply after hearing the first call. Traffic uses fictional civil GA registrations with
 Cherokee, Cessna, and Skyhawk type names, phonetic letters, and no airline identifiers. GDL 90 sends
 the registration in its eight-character field, while captions and speech use the spoken form.
 

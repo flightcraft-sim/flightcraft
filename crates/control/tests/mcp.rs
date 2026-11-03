@@ -29,6 +29,32 @@ fn call(session: &mut Session, name: &str, arguments: Value) -> Value {
 }
 
 #[test]
+fn callsign_validation_has_a_machine_readable_reason() {
+    let mut session = Session::new().unwrap();
+    let response = request(
+        &mut session,
+        json!(1),
+        "tools/call",
+        json!({"name":"comms_callsign","arguments":{"registration":"N12IO"}}),
+    );
+    assert_eq!(response["result"]["isError"], true);
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["kind"],
+        "callsign_validation"
+    );
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["reason"],
+        "excluded_letters"
+    );
+    assert!(
+        response["result"]["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("letters I and O aren't used")
+    );
+}
+
+#[test]
 fn end_to_end_initialize_list_reset_controls_step_state() {
     let mut session = Session::new().unwrap();
     let initialized = request(

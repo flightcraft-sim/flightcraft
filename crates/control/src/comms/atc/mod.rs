@@ -276,7 +276,16 @@ impl Session {
         if self.comms.atc.replies.len() < 64 {
             self.comms.atc.replies.push_back(Reply {
                 station: st.clone(),
-                text: format!("{}, {text}", self.pilot_callsign().current),
+                // The controller initiates the shorter form in its reply. The pilot waits
+                // until that reply has actually been received before using it.
+                text: format!(
+                    "{}, {text}",
+                    if self.comms.abbreviate {
+                        self.pilot_callsign().abbreviated
+                    } else {
+                        self.pilot_callsign().full
+                    }
+                ),
                 meaning,
             });
         }

@@ -105,7 +105,8 @@ struct TrafficCall {
 #[derive(Clone, Debug)]
 pub(crate) struct Comms {
     pub(crate) atc: atc::Atc,
-    callsign_override: Option<(String, String)>,
+    callsign_overrides: CallsignPreferences,
+    saved_callsigns: CallsignPreferences,
     abbreviate: bool,
     contacts: std::collections::BTreeSet<u32>,
     adf_khz: Option<u32>,
@@ -127,7 +128,8 @@ impl Default for Comms {
     fn default() -> Self {
         Self {
             atc: Default::default(),
-            callsign_override: None,
+            callsign_overrides: Default::default(),
+            saved_callsigns: Default::default(),
             abbreviate: true,
             contacts: Default::default(),
             adf_khz: None,
@@ -269,6 +271,20 @@ impl Command for CommsAudioPanel {
         }
         for v in [self.volume, self.squelch].into_iter().flatten() {
             crate::range(Self::NAME, "level", v, 0.0, 1.0)?;
+        }
+        if let Some(transmit) = self.transmit.filter(|t| *t != s.comms.panel.transmit) {
+            let carrier = |radio: u8| {
+                s.comms
+                    .radios
+                    .get(usize::from(radio.saturating_sub(1)))
+                    .and_then(|r| carrier_thirds_hz(r.active_khz))
+            };
+            let next = carrier(transmit);
+            if next != carrier(s.comms.panel.transmit)
+                && let Some(next) = next
+            {
+                s.comms.contacts.remove(&next);
+            }
         }
         let p = &mut s.comms.panel;
         macro_rules! patch { ($($field:ident),*) => { $(if let Some(value) = self.$field { p.$field = value; })* } }
@@ -583,11 +599,13 @@ impl Session {
                 ..Default::default()
             };
             let extra_stations = std::mem::take(&mut self.comms.extra_stations);
-            let callsign_override = self.comms.callsign_override.take();
+            let callsign_overrides = std::mem::take(&mut self.comms.callsign_overrides);
+            let saved_callsigns = std::mem::take(&mut self.comms.saved_callsigns);
             let abbreviate = self.comms.abbreviate;
             self.comms = Comms {
                 generation: self.flight_generation,
-                callsign_override,
+                callsign_overrides,
+                saved_callsigns,
                 abbreviate,
                 extra_stations,
                 ..Default::default()
@@ -871,12 +889,6 @@ impl Session {
                 }
                 completed.push((event.clone(), p.atc_receiver));
                 if event.reception == Reception::Heard {
-                    if event.speaker == Speaker::Pilot
-                        && event.channel == Channel::Com
-                        && let Some(carrier) = p.carrier
-                    {
-                        self.comms.contacts.insert(carrier);
-                    }
                     if self.comms.heard.len() >= 512 {
                         self.comms.heard.pop_front();
                     }
@@ -895,6 +907,27 @@ impl Session {
             }
         }
         for (event, receiver) in completed {
+            // AIM 4-2-4: only a heard controller abbreviation permits the pilot to shorten.
+            let callsign = self.pilot_callsign();
+            if event.reception == Reception::Heard
+                && event.channel == Channel::Com
+                && matches!(
+                    event.speaker,
+                    Speaker::Facility {
+                        role: FacilityKind::Tower
+                            | FacilityKind::Ground
+                            | FacilityKind::Approach
+                            | FacilityKind::Departure
+                            | FacilityKind::Clearance,
+                        ..
+                    }
+                )
+                && words(&event.text).contains(&words(&callsign.abbreviated))
+                && !words(&event.text).contains(&words(&callsign.full))
+                && let Some(carrier) = event.frequency_hz.map(|hz| (hz * 3.).round() as u32)
+            {
+                self.comms.contacts.insert(carrier);
+            }
             self.completed_atc(&event, receiver);
         }
     }

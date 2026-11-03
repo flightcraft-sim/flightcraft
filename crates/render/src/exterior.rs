@@ -7,7 +7,7 @@ pub fn builtin(id: &str) -> Option<Arc<ExteriorAsset>> {
     static CORVID: OnceLock<Option<Arc<ExteriorAsset>>> = OnceLock::new();
     static LARROW: OnceLock<Option<Arc<ExteriorAsset>>> = OnceLock::new();
     let (slot, definition, lod0, lod1) = match id {
-        "corvid" => (
+        "corvid" | "corvid-standby" | "corvid-glass" => (
             &CORVID,
             include_str!("../../../aircraft/corvid/exterior.json"),
             include_bytes!("../../../aircraft/corvid/exterior.glb").as_slice(),

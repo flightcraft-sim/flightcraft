@@ -6,6 +6,13 @@
     "atc": {
       "$ref": "#/$defs/AtcState"
     },
+    "callsigns": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/CallsignIdentity"
+      },
+      "default": {}
+    },
     "camera": {
       "anyOf": [
         {
@@ -1413,6 +1420,26 @@
         "received",
         "passed",
         "feedback"
+      ]
+    },
+    "CallsignIdentity": {
+      "type": "object",
+      "properties": {
+        "not_us": {
+          "type": "boolean",
+          "default": false
+        },
+        "registration": {
+          "type": "string"
+        },
+        "spoken_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "registration",
+        "spoken_type"
       ]
     },
     "Camera": {
@@ -7245,6 +7272,10 @@
         },
         "full": {
           "type": "string"
+        },
+        "not_us": {
+          "type": "boolean",
+          "default": false
         },
         "overridden": {
           "type": "boolean"

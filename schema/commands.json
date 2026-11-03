@@ -34042,7 +34042,7 @@
   },
   {
     "name": "comms.callsign",
-    "description": "Read aircraft radio identity, override registration/type, or opt into abbreviation after first contact.",
+    "description": "Read or validate aircraft registration/type, save per variant, restore pack identity, or control ATC-initiated abbreviation.",
     "input_schema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
@@ -34054,6 +34054,19 @@
             "boolean",
             "null"
           ]
+        },
+        "not_us": {
+          "default": null,
+          "description": "Explicitly allow ICAO prefix-dash registrations outside the US.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "persist": {
+          "default": true,
+          "description": "Save this variant's choice in the application's preferences store.",
+          "type": "boolean"
         },
         "registration": {
           "default": null,
@@ -34089,6 +34102,10 @@
         },
         "full": {
           "type": "string"
+        },
+        "not_us": {
+          "default": false,
+          "type": "boolean"
         },
         "overridden": {
           "type": "boolean"
@@ -34444,6 +34461,10 @@
             },
             "full": {
               "type": "string"
+            },
+            "not_us": {
+              "default": false,
+              "type": "boolean"
             },
             "overridden": {
               "type": "boolean"
@@ -35000,6 +35021,10 @@
             },
             "full": {
               "type": "string"
+            },
+            "not_us": {
+              "default": false,
+              "type": "boolean"
             },
             "overridden": {
               "type": "boolean"
@@ -40781,6 +40806,10 @@
             },
             "full": {
               "type": "string"
+            },
+            "not_us": {
+              "default": false,
+              "type": "boolean"
             },
             "overridden": {
               "type": "boolean"
@@ -76445,6 +76474,10 @@
             "full": {
               "type": "string"
             },
+            "not_us": {
+              "default": false,
+              "type": "boolean"
+            },
             "overridden": {
               "type": "boolean"
             },
@@ -79093,6 +79126,10 @@
             },
             "full": {
               "type": "string"
+            },
+            "not_us": {
+              "default": false,
+              "type": "boolean"
             },
             "overridden": {
               "type": "boolean"

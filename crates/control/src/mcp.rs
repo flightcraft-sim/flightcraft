@@ -204,6 +204,11 @@ fn dispatch(
                     }
                     Ok(json!({"content": content, "structuredContent": output, "isError": false}))
                 }
+                Err(CommandError::Callsign(reason)) => Ok(json!({
+                    "content": [{"type":"text","text":reason.to_string()}],
+                    "structuredContent": {"error":{"kind":"callsign_validation","reason":reason}},
+                    "isError": true,
+                })),
                 Err(error @ (CommandError::InvalidInput { .. } | CommandError::Unknown(_))) => {
                     Err((-32602, error.to_string()))
                 }

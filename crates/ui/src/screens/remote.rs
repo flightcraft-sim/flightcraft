@@ -388,7 +388,7 @@ fn serve(
                     let mut session = source.snapshot()?;
                     match session.execute(&request.command, request.input) {
                         Ok(v) => flightcraft_control::bridge::success(request.id, v),
-                        Err(e) => flightcraft_control::bridge::failure(request.id, e.to_string()),
+                        Err(e) => flightcraft_control::bridge::command_failure(request.id, &e),
                     }
                 }
             };

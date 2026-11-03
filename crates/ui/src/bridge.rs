@@ -135,9 +135,7 @@ impl Bridge {
                     });
                 }
                 Err(error) => {
-                    let _ = incoming
-                        .reply
-                        .send(bridge::failure(request.id, error.to_string()));
+                    let _ = incoming.reply.send(bridge::command_failure(request.id, &error));
                 }
             }
             // A reset invalidates outstanding waits even if time was reset to the same value.

@@ -25,6 +25,8 @@ pub struct Snapshot {
     #[serde(default)]
     pub lesson: crate::LessonDebrief,
     pub comms: CommsSnapshot,
+    #[serde(default)]
+    pub callsigns: crate::CallsignPreferences,
     pub atc: crate::comms::AtcState,
     pub record: crate::comms::FlightRecord,
     pub screens: ScreenSet,
@@ -60,6 +62,7 @@ impl Session {
             scenario: self.scenario.state.clone(),
             lesson: self.lesson.debrief.clone(),
             comms: self.comms_state(),
+            callsigns: self.callsign_preferences().clone(),
             atc: self.atc_state(),
             record,
             screens: self.screens.clone(),
@@ -118,6 +121,10 @@ impl Session {
         self.flight_generation = snapshot.generation;
         self.active_configuration = snapshot.configuration;
         self.presentation_glass = Some(snapshot.glass);
+        self.restore_callsign_preferences(snapshot.callsigns)
+            .map_err(|e| e.to_string())?;
+        self.restore_presented_callsign(&snapshot.comms.callsign)
+            .map_err(|e| e.to_string())?;
         self.presentation_comms = Some(snapshot.comms);
         self.presentation_atc = Some(snapshot.atc);
         self.map = snapshot.map;
@@ -208,6 +215,8 @@ impl RegionTransfer {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WorkerSeed {
+    #[serde(default)]
+    pub callsigns: crate::CallsignPreferences,
     pub regions: Vec<RegionTransfer>,
     pub world: flightcraft_world::WorldChoice,
     pub configuration: Option<flightcraft_aero::ResolvedAircraft>,
@@ -216,6 +225,7 @@ pub struct WorkerSeed {
 impl Session {
     pub fn worker_seed(&self) -> WorkerSeed {
         WorkerSeed {
+            callsigns: self.callsign_preferences().clone(),
             regions: self
                 .regions
                 .values()
@@ -248,6 +258,9 @@ impl Session {
                 "sim.reset",
                 serde_json::json!({"world":seed.world,"start":{"kind":"runway"},"paused":false}),
             )
+            .map_err(|e| e.to_string())?;
+        session
+            .restore_callsign_preferences(seed.callsigns)
             .map_err(|e| e.to_string())?;
         session.screens = seed.screens;
         session.enable_app();

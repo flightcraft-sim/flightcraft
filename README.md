@@ -37,6 +37,13 @@ to watch a scripted takeoff).
 
 Instrument practice includes weather, IMC, the hood, and [IFR lessons with ACS grading](docs/ifr-training.md).
 
+### Make it your plane
+
+Set your tail number and spoken aircraft type in **Radios**. FlightCraft remembers them for each
+aircraft variant and paints your number on both sides of the Corvid, Larrow, and installed Sling
+exteriors on desktop and web. US N-numbers and foreign prefix-dash registrations are supported;
+**Use pack** restores the original paint and radio identity. See [callsigns](docs/radio.md#radio-identity).
+
 The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 

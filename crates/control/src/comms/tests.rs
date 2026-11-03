@@ -580,7 +580,10 @@ fn pack_callsigns_override_first_contact_abbreviation_and_channel_change() {
     )
     .unwrap();
     advance(&mut s, 12);
-    assert_eq!(s.pilot_callsign().current, "Sling One Foxtrot Charlie");
+    assert_eq!(
+        s.pilot_callsign().current,
+        "Sling Three Seven One Foxtrot Charlie"
+    ); // CTAF never initiates an ATC abbreviation.
     s.execute("comms.tune", json!({"radio":1,"channel_khz":123500}))
         .unwrap();
     s.execute("comms.tune", json!({"radio":1,"channel_khz":122800}))
@@ -604,6 +607,100 @@ fn pack_callsigns_override_first_contact_abbreviation_and_channel_change() {
     .unwrap();
     assert_eq!(s.pilot_callsign().full, "Skyhawk Five Two Romeo");
     assert_eq!(s.sim().state_hash(), hash);
+}
+
+#[test]
+fn abbreviation_waits_for_a_heard_controller_not_traffic_or_weather() {
+    let mut s = radio_session();
+    s.execute(
+        "comms.callsign",
+        json!({"registration":"N371FC","spoken_type":"Sling"}),
+    )
+    .unwrap();
+    let full = s.pilot_callsign().full;
+    let short = s.pilot_callsign().abbreviated;
+    let origin = s.sim().state().position_m;
+    for (speaker, text, expected_short) in [
+        (
+            Speaker::Traffic {
+                callsign: "Other".into(),
+            },
+            short.clone(),
+            false,
+        ),
+        (
+            Speaker::Facility {
+                id: "weather".into(),
+                role: FacilityKind::Awos,
+            },
+            short.clone(),
+            false,
+        ),
+        (
+            Speaker::Facility {
+                id: "tower".into(),
+                role: FacilityKind::Tower,
+            },
+            full.clone(),
+            false,
+        ),
+        (
+            Speaker::Facility {
+                id: "tower".into(),
+                role: FacilityKind::Tower,
+            },
+            short.clone(),
+            true,
+        ),
+    ] {
+        s.start_com(
+            122800,
+            speaker,
+            format!("{text}, roger."),
+            Meaning::Text,
+            EventSource::Rules,
+            origin,
+            100_000.,
+        );
+        assert_eq!(
+            s.pilot_callsign().current,
+            full,
+            "pending controller transmission"
+        );
+        advance(&mut s, 12);
+        assert_eq!(
+            s.pilot_callsign().current,
+            if expected_short {
+                short.clone()
+            } else {
+                full.clone()
+            }
+        );
+    }
+    s.execute("comms.tune", json!({"radio":1,"channel_khz":123500}))
+        .unwrap();
+    assert_eq!(s.pilot_callsign().current, full);
+    s.execute("comms.tune", json!({"radio":1,"channel_khz":122800}))
+        .unwrap();
+    s.start_com(
+        122800,
+        Speaker::Facility {
+            id: "tower".into(),
+            role: FacilityKind::Tower,
+        },
+        short.clone(),
+        Meaning::Text,
+        EventSource::Rules,
+        origin,
+        100_000.,
+    );
+    call(&mut s, 122800, "Interfering traffic", origin, 100_000.);
+    advance(&mut s, 12);
+    assert_eq!(
+        s.pilot_callsign().current,
+        full,
+        "a blocked abbreviation gives no permission"
+    );
 }
 
 #[test]

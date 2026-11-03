@@ -649,6 +649,9 @@ impl PageUi {
                 if let Some(asset) = s.aircraft_catalog().exterior(&s.sim().aircraft().identity.id) {
                     self.scene.set_exterior(asset);
                 }
+                let callsign = s.pilot_callsign();
+                self.scene
+                    .set_registration(callsign.overridden.then_some(callsign.registration.as_str()));
                 self.scene.set_exterior_state(s.sim());
                 self.scene
                     .set_propeller_power(readout.effective_controls.throttle as f32);

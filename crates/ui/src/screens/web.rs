@@ -231,6 +231,9 @@ impl ScreenApp {
         let chart_root = options.regions.directory.clone();
         let mut session = Session::new()?;
         let mut errors = options.regions.errors;
+        if let Err(error) = crate::callsign_preferences::restore(&mut session, cc.storage) {
+            errors.push(error);
+        }
         errors.extend(options.packs.errors);
         for region in options.regions.fetched {
             session.install_region(region)?;

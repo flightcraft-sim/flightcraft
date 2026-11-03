@@ -3,6 +3,7 @@
 mod camera;
 pub mod exterior;
 mod light_gun;
+mod registration;
 pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
 mod mesh;
@@ -84,6 +85,7 @@ pub struct Scene {
     propeller_power: f32,
     exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     exterior_pose: exterior::Pose,
+    registration: Option<registration::Override>,
     larrow: bool,
     sling: bool,
     conditions: flightcraft_world::Conditions,
@@ -113,6 +115,7 @@ impl Default for Scene {
             propeller_power: 0.0,
             exterior: exterior::builtin("corvid"),
             exterior_pose: Default::default(),
+            registration: None,
             larrow: false,
             sling: false,
             conditions: Default::default(),
@@ -155,6 +158,10 @@ impl Scene {
     /// Select the built-in display mesh by the active definition's identity.
     /// Unknown identities use the default trainer outline.
     pub fn set_aircraft(&mut self, id: &str) {
+        let id = match id {
+            "corvid-standby" | "corvid-glass" => "corvid",
+            id => id,
+        };
         if self.exterior.as_ref().is_none_or(|a| a.definition.aircraft != id) {
             self.exterior = exterior::builtin(id);
         }
@@ -170,6 +177,41 @@ impl Scene {
     /// Installed pack geometry overrides the embedded fictional model.
     pub fn set_exterior(&mut self, asset: std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>) {
         self.exterior = Some(asset);
+    }
+
+    /// Paint an optional user registration on both pack surfaces. Cache until identity or pack changes.
+    pub fn set_registration(&mut self, text: Option<&str>) {
+        if let Some(cached) = &self.registration
+            && self
+                .exterior
+                .as_ref()
+                .is_some_and(|a| std::sync::Arc::ptr_eq(a, &cached.painted))
+        {
+            self.exterior = Some(cached.base.clone());
+        }
+        let Some(text) = text.filter(|s| {
+            !s.is_empty()
+                && s.len() <= 12
+                && s.bytes()
+                    .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'-')
+        }) else {
+            return;
+        };
+        let Some(base) = &self.exterior else { return };
+        if let Some(cached) = &self.registration
+            && std::sync::Arc::ptr_eq(base, &cached.base)
+            && cached.text == text
+        {
+            self.exterior = Some(cached.painted.clone());
+            return;
+        }
+        let painted = registration::paint(base, text);
+        self.registration = Some(registration::Override {
+            base: base.clone(),
+            text: text.into(),
+            painted: painted.clone(),
+        });
+        self.exterior = Some(painted);
     }
 
     /// Read-only animation inputs; phases advance in simulation time, so pause freezes motion.

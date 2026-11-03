@@ -59,6 +59,39 @@ fn bounded_lines_drain_garbage_and_accept_eof_and_crlf() {
 }
 
 #[test]
+fn callsign_validation_retains_its_type_across_the_loopback_bridge() {
+    let listener = Listener::loopback(0).unwrap();
+    let port = listener.address().port();
+    let executor = thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline {
+            if let Ok(incoming) = listener.try_recv() {
+                let request = bridge::parse(&incoming.line.unwrap()).unwrap();
+                let error = Session::new()
+                    .unwrap()
+                    .execute(&request.command, request.input)
+                    .unwrap_err();
+                incoming
+                    .reply
+                    .send(bridge::command_failure(request.id, &error))
+                    .unwrap();
+                return;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(Instant::now() < deadline, "bridge request did not arrive");
+    });
+    let mut client = bridge::Client::connect(port).unwrap();
+    assert_eq!(
+        client
+            .execute("comms.callsign", json!({"registration":"N0FC"}))
+            .unwrap_err(),
+        flightcraft_control::CommandError::Callsign(flightcraft_control::CallsignError::LeadingZero)
+    );
+    executor.join().unwrap();
+}
+
+#[test]
 fn loopback_listener_moves_lines_to_executor_and_recovers_after_garbage() {
     assert!(Listener::bind(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0).into()).is_err());
     assert!(Listener::bind(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 2), 0).into()).is_err());

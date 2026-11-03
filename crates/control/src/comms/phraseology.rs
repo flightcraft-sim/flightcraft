@@ -446,3 +446,77 @@ pub fn approach_intercept(
         approach_clearance(family, runway_id).replacen("Cleared", "cleared", 1)
     )
 }
+
+pub fn spoken_registration(registration: &str) -> String {
+    registration
+        .chars()
+        .filter_map(|c| {
+            Some(match c {
+                '0' => "Zero",
+                '1' => "One",
+                '2' => "Two",
+                '3' => "Three",
+                '4' => "Four",
+                '5' => "Five",
+                '6' => "Six",
+                '7' => "Seven",
+                '8' => "Eight",
+                '9' => "Niner",
+                'A' => "Alfa",
+                'B' => "Bravo",
+                'C' => "Charlie",
+                'D' => "Delta",
+                'E' => "Echo",
+                'F' => "Foxtrot",
+                'G' => "Golf",
+                'H' => "Hotel",
+                'I' => "India",
+                'J' => "Juliett",
+                'K' => "Kilo",
+                'L' => "Lima",
+                'M' => "Mike",
+                'N' => "November",
+                'O' => "Oscar",
+                'P' => "Papa",
+                'Q' => "Quebec",
+                'R' => "Romeo",
+                'S' => "Sierra",
+                'T' => "Tango",
+                'U' => "Uniform",
+                'V' => "Victor",
+                'W' => "Whiskey",
+                'X' => "X-ray",
+                'Y' => "Yankee",
+                'Z' => "Zulu",
+                _ => return None,
+            })
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+pub fn callsign_forms(registration: &str, kind: &str) -> (String, String) {
+    // US pilots may replace November with the aircraft type. Other nationality prefixes remain.
+    let suffix = registration
+        .strip_prefix('N')
+        .filter(|r| !r.contains('-') && r.starts_with(|c: char| c.is_ascii_digit()))
+        .unwrap_or(registration);
+    let short = suffix
+        .chars()
+        .rev()
+        .take(3)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+    let identity = if kind.is_empty() {
+        spoken_registration(registration)
+    } else {
+        format!("{kind} {}", spoken_registration(suffix))
+    };
+    let abbreviated = if kind.is_empty() {
+        spoken_registration(&short)
+    } else {
+        format!("{kind} {}", spoken_registration(&short))
+    };
+    (identity, abbreviated)
+}

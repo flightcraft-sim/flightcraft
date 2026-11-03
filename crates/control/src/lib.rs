@@ -86,6 +86,8 @@ pub enum CommandError {
     #[error("invalid input for {command}: {message}")]
     InvalidInput { command: String, message: String },
     #[error(transparent)]
+    Callsign(#[from] comms::CallsignError),
+    #[error(transparent)]
     Sim(#[from] SimError),
     #[error("{0}")]
     Failed(String),

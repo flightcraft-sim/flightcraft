@@ -109,6 +109,30 @@ pub fn failure(id: Value, message: impl Into<String>) -> Value {
     json!({"id": id, "error": message.into()})
 }
 
+/// Keep the legacy message while preserving callsign validation for bridged MCP clients.
+pub fn command_failure(id: Value, error: &CommandError) -> Value {
+    if let CommandError::Callsign(reason) = error {
+        json!({"id":id,"error":reason.to_string(),"callsign_error":reason})
+    } else {
+        failure(id, error.to_string())
+    }
+}
+fn decoded_failure(message: &str, reason: Option<&Value>) -> CommandError {
+    if let Some(reason) = reason.and_then(|v| serde_json::from_value(v.clone()).ok()) {
+        return CommandError::Callsign(reason);
+    }
+    if let Some(detail) = message.strip_prefix("invalid input for ")
+        && let Some((command, message)) = detail.split_once(": ")
+    {
+        CommandError::InvalidInput {
+            command: command.into(),
+            message: message.into(),
+        }
+    } else {
+        CommandError::Failed(message.into())
+    }
+}
+
 pub struct Incoming {
     pub line: Result<Vec<u8>, String>,
     pub reply: mpsc::Sender<Value>,
@@ -237,23 +261,10 @@ impl Client {
         })
     }
     pub fn execute(&mut self, command: &str, input: Value) -> Result<Value, CommandError> {
-        let output = self
-            .forward(command, input)
-            .map_err(|e| CommandError::Failed(format!("app connection: {e}")))?;
-        output.map_err(|message| {
-            if let Some(detail) = message.strip_prefix("invalid input for ")
-                && let Some((command, message)) = detail.split_once(": ")
-            {
-                CommandError::InvalidInput {
-                    command: command.into(),
-                    message: message.into(),
-                }
-            } else {
-                CommandError::Failed(message)
-            }
-        })
+        self.forward(command, input)
+            .map_err(|e| CommandError::Failed(format!("app connection: {e}")))?
     }
-    fn forward(&mut self, command: &str, input: Value) -> Result<Result<Value, String>, String> {
+    fn forward(&mut self, command: &str, input: Value) -> Result<Result<Value, CommandError>, String> {
         self.next_id = self.next_id.wrapping_add(1);
         let id = self.next_id;
         let request = json!({"id": id, "command": command, "input": input}).to_string();
@@ -272,7 +283,9 @@ impl Client {
         }
         match (response.get("ok"), response.get("error")) {
             (Some(output), None) => Ok(Ok(output.clone())),
-            (None, Some(Value::String(error))) => Ok(Err(error.clone())),
+            (None, Some(Value::String(error))) => {
+                Ok(Err(decoded_failure(error, response.get("callsign_error"))))
+            }
             _ => Err("invalid app response".into()),
         }
     }

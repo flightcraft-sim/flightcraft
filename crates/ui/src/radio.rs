@@ -17,6 +17,7 @@ pub struct RadioUi {
     last_save: Option<f64>,
     registration: String,
     spoken_type: String,
+    not_us: bool,
     export_message: Option<String>,
     kneeboard: bool,
     talk: bool,
@@ -75,12 +76,13 @@ impl RadioUi {
                 .default_width(590.0)
                 .open(&mut self.open)
                 .show(ctx, |ui| {
-                    if self.registration.is_empty() { self.registration = state.callsign.registration.clone(); self.spoken_type = state.callsign.spoken_type.clone(); }
+                    if self.registration.is_empty() { self.registration = state.callsign.registration.clone(); self.spoken_type = state.callsign.spoken_type.clone(); self.not_us = state.callsign.not_us; }
                     ui.label(format!("Your call: {}", state.callsign.current));
+                    ui.checkbox(&mut self.not_us, "Not a US registration");
                     ui.horizontal(|ui| {
                         ui.add(egui::TextEdit::singleline(&mut self.registration).desired_width(95.).hint_text("Registration"));
                         ui.add(egui::TextEdit::singleline(&mut self.spoken_type).desired_width(110.).hint_text("Spoken type"));
-                        if ui.button("Set callsign").clicked() { apply(s.execute("comms.callsign", serde_json::json!({"registration":self.registration,"spoken_type":self.spoken_type})), &mut self.error); }
+                        if ui.button("Set callsign").clicked() { apply(s.execute("comms.callsign", serde_json::json!({"registration":self.registration,"spoken_type":self.spoken_type,"not_us":self.not_us,"persist":true})), &mut self.error); if self.error.is_none() { self.registration.make_ascii_uppercase(); } }
                         if ui.button("Use pack").clicked() { apply(s.execute("comms.callsign", serde_json::json!({"reset_to_pack":true})), &mut self.error); self.registration.clear(); }
                     });
                     panel(ui, s, &state, &mut self.tune1, &mut self.tune2, &mut self.error);

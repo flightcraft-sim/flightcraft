@@ -11,6 +11,160 @@ use flightcraft_world::{Conditions, TimeOfDay};
 
 #[test]
 #[ignore = "requires an offscreen GPU; optionally set FLIGHTCRAFT_SLING_PACK"]
+fn registration_decal_reads_the_override_on_both_sides() {
+    pollster::block_on(async {
+        let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/tail-number");
+        std::fs::create_dir_all(&out).unwrap();
+        let mut capture = Capture::new([1600, 800]).await;
+        let mut names = vec!["corvid", "larrow"];
+        let sling = std::env::var("FLIGHTCRAFT_SLING_PACK").ok();
+        if sling.is_some() {
+            names.push("sling2");
+        }
+        for name in names {
+            let mut session = Session::new().unwrap();
+            if let Some(path) = sling.as_ref().filter(|_| name == "sling2") {
+                session
+                    .install_pack(&flightcraft_control::read_pack(std::path::Path::new(path)).unwrap())
+                    .unwrap();
+            }
+            session
+                .execute(
+                    "aircraft.load",
+                    serde_json::json!({"source":{"kind":"installed","id":name},"reset":true}),
+                )
+                .unwrap();
+            let asset = session
+                .aircraft_catalog()
+                .exterior(name)
+                .or_else(|| flightcraft_render::exterior::builtin(name))
+                .unwrap();
+            let cg = session.sim().aircraft().mass.cg_m.map(|x| x as f32);
+            let mut state = *session.sim().state();
+            state.position_m = [0., 0., -20.];
+            state.attitude = [1., 0., 0., 0.];
+            // Geometry/unit tests separately exercise the >150 m model selection.
+            for sign in [-1_f32, 1.] {
+                let mut scene = Scene::default();
+                scene.set_aircraft(name);
+                scene.set_exterior(asset.clone());
+                scene.set_exterior_state(session.sim());
+                scene.airspace_visible = false;
+                scene.set_screen_view(Some(flightcraft_render::ScreenView {
+                    heading_offset_rad: 0.,
+                    pitch_rad: 0.,
+                    fov_rad: 30_f32.to_radians(),
+                    fixed_eye_ned_m: Some([0., sign * 6., -20.]),
+                }));
+                let mut shots = Vec::new();
+                for number in ["N111FC", "N888FC"] {
+                    session
+                        .execute(
+                            "comms.callsign",
+                            serde_json::json!({"registration":number,"persist":false}),
+                        )
+                        .unwrap();
+                    let callsign = session.pilot_callsign();
+                    scene.set_registration(callsign.overridden.then_some(callsign.registration.as_str()));
+                    capture.draw(|ui| scene.show(ui, &state, 0., theme::scene()));
+                    let image = capture.image();
+                    image
+                        .save(out.join(format!("{name}-{number}-{sign}.png")))
+                        .unwrap();
+                    shots.push(image);
+                }
+                let node = asset
+                    .lod0
+                    .nodes
+                    .iter()
+                    .find(|n| n.name == asset.definition.registration.node)
+                    .unwrap();
+                let patch: Vec<_> = node
+                    .vertices
+                    .iter()
+                    .filter(|v| v.position[1] * sign > 0. && v.normal[1].abs() > 0.1)
+                    .collect();
+                let low_x = patch.iter().map(|v| v.position[0]).fold(f32::INFINITY, f32::min);
+                let high_x = patch
+                    .iter()
+                    .map(|v| v.position[0])
+                    .fold(f32::NEG_INFINITY, f32::max);
+                let low_z = patch.iter().map(|v| v.position[2]).fold(f32::INFINITY, f32::min);
+                let high_z = patch
+                    .iter()
+                    .map(|v| v.position[2])
+                    .fold(f32::NEG_INFINITY, f32::max);
+                let height = high_z - low_z;
+                let width = (height * 0.6).min((high_x - low_x) / 7.25);
+                let total = width * 7.25;
+                let focal = 400. / 15_f32.to_radians().tan();
+                // Recognize all three replacement digits by independent stroke/loop probes:
+                // a One has a center stem and no left bowl; an Eight has a left bowl and a hole.
+                // This checks coverage inside each glyph at the actual pack node, not just image changes.
+                for digit in 1..=3 {
+                    for (u, one_ink) in [(0.5, true), (0.08, false)] {
+                        let x =
+                            (low_x + high_x) * 0.5 + sign * (width * (digit as f32 * 1.25 + u) - total * 0.5);
+                        let padding = 0.08 * height - width * 0.075;
+                        let z = low_z + (0.29 * height - padding) * height / (height - 2. * padding);
+                        let nearest = patch
+                            .iter()
+                            .min_by(|a, b| {
+                                let distance = |v: &&flightcraft_aero::exterior::ModelVertex| {
+                                    (v.position[0] - x).powi(2) + (v.position[2] - z).powi(2)
+                                };
+                                distance(a).total_cmp(&distance(b))
+                            })
+                            .unwrap();
+                        let [vx, vy, vz] = nearest.position;
+                        let [nx, ny, nz] = nearest.normal;
+                        let y = vy - (nx * (x - vx) + nz * (z - vz)) / ny + sign * 0.001;
+                        let depth = 6. - sign * (y - cg[1]);
+                        let px = (800. + sign * (x - cg[0]) * focal / depth).round() as u32;
+                        let py = (400. + (z - cg[2]) * focal / depth).round() as u32;
+                        let light = |image: &image::RgbaImage| {
+                            let p = image.get_pixel(px, py);
+                            u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2])
+                        };
+                        let (one, eight) = (light(&shots[0]), light(&shots[1]));
+                        assert!(
+                            if one_ink {
+                                one + 40 < eight
+                            } else {
+                                eight + 40 < one
+                            },
+                            "{name} side {sign}, digit {digit}, u={u}: One={one}, Eight={eight} at ({px},{py})"
+                        );
+                    }
+                }
+                scene.set_registration(None);
+                capture.draw(|ui| scene.show(ui, &state, 0., theme::scene()));
+                let restored = capture.image();
+                let mut original = Scene::default();
+                original.set_aircraft(name);
+                original.set_exterior(asset.clone());
+                original.set_exterior_state(session.sim());
+                original.airspace_visible = false;
+                original.set_screen_view(Some(flightcraft_render::ScreenView {
+                    heading_offset_rad: 0.,
+                    pitch_rad: 0.,
+                    fov_rad: 30_f32.to_radians(),
+                    fixed_eye_ned_m: Some([0., sign * 6., -20.]),
+                }));
+                capture.draw(|ui| original.show(ui, &state, 0., theme::scene()));
+                assert_eq!(
+                    restored,
+                    capture.image(),
+                    "Use pack must restore the baked image exactly"
+                );
+            }
+        }
+        capture.validate().await;
+    });
+}
+
+#[test]
+#[ignore = "requires an offscreen GPU; optionally set FLIGHTCRAFT_SLING_PACK"]
 fn render_exterior_director_shots() {
     pollster::block_on(async {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

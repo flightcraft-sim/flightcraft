@@ -4,6 +4,7 @@ mod audio;
 pub mod autopilot;
 #[cfg(not(target_arch = "wasm32"))]
 mod bridge;
+mod callsign_preferences;
 pub mod clock;
 pub mod crew;
 #[cfg(test)]
@@ -169,11 +170,8 @@ impl FlightCraftApp {
         let mut error = None;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
-        if let Some(json) = cc.storage.and_then(|s| s.get_string("flightcraft.callsign.v1"))
-            && let Ok(value) = serde_json::from_str(&json)
-            && let Err(e) = session.execute("comms.callsign", value)
-        {
-            error = Some(e.to_string());
+        if let Err(e) = callsign_preferences::restore(&mut session, cc.storage) {
+            error = Some(e);
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(directory) = flightcraft_control::navigation_data_directory()
@@ -1233,16 +1231,7 @@ impl eframe::App for FlightCraftApp {
         if let Ok(json) = serde_json::to_string(self.session.screens()) {
             storage.set_string("flightcraft.screens.v1", json);
         }
-        let callsign = self.session.pilot_callsign();
-        storage.set_string(
-            "flightcraft.callsign.v1",
-            if callsign.overridden {
-                serde_json::json!({"registration":callsign.registration,"spoken_type":callsign.spoken_type})
-                    .to_string()
-            } else {
-                "{}".into()
-            },
-        );
+        callsign_preferences::save(&self.session, storage);
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(serial) = self.efb_serial {
