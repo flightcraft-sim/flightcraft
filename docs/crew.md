@@ -179,3 +179,6 @@ separate work.
 [Emergency debriefs](emergencies.md) provide aircraft checklist timings, recognition delay, speed
 tolerance totals, radio checks, outcomes, and frozen glide footprints through `scenario.state`.
 These are inputs for future lesson grading; there is no general lesson engine yet.
+[Tower and approach training](atc.md) supplies deterministic ATC instructions, required readbacks,
+and compliance events for later instructor/debrief integration. These rules do not implement the
+virtual pilot, control handover, or ACS lessons specified here.

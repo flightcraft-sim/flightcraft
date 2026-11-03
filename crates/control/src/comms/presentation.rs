@@ -1,60 +1,17 @@
 //! Human facility labels and transcript presentation; machine records remain structured.
 use super::*;
 
-pub fn facility_role(role: FacilityKind) -> &'static str {
-    match role {
-        FacilityKind::Tower => "Tower",
-        FacilityKind::Ground => "Ground",
-        FacilityKind::Approach => "Approach",
-        FacilityKind::Departure => "Departure",
-        FacilityKind::Clearance => "Clearance",
-        FacilityKind::Ctaf => "Traffic",
-        FacilityKind::Unicom => "Unicom",
-        FacilityKind::Awos => "AWOS",
-        FacilityKind::Asos => "ASOS",
-        FacilityKind::Atis => "ATIS",
-    }
-}
-pub fn facility_radio_name(station: &ComStation) -> String {
-    let name = station
-        .metadata
-        .as_ref()
-        .map(|m| m.callsign.as_str())
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or(&station.name);
-    let name = name
-        .split_whitespace()
-        .map(|word| {
-            let mut chars = word.chars();
-            chars.next().map_or(String::new(), |c| {
-                format!("{}{}", c.to_uppercase(), chars.as_str().to_lowercase())
-            })
-        })
-        .collect::<Vec<_>>()
-        .join(" ");
-    let role = facility_role(station.kind);
-    if name.to_lowercase().ends_with(&role.to_lowercase()) {
-        name
-    } else {
-        format!("{name} {role}")
-    }
-}
-pub fn speaker_label(speaker: &Speaker, stations: &[ComStation]) -> String {
-    match speaker {
-        Speaker::Pilot => "Pilot".into(),
-        Speaker::Instructor => "Instructor".into(),
-        Speaker::Facility { id, role } => stations
-            .iter()
-            .find(|s| s.id == *id)
-            .map_or_else(|| facility_role(*role).into(), facility_radio_name),
-        Speaker::Traffic { callsign } => callsign.clone(),
-        Speaker::Nav { ident } => format!("Navigation {ident}"),
-    }
-}
+// Compatibility names for transcript clients; all wording comes from the shared renderer.
+pub use super::phraseology::{
+    facility as facility_radio_name, facility_kind as facility_role, speaker as speaker_label,
+};
 impl Transmission {
     /// State changes remain in the machine record, but are never speech or transcript lines.
     pub fn is_spoken(&self) -> bool {
-        !matches!(self.meaning, Meaning::ScenarioAction { .. })
+        !matches!(
+            self.meaning,
+            Meaning::ScenarioAction { .. } | Meaning::Compliance { .. }
+        )
     }
     pub fn is_simulated_atc(&self) -> bool {
         matches!(self.speaker, Speaker::Facility { .. })
@@ -88,7 +45,11 @@ impl Transmission {
             } else {
                 ""
             },
-            speaker_label(&self.speaker, stations),
+            if self.speaker_name.is_empty() {
+                speaker_label(&self.speaker, stations)
+            } else {
+                self.speaker_name.clone()
+            },
             self.text
         ))
     }

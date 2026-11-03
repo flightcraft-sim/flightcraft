@@ -59,8 +59,7 @@ are suppressed. This opt-in defaults off. Audio and receiver power still follow
 Communications facilities are `ComStation` records in the optional `Navdata.comms` array. Each keeps
 its airport, facility kind, channel, geographic position, elevation, engineering antenna/range
 limits, and source record. Supported kinds are CTAF, UNICOM, AWOS, ASOS, ATIS, tower, ground, approach,
-departure, and clearance. This facility vocabulary is ready for later towered rules; no towered
-clearances or responses are generated here.
+departure, and clearance. The [tower and approach rules](atc.md) use this facility vocabulary for controlled-airport training.
 
 The New York and eastern Pennsylvania regions bundle official NASR communications from the
 2026-10-29 28-day CSV subscription, discovered through the FAA APRA `nasr/chart` endpoint.
@@ -111,22 +110,23 @@ controls, and the app persists the choice. A typed `{callsign}` placeholder expa
 spoken form. US registrations use the aircraft type in place of November: “Sling One Two Three
 Four Bravo,” then “Sling Three Four Bravo” after a completed, unblocked call on that carrier.
 Changing frequency starts a new contact. `abbreviate_after_contact:false` retains full callsigns.
-On actual ATC frequencies, use an abbreviation only after the controller initiates it; towered
-controller interactions remain a later feature. Traffic uses fictional civil GA registrations with
+On actual ATC frequencies, use an abbreviation only after the controller initiates it. The
+[tower and approach rules](atc.md) initiate the abbreviated reply after hearing the full first call. Traffic uses fictional civil GA registrations with
 Cherokee, Cessna, and Skyhawk type names, phonetic letters, and no airline identifiers. GDL 90 sends
 the registration in its eight-character field, while captions and speech use the spoken form.
 
 ## Pattern traffic and call checks
 
 `traffic.set` starts zero to three circuit aircraft on the selected real runway geometry. It
-requires an imported CTAF and refuses airports with an imported tower. The circuit uses conventional
+requires an imported CTAF or tower. Controlled circuits address tower and use the ATC rules;
+untowered circuits retain the CTAF call checks. The circuit uses conventional
 left traffic unless `right_pattern` is explicitly selected, a nominal 1,000 ft AGL circuit altitude,
 1 NM lateral spacing, and 1.5 NM final/upwind extensions. These dimensions and handedness are
 training defaults; the current airport catalogue does not publish local traffic-pattern directions
 or altitudes. Confirm local information before selecting a right circuit.
 
 Traffic follows deterministic kinematic circuit segments, climbs on departure, descends on final,
-and queues leg-change calls on CTAF, listening for a clear channel before speaking. Aircraft are distributed around the circuit and slow behind
+and queues leg-change calls on the selected CTAF or tower channel, listening for a clear channel before speaking. Aircraft are distributed around the circuit and slow behind
 traffic or an ownship ahead on the same leg. Every update uses the same preceding traffic snapshot.
 Traffic is a training target, with sharp segment transitions and continuous circuits, rather than a
 second six-degree-of-freedom aircraft or a collision-avoidance controller. Traffic does not modify
@@ -263,4 +263,7 @@ Scenario ATC speech addresses the pilot by spoken callsign, followed by the faci
 call name and role. Runway digits and wind use the radio number helpers; zero wind is “wind calm.”
 **Simulated ATC** is a kneeboard/caption/transcript tag, never part of synthesized speech. Internal
 scenario state changes remain in the structured flight record and do not appear as instructor speech.
-The temporary scenario wording adapter is isolated for integration with the shared ATC renderer.
+Scenario transmissions and `comms.atc` use the shared [phraseology renderer](phraseology.md).
+[Tower and approach training](atc.md) now builds on this radio service: ATIS information letters,
+clearance delivery, ground/tower/radar instructions, readbacks, compliance grades, controlled
+circuit traffic, and lost-communications light guns share the same reception checks and flight record.

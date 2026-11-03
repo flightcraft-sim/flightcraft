@@ -185,12 +185,16 @@ fn render_radio_previews() {
     );
     for event in &s.flight_record().events {
         text.push_str(&format!(
-            "{:6.2} {:?} {} | {} | {:?}\n",
+            "{:6.2} {} {} | {} | {}\n",
             event.time_s,
-            event.channel,
-            speaker(&event.speaker),
+            match event.channel {
+                flightcraft_control::Channel::Com => "COM",
+                flightcraft_control::Channel::Intercom => "Intercom",
+                flightcraft_control::Channel::Nav => "NAV",
+            },
+            event_speaker(event),
             event.text,
-            event.reception
+            flightcraft_control::comms::phraseology::reception(event.reception)
         ));
         if let Some(grade) = &event.grade {
             text.push_str(&format!("       Grade: {} · {}\n", grade.passed, grade.feedback));
@@ -224,7 +228,7 @@ fn render_radio_previews() {
         {
             ui.group(|ui| {
                 ui.label(
-                    RichText::new(format!("CAPTIONS   {} · {}", speaker(&event.speaker), event.text))
+                    RichText::new(format!("CAPTIONS   {} · {}", event_speaker(event), event.text))
                         .color(theme::ACCENT),
                 );
             });
@@ -356,4 +360,78 @@ fn render_sling(out: &std::path::Path, path: &std::path::Path) {
         .save(out.join("sling-audio-panel.png"))
         .unwrap();
     std::fs::write(out.join("sling-preview.txt"),"External Sling pack loaded read-only. Audio-panel face added to its in-memory installation at [570,140], sharing the declared avionics load. Source pack unchanged. No external artwork copied into the repository.\n").unwrap();
+}
+
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/atc_fixture.rs"));
+#[test]
+#[ignore = "writes actual egui ATC and world light-gun captures under out/atc"]
+fn render_atc_previews() {
+    use flightcraft_render::{CameraMode, LightGun, LightGunPattern, Scene};
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/atc");
+    std::fs::create_dir_all(&directory).unwrap();
+    let mut s = atc_session("KABE");
+    s.execute("failure.set", json!({"failure":{"kind":"radio"}}))
+        .unwrap();
+    let mut airport = "KABE".to_string();
+    let mut error = None;
+    crate::instruments::preview::rasterize(1000, 540, |ui| {
+        ui.heading("KABE · tower and approach training");
+        ui.label("Real NASR facilities · cycle 2611 · original flat test terrain");
+        ui.add_space(12.);
+        atc_panel(ui, &mut s, &mut airport, &mut error);
+        let state = s.atc_state();
+        ui.label(state.expected_next_call);
+        ui.label(format!(
+            "ATIS {:.3} · information {} · active runway {}",
+            state.atis.as_ref().unwrap().channel_khz as f64 / 1000.,
+            state.atis.as_ref().unwrap().information,
+            state.atis.as_ref().unwrap().runway
+        ));
+        ui.label(format!(
+            "COM failure · {} · {}",
+            state.light_gun.as_ref().unwrap().signal.label(),
+            state.light_gun.as_ref().unwrap().indication
+        ));
+        ui.label("Lamp position: NASR airport/tower reference estimate");
+        ui.separator();
+        for e in &s.flight_record().events {
+            ui.label(&e.text);
+        }
+    })
+    .save(directory.join("atc-panel.png"))
+    .unwrap();
+    pollster::block_on(async {
+        let g = s.atc_state().light_gun.unwrap();
+        let [n, e, d] = g.position_m;
+        let pose = flightcraft_sim::State {
+            position_m: [n - 1400., e, -(-d + 80.)],
+            attitude: [1., 0., 0., 0.],
+            ..Default::default()
+        };
+        let mut scene = Scene::default();
+        scene.set_world(s.sim().world());
+        scene.camera = CameraMode::Cockpit;
+        scene.airspace_visible = false;
+        scene.set_light_gun(Some(LightGun {
+            position_m: g.position_m,
+            pattern: LightGunPattern::SteadyGreen,
+            elapsed_s: 0.,
+        }));
+        let mut capture = crate::test_capture::Capture::new([1000, 640]).await;
+        for _ in 0..3 {
+            capture.draw(|ui| {scene.show(ui,&pose,1./60.,theme::scene());ui.painter().text(egui::pos2(20.,20.),egui::Align2::LEFT_TOP,"KABE · lost communications · steady green: cleared to land\nWorld-projected lamp · estimated NASR tower reference · synthetic terrain",egui::FontId::monospace(15.),theme::TEXT);});
+        }
+        let green = capture.image();
+        green.save(directory.join("light-gun-world.png")).unwrap();
+        scene.set_light_gun(Some(LightGun {
+            position_m: g.position_m,
+            pattern: LightGunPattern::SteadyRed,
+            elapsed_s: 0.,
+        }));
+        capture.draw(|ui| {scene.show(ui,&pose,1./60.,theme::scene());ui.painter().text(egui::pos2(20.,20.),egui::Align2::LEFT_TOP,"KABE · lost communications · steady green: cleared to land\nWorld-projected lamp · estimated NASR tower reference · synthetic terrain",egui::FontId::monospace(15.),theme::TEXT);});
+        let red = capture.image();
+        let changed = green.pixels().zip(red.pixels()).filter(|(a, b)| a != b).count();
+        assert!(changed > 30, "tower lamp must change actual captured pixels");
+        std::fs::write(directory.join("render-evidence.txt"),format!("Actual offscreen egui/wgpu capture. Green/red image differences: {changed} pixels; identical camera, scene, and captions.\n")).unwrap();
+    });
 }

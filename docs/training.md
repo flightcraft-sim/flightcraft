@@ -1,7 +1,8 @@
 # Training: radio, emergencies, and instrument flying
 
-Status: phase-one weather, IMC visuals, and the hood are implemented; see [weather](weather.md).
-Radio, scenario, and emergency implementations are linked below; broader controller and lesson grading features remain specifications.
+Status: weather, IMC visuals, the hood, the [radio foundation](radio.md), a bounded subset of
+[tower and approach training](atc.md), [scenarios](scenarios.md), and [emergencies](emergencies.md)
+are implemented. The broader lesson grading features below remain specifications.
 
 FlightCraft is built to do what flight students actually need between lessons. In priority order:
 
@@ -196,9 +197,11 @@ Each command has input and output schemas from the start.
 
 Phase 2 implementation and current coverage are described in [radios](radio.md): electrical audio
 panel, typed calls and records, reception, deterministic CTAF traffic, captions, transcript, and
-speech adapters. FAA COM frequencies still require offline import, weather observations await the
-visibility/cloud model, and browser speech filtering and macOS distinct voices remain incomplete.
+speech adapters. FAA COM frequencies come from the imported regional NASR data; weather observations
+include current wind, visibility, cloud layers, pressure, temperature, and dew point. Browser speech
+filtering and macOS distinct voices remain incomplete.
 
-Scenario scripts, emergency effects, aircraft procedure data, and the emergency debrief now have
-an implementation: see [scenarios](scenarios.md) and [emergencies](emergencies.md) for commands,
-validation coverage, and limitations. Towered controller policy remains separate.
+Scenario scripts, emergency effects, aircraft procedure data, and the emergency debrief are implemented;
+see [scenarios](scenarios.md) and [emergencies](emergencies.md) for commands, validation, and limits.
+Towered radio rules from section 2 are implemented as a bounded offline training subset; see
+[tower and approach coverage, commands, previews, and limitations](atc.md). General lesson grading remains separate work.

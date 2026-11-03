@@ -195,3 +195,7 @@ track and the measured ground track are converted to the same magnetic reference
 `Readout.heading_rad` is magnetic; `heading_grid_rad`, `heading_true_rad`, and the explicitly
 named true procedure track remain available for geometry and truth transports. No renderer or
 geographic coordinate is rotated into the magnetic frame.
+
+[Approach control](atc.md) can issue a typed clearance for the matching approach already loaded
+in this GPS. It validates the airport, procedure identity, approach family, and runway; activation
+and flight guidance continue through the existing avionics commands.

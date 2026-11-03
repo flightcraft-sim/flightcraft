@@ -1,6 +1,8 @@
 //! Read-only 3D presentation. NED and body coordinates are converted here only.
 
 mod camera;
+mod light_gun;
+pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
 mod mesh;
 mod vision;
@@ -74,6 +76,7 @@ pub struct Scene {
     larrow: bool,
     conditions: flightcraft_world::Conditions,
     hood: bool,
+    light_gun: Option<LightGun>,
 }
 
 impl Default for Scene {
@@ -93,6 +96,7 @@ impl Default for Scene {
             larrow: false,
             conditions: Default::default(),
             hood: false,
+            light_gun: None,
         }
     }
 }
@@ -256,6 +260,7 @@ impl Scene {
                 larrow: self.larrow,
             },
         ));
+        self.draw_light_gun(ui, rect, eye, projection * view, palette);
     }
 }
 

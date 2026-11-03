@@ -1180,6 +1180,33 @@ impl eframe::App for FlightCraftApp {
                 self.scene.set_world(self.session.sim().world());
                 self.scene
                     .set_weather(self.session.sim().conditions(), self.session.sim().hood());
+                self.scene
+                    .set_light_gun(self.session.atc_state().light_gun.map(|g| {
+                        flightcraft_render::LightGun {
+                            position_m: g.position_m,
+                            elapsed_s: self.session.sim().state().time_s - g.since_s,
+                            pattern: match g.signal {
+                                flightcraft_control::LightGunSignal::SteadyGreen => {
+                                    flightcraft_render::LightGunPattern::SteadyGreen
+                                }
+                                flightcraft_control::LightGunSignal::FlashingGreen => {
+                                    flightcraft_render::LightGunPattern::FlashingGreen
+                                }
+                                flightcraft_control::LightGunSignal::SteadyRed => {
+                                    flightcraft_render::LightGunPattern::SteadyRed
+                                }
+                                flightcraft_control::LightGunSignal::FlashingRed => {
+                                    flightcraft_render::LightGunPattern::FlashingRed
+                                }
+                                flightcraft_control::LightGunSignal::FlashingWhite => {
+                                    flightcraft_render::LightGunPattern::FlashingWhite
+                                }
+                                flightcraft_control::LightGunSignal::AlternatingRedGreen => {
+                                    flightcraft_render::LightGunPattern::AlternatingRedGreen
+                                }
+                            },
+                        }
+                    }));
                 self.scene.airspace_visible = self.session.airspace_visible();
                 self.scene.set_propeller_power(
                     (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,

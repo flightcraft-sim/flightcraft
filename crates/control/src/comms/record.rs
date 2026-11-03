@@ -38,6 +38,33 @@ pub enum Meaning {
     Scenario {
         instruction: crate::scenario::Instruction,
     },
+    Atis {
+        report: AtisReport,
+    },
+    Atc {
+        instruction: AtcInstruction,
+    },
+    PilotCall {
+        message: PilotMessage,
+    },
+    Compliance {
+        grade: ComplianceGrade,
+    },
+    InstructorFeedback {
+        message: String,
+    },
+    LightGun {
+        signal: LightGunState,
+    },
+    RadarContact {
+        station_id: String,
+    },
+    TrafficAdvisory {
+        callsign: String,
+        clock: u8,
+        miles: f64,
+        altitude_ft: u32,
+    },
     Position {
         airport: String,
         runway: String,
@@ -101,6 +128,9 @@ pub struct Transmission {
     pub channel: Channel,
     pub frequency_hz: Option<f64>,
     pub speaker: Speaker,
+    /// Rendered at emission so saved debriefs retain the imported radio call.
+    #[serde(default)]
+    pub speaker_name: String,
     pub text: String,
     pub meaning: Meaning,
     pub source: EventSource,
@@ -160,6 +190,7 @@ impl FlightRecord {
                 || !event.duration_s.is_finite()
                 || !(0.0..=120.0).contains(&event.duration_s)
                 || !text_ok(&event.text, 1024)
+                || (!event.speaker_name.is_empty() && !text_ok(&event.speaker_name, 128))
                 || event
                     .frequency_hz
                     .is_some_and(|f| !f.is_finite() || !(10000.0..=140e6).contains(&f))

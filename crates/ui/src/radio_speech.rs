@@ -50,6 +50,9 @@ impl Speech {
             .take_while(|e| e.reception != Reception::Pending)
             .filter(|e| e.id > self.last)
         {
+            if !event.is_spoken() {
+                continue;
+            }
             if !active || event.reception != Reception::Heard || event.speaker == Speaker::Pilot {
                 continue;
             }

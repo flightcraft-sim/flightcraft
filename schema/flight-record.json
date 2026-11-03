@@ -51,6 +51,401 @@
     "dropped_inputs"
   ],
   "$defs": {
+    "AtcInstruction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "hold_short": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "taxi"
+            },
+            "route": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "route",
+            "hold_short"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "closed_traffic": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "takeoff"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "closed_traffic"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "land"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entry": {
+              "$ref": "#/$defs/PatternEntry"
+            },
+            "follow": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "pattern"
+            },
+            "number": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "entry",
+            "number"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "extend_downwind"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "go_around"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "heading_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "vector"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "heading_deg",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "altitude"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "squawk"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "code"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "channel_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "handoff"
+            },
+            "station_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "station_id",
+            "channel_khz"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "cleared": {
+              "type": "boolean"
+            },
+            "heading_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "bravo"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "cleared",
+            "heading_deg",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "approach"
+            },
+            "name": {
+              "type": "string"
+            },
+            "procedure": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "procedure",
+            "name",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "code": {
+              "type": "string"
+            },
+            "departure_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "destination": {
+              "type": "string"
+            },
+            "destination_name": {
+              "type": "string"
+            },
+            "expect_minutes": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "expected_altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "ifr_clearance"
+            },
+            "route": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "destination",
+            "destination_name",
+            "expected_altitude_ft",
+            "expect_minutes",
+            "route",
+            "altitude_ft",
+            "departure_khz",
+            "code"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ground_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "exit_runway"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "ground_khz"
+          ]
+        }
+      ]
+    },
+    "AtisReport": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "channel_khz": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "information": {
+          "type": "string"
+        },
+        "remarks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "runway": {
+          "type": "string"
+        },
+        "station_id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "airport",
+        "station_id",
+        "channel_khz",
+        "information",
+        "runway",
+        "remarks",
+        "text"
+      ]
+    },
     "CallGrade": {
       "type": "object",
       "properties": {
@@ -129,6 +524,38 @@
         "base_ft_msl",
         "top_ft_msl",
         "coverage"
+      ]
+    },
+    "ComplianceGrade": {
+      "type": "object",
+      "properties": {
+        "instruction_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "item": {
+          "type": "string"
+        },
+        "observed": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "time_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "time_s",
+        "item",
+        "passed",
+        "observed"
       ]
     },
     "Conditions": {
@@ -989,6 +1416,55 @@
         }
       ]
     },
+    "LightGunSignal": {
+      "type": "string",
+      "enum": [
+        "steady_green",
+        "flashing_green",
+        "steady_red",
+        "flashing_red",
+        "flashing_white",
+        "alternating_red_green"
+      ]
+    },
+    "LightGunState": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string"
+        },
+        "indication": {
+          "type": "string"
+        },
+        "position_estimated": {
+          "type": "boolean"
+        },
+        "position_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "signal": {
+          "$ref": "#/$defs/LightGunSignal"
+        },
+        "since_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "airport",
+        "signal",
+        "position_m",
+        "position_estimated",
+        "since_s",
+        "indication"
+      ]
+    },
     "Meaning": {
       "oneOf": [
         {
@@ -1023,6 +1499,160 @@
           "required": [
             "type",
             "instruction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "report": {
+              "$ref": "#/$defs/AtisReport"
+            },
+            "type": {
+              "type": "string",
+              "const": "atis"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "report"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "instruction": {
+              "$ref": "#/$defs/AtcInstruction"
+            },
+            "type": {
+              "type": "string",
+              "const": "atc"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "instruction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "message": {
+              "$ref": "#/$defs/PilotMessage"
+            },
+            "type": {
+              "type": "string",
+              "const": "pilot_call"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "message"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "grade": {
+              "$ref": "#/$defs/ComplianceGrade"
+            },
+            "type": {
+              "type": "string",
+              "const": "compliance"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "grade"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "instructor_feedback"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "message"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "signal": {
+              "$ref": "#/$defs/LightGunState"
+            },
+            "type": {
+              "type": "string",
+              "const": "light_gun"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "signal"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "station_id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "radar_contact"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "station_id"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "callsign": {
+              "type": "string"
+            },
+            "clock": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "miles": {
+              "type": "number",
+              "format": "double"
+            },
+            "type": {
+              "type": "string",
+              "const": "traffic_advisory"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "callsign",
+            "clock",
+            "miles",
+            "altitude_ft"
           ]
         },
         {
@@ -1191,6 +1821,16 @@
         "haze"
       ]
     },
+    "PatternEntry": {
+      "type": "string",
+      "enum": [
+        "straight_in",
+        "left_downwind",
+        "right_downwind",
+        "left_base",
+        "right_base"
+      ]
+    },
     "PatternLeg": {
       "type": "string",
       "enum": [
@@ -1201,6 +1841,125 @@
         "base",
         "final",
         "clear"
+      ]
+    },
+    "PilotMessage": {
+      "type": "object",
+      "properties": {
+        "addressed_facility": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "altitude_ft": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "callsign_present": {
+          "type": "boolean"
+        },
+        "channel_khz": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "expect_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "expected_altitude_ft": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "facility": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FacilityKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heading_deg": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "information": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized": {
+          "type": "string"
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PilotRequest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runway": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "squawk": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "normalized",
+        "callsign_present"
+      ]
+    },
+    "PilotRequest": {
+      "type": "string",
+      "enum": [
+        "taxi",
+        "vfr_departure",
+        "ifr_clearance",
+        "ready",
+        "inbound",
+        "flight_following",
+        "bravo",
+        "approach",
+        "go_around",
+        "closed_traffic",
+        "clear_runway",
+        "handoff",
+        "position"
       ]
     },
     "Precipitation": {
@@ -1596,6 +2355,11 @@
         },
         "speaker": {
           "$ref": "#/$defs/Speaker"
+        },
+        "speaker_name": {
+          "description": "Rendered at emission so saved debriefs retain the imported radio call.",
+          "type": "string",
+          "default": ""
         },
         "text": {
           "type": "string"

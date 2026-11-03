@@ -91,8 +91,9 @@ runway and wind digits and “wind calm” at zero wind. Live calls carry source
 every action and transmission from an `ai_written` document carries `scenario (ai-written)`.
 Ordinary scripts carry `scenario`. Nonspoken actions are recorded as state events in `flight.events`,
 without alerting the pilot through speech. The kneeboard shows provenance beside each spoken event and hides internal state changes.
-Scenario wording is isolated behind `scenario::radio::scenario_radio_text` for integration with
-the shared ATC renderer; the scenario engine contains no wording templates.
+Scenario and live `comms.atc` wording both use
+`comms::phraseology::scripted_transmission` from the [shared renderer](phraseology.md);
+the scenario engine contains no wording templates.
 
 Validation checks document limits, unique step ids, forward branch destinations, referenced
 procedures, airports, runways, fixes, airspace, frequencies, weather, traffic installation, and

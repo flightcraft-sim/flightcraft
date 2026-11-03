@@ -173,6 +173,36 @@ fn provenance_live_atc_and_both_radio_failure() {
     assert!(s.comms_state().com1_powered);
 }
 #[test]
+fn radio_failure_scenario_drives_lost_comms_and_emergency_grading_together() {
+    let mut s = scenario_session();
+    s.execute("atc.configure", json!({"airport":"KABE"})).unwrap();
+    let mut d = timed();
+    d.steps[0].when.clear();
+    d.steps[0].actions = vec![ScenarioAction::FailureSet {
+        failure: Failure::RadioFailure {},
+    }];
+    s.run(ScenarioStart { scenario: d }).unwrap();
+    assert!(s.sim().failures().radio_failure);
+    assert!(s.atc_state().radio_failed);
+    assert!(s.atc_state().light_gun.is_some());
+    assert_eq!(
+        s.scenario_state().emergency.as_ref().unwrap().procedure.id,
+        "radio_failure"
+    );
+    assert!(!s.comms_state().com1_powered && !s.comms_state().com2_powered);
+    s.execute(
+        "comms.transmit",
+        json!({"text":"Observe the tower light signals", "intercom":true}),
+    )
+    .unwrap();
+    s.execute("failure.clear", json!({"target":"all"})).unwrap();
+    assert!(!s.sim().failures().radio_failure);
+    assert!(!s.atc_state().radio_failed);
+    assert!(s.atc_state().light_gun.is_none());
+    assert!(s.comms_state().com1_powered && s.comms_state().com2_powered);
+}
+
+#[test]
 fn glide_geometry_wind_terrain_and_hostile_inputs() {
     let flat = flightcraft_world::World::default();
     let a = glide_footprint(&flat, [0., 0., -1000.], [0.; 3], 9., 33.).unwrap();

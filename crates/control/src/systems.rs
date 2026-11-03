@@ -11,6 +11,7 @@ pub struct Systems {
     pub hood: bool,
     pub simulated_instrument_time: flightcraft_sim::InstrumentTime,
     pub failures: Failures,
+    pub radio_failed: bool,
     pub systems: flightcraft_sim::systems::SystemsState,
 }
 
@@ -21,6 +22,7 @@ fn current(session: &Session) -> Systems {
         hood: session.sim().hood(),
         simulated_instrument_time: session.sim().instrument_time(),
         failures: session.sim().failures(),
+        radio_failed: session.atc_state().radio_failed,
         systems: session.sim().systems().clone(),
     }
 }
@@ -205,6 +207,7 @@ pub enum Failure {
     FlapAsymmetry {},
     TrimRunaway {},
     TrimStuck {},
+    #[serde(alias = "radio")]
     RadioFailure {},
 
     Engine {},
@@ -232,8 +235,7 @@ pub struct SetFailure {
 
 impl Command for SetFailure {
     const NAME: &'static str = "failure.set";
-    const DESCRIPTION: &'static str =
-        "Fail the engine, vacuum pump, alternator, or pitot/static ports; reduce power or jam a surface.";
+    const DESCRIPTION: &'static str = "Inject an aircraft failure, including fires, icing, trim, COM radios, power loss, or a jammed surface.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         let mut failures = session.sim().failures();
@@ -260,6 +262,7 @@ impl Command for SetFailure {
                 .map_err(flightcraft_sim::SimError::from)?,
         }
         session.sim_mut().set_failures(failures)?;
+        session.sync_radio_failure();
         Ok(current(session))
     }
 }
@@ -276,6 +279,7 @@ pub enum FailureTarget {
     FlapAsymmetry,
     TrimRunaway,
     TrimStuck,
+    #[serde(alias = "radio")]
     RadioFailure,
 
     #[default]
@@ -329,6 +333,7 @@ impl Command for ClearFailure {
             FailureTarget::Flaps => f.flaps = None,
         }
         session.sim_mut().set_failures(f)?;
+        session.sync_radio_failure();
         Ok(current(session))
     }
 }

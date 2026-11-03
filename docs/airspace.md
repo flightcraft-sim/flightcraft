@@ -98,3 +98,6 @@ opaque terrain and aircraft, with depth testing, alpha blending, and depth write
 The status chip reports the current class and vertical limits and turns amber near a B/C entry.
 Its hover text carries the airspace attribution. `airspace.list`, `airspace.at`, and `sim.state`
 provide the same region data to scripts and MCP clients; see [the command reference](mcp.md).
+
+[Tower and approach training](atc.md) grades airborne B/C/D entries against explicit Bravo
+clearance and controlling-provider two-way communications, using this same immutable query.

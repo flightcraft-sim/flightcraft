@@ -13,7 +13,10 @@ mod callsign;
 pub use callsign::*;
 mod presentation;
 pub use presentation::*;
-pub(crate) mod weather;
+mod atc;
+pub use atc::*;
+pub mod phraseology;
+mod weather;
 pub use weather::ReportedLayer;
 mod record;
 mod traffic;
@@ -101,6 +104,7 @@ struct TrafficCall {
 }
 #[derive(Debug)]
 pub(crate) struct Comms {
+    pub(crate) atc: atc::Atc,
     callsign_override: Option<(String, String)>,
     abbreviate: bool,
     contacts: std::collections::BTreeSet<u32>,
@@ -122,6 +126,7 @@ pub(crate) struct Comms {
 impl Default for Comms {
     fn default() -> Self {
         Self {
+            atc: Default::default(),
             callsign_override: None,
             abbreviate: true,
             contacts: Default::default(),
@@ -153,6 +158,7 @@ struct Pending {
     range_nm: f64,
     collided: bool,
     radio: Option<u8>,
+    atc_receiver: Option<ComStation>,
 }
 #[derive(Debug, Default, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -310,20 +316,23 @@ impl Command for CommsTransmit {
         }) {
             return Err(invalid(Self::NAME, "pilot is still transmitting"));
         }
+        if !self.intercom && s.sim.failures().radio_failure {
+            return Err(invalid(Self::NAME, "COM radio failure"));
+        }
         if !s.comms_power().0 {
             return Err(invalid(Self::NAME, "audio panel has no electrical power"));
         }
         let leg = PatternLeg::parse(&self.text);
-        let meaning = s
-            .comms
-            .pattern
-            .as_ref()
-            .zip(leg)
-            .map_or(Meaning::Text, |(p, leg)| Meaning::Position {
+        let meaning = s.comms.pattern.as_ref().zip(leg).map_or_else(
+            || Meaning::PilotCall {
+                message: parse_pilot(&self.text, &s.pilot_callsign()),
+            },
+            |(p, leg)| Meaning::Position {
                 airport: p.airport.clone(),
                 runway: p.runway.clone(),
                 leg,
-            });
+            },
+        );
         let id = if self.intercom {
             if !s.comms.panel.intercom {
                 return Err(invalid(Self::NAME, "intercom is off"));
@@ -441,6 +450,7 @@ impl Session {
             duration_s: 0.,
             channel: Channel::Intercom,
             speaker: Speaker::Instructor,
+            speaker_name: "Instructor".into(),
             frequency_hz: None,
             text: "Scenario state event".into(),
             meaning: Meaning::ScenarioAction { action },
@@ -542,6 +552,7 @@ impl Session {
         self.comms
             .record
             .input(self.sim.state().time_s, self.sim.controls());
+        self.sync_radio_failure();
         self.finish_transmissions();
         self.comms.record.emergency = self.scenario.state.emergency.clone();
     }
@@ -554,6 +565,7 @@ impl Session {
             if now - self.comms.last_tick >= 0.25 - 1e-8 {
                 let dt = now - self.comms.last_tick;
                 self.comms.last_tick = now;
+                self.sequence_atc();
                 self.update_pattern(dt);
                 self.sequence_traffic_calls();
                 self.broadcast_weather();
@@ -687,6 +699,7 @@ impl Session {
             duration_s: duration,
             channel,
             frequency_hz,
+            speaker_name: phraseology::speaker(&speaker, &self.stations()),
             speaker,
             text,
             meaning,
@@ -695,7 +708,26 @@ impl Session {
             reason: None,
             grade: None,
         });
+        let atc_receiver = if speaker_is_pilot(&self.comms.record.events, id) && channel == Channel::Com {
+            let khz = self
+                .comms
+                .radios
+                .get(usize::from(self.comms.panel.transmit.saturating_sub(1)))
+                .map_or(122800, |r| r.active_khz);
+            let message = self
+                .comms
+                .record
+                .events
+                .iter()
+                .find(|e| e.id == id)
+                .map(|e| parse_pilot(&e.text, &self.pilot_callsign()))
+                .unwrap_or_default();
+            self.atc_receiver(&message, khz)
+        } else {
+            None
+        };
         self.comms.pending.push(Pending {
+            atc_receiver,
             id,
             end_s: now + duration,
             carrier,
@@ -734,8 +766,14 @@ impl Session {
                 Channel::Intercom => self.comms_power().0 && self.comms.panel.intercom,
                 Channel::Nav => self.comms_power().0 && self.comms.panel.nav_ident,
             };
-            p.eligible &= audible;
+            let reaches_controller = p.atc_receiver.as_ref().is_none_or(|st| {
+                self.station_origin(st).is_some_and(|o| {
+                    reception(self.sim.world(), self.sim.state().position_m, o, st.range_nm, 0.)
+                })
+            });
+            p.eligible &= audible && reaches_controller;
         }
+        let mut completed = Vec::new();
         for p in pending {
             if p.end_s > now + 1e-8 {
                 self.comms.pending.push(p);
@@ -771,6 +809,7 @@ impl Session {
                         grade.feedback = event.reason.clone().unwrap_or_default();
                     }
                 }
+                completed.push((event.clone(), p.atc_receiver));
                 if event.reception == Reception::Heard {
                     if event.speaker == Speaker::Pilot
                         && event.channel == Channel::Com
@@ -795,9 +834,19 @@ impl Session {
                 }
             }
         }
+        for (event, receiver) in completed {
+            self.completed_atc(&event, receiver);
+        }
     }
     fn grade_call(&self, id: u64, leg: Option<PatternLeg>) -> Option<CallGrade> {
         let p = self.comms.pattern.as_ref()?;
+        if self
+            .stations()
+            .iter()
+            .any(|st| st.airport == p.airport && st.kind == FacilityKind::Tower)
+        {
+            return None;
+        }
         let event = self.comms.record.events.iter().find(|e| e.id == id)?;
         let expected = p.pilot_leg(self);
         let normalized = words(&event.text);
@@ -810,7 +859,11 @@ impl Session {
             " runway {} ",
             p.runway.trim_start_matches('0').to_lowercase()
         )) || padded.contains(&format!(" runway {} ", p.runway.to_lowercase()))
-            || padded.contains(&format!(" runway {} ", runway_words(&p.runway)));
+            || padded.contains(&format!(" runway {} ", runway_words(&p.runway)))
+            || padded.contains(&format!(
+                " runway {} ",
+                runway_words(&p.runway).replace("niner", "nine")
+            ));
         let timely = leg.is_some() && leg == expected;
         let selected = self.comms.radios.get(usize::from(self.comms.panel.transmit - 1));
         let frequency_correct =
@@ -887,7 +940,24 @@ impl Session {
                 continue;
             }
             let wind = self.pilot_weather();
-            let (text, meaning) = weather::weather_report(&station, self.sim.conditions(), wind, now);
+            // ATIS and ASOS may share a carrier; the controlled information broadcast takes priority.
+            if station.kind != FacilityKind::Atis
+                && self
+                    .stations()
+                    .iter()
+                    .any(|s| s.kind == FacilityKind::Atis && s.channel_khz == station.channel_khz)
+            {
+                continue;
+            }
+            let (text, meaning) = if station.kind == FacilityKind::Atis {
+                if let Some(report) = self.atis_report(&station.airport) {
+                    (report.text.clone(), Meaning::Atis { report })
+                } else {
+                    weather::weather_report(&station, self.sim.conditions(), wind, now)
+                }
+            } else {
+                weather::weather_report(&station, self.sim.conditions(), wind, now)
+            };
             self.start_com(
                 station.channel_khz,
                 Speaker::Facility {
@@ -1023,26 +1093,9 @@ fn words(s: &str) -> String {
         .join(" ")
 }
 fn runway_words(s: &str) -> String {
-    s.chars()
-        .filter_map(|c| match c {
-            '0' => Some("zero"),
-            '1' => Some("one"),
-            '2' => Some("two"),
-            '3' => Some("three"),
-            '4' => Some("four"),
-            '5' => Some("five"),
-            '6' => Some("six"),
-            '7' => Some("seven"),
-            '8' => Some("eight"),
-            '9' => Some("nine"),
-            'L' => Some("left"),
-            'R' => Some("right"),
-            'C' => Some("center"),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
+    phraseology::runway(s)
 }
+
 pub fn morse(ident: &str) -> String {
     ident
         .to_uppercase()
@@ -1102,3 +1155,11 @@ pub fn morse_duration(code: &str) -> f64 {
 }
 #[cfg(test)]
 mod tests;
+
+fn speaker_is_pilot(events: &[Transmission], id: u64) -> bool {
+    events
+        .iter()
+        .rev()
+        .find(|e| e.id == id)
+        .is_some_and(|e| e.speaker == Speaker::Pilot)
+}

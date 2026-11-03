@@ -84,6 +84,7 @@ impl RadioUi {
                         if ui.button("Use pack").clicked() { apply(s.execute("comms.callsign", serde_json::json!({"reset_to_pack":true})), &mut self.error); self.registration.clear(); }
                     });
                     panel(ui, s, &state, &mut self.tune1, &mut self.tune2, &mut self.error);
+                    atc_panel(ui,s,&mut self.airport,&mut self.error);
                     ui.separator();
                     if ui.button("Saved flights / debrief").clicked() { self.history = true; apply(s.run(flightcraft_control::FlightRecords { refresh: true }), &mut self.error); }
                     ui.horizontal(|ui| {
@@ -524,9 +525,8 @@ pub fn panel(
                         .selectable_label(
                             false,
                             format!(
-                                "{} {:?} {:.3} {}",
-                                station.airport,
-                                station.kind,
+                                "{} {:.3} {}",
+                                flightcraft_control::comms::phraseology::facility(station),
                                 f64::from(station.channel_khz) / 1000.0,
                                 station.metadata.as_ref().map_or("", |m| m.sector.as_str())
                             ),
@@ -582,7 +582,7 @@ pub fn captions(ctx: &egui::Context, s: &Session) {
                         } else {
                             ""
                         },
-                        flightcraft_control::speaker_label(&event.speaker, &s.comms_state().stations),
+                        event_speaker(event),
                         event.text
                     ))
                     .color(theme::TEXT),
@@ -590,12 +590,21 @@ pub fn captions(ctx: &egui::Context, s: &Session) {
             });
     }
 }
+pub fn event_speaker(event: &flightcraft_control::Transmission) -> String {
+    if event.speaker_name.is_empty() {
+        speaker(&event.speaker)
+    } else {
+        event.speaker_name.clone()
+    }
+}
 pub fn speaker(speaker: &Speaker) -> String {
     match speaker {
         Speaker::Pilot => "YOU".into(),
         Speaker::Instructor => "INSTRUCTOR · INTERCOM".into(),
         Speaker::Traffic { callsign } => callsign.clone(),
-        Speaker::Facility { role, .. } => flightcraft_control::facility_role(*role).into(),
+        Speaker::Facility { role, .. } => {
+            flightcraft_control::comms::phraseology::facility_kind(*role).into()
+        }
         Speaker::Nav { ident } => format!("NAV · {ident}"),
     }
 }
@@ -614,11 +623,11 @@ pub fn transcript(ui: &mut egui::Ui, s: &Session) {
     record_transcript(ui, s, s.flight_record());
 }
 fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_control::FlightRecord) {
+    let stations = s.comms_state().stations;
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)
         .max_height(450.0)
         .show(ui, |ui| {
-            let stations = s.comms_state().stations;
             for event in record.events.iter().filter(|e| e.is_spoken()) {
                 let color = match event.reception {
                     Reception::Heard => theme::TEXT,
@@ -634,11 +643,12 @@ fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_contro
                             event.time_s % 60.0
                         ),
                     );
-                    ui.label(
-                        RichText::new(flightcraft_control::speaker_label(&event.speaker, &stations))
-                            .strong()
-                            .color(color),
-                    );
+                    let name = if event.speaker_name.is_empty() {
+                        flightcraft_control::speaker_label(&event.speaker, &stations)
+                    } else {
+                        event_speaker(event)
+                    };
+                    ui.label(RichText::new(name).strong().color(color));
                     ui.colored_label(
                         theme::MUTED,
                         match event.source {
@@ -689,4 +699,108 @@ fn export_record(
         },
         Err(value) => *error = Some(value.to_string()),
     }
+}
+
+fn atc_panel(ui: &mut egui::Ui, s: &mut Session, airport: &mut String, error: &mut Option<String>) {
+    egui::CollapsingHeader::new("Tower and approach training")
+        .default_open(true)
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(airport)
+                        .hint_text("Towered airport")
+                        .desired_width(100.),
+                );
+                if ui.button("Set ATC airport").clicked() {
+                    apply(
+                        s.execute("atc.configure", serde_json::json!({"airport":airport})),
+                        error,
+                    );
+                }
+            });
+            let state = s.atc_state();
+            if let Some(st) = state.current_facility {
+                ui.label(format!(
+                    "{} · {:.3}",
+                    flightcraft_control::comms::phraseology::facility(&st),
+                    f64::from(st.channel_khz) / 1000.
+                ));
+            }
+            if let Some(atis) = state.atis {
+                ui.label(format!(
+                    "Information {} · runway {} · ATIS {:.3}",
+                    atis.information,
+                    atis.runway,
+                    f64::from(atis.channel_khz) / 1000.
+                ));
+            }
+            ui.label(state.expected_next_call);
+            ui.horizontal(|ui| {
+                if ui
+                    .button(if state.radio_failed {
+                        "Restore COM"
+                    } else {
+                        "Practise radio failure"
+                    })
+                    .clicked()
+                {
+                    let (name, input) = if state.radio_failed {
+                        ("failure.clear", serde_json::json!({"target":"radio"}))
+                    } else {
+                        ("failure.set", serde_json::json!({"failure":{"kind":"radio"}}))
+                    };
+                    apply(s.execute(name, input), error);
+                }
+            });
+            if state.radio_failed {
+                ui.horizontal_wrapped(|ui| {
+                    for (label, signal) in [
+                        ("Steady green", "steady_green"),
+                        ("Flashing green", "flashing_green"),
+                        ("Steady red", "steady_red"),
+                        ("Flashing red", "flashing_red"),
+                        ("Flashing white", "flashing_white"),
+                        ("Red / green", "alternating_red_green"),
+                    ] {
+                        if ui.button(label).clicked() {
+                            apply(
+                                s.execute(
+                                    "atc.light_gun",
+                                    serde_json::json!({"airport":airport,"signal":signal}),
+                                ),
+                                error,
+                            );
+                        }
+                    }
+                });
+            }
+            for p in state.pending_instructions {
+                ui.label(format!(
+                    "{} · {}",
+                    if p.heard {
+                        "Readback required"
+                    } else {
+                        "Await transmission"
+                    },
+                    p.phrase
+                ));
+            }
+            if let Some(g) = state.light_gun {
+                ui.colored_label(
+                    theme::ACCENT,
+                    format!("Tower light gun: {} · {}", g.signal.label(), g.indication),
+                );
+            }
+            if let Some(g) = state.compliance.last() {
+                ui.label(format!(
+                    "{} · {}",
+                    if g.passed {
+                        "satisfactory"
+                    } else {
+                        "unsatisfactory"
+                    },
+                    g.observed
+                ));
+            }
+        });
 }

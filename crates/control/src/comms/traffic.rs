@@ -204,7 +204,7 @@ impl Command for SetTraffic {
             .into_iter()
             .find(|st| {
                 (st.airport == airport.ident || airport.icao.as_deref() == Some(&st.airport))
-                    && st.kind == FacilityKind::Ctaf
+                    && matches!(st.kind, FacilityKind::Ctaf | FacilityKind::Tower)
             })
             .ok_or_else(|| {
                 invalid(
@@ -212,15 +212,6 @@ impl Command for SetTraffic {
                     "airport has no imported FAA CTAF; import frequency data first",
                 )
             })?;
-        if s.stations()
-            .iter()
-            .any(|st| st.airport == station.airport && st.kind == FacilityKind::Tower)
-        {
-            return Err(invalid(
-                Self::NAME,
-                "untowered traffic requires an airport without a tower",
-            ));
-        }
         let (runway, end) = airport
             .runways
             .iter()
@@ -289,6 +280,10 @@ impl Session {
         let Some(mut pattern) = self.comms.pattern.take() else {
             return;
         };
+        let controlled = self
+            .stations()
+            .iter()
+            .any(|st| st.airport == pattern.airport && st.kind == FacilityKind::Tower);
         let time = self.sim.state().time_s;
         let pilot_leg = pattern.pilot_leg(self);
         let [pn, pe, pd] = self.sim.state().position_m;
@@ -382,13 +377,27 @@ impl Session {
             });
             if old.is_none_or(|a| a.leg != leg || a.following_pilot != following_pilot) {
                 let text = format!(
-                    "{} traffic, {}, {}{} runway {}, {}.",
-                    pattern.name,
+                    "{}, {}, {}{} runway {}{}.",
+                    if controlled {
+                        self.stations()
+                            .iter()
+                            .find(|s| s.airport == pattern.airport && s.kind == FacilityKind::Tower)
+                            .map_or_else(
+                                || format!("{} Tower", phraseology::normal_case(&pattern.name)),
+                                phraseology::facility,
+                            )
+                    } else {
+                        format!("{} traffic", pattern.name)
+                    },
                     callsign,
                     leg.phrase(),
                     if following_pilot { ", following you," } else { "" },
-                    pattern.runway,
-                    pattern.name
+                    phraseology::runway(&pattern.runway),
+                    if controlled {
+                        String::new()
+                    } else {
+                        format!(", {}", phraseology::normal_case(&pattern.name))
+                    }
                 );
                 calls.push((
                     Speaker::Traffic {
@@ -406,6 +415,9 @@ impl Session {
         }
         pattern.progress = next_progress;
         let call_in_progress = self.pending_phase_call(pattern.expected);
+        if controlled {
+            pattern.phase_called = true;
+        }
         if pilot_leg != pattern.expected {
             if let Some(leg) = pattern.expected
                 && !pattern.phase_called
@@ -416,7 +428,7 @@ impl Session {
             }
             pattern.expected = pilot_leg;
             pattern.phase_since = time;
-            pattern.phase_called = false;
+            pattern.phase_called = controlled;
             pattern.missing_reported = false;
         }
         if let Some(leg) = pilot_leg

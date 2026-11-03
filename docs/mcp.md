@@ -480,9 +480,27 @@ underscores, for example `comms_tune`. Every entry has generated input and outpu
 | `flight.export` | Optional `id` for an already loaded flight; omission exports the current record. Returns `filename` and `json`, with no dialog. |
 
 Speech, captions, and traffic targets do not enter the physics hash. Event sources and facility roles
-are typed for later scenarios and towered rules. Towered clearances and speech recognition are not
+are typed for later scenarios and towered rules. Towered clearances use the ATC commands below. Speech recognition is not
 implemented by these commands. There are no modal dialogs in any radio command.
 
 Scenario tools are registered automatically: `scenario.validate`, `scenario.start`, `scenario.amend`,
 `scenario.state`, `scenario.signal`, `scenario.instructor_failure`, `comms.atc`, and `emergency.record`.
 See [scenarios](scenarios.md) for inputs and [emergencies](emergencies.md) for debrief data.
+## Tower and approach training
+
+The shared registry exposes `atc.state` (`{}`), `atc.configure`
+(`{"airport":"KABE","destination":"KMMU"}`; destination optional), and `atc.light_gun`
+(`{"airport":"KABE","signal":"steady_green"}`; requires radio failure). `atc.state` returns
+current facility, expected next call, ATIS, reported information, pending typed instructions,
+compliance grades, controlling-provider contacts, VFR Bravo permission, IFR clearance status, selected squawk, radio failure,
+and light-gun state. Generated schemas are in `schema/commands.json`.
+
+Use `comms.transmit` for typed pilot calls, `comms.tune` for imported channels, `comms.listen`
+for heard responses, and `flight.events` for structured rules/pilot evidence. `failure.set`
+accepts `{"failure":{"kind":"radio_failure"}}`, and `failure.clear` accepts `{"target":"radio_failure"}`.
+Readbacks are checked on completion; step simulated time until the transmission is heard before
+reading the resulting clearance state. Programmatic calls do not open dialogs. See
+[tower and approach training](atc.md) for operation, coverage, previews, and limits.
+
+Radio text and debrief clients share the small [phraseology API](phraseology.md); saved transmissions
+retain their readable NASR speaker name.

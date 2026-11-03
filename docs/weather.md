@@ -169,3 +169,6 @@ temperature), and `sea_level_pressure_pa` (80000–110000). Defaults are 15 C, 5
 old condition JSON remains readable. Station temperatures use standard lapse approximations.
 QNH scales pressure-port readings, making altimeter-setting practice possible. Temperature and
 dewpoint changes update the systems environment; aerodynamic density still follows ISA.
+
+[Towered ATIS](atc.md) reuses these observations with information letters, wind-based runway
+selection, and hold-short remarks on the imported ATIS channel.

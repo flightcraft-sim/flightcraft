@@ -91,6 +91,10 @@ fn write_scenario_transcripts() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .any(|e| e.text == "No readback yet. Read back the landing clearance.")
     );
+    assert!(
+        s.flight_record().events.iter().any(|e| e.text
+            == "Sling Three Four Bravo, Allentown Tower, runway two four, cleared to land, wind calm.")
+    );
     save(&s, &dir, "three-mile-final")?;
     Ok(())
 }

@@ -379,7 +379,7 @@ impl Session {
         if let Instruction::AirspaceClearance { id } = &instruction {
             self.scenario.granted_clearances.insert(id.clone());
         }
-        let text = super::radio::scenario_radio_text(
+        let text = crate::comms::phraseology::scripted_transmission(
             &station,
             &self.pilot_callsign(),
             &instruction,

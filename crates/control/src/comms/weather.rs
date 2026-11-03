@@ -7,24 +7,7 @@ pub struct ReportedLayer {
     pub coverage: Coverage,
     pub base_agl_m: f64,
 }
-pub(crate) fn digits(number: u32, width: usize) -> String {
-    format!("{number:0width$}")
-        .chars()
-        .map(|c| match c {
-            '0' => "zero",
-            '1' => "one",
-            '2' => "two",
-            '3' => "three",
-            '4' => "four",
-            '5' => "five",
-            '6' => "six",
-            '7' => "seven",
-            '8' => "eight",
-            _ => "niner",
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+use super::phraseology::digits;
 fn temperature(value: f64) -> String {
     format!(
         "{}{}",
@@ -36,16 +19,8 @@ pub(crate) fn height(value: f64) -> String {
     let hundreds = (value * 3.280839895 / 100.).round().max(0.) as u32;
     if hundreds == 0 {
         "less than one hundred".into()
-    } else if hundreds.is_multiple_of(10) {
-        format!("{} thousand", digits(hundreds / 10, 1))
-    } else if hundreds > 10 {
-        format!(
-            "{} thousand {} hundred",
-            digits(hundreds / 10, 1),
-            digits(hundreds % 10, 1)
-        )
     } else {
-        format!("{} hundred", digits(hundreds, 1))
+        phraseology::altitude(hundreds * 100)
     }
 }
 pub(super) fn weather_report(
@@ -68,10 +43,14 @@ pub(super) fn weather_report(
         .filter(|l| matches!(l.coverage, Coverage::Bkn | Coverage::Ovc))
         .map(|l| l.base_agl_m)
         .min_by(f64::total_cmp);
+    let wind_words = phraseology::wind(
+        wind.wind_from_deg.round() as u16,
+        (wind.wind_speed_mps / 0.514444).round() as u16,
+    );
     let wind_text = format!(
-        "{}{}.",
-        spoken_wind(wind).replacen("wind", "Wind", 1),
-        if wind.wind_speed_mps < 0.5 { "" } else { " knots" }
+        "Wind{}{}.",
+        wind_words.strip_prefix("wind").unwrap_or(&wind_words),
+        if wind_words == "wind calm" { "" } else { " knots" }
     );
     let sm = c.effective_visibility_m() / 1609.344;
     let whole = sm.floor() as u32;
@@ -143,10 +122,10 @@ pub(super) fn weather_report(
     // Do not announce an invented wall-clock/Zulu observation timestamp.
     let text = format!(
         "{} automated weather observation. {wind_text} Visibility {visibility} statute miles. {phenomena} {sky} Temperature {} Celsius. Dew point {} Celsius. Altimeter {}.",
-        station.name,
+        phraseology::facility(station),
         temperature(temp),
         temperature(dew),
-        digits(alt, 4)
+        phraseology::altimeter(alt)
     );
     (
         text,
@@ -163,17 +142,5 @@ pub(super) fn weather_report(
             obscuration: c.obscuration,
             precipitation: c.precipitation,
         },
-    )
-}
-
-pub(crate) fn spoken_wind(wind: flightcraft_sim::Weather) -> String {
-    if wind.wind_speed_mps < 0.5 {
-        return "wind calm".into();
-    }
-    let direction = (wind.wind_from_deg.round() as u32) % 360;
-    format!(
-        "wind {} at {}",
-        digits(if direction == 0 { 360 } else { direction }, 3),
-        digits((wind.wind_speed_mps / 0.514444).round() as u32, 1)
     )
 }
