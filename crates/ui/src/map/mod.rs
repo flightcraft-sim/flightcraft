@@ -645,6 +645,7 @@ impl PlanningMap {
             }
         }
         egui::Window::new("Flight plan import / export")
+            .constrain_to(crate::theme::window_bounds(ui.ctx()))
             .open(&mut open)
             .show(ui.ctx(), |ui| {
                 if self.format.is_empty() { self.format = "gpx".into(); }

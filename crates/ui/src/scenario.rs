@@ -29,6 +29,7 @@ impl ScenarioUi {
     pub fn show(&mut self, ctx: &egui::Context, s: &mut Session) {
         let mut open = self.open;
         egui::Window::new("Scenarios and emergencies")
+            .constrain_to(crate::theme::window_bounds(ctx))
             .open(&mut open)
             .default_size([900., 720.])
             .vscroll(true)

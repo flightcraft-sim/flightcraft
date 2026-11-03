@@ -26,6 +26,7 @@ impl Controls {
         let a = &input.systems.avionics.electronic_attitude;
         let h = &input.systems.avionics.electronic_hsi;
         egui::Window::new("Electronic standby controls")
+            .constrain_to(crate::theme::window_bounds(ctx))
             .open(&mut self.open)
             .resizable(false)
             .show(ctx, |ui| {

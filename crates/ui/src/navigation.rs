@@ -69,6 +69,7 @@ impl SearchPanel {
         if self.open {
             let mut open = self.open;
             egui::Window::new("Places")
+                .constrain_to(crate::theme::window_bounds(ui.ctx()))
                 .open(&mut open)
                 .default_width(460.0)
                 .show(ui.ctx(), |ui| self.contents(ui, session));

@@ -126,3 +126,22 @@ pub(crate) fn page(ui: &mut egui::Ui) {
     ui.style_mut().visuals = v;
     ui.painter().rect_filled(ui.max_rect(), 0., PANEL);
 }
+
+const HEADER_BOTTOM: &str = "flightcraft-main-header-bottom";
+
+/// Records where the main window's header ends, so floating windows stay below its menus.
+pub fn record_header_bottom(ctx: &egui::Context, bottom: f32) {
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new(HEADER_BOTTOM), bottom));
+}
+
+/// The area a floating window may occupy: the viewport below the main header. Windows on
+/// screen pages without a header get the whole viewport.
+#[must_use]
+pub fn window_bounds(ctx: &egui::Context) -> egui::Rect {
+    let content = ctx.content_rect();
+    let top = ctx
+        .data(|d| d.get_temp::<f32>(egui::Id::new(HEADER_BOTTOM)))
+        .unwrap_or(content.min.y)
+        .clamp(content.min.y, content.max.y);
+    egui::Rect::from_min_max(egui::pos2(content.min.x, top), content.max)
+}

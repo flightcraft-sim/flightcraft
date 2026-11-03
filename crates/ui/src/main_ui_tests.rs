@@ -149,12 +149,27 @@ fn worker_snapshot_main_renders_native_header_and_windows() {
             );
         }
     }
+    let menu_bottom = header.iter().map(|(_, r)| r.bottom()).fold(0.0_f32, f32::max);
     assert!(web.text.iter().any(|(s, _)| s.starts_with("Map [")));
     web.click("Scenarios");
     assert!(web.app.scenarios.open, "scenario button did not open");
     assert!(web.has("Scenarios and emergencies"), "{:?}", web.text);
     assert!(web.has("Scenario library"));
+    let title = web
+        .text
+        .iter()
+        .find(|(s, _)| s == "Scenarios and emergencies")
+        .map(|(_, r)| *r)
+        .expect("scenario window title");
+    assert!(
+        title.top() > menu_bottom,
+        "a floating window covers the header menus: {title:?} vs {menu_bottom}"
+    );
     web.click("Scenarios");
+    assert!(
+        !web.app.scenarios.open,
+        "the header button must close the window it opened"
+    );
     web.click("Preferences");
     assert!(web.has("Preferences and input"));
     web.click("Preferences");

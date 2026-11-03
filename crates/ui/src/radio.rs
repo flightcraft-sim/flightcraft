@@ -71,6 +71,7 @@ impl RadioUi {
         let submitted = std::mem::take(&mut self.submit);
         if self.open {
             egui::Window::new("Audio panel and radios")
+                .constrain_to(crate::theme::window_bounds(ctx))
                 .id(egui::Id::new("radio_panel"))
                 .default_width(590.0)
                 .open(&mut self.open)
@@ -172,6 +173,7 @@ impl RadioUi {
         }
         if self.history {
             egui::Window::new("Saved flights · debrief")
+                .constrain_to(crate::theme::window_bounds(ctx))
                 .default_width(700.)
                 .default_height(500.)
                 .open(&mut self.history)
@@ -265,6 +267,7 @@ impl RadioUi {
         }
         if self.kneeboard {
             egui::Window::new("Kneeboard · radio transcript")
+                .constrain_to(crate::theme::window_bounds(ctx))
                 .default_width(620.0)
                 .default_height(370.0)
                 .open(&mut self.kneeboard)

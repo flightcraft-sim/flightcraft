@@ -444,7 +444,7 @@ impl FlightCraftApp {
             self.efb_settings = applied.clone();
             self.efb_applied = applied;
         }
-        egui::Window::new("Preferences and input").open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
+        egui::Window::new("Preferences and input").constrain_to(theme::window_bounds(ctx)).open(&mut self.settings).default_width(530.0).max_height(620.0).vscroll(true).show(ctx, |ui| {
             ui.label(RichText::new("INSTRUMENT PANEL").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.compact_panel, "Compact instruments (one row)");
             let mut visible = self.session.airspace_visible();
@@ -856,7 +856,7 @@ impl FlightCraftApp {
                     ui.horizontal_wrapped(|ui| scenario::indications(ui, &self.session));
                 });
         }
-        egui::TopBottomPanel::top("header")
+        let header = egui::TopBottomPanel::top("header")
             .min_height(64.0)
             .frame(
                 egui::Frame::new()
@@ -1035,6 +1035,7 @@ impl FlightCraftApp {
                     }
                 });
             });
+        theme::record_header_bottom(ctx, header.response.rect.bottom());
         let readout = self.session.sim().readout();
         egui::TopBottomPanel::bottom("footer")
             .exact_height(30.0)
@@ -1115,6 +1116,7 @@ impl FlightCraftApp {
             });
         if let Some(error) = &self.error {
             egui::Window::new("FlightCraft message")
+                .constrain_to(theme::window_bounds(ctx))
                 .collapsible(false)
                 .show(ctx, |ui| {
                     ui.label(RichText::new(error).color(theme::AMBER));
