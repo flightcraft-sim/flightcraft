@@ -2,6 +2,11 @@
 
 Thanks for helping. Start with [docs/SPEC.md](docs/SPEC.md) and [ROADMAP.md](ROADMAP.md).
 
+Aircraft, scenario, airport-detail, skin, and hardware-profile contributions will open through the
+[contributor program](docs/contributor-program.md): golden samples to copy, an agent skill per
+type, and tests as the acceptance gate. It starts once the v1 formats are frozen; until then the
+formats may change.
+
 ## Rules
 
 1. **Original work.** Never copy code, data, aircraft, panels, scenery, names, or text from another

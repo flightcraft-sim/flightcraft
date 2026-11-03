@@ -48,14 +48,15 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 24 | An aircraft modelled in SolidCraft flies | 22, 23 |
 | 25 | Touch controls in the browser | 9 |
 | 26 | Real regions: New York area (1N7 to the JFK, EWR, and LGA Class B), then eastern Pennsylvania and New Jersey (KABE, KMPO, KAVP, KRDG) | 18 |
-| 27 | Contributor guides and agent skills: how to contribute an aircraft, a region, or an instrument skin, written so a coding agent told "contribute to FlightCraft" knows what to do | 26, instrument modules |
-| 28 | Issue claims: `/claim` and `/unclaim`, a draft PR referencing an issue claims it, the lowest-numbered PR wins, and a daily sweep frees stale claims | 27 |
+| 27 | Contributor program: golden samples (Sling 2 as the aircraft reference, Corvid, Larrow, library scenarios, 1N7 and KABE detail), one agent skill per contribution type, tests as the acceptance gate; regions stay script-built ([plan](docs/contributor-program.md)) | 34, 35 |
+| 28 | Issue claims: `/claim` and `/unclaim`, a draft PR referencing an issue claims it, the lowest-numbered PR wins, a daily sweep frees stale claims, and labelled wanted-aircraft and scenario issues ([plan](docs/contributor-program.md#4-claims)) | 27 |
 | 29 | External hardware and home-built panels: HID yokes and quadrants with device profiles, a device protocol for custom boards, layouts on extra screens, and physical panels with cut-template export ([spec](docs/hardware-and-panels.md)) | 21 |
 | 30 | Installed autopilots: wing leveler, two-axis legacy, and digital two-axis with flight director, envelope protection, and mode annunciation | 21 |
 | 31 | The crew: a deterministic virtual pilot, watching, demonstrating, and instructing modes, intercom and kneeboard instead of a chat box, ACS-graded lessons, and an optional AI link ([spec](docs/crew.md)) | 30 |
 | 32 | Navigation data, WMM2025, search, pins, opt-in location and geocoding, flight-plan commands, and glass GPS activation (done); shared planning/MFD map, route gestures, profiles, Aero and terrain bases, and FAA sectional/TAC tiles are implemented; satellite, street, and live overlays remain planned ([spec](docs/map-and-planning.md)) | 18, 21 |
 | 33 | Tablet apps, plates, charts, and procedures: desktop GDL 90 and simulator position broadcast to EFB apps (done; traffic encoders ready, no traffic source yet), sectional and terminal chart tiles (done), FAA plates with georeferenced overlay, CIFP procedures in the GPS with ILS and VOR signals, and opt-in live weather and TFRs ([spec](docs/efb-and-charts.md)) | 30, 32 |
 | 34 | Training for students: weather and IMC visuals with a view-limiting hood, radios with CTAF traffic and towered ATC, readback checks, scenario scripts, emergencies graded against the POH, and instrument tasks ([spec](docs/training.md)) | 21, 31, 33 |
+| 35 | Freeze v1 formats (aircraft pack, panel, scenario, lesson, skin, hardware profile) with `format_version`, readers for every released version, `cargo xtask migrate`, and CI testing golden samples against `main` ([plan](docs/contributor-program.md#5-versioned-formats)) | 34 core phases |
 
 ## Aircraft equipment
 
