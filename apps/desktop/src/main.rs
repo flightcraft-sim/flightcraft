@@ -89,6 +89,14 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .filter(|dir| dir.is_dir())
             .and_then(|dir| dir.to_str().map(str::to_owned));
     }
+    // Packs bundled with a downloaded build sit beside the executable, like the regions.
+    if packs_directory.is_none() && !std::path::Path::new("packs").is_dir() {
+        packs_directory = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|dir| dir.join("packs")))
+            .filter(|dir| dir.is_dir())
+            .and_then(|dir| dir.to_str().map(str::to_owned));
+    }
     eframe::run_native(
         "FlightCraft",
         options,

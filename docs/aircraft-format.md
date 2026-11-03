@@ -174,7 +174,7 @@ are rejected.
 
 On native, `flightcraft --packs-dir examples/packs` scans immediate pack subdirectories. The
 selected directory is saved as the `flightcraft.packs_directory.v1` preference and reused next
-launch; the CLI overrides it. The default directory is `packs`. Directory entries are processed
+launch; the CLI overrides it. The default directory is `packs`; a downloaded build started elsewhere falls back to the `packs` folder beside the executable. Desktop builds bundle the packs pinned in `bundled-packs.json` (each fetched at its pinned commit by `scripts/bundle-packs.py`, copying only the manifest's files plus licence, readme, and attribution). Directory entries are processed
 in sorted order, so packs referencing other external packs must follow their dependencies.
 
 On the web, repeat the `pack` query parameter with manifest URLs:

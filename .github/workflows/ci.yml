@@ -149,6 +149,8 @@ jobs:
           cp "target/release/$mcp" "$out/"
           cp -R assets/terrain "$out/assets/"
           cp LICENSE NOTICE ATTRIBUTION.md README.md "$out/"
+          # Aircraft packs from their own repositories, pinned in bundled-packs.json.
+          python3 scripts/bundle-packs.py bundled-packs.json "$out/packs"
           # A tar keeps the executable bit, which artifact zips drop.
           tar czf "$out.tar.gz" "$out"
       - uses: actions/upload-artifact@v4
