@@ -68,6 +68,22 @@ async fn load_one(
     };
     let world =
         region_world_with_airports(region, tiles, airports).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let landmarks_url = web_sys::Url::new_with_base("landmarks.json", &url.href())?;
+    let world = if let Some(bytes) = crate::packs::fetch_optional_bytes(
+        window,
+        &landmarks_url.href(),
+        flightcraft_control::MAX_LANDMARK_BYTES,
+    )
+    .await?
+    {
+        flightcraft_control::attach_region_landmarks(
+            world,
+            std::str::from_utf8(&bytes).map_err(|e| JsValue::from_str(&e.to_string()))?,
+        )
+        .map_err(|e| JsValue::from_str(&e.to_string()))?
+    } else {
+        world
+    };
     let nav_url = web_sys::Url::new_with_base("navdata.json", &url.href())?;
     let world = if let Some(bytes) =
         crate::packs::fetch_optional_bytes(window, &nav_url.href(), flightcraft_control::MAX_NAVDATA_BYTES)

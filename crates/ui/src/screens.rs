@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 
 #[derive(Default)]
 pub struct PageUi {
+    crew: crate::crew::CrewUi,
     picture: picture::Picture,
     scene: flightcraft_render::Scene,
     panel: instruments::InstrumentPanel,
@@ -445,13 +446,21 @@ impl PageUi {
                     .map_err(|e| e.to_string())?;
                 }
             }
-            PageKind::Outside => {
+            PageKind::FlyMe => {
+                let keymap = ui
+                    .ctx()
+                    .data(|data| data.get_temp::<crate::keymap::Keymap>(egui::Id::new("crew.keymap")))
+                    .unwrap_or_default();
+                egui::ScrollArea::vertical().show(ui, |ui| self.crew.panel(ui, s, &keymap));
+            }
+            PageKind::Outside | PageKind::Director => {
                 use flightcraft_render::{CameraMode, ScreenView};
                 let [n, e, d] = s.sim().state().position_m;
                 let main_camera = page.follow_main_camera.then(|| s.camera()).flatten();
                 let camera_view = main_camera.map_or(page.camera.view, |c| match c.mode {
                     flightcraft_control::CameraMode::Chase => View::Chase,
                     flightcraft_control::CameraMode::Cockpit => View::Forward,
+                    _ => View::Chase,
                 });
                 let mut yaw = main_camera.map_or(page.camera.heading_offset_deg.to_radians(), |c| {
                     c.look_yaw_rad as f32
@@ -474,13 +483,41 @@ impl PageUi {
                     }
                     View::Forward => (CameraMode::Cockpit, None),
                 };
-                self.scene.camera = mode;
-                self.scene.set_screen_view(Some(ScreenView {
+                let mode = if page.kind == PageKind::Director {
+                    crate::crew::director_camera(s)
+                } else {
+                    main_camera.map_or(mode, |camera| match camera.mode {
+                        flightcraft_control::CameraMode::Cockpit => mode,
+                        flightcraft_control::CameraMode::Chase => mode,
+                        mode => crate::crew::render_camera(mode),
+                    })
+                };
+                if self.scene.camera != mode {
+                    self.scene.camera = mode;
+                    self.scene.reset_camera();
+                }
+                self.scene.set_director_runway(
+                    s.crew_state()
+                        .plan
+                        .as_ref()
+                        .and_then(|p| p.arrival.as_ref())
+                        .map(|r| (r.threshold_m, r.heading_grid_rad)),
+                );
+                let screen_view = ScreenView {
                     heading_offset_rad: yaw,
                     pitch_rad: main_camera.map_or(0., |c| c.look_pitch_rad as f32),
                     fov_rad: page.camera.fov_deg.to_radians(),
                     fixed_eye_ned_m: fixed,
-                }));
+                };
+                self.scene.set_screen_view(
+                    if page.kind == PageKind::Director
+                        || matches!(mode, CameraMode::Tower | CameraMode::Flyby | CameraMode::Wing)
+                    {
+                        None
+                    } else {
+                        Some(screen_view)
+                    },
+                );
                 self.scene.airspace_visible = s.airspace_visible();
                 self.scene
                     .set_light_gun(s.atc_state().light_gun.map(|g| flightcraft_render::LightGun {

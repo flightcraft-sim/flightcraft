@@ -5,6 +5,9 @@ pub mod autopilot;
 #[cfg(not(target_arch = "wasm32"))]
 mod bridge;
 pub mod clock;
+pub mod crew;
+#[cfg(test)]
+mod crew_preview;
 pub mod glass;
 mod input;
 pub mod instruments;
@@ -210,6 +213,20 @@ impl FlightCraftApp {
                 pack_errors.insert(0, previous);
             }
             error = Some(pack_errors.join("\n"));
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if session
+            .run(flightcraft_control::ListAircraft {})
+            .is_ok_and(|list| {
+                list.aircraft
+                    .iter()
+                    .any(|a| a.id == "sling2" && a.panel == "sling2-ifr")
+            })
+        {
+            session.execute(
+                "aircraft.load",
+                serde_json::json!({"source":{"kind":"installed","id":"sling2"},"reset":true}),
+            )?;
         }
         if let Some(world) = initial_region {
             session.run(flightcraft_control::Reset {
@@ -602,10 +619,7 @@ impl FlightCraftApp {
         }
         self.paused = self.session.paused();
         if let Some(camera) = self.session.camera() {
-            self.scene.camera = match camera.mode {
-                flightcraft_control::CameraMode::Chase => CameraMode::Chase,
-                flightcraft_control::CameraMode::Cockpit => CameraMode::Cockpit,
-            };
+            self.scene.camera = crew::render_camera(camera.mode);
         }
         let now = ctx.input(|i| i.time);
         let elapsed = self
@@ -625,6 +639,9 @@ impl FlightCraftApp {
             if frame.pressed(action) {
                 self.radio.shortcut(action);
             }
+        }
+        if frame.pressed(Action::CrewHandover) {
+            crew::exchange(&mut self.session, &mut self.error);
         }
         let held = [frame.held(Action::ComPtt), frame.held(Action::IntercomPtt)];
         if held != self.radio_ptt_held {
@@ -783,7 +800,8 @@ impl FlightCraftApp {
             }
         }
         self.paused = self.session.paused();
-        let controlled = if self.scripted || self.external || self.session.holds_active() {
+        let crew_controls = self.session.crew_owns_controls();
+        let controlled = if self.scripted || self.external || crew_controls || self.session.holds_active() {
             Ok(())
         } else {
             self.input.trim = self.session.sim().systems().controls.trim;
@@ -864,6 +882,7 @@ impl FlightCraftApp {
                         if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) { self.error = Some(e.to_string()); }
                     });
                     self.radio.button(ui, &self.keymap);
+                    crate::crew::page_button(ui, &mut self.session, &self.keymap, &mut self.error);
                     if ui.button("Scenarios").clicked() { self.scenarios.open = !self.scenarios.open; }
                     if self.session.sim().failures() != flightcraft_sim::Failures::default() {
                         ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| scenario::indications(ui,&self.session));
@@ -988,6 +1007,9 @@ impl FlightCraftApp {
                         let camera = match self.scene.camera {
                             CameraMode::Chase => "Chase",
                             CameraMode::Cockpit => "Cockpit",
+                            CameraMode::Wing => "Wing",
+                            CameraMode::Tower => "Tower",
+                            CameraMode::Flyby => "Flyby",
                         };
                         if ui
                             .button(format!("{camera}  [{}]", self.keymap.label(Action::Camera)))

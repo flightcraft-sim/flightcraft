@@ -1,6 +1,11 @@
 use super::*;
 impl Session {
     pub(super) fn atc_grade(&mut self, id: Option<u64>, item: &str, passed: bool, observed: String) {
+        let observed = if observed.ends_with(['.', '!', '?']) {
+            observed
+        } else {
+            format!("{observed}.")
+        };
         let grade = ComplianceGrade {
             time_s: self.sim.state().time_s,
             instruction_id: id,
@@ -284,7 +289,23 @@ impl Session {
             }
         }
         self.comms.atc.was_airborne |= !r.on_ground && r.height_agl_m > 10.;
-        if r.on_ground && self.comms.atc.last_ground == Some(false) && self.comms.atc.was_airborne {
+        let towered_touchdown = r.on_ground
+            && self.comms.atc.last_ground == Some(false)
+            && self.comms.atc.was_airborne
+            && self
+                .stations()
+                .iter()
+                .filter(|st| st.kind == FacilityKind::Tower)
+                .any(|st| {
+                    crate::regions::airport(self.sim.world(), &st.airport).is_ok_and(|a| {
+                        a.runways.iter().any(|r| {
+                            r.ends
+                                .first()
+                                .is_some_and(|e| self.on_atc_runway(&st.airport, &e.ident))
+                        })
+                    })
+                });
+        if towered_touchdown {
             let light_cleared = self.sim.failures().radio_failure
                 && self
                     .comms
@@ -310,8 +331,33 @@ impl Session {
         let Some(st) = self.comms.atc.current.clone() else {
             return;
         };
-        if self.comms.atc.pending.is_empty() && self.comms.atc.replies.is_empty() {
-            if st.kind == FacilityKind::Clearance
+        if self.comms.atc.pending.is_empty()
+            && self.comms.atc.replies.is_empty()
+            && !self.comms.pending.iter().any(|p| p.channel == Channel::Com)
+        {
+            if st.kind == FacilityKind::Tower
+                && r.on_ground
+                && r.ground_speed_mps < 15.
+                && self.comms.atc.was_airborne
+                && self.comms.atc.landing
+                && let Some(runway) = self.comms.atc.active.iter().find_map(|p| match &p.instruction {
+                    AtcInstruction::Land { runway }
+                        if p.readback && p.airport == airport && self.on_atc_runway(&airport, runway) =>
+                    {
+                        Some(runway.clone())
+                    }
+                    _ => None,
+                })
+                && let Some(ground) = self.next_station(&airport, FacilityKind::Ground)
+            {
+                self.issue(
+                    &st,
+                    AtcInstruction::ExitRunway {
+                        runway,
+                        ground_khz: ground.channel_khz,
+                    },
+                );
+            } else if st.kind == FacilityKind::Clearance
                 && self.comms.atc.active.iter().any(|p| {
                     p.station_id == st.id
                         && matches!(
@@ -395,6 +441,7 @@ impl Session {
                 && let Some(next) = self.sector_station(&airport, st.kind)
                 && next.id != st.id
                 && next.channel_khz != st.channel_khz
+                && radar_facility(&next) != radar_facility(&st)
                 && self.comms.atc.last_sector.as_ref() != Some(&next.id)
             {
                 self.handoff(&st, &next);
@@ -438,7 +485,7 @@ impl Session {
             },
         );
     }
-    fn provider_contact_for(&self, name: &str) -> bool {
+    pub(crate) fn provider_contact_for(&self, name: &str) -> bool {
         let name = words(name);
         self.stations().iter().any(|st| {
             self.comms.atc.two_way.contains(&provider(st))

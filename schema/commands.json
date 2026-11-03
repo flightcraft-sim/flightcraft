@@ -101,6 +101,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -450,6 +452,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -868,6 +872,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -1304,6 +1310,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -1559,6 +1567,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -1864,6 +1874,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -2224,6 +2236,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -2536,6 +2550,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -3003,6 +3019,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -3497,6 +3515,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -3830,6 +3850,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -4177,6 +4199,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -4646,6 +4670,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -4979,6 +5005,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -5326,6 +5354,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -5776,6 +5806,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -6212,6 +6244,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -6648,6 +6682,8 @@
         "PageKind": {
           "enum": [
             "outside",
+            "fly_me",
+            "director",
             "panel",
             "instrument",
             "pfd",
@@ -6835,6 +6871,2503 @@
         "path"
       ],
       "title": "LayoutSaved",
+      "type": "object"
+    }
+  },
+  {
+    "name": "crew.mode",
+    "description": "Select crew presentation; solo requires the pilot to own controls. Ownership changes through crew.handover.",
+    "input_schema": {
+      "$defs": {
+        "CrewMode": {
+          "enum": [
+            "solo",
+            "watching",
+            "demonstrating",
+            "instructing"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "director": {
+          "default": false,
+          "type": "boolean"
+        },
+        "mode": {
+          "$ref": "#/$defs/CrewMode"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "SetCrewMode",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ControlOwner": {
+          "enum": [
+            "pilot",
+            "crew"
+          ],
+          "type": "string"
+        },
+        "CrewLeg": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "position_m"
+          ],
+          "type": "object"
+        },
+        "CrewMode": {
+          "enum": [
+            "solo",
+            "watching",
+            "demonstrating",
+            "instructing"
+          ],
+          "type": "string"
+        },
+        "CrewPlan": {
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "arrival": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "briefing": {
+              "type": "string"
+            },
+            "checks": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "departure": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/CrewLeg"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "briefing",
+            "legs",
+            "altitude_m",
+            "checks"
+          ],
+          "type": "object"
+        },
+        "CrewRunway": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "pattern_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "threshold_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "width_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "threshold_m",
+            "heading_grid_rad",
+            "length_m",
+            "width_m",
+            "pattern_altitude_m"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PilotIntent": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "take_off",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_airport",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_coordinate",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "join_pattern",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "land_runway",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "scenic",
+                  "type": "string"
+                },
+                "preset": {
+                  "$ref": "#/$defs/ScenicPreset"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "preset",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "orbit",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                "radius_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m",
+                "radius_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "go_around",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "PilotPhase": {
+          "enum": [
+            "idle",
+            "before_takeoff",
+            "takeoff",
+            "climb",
+            "cruise",
+            "descent",
+            "entry",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "flare",
+            "rollout",
+            "taxi_clear",
+            "parking",
+            "complete",
+            "hold",
+            "orbit",
+            "go_around",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "ScenicPreset": {
+          "enum": [
+            "delaware_water_gap",
+            "hudson_corridor",
+            "pocono_plateau"
+          ],
+          "type": "string"
+        },
+        "Touchdown": {
+          "properties": {
+            "centreline_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "sink_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "within_limits": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "time_s",
+            "distance_m",
+            "centreline_m",
+            "sink_mps",
+            "within_limits"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "controls": {
+          "$ref": "#/$defs/ControlOwner"
+        },
+        "director": {
+          "type": "boolean"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PilotIntent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "leg": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "$ref": "#/$defs/CrewMode"
+        },
+        "next_step": {
+          "type": "string"
+        },
+        "parked": {
+          "type": "boolean"
+        },
+        "pending_handover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControlOwner"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "$ref": "#/$defs/PilotPhase"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrewPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "taxi_clear": {
+          "type": "boolean"
+        },
+        "touchdown": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Touchdown"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "controls",
+        "phase",
+        "leg",
+        "next_step",
+        "reason",
+        "taxi_clear",
+        "parked",
+        "director"
+      ],
+      "title": "CrewState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "crew.handover",
+    "description": "Propose an exchange, then confirm as the other participant; both acknowledgements are required.",
+    "input_schema": {
+      "$defs": {
+        "ControlOwner": {
+          "enum": [
+            "pilot",
+            "crew"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/ControlOwner"
+        },
+        "confirm": {
+          "default": false,
+          "type": "boolean"
+        },
+        "to": {
+          "$ref": "#/$defs/ControlOwner"
+        }
+      },
+      "required": [
+        "to",
+        "actor"
+      ],
+      "title": "CrewHandover",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ControlOwner": {
+          "enum": [
+            "pilot",
+            "crew"
+          ],
+          "type": "string"
+        },
+        "CrewLeg": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "position_m"
+          ],
+          "type": "object"
+        },
+        "CrewMode": {
+          "enum": [
+            "solo",
+            "watching",
+            "demonstrating",
+            "instructing"
+          ],
+          "type": "string"
+        },
+        "CrewPlan": {
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "arrival": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "briefing": {
+              "type": "string"
+            },
+            "checks": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "departure": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/CrewLeg"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "briefing",
+            "legs",
+            "altitude_m",
+            "checks"
+          ],
+          "type": "object"
+        },
+        "CrewRunway": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "pattern_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "threshold_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "width_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "threshold_m",
+            "heading_grid_rad",
+            "length_m",
+            "width_m",
+            "pattern_altitude_m"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PilotIntent": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "take_off",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_airport",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_coordinate",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "join_pattern",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "land_runway",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "scenic",
+                  "type": "string"
+                },
+                "preset": {
+                  "$ref": "#/$defs/ScenicPreset"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "preset",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "orbit",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                "radius_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m",
+                "radius_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "go_around",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "PilotPhase": {
+          "enum": [
+            "idle",
+            "before_takeoff",
+            "takeoff",
+            "climb",
+            "cruise",
+            "descent",
+            "entry",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "flare",
+            "rollout",
+            "taxi_clear",
+            "parking",
+            "complete",
+            "hold",
+            "orbit",
+            "go_around",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "ScenicPreset": {
+          "enum": [
+            "delaware_water_gap",
+            "hudson_corridor",
+            "pocono_plateau"
+          ],
+          "type": "string"
+        },
+        "Touchdown": {
+          "properties": {
+            "centreline_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "sink_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "within_limits": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "time_s",
+            "distance_m",
+            "centreline_m",
+            "sink_mps",
+            "within_limits"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "controls": {
+          "$ref": "#/$defs/ControlOwner"
+        },
+        "director": {
+          "type": "boolean"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PilotIntent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "leg": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "$ref": "#/$defs/CrewMode"
+        },
+        "next_step": {
+          "type": "string"
+        },
+        "parked": {
+          "type": "boolean"
+        },
+        "pending_handover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControlOwner"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "$ref": "#/$defs/PilotPhase"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrewPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "taxi_clear": {
+          "type": "boolean"
+        },
+        "touchdown": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Touchdown"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "controls",
+        "phase",
+        "leg",
+        "next_step",
+        "reason",
+        "taxi_clear",
+        "parked",
+        "director"
+      ],
+      "title": "CrewState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "crew.intent",
+    "description": "Validate and brief a deterministic flight intent; returns legs or a reasoned refusal without changing the current plan.",
+    "input_schema": {
+      "$defs": {
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PilotIntent": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "take_off",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_airport",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_coordinate",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "join_pattern",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "land_runway",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "scenic",
+                  "type": "string"
+                },
+                "preset": {
+                  "$ref": "#/$defs/ScenicPreset"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "preset",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "orbit",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                "radius_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m",
+                "radius_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "go_around",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ScenicPreset": {
+          "enum": [
+            "delaware_water_gap",
+            "hudson_corridor",
+            "pocono_plateau"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "$ref": "#/$defs/PilotIntent"
+        }
+      },
+      "required": [
+        "intent"
+      ],
+      "title": "CrewIntent",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ControlOwner": {
+          "enum": [
+            "pilot",
+            "crew"
+          ],
+          "type": "string"
+        },
+        "CrewLeg": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "position_m"
+          ],
+          "type": "object"
+        },
+        "CrewMode": {
+          "enum": [
+            "solo",
+            "watching",
+            "demonstrating",
+            "instructing"
+          ],
+          "type": "string"
+        },
+        "CrewPlan": {
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "arrival": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "briefing": {
+              "type": "string"
+            },
+            "checks": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "departure": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/CrewLeg"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "briefing",
+            "legs",
+            "altitude_m",
+            "checks"
+          ],
+          "type": "object"
+        },
+        "CrewRunway": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "pattern_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "threshold_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "width_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "threshold_m",
+            "heading_grid_rad",
+            "length_m",
+            "width_m",
+            "pattern_altitude_m"
+          ],
+          "type": "object"
+        },
+        "CrewState": {
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlOwner"
+            },
+            "director": {
+              "type": "boolean"
+            },
+            "intent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PilotIntent"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "leg": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "mode": {
+              "$ref": "#/$defs/CrewMode"
+            },
+            "next_step": {
+              "type": "string"
+            },
+            "parked": {
+              "type": "boolean"
+            },
+            "pending_handover": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ControlOwner"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phase": {
+              "$ref": "#/$defs/PilotPhase"
+            },
+            "plan": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewPlan"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "taxi_clear": {
+              "type": "boolean"
+            },
+            "touchdown": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Touchdown"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "controls",
+            "phase",
+            "leg",
+            "next_step",
+            "reason",
+            "taxi_clear",
+            "parked",
+            "director"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PilotIntent": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "take_off",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_airport",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_coordinate",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "join_pattern",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "land_runway",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "scenic",
+                  "type": "string"
+                },
+                "preset": {
+                  "$ref": "#/$defs/ScenicPreset"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "preset",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "orbit",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                "radius_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m",
+                "radius_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "go_around",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "PilotPhase": {
+          "enum": [
+            "idle",
+            "before_takeoff",
+            "takeoff",
+            "climb",
+            "cruise",
+            "descent",
+            "entry",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "flare",
+            "rollout",
+            "taxi_clear",
+            "parking",
+            "complete",
+            "hold",
+            "orbit",
+            "go_around",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "ScenicPreset": {
+          "enum": [
+            "delaware_water_gap",
+            "hudson_corridor",
+            "pocono_plateau"
+          ],
+          "type": "string"
+        },
+        "Touchdown": {
+          "properties": {
+            "centreline_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "sink_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "within_limits": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "time_s",
+            "distance_m",
+            "centreline_m",
+            "sink_mps",
+            "within_limits"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "refusal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/CrewState"
+        }
+      },
+      "required": [
+        "accepted",
+        "state"
+      ],
+      "title": "CrewIntentOutput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "crew.state",
+    "description": "Read crew intent, checked plan, phase, control ownership, next step, reason, and measured touchdown.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetCrewState",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ControlOwner": {
+          "enum": [
+            "pilot",
+            "crew"
+          ],
+          "type": "string"
+        },
+        "CrewLeg": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "position": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "position_m"
+          ],
+          "type": "object"
+        },
+        "CrewMode": {
+          "enum": [
+            "solo",
+            "watching",
+            "demonstrating",
+            "instructing"
+          ],
+          "type": "string"
+        },
+        "CrewPlan": {
+          "properties": {
+            "altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "arrival": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "briefing": {
+              "type": "string"
+            },
+            "checks": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "departure": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CrewRunway"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "legs": {
+              "items": {
+                "$ref": "#/$defs/CrewLeg"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "briefing",
+            "legs",
+            "altitude_m",
+            "checks"
+          ],
+          "type": "object"
+        },
+        "CrewRunway": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "heading_grid_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "pattern_altitude_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "threshold_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "width_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "threshold_m",
+            "heading_grid_rad",
+            "length_m",
+            "width_m",
+            "pattern_altitude_m"
+          ],
+          "type": "object"
+        },
+        "GeoPoint": {
+          "additionalProperties": false,
+          "properties": {
+            "latitude_deg": {
+              "format": "double",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "longitude_deg": {
+              "format": "double",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "latitude_deg",
+            "longitude_deg"
+          ],
+          "type": "object"
+        },
+        "PilotIntent": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "take_off",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_airport",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "fly_to_coordinate",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "join_pattern",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "land_runway",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "airport": {
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "scenic",
+                  "type": "string"
+                },
+                "preset": {
+                  "$ref": "#/$defs/ScenicPreset"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "preset",
+                "airport",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "orbit",
+                  "type": "string"
+                },
+                "position": {
+                  "$ref": "#/$defs/GeoPoint"
+                },
+                "radius_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "position",
+                "altitude_m",
+                "radius_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "go_around",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "PilotPhase": {
+          "enum": [
+            "idle",
+            "before_takeoff",
+            "takeoff",
+            "climb",
+            "cruise",
+            "descent",
+            "entry",
+            "crosswind",
+            "downwind",
+            "base",
+            "final",
+            "flare",
+            "rollout",
+            "taxi_clear",
+            "parking",
+            "complete",
+            "hold",
+            "orbit",
+            "go_around",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "ScenicPreset": {
+          "enum": [
+            "delaware_water_gap",
+            "hudson_corridor",
+            "pocono_plateau"
+          ],
+          "type": "string"
+        },
+        "Touchdown": {
+          "properties": {
+            "centreline_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "distance_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "sink_mps": {
+              "format": "double",
+              "type": "number"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "within_limits": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "time_s",
+            "distance_m",
+            "centreline_m",
+            "sink_mps",
+            "within_limits"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "controls": {
+          "$ref": "#/$defs/ControlOwner"
+        },
+        "director": {
+          "type": "boolean"
+        },
+        "intent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PilotIntent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "leg": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mode": {
+          "$ref": "#/$defs/CrewMode"
+        },
+        "next_step": {
+          "type": "string"
+        },
+        "parked": {
+          "type": "boolean"
+        },
+        "pending_handover": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ControlOwner"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "$ref": "#/$defs/PilotPhase"
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CrewPlan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "taxi_clear": {
+          "type": "boolean"
+        },
+        "touchdown": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Touchdown"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "controls",
+        "phase",
+        "leg",
+        "next_step",
+        "reason",
+        "taxi_clear",
+        "parked",
+        "director"
+      ],
+      "title": "CrewState",
       "type": "object"
     }
   },
@@ -16666,6 +19199,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -17717,6 +20263,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -18462,6 +21025,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -22322,6 +24898,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -23123,6 +25712,19 @@
       "$defs": {
         "AtcInstruction": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -23937,6 +26539,19 @@
       "$defs": {
         "AtcInstruction": {
           "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
             {
               "additionalProperties": false,
               "properties": {
@@ -25901,6 +28516,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -26952,6 +29580,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -27697,6 +30342,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -28210,6 +30868,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -29261,6 +31932,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -30006,6 +32694,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -31345,6 +34046,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -32847,6 +35561,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -33625,6 +36356,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -34193,6 +36937,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -35695,6 +38452,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -36473,6 +39247,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -37043,6 +39830,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -38545,6 +41345,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -39323,6 +42140,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -39942,6 +42772,19 @@
             {
               "additionalProperties": false,
               "properties": {
+                "kind": {
+                  "const": "parking",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "hold_short": {
                   "type": "boolean"
                 },
@@ -41037,6 +43880,23 @@
             {
               "additionalProperties": false,
               "properties": {
+                "critical": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "crew",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "critical"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
                 "action": {
                   "$ref": "#/$defs/ScenarioAction"
                 },
@@ -41799,6 +44659,19 @@
               "properties": {
                 "kind": {
                   "const": "instructor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "crew",
                   "type": "string"
                 }
               },
@@ -71625,7 +74498,10 @@
           "oneOf": [
             {
               "enum": [
-                "chase"
+                "chase",
+                "wing",
+                "tower",
+                "flyby"
               ],
               "type": "string"
             },
@@ -71682,7 +74558,10 @@
           "oneOf": [
             {
               "enum": [
-                "chase"
+                "chase",
+                "wing",
+                "tower",
+                "flyby"
               ],
               "type": "string"
             },
@@ -73673,6 +76552,15 @@
                 "$ref": "#/$defs/AirportRunway"
               },
               "type": "array"
+            },
+            "traffic_pattern_altitude_ft": {
+              "description": "Published traffic-pattern altitude, feet MSL; absence uses the crew fallback.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
             }
           },
           "required": [

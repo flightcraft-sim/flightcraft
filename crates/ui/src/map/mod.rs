@@ -1272,6 +1272,32 @@ fn route(
         return;
     }
     let color = theme::GLASS_GPS.linear_multiply(opacity);
+    if let Some(plan) = s.crew_state().plan {
+        let mut points = Vec::new();
+        if let Some(departure) = plan.departure {
+            let [n, e, _] = departure.threshold_m;
+            points.push(v.local([n, e]));
+        }
+        for leg in &plan.legs {
+            let [n, e, _] = leg.position_m;
+            points.push(v.local([n, e]));
+        }
+        for pair in points.windows(2) {
+            if let [a, b] = pair {
+                p.line_segment([*a, *b], Stroke::new(3., theme::GLASS_GPS));
+            }
+        }
+        for point in points {
+            p.circle_filled(point, 3., theme::GLASS_GPS);
+        }
+        p.text(
+            v.rect.left_top() + egui::vec2(8., 8.),
+            Align2::LEFT_TOP,
+            "Crew route",
+            FontId::proportional(12.),
+            theme::TEXT,
+        );
+    }
     let summary = s.run(flightcraft_control::SummaryPlan {}).ok();
     for (i, leg) in s.flight_plan().waypoints.windows(2).enumerate() {
         if let [a, b] = leg

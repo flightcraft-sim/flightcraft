@@ -179,6 +179,10 @@ pub(super) fn import(
                 .map(str::to_owned),
             name: string(props, "NAME")?.into(),
             elevation_m: number(props, "ELEVATION")? * 0.3048,
+            traffic_pattern_altitude_ft: props
+                .get("TPA_MSL_FT")
+                .and_then(Value::as_u64)
+                .and_then(|v| u32::try_from(v).ok()),
             latitude_deg: lat,
             longitude_deg: lon,
             runways: Vec::new(),

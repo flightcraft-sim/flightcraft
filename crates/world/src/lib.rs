@@ -3,6 +3,8 @@
 
 pub mod airspace;
 pub use airspace::*;
+mod landmarks;
+pub use landmarks::*;
 mod airports;
 pub mod geo;
 pub use airports::*;

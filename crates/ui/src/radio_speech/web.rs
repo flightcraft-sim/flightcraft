@@ -70,8 +70,16 @@ impl Output {
         {
             utterance.set_voice(Some(&voice));
         }
-        utterance.set_rate(0.9 + (number % 4) as f32 * 0.045);
-        utterance.set_pitch(0.8 + (number % 5) as f32 * 0.1);
+        utterance.set_rate(if event.channel == flightcraft_control::Channel::Intercom {
+            0.92
+        } else {
+            0.9 + (number % 4) as f32 * 0.045
+        });
+        utterance.set_pitch(if event.channel == flightcraft_control::Channel::Intercom {
+            1.05
+        } else {
+            0.8 + (number % 5) as f32 * 0.1
+        });
         utterance.set_volume(volume);
         self.speech.speak(&utterance);
         Ok(())

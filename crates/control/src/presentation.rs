@@ -26,6 +26,8 @@ pub struct Snapshot {
     pub atc: crate::comms::AtcState,
     pub record: crate::comms::FlightRecord,
     pub screens: ScreenSet,
+    #[serde(default)]
+    pub crew: crate::CrewState,
 }
 impl Session {
     pub fn screen_snapshot(&self) -> Snapshot {
@@ -57,6 +59,7 @@ impl Session {
             atc: self.atc_state(),
             record,
             screens: self.screens.clone(),
+            crew: self.crew_state(),
         }
     }
     pub fn apply_screen_snapshot(&mut self, snapshot: Snapshot) -> Result<(), String> {
@@ -119,6 +122,7 @@ impl Session {
         self.scenario.state = snapshot.scenario;
         self.comms.record = snapshot.record;
         self.screens = snapshot.screens;
+        self.crew.state = snapshot.crew;
         self.presentation_commands = Some(Vec::new());
         Ok(())
     }
@@ -138,6 +142,7 @@ pub struct RegionTransfer {
     pub navdata: Option<flightcraft_world::Navdata>,
     pub procedures: Option<flightcraft_world::Procedures>,
     pub airspace: Option<flightcraft_world::AirspaceFile>,
+    pub landmarks: Option<flightcraft_world::Landmarks>,
 }
 impl RegionTransfer {
     fn from_world(world: &flightcraft_world::World) -> Option<Self> {
@@ -152,6 +157,7 @@ impl RegionTransfer {
                 .collect(),
             airports: world.airports().cloned(),
             navdata: world.navdata().cloned(),
+            landmarks: world.landmarks().cloned(),
             procedures: world.procedures().cloned(),
             airspace: world.airspace().map(|a| flightcraft_world::AirspaceFile {
                 attribution: a.attribution.clone(),
@@ -176,6 +182,9 @@ impl RegionTransfer {
             .collect::<Result<Vec<_>, _>>()?;
         let mut world =
             flightcraft_world::World::from_region(self.region, tiles).map_err(|e| e.to_string())?;
+        if let Some(data) = self.landmarks {
+            world = world.with_landmarks(data).map_err(|e| e.to_string())?;
+        }
         if let Some(data) = self.airports {
             world = world.with_airports(data).map_err(|e| e.to_string())?;
         }

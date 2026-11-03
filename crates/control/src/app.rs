@@ -10,6 +10,9 @@ pub enum CameraMode {
     Chase,
     /// First-person view from the Corvid left seat.
     Cockpit,
+    Wing,
+    Tower,
+    Flyby,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
@@ -75,7 +78,7 @@ impl Command for SetCamera {
         if let Some(v) = self.look_pitch_rad {
             range(Self::NAME, "look_pitch_rad", v, -1.4, 1.4)?;
         }
-        if self.mode == CameraMode::Chase && session.sim().hood() {
+        if self.mode != CameraMode::Cockpit && session.sim().hood() {
             return Err(invalid(
                 Self::NAME,
                 "remove the hood with view.hood before selecting chase view",

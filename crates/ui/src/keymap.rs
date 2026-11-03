@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Action {
+    CrewHandover,
     RadioTransmit,
     ComPtt,
     IntercomPtt,
@@ -79,7 +80,8 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 70] = [
+    pub const ALL: [Self; 71] = [
+        Self::CrewHandover,
         Self::RadioTransmit,
         Self::ComPtt,
         Self::IntercomPtt,
@@ -212,6 +214,7 @@ impl Action {
     ];
     pub fn label(self) -> &'static str {
         match self {
+            Self::CrewHandover => "Exchange flight controls",
             Self::RadioTransmit => "Transmit typed call",
             Self::ComPtt => "Push to talk: selected COM",
             Self::IntercomPtt => "Push to talk: intercom",
@@ -317,6 +320,7 @@ impl Default for Keymap {
                 (Reset, vec![Key::R]),
                 (Camera, vec![Key::C]),
                 (Hood, vec![Key::F8]),
+                (CrewHandover, vec![Key::F9]),
                 (Airspace, vec![Key::U]),
                 (Search, vec![Key::Slash]),
                 (PlanningMap, vec![Key::M]),
@@ -426,6 +430,7 @@ impl Keymap {
             value.bindings.entry(action).or_default();
         }
         for action in [
+            Action::CrewHandover,
             Action::PlanningMap,
             Action::MapZoomIn,
             Action::MapZoomOut,
@@ -467,6 +472,7 @@ impl Keymap {
                 && !Action::AVIONICS.contains(&action)
                 && ![
                     Action::Search,
+                    Action::CrewHandover,
                     Action::PlanningMap,
                     Action::MapZoomIn,
                     Action::MapZoomOut,
@@ -518,6 +524,7 @@ mod tests {
         let mut legacy = Keymap::default();
         legacy.bindings.insert(Action::Camera, vec![Key::V]);
         for action in [
+            Action::CrewHandover,
             Action::LookLeft,
             Action::LookRight,
             Action::LookUp,

@@ -601,6 +601,7 @@ pub fn speaker(speaker: &Speaker) -> String {
     match speaker {
         Speaker::Pilot => "YOU".into(),
         Speaker::Instructor => "INSTRUCTOR · INTERCOM".into(),
+        Speaker::Crew => "PILOT IN COMMAND · INTERCOM".into(),
         Speaker::Traffic { callsign } => callsign.clone(),
         Speaker::Facility { role, .. } => {
             flightcraft_control::comms::phraseology::facility_kind(*role).into()
@@ -609,6 +610,14 @@ pub fn speaker(speaker: &Speaker) -> String {
     }
 }
 pub fn transcript(ui: &mut egui::Ui, s: &Session) {
+    if let Some(plan) = s.crew_state().plan {
+        ui.label(RichText::new("CREW BRIEFING").strong().color(theme::ACCENT));
+        ui.label(plan.briefing);
+        for leg in plan.legs {
+            ui.label(leg.name);
+        }
+        ui.separator();
+    }
     ui.label(
         RichText::new("KNEEBOARD  /  COMMUNICATIONS")
             .strong()

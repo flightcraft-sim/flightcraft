@@ -223,6 +223,9 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
                     break;
                 }
             }
+            if whole.is_none() && t.get(i.saturating_sub(1)) == Some(&"ground") {
+                whole = Some(121);
+            }
             let (v, _) = number(t.get(i + 1..)?)?;
             if v.len() > 3 {
                 return None;

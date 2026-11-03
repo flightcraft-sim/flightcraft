@@ -51,6 +51,15 @@
           "items": {
             "$ref": "#/$defs/AirportRunway"
           }
+        },
+        "traffic_pattern_altitude_ft": {
+          "description": "Published traffic-pattern altitude, feet MSL; absence uses the crew fallback.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         }
       },
       "additionalProperties": false,

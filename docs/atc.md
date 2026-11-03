@@ -67,7 +67,7 @@ Tower sequences the pilot behind a moving circuit aircraft when one exists. Repo
 base, or final lead to extend-downwind, landing, or go-around instructions according to the traffic
 snapshot. An extension is released with a base turn when runway traffic clears. Requests for
 closed traffic are supported. After landing, report `clear of the runway`, read back the ground
-frequency, tune it, and report clear to ground for parking instructions.
+frequency, tune it, and report clear to ground for parking instructions. Ground issues a typed `parking` instruction, which requires a `taxi to parking` readback. The watching-mode pilot then makes a terrain-checked walking-pace parking move; the instruction does not imply surveyed taxiway or stand geometry. Automatic handoffs wait for the radio channel to become idle. Accepted runway assignments persist through position reports unless a new instruction changes them.
 
 Enable up to three circuit aircraft with `traffic.set`. Controlled circuits reuse the existing
 fixed-time kinematics and pilot/traffic spacing reactions. Traffic position reports address tower;

@@ -45,7 +45,7 @@ impl Session {
                         .atc
                         .cue_queue
                         .retain(|g| g.instruction_id != Some(p.id));
-                    self.atc_grade(Some(p.id), "readback", true, "Correct readback".into());
+                    self.atc_grade(Some(p.id), "readback", true, "Correct readback.".into());
                     self.accept_instruction(&p);
                     if self.comms.atc.active.len() >= 32 {
                         self.comms.atc.active.remove(0);
@@ -56,7 +56,7 @@ impl Session {
                         Some(p.id),
                         "readback",
                         false,
-                        "Incorrect or incomplete readback".into(),
+                        "Incorrect or incomplete readback.".into(),
                     );
                     self.atc_reply(
                         &st,
@@ -133,9 +133,39 @@ impl Session {
             );
             return;
         }
-        let Some(runway) = self.active_runway(&airport) else {
+        let requested_runway = m
+            .runway
+            .as_ref()
+            .filter(|_| m.normalized.contains("request runway"))
+            .filter(|r| {
+                crate::regions::airport(self.sim.world(), &airport)
+                    .is_ok_and(|a| a.runways.iter().flat_map(|r| &r.ends).any(|e| e.ident == **r))
+            });
+        let Some(runway) = requested_runway.cloned().or_else(|| self.active_runway(&airport)) else {
             self.atc_reply(&st, "Unable, no airport runway data.".into(), Meaning::Text);
             return;
+        };
+        // A position report continues the assigned runway. A wind-preferred runway does not
+        // silently amend an already accepted pattern or approach clearance.
+        let runway = if st.kind == FacilityKind::Tower
+            && matches!(request, Some(R::Position | R::GoAround | R::ClearRunway))
+        {
+            self.comms
+                .atc
+                .active
+                .iter()
+                .rev()
+                .find_map(|p| match &p.instruction {
+                    AtcInstruction::Pattern { runway, .. }
+                    | AtcInstruction::Approach { runway, .. }
+                    | AtcInstruction::Land { runway }
+                    | AtcInstruction::GoAround { runway }
+                    | AtcInstruction::Takeoff { runway, .. } => Some(runway.clone()),
+                    _ => None,
+                })
+                .unwrap_or(runway)
+        } else {
+            runway
         };
         match (st.kind, request) {
             (FacilityKind::Clearance, Some(R::IfrClearance)) => {
@@ -207,9 +237,13 @@ impl Session {
             (FacilityKind::Tower, Some(R::Inbound)) if self.comms.atc.active.iter().any(|p|matches!(&p.instruction,AtcInstruction::Approach{procedure,..} if procedure=="visual")) && !self.runway_traffic(&airport) => self.issue(&st,AtcInstruction::Land{runway:runway.clone()}),
             (FacilityKind::Tower, Some(R::Inbound)) => self.pattern_entry(&st, &m, &airport, &runway),
             (FacilityKind::Tower, Some(R::Position)) => {
+                if self.comms.atc.landing && self.comms.atc.active.iter().any(|p| p.readback && p.airport == airport && matches!(&p.instruction, AtcInstruction::Land {runway: cleared} if *cleared == runway)) {
+                    return;
+                }
                 if m.normalized.contains("downwind") && self.runway_traffic(&airport) {
                     self.issue(&st, AtcInstruction::ExtendDownwind);
-                } else if m.normalized.contains("final") || m.normalized.contains("base") {
+                } else if m.normalized.contains("final") || m.normalized.contains("base")
+                    || m.normalized.contains("downwind") && self.comms.atc.active.iter().any(|p|matches!(p.instruction,AtcInstruction::Pattern{..})) {
                     if self.runway_traffic(&airport) {
                         self.issue(
                             &st,
@@ -249,11 +283,7 @@ impl Session {
                 }
             }
             (FacilityKind::Ground, Some(R::ClearRunway)) => {
-                self.atc_reply(
-                    &st,
-                    "Taxi to parking. Use pilot discretion on the apron.".into(),
-                    Meaning::Text,
-                );
+                self.issue(&st, AtcInstruction::Parking);
             }
             (FacilityKind::Approach | FacilityKind::Departure, Some(R::Bravo)) => {
                 let code_ok=self.comms.atc.active.iter().any(|p|matches!(&p.instruction,AtcInstruction::Squawk {code} if *code==self.glass.transponder_code));
@@ -289,7 +319,7 @@ impl Session {
                 if self.comms.atc.radar_facility.as_deref() != Some(radar_facility(&st).as_str()) {
                     self.atc_reply(
                         &st,
-                        "Radar contact.".into(),
+                        self.radar_position_report(&airport),
                         Meaning::RadarContact {
                             station_id: st.id.clone(),
                         },
@@ -312,6 +342,7 @@ impl Session {
                 } else if let Some(next) = self.sector_station(&airport, st.kind)
                     && next.id != st.id
                     && next.channel_khz != st.channel_khz
+                    && radar_facility(&next) != radar_facility(&st)
                 {
                     self.handoff(&st, &next);
                 } else if self.comms.atc.ifr_clearance {
@@ -383,10 +414,14 @@ impl Session {
         self.comms.atc.active.retain(|old| {
             if matches!(
                 p.instruction,
-                AtcInstruction::Approach { .. } | AtcInstruction::Land { .. }
+                AtcInstruction::Approach { .. }
+                    | AtcInstruction::Land { .. }
+                    | AtcInstruction::Pattern { .. }
             ) && matches!(
                 old.instruction,
-                AtcInstruction::Vector { .. } | AtcInstruction::Bravo { .. }
+                AtcInstruction::Vector { .. }
+                    | AtcInstruction::Bravo { .. }
+                    | AtcInstruction::Altitude { .. }
             ) {
                 return false;
             }
@@ -400,6 +435,35 @@ impl Session {
                     | (AtcInstruction::Handoff { .. }, AtcInstruction::Handoff { .. })
             )
         });
+    }
+    fn radar_position_report(&self, airport: &str) -> String {
+        let Some([an, ae]) = crate::regions::airport(self.sim.world(), airport)
+            .ok()
+            .and_then(|a| self.radio_project(a.latitude_deg, a.longitude_deg))
+        else {
+            return "Radar contact.".into();
+        };
+        let [n, e, _] = self.sim.state().position_m;
+        let bearing = libm::atan2(e - ae, n - an).rem_euclid(std::f64::consts::TAU);
+        let index = (bearing / std::f64::consts::FRAC_PI_4 + 0.5).floor() as usize % 8;
+        let direction = [
+            "north",
+            "northeast",
+            "east",
+            "southeast",
+            "south",
+            "southwest",
+            "west",
+            "northwest",
+        ]
+        .get(index)
+        .copied()
+        .unwrap_or("north");
+        phraseology::radar_contact(
+            (libm::hypot(n - an, e - ae) / 1852.).round() as u32,
+            direction,
+            &self.airport_radio_name(airport),
+        )
     }
     fn assign_squawk(&self) -> String {
         format!("{:04o}", 0o4000 + (self.comms.next_id % 0o3000) as u32)
@@ -476,7 +540,7 @@ impl Session {
             },
         );
     }
-    pub(super) fn sector_station(&self, airport: &str, kind: FacilityKind) -> Option<ComStation> {
+    pub(crate) fn sector_station(&self, airport: &str, kind: FacilityKind) -> Option<ComStation> {
         let [pn, pe, pd] = self.sim.state().position_m;
         self.stations()
             .into_iter()
@@ -672,6 +736,7 @@ pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
         return false;
     }
     match i {
+        AtcInstruction::Parking => t.contains("taxi to parking"),
         AtcInstruction::Taxi {
             runway, hold_short, ..
         } => {

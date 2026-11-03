@@ -280,6 +280,17 @@ impl Session {
         }
     }
     pub(super) fn issue(&mut self, st: &ComStation, instruction: AtcInstruction) {
+        // An accepted landing clearance remains valid until canceled, a go-around, or exit.
+        if self.comms.atc.landing
+            && matches!(instruction, AtcInstruction::Land { .. })
+            && self.comms.atc.active.iter().any(|p| {
+                p.readback
+                    && p.instruction == instruction
+                    && Some(&p.airport) == self.comms.atc.airport.as_ref()
+            })
+        {
+            return;
+        }
         let phrase = self.instruction_phrase(&instruction);
         if self.comms.atc.pending.len() >= 16 {
             return;
@@ -454,6 +465,17 @@ impl Session {
                 let score = |st: &ComStation| {
                     self.station_origin(st)
                         .map_or(f64::MAX, |[n, e, _]| libm::hypot(n - pn, e - pe))
+                        + if message.addressed_facility.as_ref().is_some_and(|address| {
+                            let call = st
+                                .metadata
+                                .as_ref()
+                                .map_or(st.name.as_str(), |m| m.callsign.as_str());
+                            !address.contains(&words(call)) && !address.contains(&words(&st.name))
+                        }) {
+                            1_000_000.
+                        } else {
+                            0.
+                        }
                         + if self.comms.atc.airport.as_ref() == Some(&st.airport) {
                             0.
                         } else {

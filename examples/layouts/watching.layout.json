@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "name": "Fly me and director",
+  "units": "px",
+  "canvas": [
+    1500,
+    900
+  ],
+  "elements": [
+    {
+      "id": "fly-me",
+      "page": {
+        "kind": "fly_me"
+      },
+      "position": [
+        0,
+        0
+      ],
+      "size": [
+        500,
+        900
+      ]
+    },
+    {
+      "id": "director",
+      "page": {
+        "kind": "director"
+      },
+      "position": [
+        500,
+        0
+      ],
+      "size": [
+        1000,
+        900
+      ]
+    }
+  ]
+}

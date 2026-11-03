@@ -201,6 +201,7 @@ impl Command for LoadAircraft {
             if session.flight_archive.autosave_enabled {
                 session.save_flight()?;
             }
+            session.crew = crate::crew::Crew::default();
             session.sim = sim;
             session.active_configuration = configuration.clone();
             session.paused = true;

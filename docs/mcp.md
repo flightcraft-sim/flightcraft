@@ -487,6 +487,71 @@ Scenario tools are registered automatically: `scenario.validate`, `scenario.star
 `scenario.state`, `scenario.signal`, `scenario.instructor_failure`, `comms.atc`, and `emergency.record`.
 See [scenarios](scenarios.md) for inputs and [emergencies](emergencies.md) for debrief data.
 
+## Virtual pilot and watching mode
+
+`fly_me` and `director` are independent screen page kinds. Use them in any window or layout
+like other pages; `examples/layouts/watching.layout.json` places them together. For example:
+
+```json
+{"command":"screen.open","input":{"page":{"kind":"fly_me"},"size":[540,900]}}
+{"command":"screen.open","input":{"page":{"kind":"director"},"size":[1280,800]}}
+```
+
+Each director element owns its camera resources and follows flight phase and the assigned runway.
+Native crew commands route to the session thread; browser and remote pages use the same owner
+command path and receive crew state and GNIS landmarks in their display snapshots.
+
+The registry exposes `crew_mode`, `crew_handover`, `crew_intent`, and `crew_state` (dotted names
+in scripts). All have generated input and output schemas. Crew is **solo and disengaged by
+default**, and resets and aircraft replacement discard its plan and control ownership.
+
+```json
+{"command":"crew.mode","input":{"mode":"watching","director":true}}
+{"command":"crew.intent","input":{"intent":{"kind":"fly_to_airport","airport":"KABE","runway":"24","altitude_m":1250}}}
+{"command":"crew.handover","input":{"to":"crew","actor":"crew"}}
+{"command":"crew.handover","input":{"to":"crew","actor":"pilot","confirm":true}}
+```
+
+The first handover call proposes an exchange. A matching confirmation from the **other**
+participant changes ownership. The UI issues the crew's readiness proposal and waits for a second
+user action to confirm. Return control with `to:"pilot"` using the same two calls. A proposal
+alone never changes controls; confirming as its proposer is rejected. Coupled installed autopilots
+and script assists disconnect when the crew takes control. Manual control and assist commands
+require a confirmed return to the pilot.
+
+`crew.intent` accepts `{intent: ...}` with these tagged kinds:
+
+| Kind | Fields |
+|---|---|
+| `take_off` | `airport`, `runway` |
+| `fly_to_airport` | `airport`, `runway`, `altitude_m` (MSL) |
+| `fly_to_coordinate` | `position: {latitude_deg,longitude_deg}`, `altitude_m` |
+| `flight_plan` | Uses the current `plan.*` waypoints |
+| `join_pattern`, `land_runway` | `airport`, `runway` |
+| `scenic` | `preset: delaware_water_gap \| pocono_plateau \| hudson_corridor`, return `airport`, `runway` |
+| `hold` | `altitude_m`, magnetic `heading_rad` |
+| `orbit` | Geographic `position`, `altitude_m`, `radius_m` (500–10000) |
+| `go_around` | Uses the current arrival runway; airborne only |
+
+The response is `{accepted,refusal,state}`. A refused intent leaves the active intent, route, and
+ownership intact. `state` includes the briefing, checked legs, runway geometry, phase, next step,
+reason, control owner, pending exchange, director setting, measured touchdown, `taxi_clear`, and `parked`. Observing it
+never steps the flight. Coordinates and route geometry are true/grid; only the hold-heading input
+is magnetic. A loaded regional airport is required except for `airport:"default"` on the original
+flat field. Airport identifiers resolve by FAA or ICAO identifier.
+
+The planner uses `plan.profile` at 100 m spacing, refusing missing terrain coverage, insufficient
+terrain clearance, and Class B penetration without clearance. It reports its checks in the plan.
+The Hudson preset currently returns a refusal because a verified exclusion route and special
+flight rules have not been supplied. Radio reports use `comms.transmit`, the aircraft's callsign,
+and the selected COM tuned to CTAF, Approach, Tower, or Ground. The virtual pilot hears ATIS, reads back typed instructions, follows assignments, and obtains required clearances through the same ATC engine; position reports alone confer no clearance. Arrival runway geometry includes `pattern_altitude_m`, using published TPA or the rounded field-elevation fallback.
+Intercom narration uses the separate `crew` speaker, rules provenance, captions, and the kneeboard.
+`Meaning::Crew {critical}` lets speech output interrupt narration for brief phase and height calls.
+
+`view.set_camera` also accepts `wing`, `tower`, and `flyby`. These are read-only presentation
+views. Tower frames the assigned runway and aircraft from an estimated fixed observer; flyby plants an observer ahead along track. These are not surveyed airport camera locations. The director selects cockpit for takeoff, wing for climb, flyby for cruise, tower for short final and rollout, and chase for other phases. See
+[crew implementation and limits](crew.md#implemented-watching-mode).
+
 ## Tower and approach training
 
 The shared registry exposes `atc.state` (`{}`), `atc.configure`

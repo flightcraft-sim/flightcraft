@@ -535,6 +535,33 @@ impl Session {
         }
         stations
     }
+    pub(crate) fn crew_transmit(&mut self, text: String) -> Result<(), CommandError> {
+        let carrier = self
+            .comms
+            .radios
+            .get(usize::from(self.comms.panel.transmit.saturating_sub(1)))
+            .and_then(|r| carrier_thirds_hz(r.active_khz));
+        if self
+            .comms
+            .pending
+            .iter()
+            .any(|p| p.channel == Channel::Com && p.carrier == carrier)
+        {
+            return Err(invalid(
+                CommsTransmit::NAME,
+                "COM carrier is busy; listen before transmitting",
+            ));
+        }
+        let event = CommsTransmit {
+            text,
+            intercom: false,
+        }
+        .run(self)?;
+        if let Some(record) = self.comms.record.events.iter_mut().find(|e| e.id == event.id) {
+            record.source = EventSource::Rules;
+        }
+        Ok(())
+    }
     pub(crate) fn sequence_comms(&mut self) {
         if self.comms.generation != self.flight_generation {
             self.scenario = crate::scenario::ScenarioRuntime {
@@ -561,6 +588,10 @@ impl Session {
     }
     pub(crate) fn step_with_comms(&mut self, steps: u32) {
         for _ in 0..steps {
+            self.sequence_crew();
+            self.comms
+                .record
+                .input(self.sim.state().time_s, self.sim.controls());
             self.sim.step(1);
             let now = self.sim.state().time_s;
             self.finish_transmissions();
@@ -696,6 +727,7 @@ impl Session {
         } else {
             carrier.map(|v| f64::from(v) / 3.0)
         };
+        let local_crew = speaker == Speaker::Crew && channel == Channel::Intercom;
         self.comms.record.events.push(Transmission {
             id,
             time_s: now,
@@ -707,40 +739,50 @@ impl Session {
             text,
             meaning,
             source,
-            reception: Reception::Pending,
+            reception: if local_crew {
+                if eligible {
+                    Reception::Heard
+                } else {
+                    Reception::NotReceived
+                }
+            } else {
+                Reception::Pending
+            },
             reason: None,
             grade: None,
         });
-        let atc_receiver = if speaker_is_pilot(&self.comms.record.events, id) && channel == Channel::Com {
-            let khz = self
-                .comms
-                .radios
-                .get(usize::from(self.comms.panel.transmit.saturating_sub(1)))
-                .map_or(122800, |r| r.active_khz);
-            let message = self
-                .comms
-                .record
-                .events
-                .iter()
-                .find(|e| e.id == id)
-                .map(|e| parse_pilot(&e.text, &self.pilot_callsign()))
-                .unwrap_or_default();
-            self.atc_receiver(&message, khz)
-        } else {
-            None
-        };
-        self.comms.pending.push(Pending {
-            atc_receiver,
-            id,
-            end_s: now + duration,
-            carrier,
-            channel,
-            eligible,
-            origin,
-            range_nm,
-            collided,
-            radio,
-        });
+        if !local_crew {
+            let atc_receiver = if speaker_is_pilot(&self.comms.record.events, id) && channel == Channel::Com {
+                let khz = self
+                    .comms
+                    .radios
+                    .get(usize::from(self.comms.panel.transmit.saturating_sub(1)))
+                    .map_or(122800, |r| r.active_khz);
+                let message = self
+                    .comms
+                    .record
+                    .events
+                    .iter()
+                    .find(|e| e.id == id)
+                    .map(|e| parse_pilot(&e.text, &self.pilot_callsign()))
+                    .unwrap_or_default();
+                self.atc_receiver(&message, khz)
+            } else {
+                None
+            };
+            self.comms.pending.push(Pending {
+                atc_receiver,
+                id,
+                end_s: now + duration,
+                carrier,
+                channel,
+                eligible,
+                origin,
+                range_nm,
+                collided,
+                radio,
+            });
+        }
         id
     }
     fn finish_transmissions(&mut self) {

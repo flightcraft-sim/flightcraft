@@ -17,6 +17,9 @@ conventions in FAA JO 7110.65 chapter 2, section 4, and the AIM radio chapter.
 | `altimeter(hundredths_inhg)` | Hundredths of inches Hg | `2992` → `two niner niner two` |
 | `wind(from_deg, knots)` | Magnetic direction and knots | `wind zero six zero at eight`; zero knots → `wind calm` |
 | `facility(station)` | Imported `ComStation` | NASR radio call plus role, such as `Morristown Tower` or `New York Approach` |
+| `pilot_position(station, pilot, runway, report)` | Typed facility, aircraft callsign, runway, and position phrase | A crew CTAF/tower report with spoken runway digits and NASR names |
+| `pilot_inbound(station, pilot, runway, miles, direction, information)` | Actual distance/direction and optional ATIS letter | Full CTAF identity with airport bookends, or a facility-addressed tower/radar check-in |
+| `pilot_request(station, pilot, request, information)` | Facility, request, optional information letter | Facility-addressed full-callsign request ending in a period |
 | `normal_case(text)` | Imported uppercase name | Normal case, expanding `INTL` and `MUNI` |
 
 `facility_kind`, `speaker`, and `reception` provide readable labels for UI/debrief clients.

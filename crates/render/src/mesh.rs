@@ -596,6 +596,67 @@ fn build_larrow(mut m: Mesh, p: Palette, world_end: u32) -> Geometry {
     }
 }
 
+/// Original low-wing, two-seat silhouette, using the bundled Sling's span and CG-relative gear.
+/// This deliberately simple visualization is not a manufacturer model.
+pub(crate) fn sling_geometry(mut geometry: Geometry, p: Palette) -> Geometry {
+    geometry.vertices.truncate(geometry.world_end as usize);
+    let mut m = Mesh(geometry.vertices);
+    // Faceted fuselage, nose to tail, in body axes (forward, right, down).
+    let sections = [
+        (1.65, 0.22, -0.15, 0.25),
+        (0.65, 0.52, -0.58, 0.42),
+        (-0.8, 0.48, -0.48, 0.40),
+        (-3.95, 0.08, -0.18, 0.04),
+    ];
+    for pair in sections.windows(2) {
+        let [a, b] = pair else { continue };
+        let ring = |&(x, w, top, bottom): &(f32, f32, f32, f32)| {
+            [
+                Vec3::new(x, -w, top),
+                Vec3::new(x, w, top),
+                Vec3::new(x, w, bottom),
+                Vec3::new(x, -w, bottom),
+            ]
+        };
+        let [a0, a1, a2, a3] = ring(a);
+        let [b0, b1, b2, b3] = ring(b);
+        for face in [
+            [a0, b0, b1, a1],
+            [a1, b1, b2, a2],
+            [a2, b2, b3, a3],
+            [a3, b3, b0, a0],
+        ] {
+            m.quad(face, p.aircraft, 1.);
+        }
+    }
+    m.box_body([-0.75, -4.5825, 0.22], [0.59, 4.5825, 0.33], p.aircraft);
+    m.box_body([-3.9, -1.3, -0.12], [-3.1, 1.3, -0.04], p.aircraft);
+    m.box_body([-3.9, -0.055, -1.12], [-3.3, 0.055, -0.1], p.aircraft);
+    // Canopy sides and top use the existing opaque glass material.
+    m.box_body([-0.65, -0.45, -0.86], [0.4, 0.45, -0.49], p.glass);
+    for y in [-0.975, 0.975] {
+        m.box_body([-0.30, y - 0.025, 0.3], [-0.22, y + 0.025, 0.76], p.shadow);
+        m.box_body([-0.43, y - 0.09, 0.61], [-0.08, y + 0.09, 0.92], p.rubber);
+    }
+    m.box_body([1.2, -0.025, 0.2], [1.27, 0.025, 0.77], p.shadow);
+    m.box_body([1.08, -0.07, 0.62], [1.41, 0.07, 0.92], p.rubber);
+    m.box_body([1.68, -0.035, -0.95], [1.72, 0.035, 0.95], p.rubber);
+    let exterior_end = m.0.len() as u32;
+    // Open cockpit framing and low wing surfaces, visible from the pilot's seat.
+    m.box_body([0.5, -0.48, -0.2], [0.85, 0.48, -0.12], p.glare_shield);
+    for (lo, hi) in [(-4.5825, -0.5), (0.5, 4.5825)] {
+        m.box_exterior([-0.75, lo, 0.22], [0.59, hi, 0.33], p.aircraft);
+    }
+    m.box_exterior([0.85, -0.35, -0.13], [1.65, 0.35, 0.25], p.aircraft);
+    let cockpit_end = m.0.len() as u32;
+    Geometry {
+        vertices: m.0,
+        world_end: geometry.world_end,
+        exterior_end,
+        cockpit_end,
+    }
+}
+
 /// Two immutable, nonindexed LOD meshes per tile, within WebGL 2 buffer limits.
 /// Skirts hide cracks where neighbours select different LODs. Tile boundaries remain fixed.
 pub(crate) struct TerrainMesh {

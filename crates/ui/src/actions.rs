@@ -66,7 +66,7 @@ pub fn toggle_camera(session: &mut Session) -> Result<(), CommandError> {
         .ok_or_else(|| CommandError::Failed("camera needs the app".into()))?;
     let mode = match current.mode {
         CameraMode::Chase => "cockpit",
-        CameraMode::Cockpit => "chase",
+        _ => "chase",
     };
     session.execute("view.set_camera", serde_json::json!({"mode": mode}))?;
     Ok(())

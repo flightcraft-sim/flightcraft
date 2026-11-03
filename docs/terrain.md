@@ -328,6 +328,15 @@ cargo xtask region build --id new-york --name 'New York area' --origin 1N7 \
   --out out/new-york
 ```
 
+Add `--gnis downloads/gnis/Text` to extract a `landmarks.json` sidecar during the build. To add landmarks to an existing region without rebuilding elevation:
+
+```sh
+cargo xtask landmarks --region assets/terrain/eastern-pa/region.json \
+  --gnis downloads/gnis/Text --out assets/terrain/eastern-pa/landmarks.json
+```
+
+Use USGS GNIS Domestic Names state text files (`DomesticNames_*.txt`). The importer clips primary feature positions to the region grid, retains GNIS IDs, and records each source file's SHA-256 and size. The Delaware River's primary mouth point is also retained as named context for the Water Gap summary; its position is never moved onto the route. It includes Summits, Gaps, Ridges, Lakes, Reservoirs, Populated Places, and a short major-river allowlist documented in `xtask/src/landmarks.rs`; GNIS does not provide stream lengths. Historical names and other feature classes are excluded. Raw state files remain outside version control. Names and point positions are observational metadata, excluded from the deterministic physics fingerprint. Stream points are not river geometry. Optional `prominence` ranks select notable gaps, mountains/ridges, major rivers, an explicit large-lake/reservoir list, and towns; unranked features are not narrated. Optional `description` supplies short original geographic context tied to names in the sidecar. Native and browser loaders accept the optional bounded sidecar; existing regions without it remain usable.
+
 The output directory must be new. The command downloads public Terrain Tiles HGT gzip files,
 FAA ADDS airports, runway polygons, airspace, navaids, components, fixes, ILS components, airways,
 and holds, current CIFP discovered through APRA, current d-TPP metadata, and requested FAA VFR

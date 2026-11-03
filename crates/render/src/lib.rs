@@ -58,6 +58,9 @@ pub enum CameraMode {
     #[default]
     Chase,
     Cockpit,
+    Wing,
+    Tower,
+    Flyby,
 }
 
 pub struct Scene {
@@ -76,9 +79,12 @@ pub struct Scene {
     look: Vec2,
     propeller_power: f32,
     larrow: bool,
+    sling: bool,
     conditions: flightcraft_world::Conditions,
     hood: bool,
     light_gun: Option<LightGun>,
+    director_runway: Option<([f64; 3], f64)>,
+    previous_camera: Option<CameraMode>,
 }
 
 impl Default for Scene {
@@ -98,9 +104,12 @@ impl Default for Scene {
             look: Vec2::ZERO,
             propeller_power: 0.0,
             larrow: false,
+            sling: false,
             conditions: Default::default(),
             hood: false,
             light_gun: None,
+            director_runway: None,
+            previous_camera: None,
         }
     }
 }
@@ -133,7 +142,9 @@ impl Scene {
     /// Unknown identities use the default trainer outline.
     pub fn set_aircraft(&mut self, id: &str) {
         let larrow = id == "larrow";
-        if self.larrow != larrow {
+        let sling = id == "sling2";
+        if self.larrow != larrow || self.sling != sling {
+            self.sling = sling;
             self.larrow = larrow;
             self.reset_camera();
         }
@@ -142,6 +153,16 @@ impl Scene {
     /// Share the session's immutable terrain; GPU meshes are cached by content identity.
     pub fn set_world(&mut self, world: &flightcraft_world::World) {
         self.world = world.clone();
+    }
+
+    /// A virtual airport observer uses the assigned runway geometry, never aircraft-relative placement.
+    pub fn set_director_runway(&mut self, runway: Option<([f64; 3], f64)>) {
+        let runway = runway
+            .filter(|(position, heading)| position.iter().all(|x| x.is_finite()) && heading.is_finite());
+        if self.director_runway != runway {
+            self.director_runway = runway;
+            self.reset_camera();
+        }
     }
 
     /// Presentation offsets supplied by the app's validated camera command.
@@ -170,7 +191,7 @@ impl Scene {
     pub fn toggle_camera(&mut self) {
         self.camera = match self.camera {
             CameraMode::Chase => CameraMode::Cockpit,
-            CameraMode::Cockpit => CameraMode::Chase,
+            _ => CameraMode::Chase,
         };
         self.reset_camera();
     }
@@ -188,6 +209,11 @@ impl Scene {
     /// Enqueue the wgpu callback. The camera follows the body's quaternion, not UI readouts.
     pub fn show(&mut self, ui: &mut egui::Ui, state: &State, dt: f32, palette: Palette) {
         let rect = ui.max_rect();
+        if self.previous_camera != Some(self.camera) {
+            self.reset_camera();
+            self.previous_camera = Some(self.camera);
+        }
+        let mut vertical_fov = camera::VERTICAL_FOV_RAD;
         let [north, east, down] = state.position_m.map(|v| v as f32);
         let [w, x, y, z] = state.attitude.map(|v| v as f32);
         let raw = Quat::from_xyzw(x, y, z, w);
@@ -207,6 +233,13 @@ impl Scene {
         let model = Mat4::from_cols(axis(Vec3::X), axis(Vec3::Y), axis(Vec3::Z), position.extend(1.0));
         self.smooth_look(dt);
         let blend = 1.0 - (-dt.clamp(0.0, 0.25) * 7.0).exp();
+        let pilot_eye = if self.larrow {
+            Vec3::new(-0.1, 0.0, -0.63)
+        } else if self.sling {
+            Vec3::new(-0.1, -0.25, -0.65)
+        } else {
+            CORVID_PILOT_EYE_M
+        };
         let (eye, view) = match self.camera {
             CameraMode::Chase => {
                 let desired_eye = position
@@ -220,12 +253,54 @@ impl Scene {
                 self.target = Some(target);
                 (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
             }
+            CameraMode::Wing => {
+                let eye = position + drawing(attitude * Vec3::new(-1.0, -7.0, -1.4));
+                (
+                    eye,
+                    Mat4::look_at_rh(
+                        eye,
+                        position + drawing(attitude * Vec3::new(3.0, 0.0, -0.2)),
+                        Vec3::Y,
+                    ),
+                )
+            }
+            CameraMode::Tower => {
+                let (threshold, heading) = self.director_runway.unwrap_or_else(|| {
+                    let r = self.world.runway();
+                    (r.threshold_ned_m, r.heading_deg.to_radians())
+                });
+                let [n, e, d] = threshold.map(|x| x as f32);
+                let (sin, cos) = (heading as f32).sin_cos();
+                let threshold = drawing(Vec3::new(n, e, d));
+                let eye =
+                    threshold + drawing(Vec3::new(-450. * cos + 30. * sin, -450. * sin - 30. * cos, -12.));
+                let ground = self.world.ground(
+                    f64::from(n - 450. * cos + 30. * sin),
+                    f64::from(e - 450. * sin - 30. * cos),
+                );
+                let eye = Vec3::new(eye.x, eye.y.max(ground.height_msl_m as f32 + 12.), eye.z);
+                // Keep the aircraft large, with the threshold and airport behind it in the same view.
+                let target = position.lerp(threshold, 0.08);
+                vertical_fov = (2. * (2.3 / (2. * eye.distance(position).max(1.) * 0.065)).atan())
+                    .clamp(4_f32.to_radians(), 35_f32.to_radians());
+                self.eye = Some(eye);
+                (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
+            }
+            CameraMode::Flyby => {
+                let [vn, ve, _] = state.velocity_mps.map(|x| x as f32);
+                let track = Vec3::new(vn, ve, 0.).try_normalize().unwrap_or(Vec3::X);
+                let right = Vec3::new(-track.y, track.x, 0.);
+                let desired = position + drawing(track * 350. + right * 30. + Vec3::new(0., 0., -10.));
+                let eye = self
+                    .eye
+                    .filter(|eye| eye.distance(position) < 800.)
+                    .unwrap_or(desired);
+                self.eye = Some(eye);
+                vertical_fov = (2. * (2.3 / (2. * eye.distance(position).max(1.) * 0.07)).atan())
+                    .clamp(5_f32.to_radians(), 60_f32.to_radians());
+                (eye, Mat4::look_at_rh(eye, position, Vec3::Y))
+            }
             CameraMode::Cockpit => {
-                let pilot_eye = if self.larrow {
-                    Vec3::new(-0.1, 0.0, -0.63)
-                } else {
-                    CORVID_PILOT_EYE_M
-                };
                 let eye = position + drawing(attitude * pilot_eye);
                 (
                     eye,
@@ -243,10 +318,10 @@ impl Scene {
                     Vec3::Y
                 };
                 (eye, Mat4::look_at_rh(eye, target, up))
-            } else if self.camera == CameraMode::Chase {
+            } else if self.camera != CameraMode::Cockpit {
                 (eye, view)
             } else {
-                let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
+                let eye = position + drawing(attitude * pilot_eye);
                 (
                     eye,
                     camera::cockpit_view(
@@ -254,7 +329,7 @@ impl Scene {
                         attitude,
                         settings.heading_offset_rad,
                         settings.pitch_rad,
-                        CORVID_PILOT_EYE_M,
+                        pilot_eye,
                     ),
                 )
             }
@@ -263,7 +338,7 @@ impl Scene {
         };
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
         let projection = Mat4::perspective_rh(
-            self.screen_view.map_or(camera::VERTICAL_FOV_RAD, |s| {
+            self.screen_view.map_or(vertical_fov, |s| {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),
             aspect,
@@ -308,8 +383,9 @@ impl Scene {
                 show_lights: self.lights_visible,
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
-                show_aircraft: self.camera == CameraMode::Chase,
+                show_aircraft: self.camera != CameraMode::Cockpit,
                 larrow: self.larrow,
+                sling: self.sling,
             },
         ));
         self.draw_light_gun(ui, rect, eye, projection * view, palette);

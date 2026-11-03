@@ -231,6 +231,8 @@
       "type": "string",
       "enum": [
         "outside",
+        "fly_me",
+        "director",
         "panel",
         "instrument",
         "pfd",

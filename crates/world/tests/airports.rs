@@ -25,6 +25,7 @@ fn catalogue(r: &Region) -> Airports {
             ident: "TEST".into(),
             icao: None,
             name: "Test Field".into(),
+            traffic_pattern_altitude_ft: None,
             elevation_m: 100.0,
             latitude_deg: 40.0,
             longitude_deg: -75.0,

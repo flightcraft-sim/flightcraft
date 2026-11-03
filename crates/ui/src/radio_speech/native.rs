@@ -364,4 +364,40 @@ mod preview {
         )
         .unwrap();
     }
+    #[test]
+    #[ignore = "requires a local platform speech engine; writes crew voice previews"]
+    fn render_crew_audio_previews() {
+        let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/crew");
+        std::fs::create_dir_all(&directory).unwrap();
+        let record: flightcraft_control::FlightRecord =
+            serde_json::from_slice(&std::fs::read(directory.join("water-gap-events.json")).unwrap()).unwrap();
+        let intercom = record
+            .events
+            .iter()
+            .find(|e| e.speaker == Speaker::Crew && e.text.starts_with("Climbing at"))
+            .unwrap()
+            .text
+            .clone();
+        let radio = record
+            .events
+            .iter()
+            .find(|e| {
+                e.speaker == Speaker::Pilot && e.channel == Channel::Com && e.reception == Reception::Heard
+            })
+            .unwrap()
+            .text
+            .clone();
+        assert!(radio.contains("Sling One Two Three Four Bravo"));
+        for (name, text, voice, radio) in [
+            ("intercom", intercom.as_str(), 10, false),
+            ("pilot-ctaf", radio.as_str(), 0, true),
+        ] {
+            let (mut pcm, rate) = synthesize(text, voice).unwrap();
+            assert!(pcm.iter().any(|s| s.abs() > 0.01));
+            if radio {
+                radio_effect(&mut pcm, rate);
+            }
+            std::fs::write(directory.join(format!("{name}.wav")), wave(&pcm, rate)).unwrap();
+        }
+    }
 }

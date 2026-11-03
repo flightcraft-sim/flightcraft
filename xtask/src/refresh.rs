@@ -129,6 +129,7 @@ pub fn run() -> Result<(), String> {
             cache: root.join(".cache/sources"),
             national_data: None,
             keep_v1: false,
+            gnis: None,
         };
         region::build(request, Http)?;
         let old = root.join("assets/terrain").join(&preset.id);

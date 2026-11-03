@@ -41,6 +41,7 @@ pub(crate) struct SceneCallback {
     pub show_airspace: bool,
     pub show_lights: bool,
     pub larrow: bool,
+    pub sling: bool,
 }
 
 pub(crate) struct ViewGpu {
@@ -81,7 +82,7 @@ struct Gpu {
     scene: wgpu::RenderPipeline,
     transparent: wgpu::RenderPipeline,
     blit: wgpu::RenderPipeline,
-    meshes: [DrawMesh; 2],
+    meshes: [DrawMesh; 3],
     uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
     vision_targets: Targets,
@@ -313,8 +314,13 @@ impl Gpu {
             multiview: None,
             cache: None,
         });
-        let meshes = [false, true].map(|larrow| {
-            let geometry = mesh::build(palette, larrow);
+        let meshes = [0, 1, 2].map(|kind| {
+            let geometry = mesh::build(palette, kind == 1);
+            let geometry = if kind == 2 {
+                mesh::sling_geometry(geometry, palette)
+            } else {
+                geometry
+            };
             let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("original field and aircraft mesh"),
                 contents: bytemuck::cast_slice(&geometry.vertices),
@@ -368,8 +374,13 @@ impl Gpu {
 impl Gpu {
     fn update_world(&mut self, device: &wgpu::Device, world: &flightcraft_world::World) {
         if self.terrain_fingerprint != Some(world.fingerprint()) {
-            self.meshes = [false, true].map(|larrow| {
-                let geometry = mesh::build_for_world(self.palette, larrow, world);
+            self.meshes = [0, 1, 2].map(|kind| {
+                let geometry = mesh::build_for_world(self.palette, kind == 1, world);
+                let geometry = if kind == 2 {
+                    mesh::sling_geometry(geometry, self.palette)
+                } else {
+                    geometry
+                };
                 DrawMesh {
                     vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("field and aircraft mesh"),
@@ -527,8 +538,14 @@ impl CallbackTrait for SceneCallback {
                 pass.draw(range, 0..1);
             }
         }
-        let [corvid, larrow] = &gpu.meshes;
-        let mesh = if self.larrow { larrow } else { corvid };
+        let [corvid, larrow, sling] = &gpu.meshes;
+        let mesh = if self.sling {
+            sling
+        } else if self.larrow {
+            larrow
+        } else {
+            corvid
+        };
         pass.set_vertex_buffer(0, mesh.vertices.slice(..));
         pass.draw(0..mesh.world_count, 0..1);
         if self.show_aircraft {
@@ -736,7 +753,7 @@ impl CallbackTrait for VisionCallback {
             );
         }
         if self.view.world.tiles().is_empty() {
-            let [mesh, _] = &gpu.meshes;
+            let [mesh, _, _] = &gpu.meshes;
             pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             pass.draw(0..6.min(mesh.world_count), 0..1);
         }

@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 pub enum PageKind {
     #[default]
     Outside,
+    FlyMe,
+    Director,
     Panel,
     Instrument,
     Pfd,
@@ -27,8 +29,10 @@ pub enum PageKind {
     Image,
 }
 impl PageKind {
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 20] = [
         Self::Outside,
+        Self::FlyMe,
+        Self::Director,
         Self::Panel,
         Self::Instrument,
         Self::Pfd,
@@ -50,6 +54,8 @@ impl PageKind {
     pub fn label(self) -> &'static str {
         match self {
             Self::Outside => "Outside view",
+            Self::FlyMe => "Fly me",
+            Self::Director => "Director camera",
             Self::Panel => "Cockpit panel",
             Self::Instrument => "Instrument",
             Self::Pfd => "PFD",
@@ -809,7 +815,8 @@ impl Command for SaveLayout {
 pub fn read_only(command: &str) -> bool {
     matches!(
         command,
-        "atc.state"
+        "crew.state"
+            | "atc.state"
             | "sim.state"
             | "weather.state"
             | "avionics.state"

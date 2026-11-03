@@ -40,6 +40,7 @@ pub struct Request {
     pub cache: PathBuf,
     pub national_data: Option<PathBuf>,
     pub keep_v1: bool,
+    pub gnis: Option<PathBuf>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Bundled {
@@ -162,6 +163,7 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<Request, String> 
             "--offline",
             "--cache",
             "--national-data",
+            "--gnis",
         ]
         .contains(&key.as_str())
         {
@@ -192,6 +194,7 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> Result<Request, String> 
             .unwrap_or(super::root()?.join(".cache/sources")),
         national_data: take("--national-data").map(PathBuf::from),
         keep_v1,
+        gnis: take("--gnis").map(PathBuf::from),
     };
     if !request.spacing.is_finite() || !(30.0..=1000.0).contains(&request.spacing) {
         return Err("spacing must be 30–1000 m".into());
@@ -601,6 +604,9 @@ fn build_region<T: Transport>(
         .clone()
         .unwrap_or_else(|| preset.map_or(Vec::new(), |p| p.charts.clone()));
     acquire_charts(request, inputs, cache, bounds, &kinds)?;
+    if let Some(gnis) = &request.gnis {
+        super::landmarks::extract(&region, gnis, &request.out.join("landmarks.json"))?;
+    }
     let mut report = super::validation::region(&request.out, inputs)?;
     if !request.keep_v1 {
         let region: Region = download::json(&request.out.join("region.json"))?;

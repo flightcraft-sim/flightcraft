@@ -6,3 +6,5 @@
 /assets/terrain/**/*.fcht
 /assets/terrain/**/charts/**/*.png
 /assets/terrain/**/charts/**/*.webp
+
+DomesticNames_*.txt

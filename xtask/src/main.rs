@@ -12,6 +12,7 @@ mod charts_faa;
 mod comms_faa;
 mod data;
 mod download;
+mod landmarks;
 mod nasr;
 mod national;
 mod navdata_faa;
@@ -98,6 +99,7 @@ fn main() -> ExitCode {
         "layers" => layers(),
         "panel-compare" => panel_compare::run(),
         "region" => region::run(),
+        "landmarks" => landmarks::run(),
         "data" => data::run(),
         "terrain" => terrain(),
         "terrain-srtm" => terrain_srtm::run(),
@@ -180,6 +182,10 @@ fn schemas(check: bool) -> Result<(), String> {
             serde_json::to_string_pretty(&schemars::schema_for!(
                 flightcraft_control::presentation::Snapshot
             )),
+        ),
+        (
+            "landmarks.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Landmarks)),
         ),
         (
             "scenario.json",

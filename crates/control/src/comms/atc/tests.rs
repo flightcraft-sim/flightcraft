@@ -940,3 +940,101 @@ fn blocked_controller_clearance_can_be_repeated_but_not_invented_by_pilot() {
     readback(&mut s);
     assert!(s.comms.atc.takeoff);
 }
+
+#[test]
+fn addressed_radar_provider_wins_when_two_facilities_share_a_carrier() {
+    let s = atc_session("KABE");
+    let st = s
+        .stations()
+        .into_iter()
+        .find(|s| s.airport == "KABE" && s.kind == FacilityKind::Approach && s.channel_khz == 124450)
+        .unwrap();
+    let text = phraseology::pilot_request(
+        &st,
+        &s.pilot_callsign(),
+        "request flight following",
+        Some("alpha"),
+    );
+    let message = parse_pilot(&text, &s.pilot_callsign());
+    assert_eq!(
+        s.tuned_facility(&message, st.channel_khz).unwrap().airport,
+        "KABE"
+    );
+}
+
+#[test]
+fn automatic_handoff_waits_until_the_pilot_finishes_transmitting() {
+    let mut s = atc_session("KABE");
+    move_airborne(&mut s, 40.65, -75.44, 700.);
+    let st = tune(&mut s, "KABE", FacilityKind::Tower);
+    s.comms.atc.current = Some(st);
+    s.comms.atc.takeoff = true;
+    s.execute(
+        "comms.transmit",
+        json!({"text":"Allentown Tower, Sling One Two Three Four Bravo, departing southwest."}),
+    )
+    .unwrap();
+    s.monitor_atc();
+    assert!(
+        s.comms.atc.pending.is_empty(),
+        "handoff must not pre-empt an in-progress pilot call"
+    );
+    s.comms.pending.clear();
+    s.monitor_atc();
+    assert!(
+        s.comms
+            .atc
+            .pending
+            .iter()
+            .any(|p| matches!(p.instruction, AtcInstruction::Handoff { .. }))
+    );
+}
+
+#[test]
+fn accepted_landing_clearance_is_not_reissued_for_position_reports() {
+    let mut s = atc_session("KABE");
+    initial(&mut s, "KABE", FacilityKind::Tower, "inbound straight in");
+    readback(&mut s);
+    say(&mut s, "final runway zero six");
+    readback(&mut s);
+    assert!(s.comms.atc.landing);
+    let issued = s.flight_record().events.len();
+    for report in [
+        "left downwind runway zero six",
+        "left base runway zero six",
+        "final runway zero six",
+    ] {
+        say(&mut s, report);
+        assert!(s.comms.atc.pending.is_empty());
+    }
+    assert!(!s.flight_record().events.iter().skip(issued).any(|e| matches!(
+        e.meaning,
+        Meaning::Atc {
+            instruction: AtcInstruction::Land { .. }
+        }
+    )));
+    // Also protect clients that issue the same clearance directly rather than reporting position.
+    let st = s.comms.atc.current.clone().unwrap();
+    s.issue(&st, AtcInstruction::Land { runway: "06".into() });
+    assert!(s.comms.atc.pending.is_empty());
+}
+#[test]
+fn ground_decimal_readback_and_atis_spacing_use_shared_phraseology() {
+    let s = atc_session("KABE");
+    let instruction = AtcInstruction::ExitRunway {
+        runway: "06".into(),
+        ground_khz: 121900,
+    };
+    let text = s.atc_readback(&instruction);
+    assert!(text.starts_with("Contact ground point niner, "), "{text}");
+    assert!(rules::readback_matches(
+        &instruction,
+        &parse_pilot(&text, &s.pilot_callsign())
+    ));
+    assert_eq!(
+        parse_pilot("contact ground point seven five", &s.pilot_callsign()).channel_khz,
+        Some(121750)
+    );
+    assert_eq!(parse_pilot("point niner", &s.pilot_callsign()).channel_khz, None);
+    assert!(!s.atis_report("KABE").unwrap().text.contains("  "));
+}

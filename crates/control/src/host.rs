@@ -61,6 +61,7 @@ impl Session {
             scenario: self.scenario.clone(),
             flight_archive: self.flight_archive.clone(),
             comms: self.comms.clone(),
+            crew: self.crew.clone(),
             sim: self.sim.clone(),
             efb: None,
             navigation: self.navigation.clone(),

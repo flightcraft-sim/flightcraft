@@ -82,6 +82,19 @@ pub fn frequency(khz: u32) -> String {
         }
     )
 }
+/// Standard ground frequencies may omit the common 121 MHz prefix (AIM 4-2-9).
+pub fn ground_frequency(khz: u32) -> String {
+    let full = frequency(khz);
+    if (121000..122000).contains(&khz) {
+        full.strip_prefix("one two one ").unwrap_or(&full).into()
+    } else {
+        full
+    }
+}
+/// Initial radar identification includes the aircraft's position relative to a named fix.
+pub fn radar_contact(miles: u32, direction: &str, fix: &str) -> String {
+    format!("Radar contact, {} miles {direction} of {fix}.", digits(miles, 1))
+}
 pub fn altimeter(hundredths_inhg: u32) -> String {
     digits(hundredths_inhg, 4)
 }
@@ -160,6 +173,7 @@ pub fn speaker(speaker: &Speaker, stations: &[ComStation]) -> String {
     match speaker {
         Speaker::Pilot => "Pilot".into(),
         Speaker::Instructor => "Instructor".into(),
+        Speaker::Crew => "Pilot in command · intercom".into(),
         Speaker::Traffic { callsign } => callsign.clone(),
         Speaker::Nav { ident } => format!("{ident} identification"),
         Speaker::Facility { id, role } => stations
@@ -277,5 +291,69 @@ mod scenario_tests {
             scripted_transmission(station, &pilot, &instruction, wind)
                 .ends_with("wind two three zero at eight.")
         );
+    }
+}
+
+/// The virtual pilot and human helpers share facility names and spoken runway slots.
+/// A CTAF report repeats the airport name; a tower call addresses the controller once.
+pub fn pilot_position(
+    station: &ComStation,
+    pilot: &super::PilotCallsign,
+    runway_id: &str,
+    report: &str,
+) -> String {
+    let name = facility(station);
+    let repeat = if matches!(station.kind, FacilityKind::Ctaf | FacilityKind::Unicom) {
+        format!(", {}", name.strip_suffix(" Traffic").unwrap_or(&name))
+    } else {
+        String::new()
+    };
+    format!(
+        "{name}, {}, {report} runway {}{repeat}.",
+        if station.kind == FacilityKind::Ctaf {
+            &pilot.full
+        } else {
+            &pilot.current
+        },
+        runway(runway_id)
+    )
+}
+
+/// Initial contact always uses the complete aircraft identity and the received information letter.
+pub fn pilot_request(
+    station: &ComStation,
+    pilot: &super::PilotCallsign,
+    request: &str,
+    information: Option<&str>,
+) -> String {
+    format!(
+        "{}, {}, {}{}.",
+        facility(station),
+        pilot.full,
+        request.trim_end_matches('.'),
+        information.map_or(String::new(), |letter| format!(", with information {letter}"))
+    )
+}
+/// AIM 4-1-9 inbound position, using actual range and cardinal direction from the field.
+pub fn pilot_inbound(
+    station: &ComStation,
+    pilot: &super::PilotCallsign,
+    runway_id: &str,
+    miles: u32,
+    direction: &str,
+    information: Option<&str>,
+) -> String {
+    let body = format!(
+        "{} {} {direction}, inbound for landing, runway {}",
+        digits(miles, if miles >= 10 { 2 } else { 1 }),
+        if miles == 1 { "mile" } else { "miles" },
+        runway(runway_id)
+    );
+    if station.kind == FacilityKind::Ctaf {
+        let name = facility(station);
+        let name = name.trim_end_matches(" Traffic");
+        format!("{name} Traffic, {}, {body}, {name}.", pilot.full)
+    } else {
+        pilot_request(station, pilot, &body, information)
     }
 }

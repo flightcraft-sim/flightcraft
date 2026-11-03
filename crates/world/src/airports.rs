@@ -73,6 +73,9 @@ pub struct Airport {
     pub icao: Option<String>,
     pub name: String,
     pub elevation_m: f64,
+    /// Published traffic-pattern altitude, feet MSL; absence uses the crew fallback.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub traffic_pattern_altitude_ft: Option<u32>,
     pub latitude_deg: f64,
     pub longitude_deg: f64,
     pub runways: Vec<AirportRunway>,
@@ -115,6 +118,7 @@ impl Airports {
                 || airport.icao.as_deref().is_some_and(|s| !ident(s))
                 || !text(&airport.name, 256)
                 || !elevation(airport.elevation_m)
+                || airport.traffic_pattern_altitude_ft.is_some_and(|a| a > 30000)
             {
                 return Err(TerrainError("invalid or duplicate airport"));
             }

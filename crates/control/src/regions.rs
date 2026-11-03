@@ -180,6 +180,18 @@ pub fn read_region(directory: &std::path::Path) -> Result<World, String> {
                 .map_err(|e| e.to_string())?
         }
     };
+    let world = match std::fs::symlink_metadata(directory.join("landmarks.json")) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => world,
+        Err(e) => return Err(e.to_string()),
+        Ok(_) => {
+            let bytes = bounded(
+                &directory.join("landmarks.json"),
+                flightcraft_world::MAX_LANDMARK_BYTES,
+            )?;
+            attach_region_landmarks(world, std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?
+        }
+    };
     let path = directory.join("airspace.json");
     match std::fs::symlink_metadata(&path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(world),
@@ -450,3 +462,8 @@ pub fn attach_region_procedures(world: World, text: &str) -> Result<World, Terra
     world.with_procedures(flightcraft_world::Procedures::from_json(text)?)
 }
 pub use flightcraft_world::MAX_PROCEDURES_BYTES;
+
+/// Shared bounded GNIS sidecar loader for native and browser transports.
+pub fn attach_region_landmarks(world: World, text: &str) -> Result<World, TerrainError> {
+    world.with_landmarks(flightcraft_world::Landmarks::from_json(text)?)
+}

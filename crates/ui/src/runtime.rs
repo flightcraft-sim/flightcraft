@@ -142,6 +142,72 @@ impl Drop for Runtime {
 mod tests {
     use super::*;
     #[test]
+    fn crew_commands_and_control_ownership_live_on_the_session_thread() {
+        use flightcraft_control::{ControlOwner, CrewMode};
+        let mut session = Session::new().unwrap();
+        session.enable_app();
+        let runtime = Runtime::start(
+            session,
+            Script::default(),
+            Bridge::default(),
+            eframe::egui::Context::default(),
+        )
+        .unwrap();
+        let mut screen = runtime.snapshot().unwrap();
+        screen
+            .execute(
+                "crew.mode",
+                serde_json::json!({"mode":"watching","director":true}),
+            )
+            .unwrap();
+        screen
+            .execute(
+                "crew.intent",
+                serde_json::json!({"intent":{"kind":"take_off","airport":"default","runway":"36"}}),
+            )
+            .unwrap();
+        screen
+            .execute("crew.handover", serde_json::json!({"to":"crew","actor":"crew"}))
+            .unwrap();
+        screen
+            .execute(
+                "crew.handover",
+                serde_json::json!({"to":"crew","actor":"pilot","confirm":true}),
+            )
+            .unwrap();
+        assert_eq!(screen.crew_state().controls, ControlOwner::Crew);
+        // A second window reads owner state, including changes made from the first window.
+        let state = runtime
+            .snapshot()
+            .unwrap()
+            .execute("crew.state", serde_json::json!({}))
+            .unwrap();
+        assert_eq!(state.get("mode").unwrap(), "watching");
+        assert_eq!(state.get("controls").unwrap(), "crew");
+        assert!(
+            screen
+                .execute("sim.set_controls", serde_json::json!({"throttle":1.}))
+                .is_err()
+        );
+        screen.execute("sim.resume", serde_json::json!({})).unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        screen.execute("sim.pause", serde_json::json!({})).unwrap();
+        assert!(screen.sim().state().time_s > 0.);
+        assert_eq!(screen.crew_state().mode, CrewMode::Watching);
+        // Browser/remote snapshots round-trip the same crew state without running a second pilot.
+        let snapshot =
+            serde_json::from_value(serde_json::to_value(screen.screen_snapshot()).unwrap()).unwrap();
+        let mut remote = Session::new().unwrap();
+        remote.apply_screen_snapshot(snapshot).unwrap();
+        assert_eq!(remote.crew_state().controls, ControlOwner::Crew);
+        let time = remote.sim().state().time_s;
+        remote
+            .execute("crew.mode", serde_json::json!({"mode":"demonstrating"}))
+            .unwrap();
+        assert_eq!(remote.take_screen_commands().first().unwrap().0, "crew.mode");
+        assert_eq!(remote.sim().state().time_s, time);
+    }
+    #[test]
     fn runs_without_any_window_repaints_and_pause_keeps_fixed_steps() {
         let mut s = Session::new().unwrap();
         s.enable_app();

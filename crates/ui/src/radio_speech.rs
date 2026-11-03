@@ -53,7 +53,11 @@ impl Speech {
             if !event.is_spoken() {
                 continue;
             }
-            if !active || event.reception != Reception::Heard || event.speaker == Speaker::Pilot {
+            if !active
+                || event.reception != Reception::Heard
+                || (event.speaker == Speaker::Pilot
+                    && event.source != flightcraft_control::EventSource::Rules)
+            {
                 continue;
             }
             #[cfg(any(target_arch = "wasm32", feature = "desktop-audio"))]
@@ -70,6 +74,11 @@ impl Speech {
                             continue;
                         }
                     }
+                }
+                if matches!(event.meaning, Meaning::Crew { critical: true })
+                    && let Some(output) = &mut self.output
+                {
+                    output.stop();
                 }
                 if let Some(output) = &mut self.output
                     && let Err(error) =
@@ -99,6 +108,7 @@ fn role(speaker: &Speaker) -> usize {
     match speaker {
         Speaker::Pilot => 0,
         Speaker::Instructor => 1,
+        Speaker::Crew => 10,
         Speaker::Facility { role, .. } => match role {
             flightcraft_world::FacilityKind::Tower => 2,
             flightcraft_world::FacilityKind::Ground => 3,

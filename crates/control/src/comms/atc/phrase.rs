@@ -23,6 +23,7 @@ impl Session {
     pub(super) fn instruction_phrase(&self, i: &AtcInstruction) -> String {
         let altitude = |ft| p::altitude_assignment(ft, -self.sim.state().position_m[2] / 0.3048);
         match i {
+            AtcInstruction::Parking => "Taxi to parking. Use pilot discretion on the apron.".into(),
             AtcInstruction::Taxi {
                 runway, hold_short, ..
             } => format!(
@@ -158,8 +159,8 @@ impl Session {
                 p::digits(code.parse().unwrap_or(0), 4)
             ),
             AtcInstruction::ExitRunway { ground_khz, .. } => format!(
-                "Turn off at the next available exit, contact ground {}.",
-                p::frequency(*ground_khz)
+                "Exit at the next available taxiway, contact ground {}.",
+                p::ground_frequency(*ground_khz)
             ),
         }
     }
@@ -167,6 +168,10 @@ impl Session {
     /// This is an example renderer; the parser also accepts equivalent pilot wording.
     pub fn atc_readback(&self, instruction: &AtcInstruction) -> String {
         let text = match instruction {
+            AtcInstruction::Parking => "Taxi to parking".into(),
+            AtcInstruction::ExitRunway { ground_khz, .. } => {
+                format!("Contact ground {}", p::ground_frequency(*ground_khz))
+            }
             AtcInstruction::Taxi {
                 runway, hold_short, ..
             } => {
@@ -250,6 +255,6 @@ impl Session {
             AtcInstruction::Bravo { cleared: false, .. } => "Remaining outside the Class Bravo".into(),
             _ => self.instruction_phrase(instruction).trim_end_matches('.').into(),
         };
-        format!("{text}, {}", self.pilot_callsign().current)
+        format!("{text}, {}.", self.pilot_callsign().current)
     }
 }

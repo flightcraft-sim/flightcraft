@@ -35,12 +35,14 @@ pub use packs::*;
 pub mod efb;
 pub use efb::*;
 mod app;
+pub mod crew;
 mod holds;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod host;
 pub mod presentation;
 pub mod screens;
 pub use app::*;
+pub use crew::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod bridge;
 mod systems;
@@ -103,6 +105,7 @@ pub struct Session {
     host: Option<host::SessionHost>,
     #[cfg(not(target_arch = "wasm32"))]
     presentation_efb: Option<EfbStatus>,
+    crew: crew::Crew,
     scenario: scenario::ScenarioRuntime,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
@@ -144,6 +147,7 @@ impl Session {
             host: None,
             #[cfg(not(target_arch = "wasm32"))]
             presentation_efb: None,
+            crew: Default::default(),
             scenario: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
@@ -243,6 +247,10 @@ impl Session {
         }
         self.sequence_glass();
         self.sequence_comms();
+        if self.crew_owns_controls() && matches!(C::NAME, "sim.set_controls" | "assist.set" | "autopilot.set")
+        {
+            return Err(invalid(C::NAME, "crew owns controls; confirm a handover first"));
+        }
         let result = command.run(self);
         if result.is_ok() && C::NAME == "failure.set" {
             self.begin_emergency(EventSource::Rules);
@@ -431,7 +439,33 @@ impl Command for Reset {
         let world = session.resolve_world(self.world)?;
         let start = match self.start {
             ResetStart::AirportRunway { airport, end } => {
-                regions::runway_start(&world, AirportRunwayStart { airport, end })?
+                let start = regions::runway_start(&world, AirportRunwayStart { airport, end })?;
+                // Keep every landing gear contact on the surveyed pavement, rather than behind its edge.
+                // This applies only to a named runway reset, never an airborne aircraft.
+                match start {
+                    Start::RunwayAt {
+                        mut threshold_ned_m,
+                        heading_rad,
+                    } => {
+                        let inset = session
+                            .selected_aircraft
+                            .geometry
+                            .gear
+                            .iter()
+                            .map(|g| -session.selected_aircraft.relative_point(g.point_m)[0])
+                            .fold(0., f64::max)
+                            + 2.;
+                        threshold_ned_m[0] += inset * libm::cos(heading_rad);
+                        threshold_ned_m[1] += inset * libm::sin(heading_rad);
+                        threshold_ned_m[2] =
+                            -world.ground(threshold_ned_m[0], threshold_ned_m[1]).height_msl_m;
+                        Start::RunwayAt {
+                            threshold_ned_m,
+                            heading_rad,
+                        }
+                    }
+                    other => other,
+                }
             }
             ResetStart::AirportAir(s) => regions::air_start(&world, s, session.simulation_date())?,
             ResetStart::GeographicAir {
@@ -549,6 +583,7 @@ impl Command for Reset {
         if session.flight_archive.autosave_enabled {
             session.save_flight()?;
         }
+        session.crew = crew::Crew::default();
         session.sim = replacement;
         session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
@@ -706,6 +741,13 @@ impl Command for SetRate {
 
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
         range(Self::NAME, "rate", self.rate, 0.25, 8.0)?;
+        if session.crew_owns_controls() && session.crew_state().phase != PilotPhase::Cruise && self.rate > 1.0
+        {
+            return Err(invalid(
+                Self::NAME,
+                "crew permits accelerated time only during cruise",
+            ));
+        }
         session.rate = self.rate;
         Ok(session.settings())
     }
@@ -802,6 +844,10 @@ registry!(
     screens::UndoLayout,
     screens::RedoLayout,
     screens::SaveLayout,
+    SetCrewMode,
+    CrewHandover,
+    CrewIntent,
+    GetCrewState,
     ScenarioValidate,
     ScenarioStart,
     ScenarioAmend,
@@ -911,3 +957,5 @@ impl Command for WorldHeight {
         Ok(session.sim.world().ground(self.north_m, self.east_m))
     }
 }
+
+pub use flightcraft_world::MAX_LANDMARK_BYTES;

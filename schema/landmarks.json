@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Landmarks",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Landmark"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LandmarkSource"
+      }
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "attribution",
+    "sources",
+    "features"
+  ],
+  "$defs": {
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
+    "Landmark": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Original geographic context, linked to the named GNIS features in this sidecar.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "feature_class": {
+          "type": "string"
+        },
+        "feature_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        },
+        "prominence": {
+          "description": "Lower ranks are more prominent: gap, mountain/ridge, river, major lake, town.\nAbsent means the feature is retained for reference but is not a scenic callout.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "maximum": 4,
+          "minimum": 0
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "feature_id",
+        "name",
+        "feature_class",
+        "state",
+        "position"
+      ]
+    },
+    "LandmarkSource": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "sha256",
+        "bytes"
+      ]
+    }
+  }
+}

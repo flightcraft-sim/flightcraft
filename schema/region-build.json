@@ -33,6 +33,12 @@
         "type": "string"
       }
     },
+    "gnis": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "id": {
       "type": [
         "string",

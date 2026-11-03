@@ -15,6 +15,7 @@ pub enum Channel {
 pub enum Speaker {
     Pilot,
     Instructor,
+    Crew,
     Facility { id: String, role: FacilityKind },
     Traffic { callsign: String },
     Nav { ident: String },
@@ -32,6 +33,9 @@ pub enum EventSource {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Meaning {
+    Crew {
+        critical: bool,
+    },
     ScenarioAction {
         action: crate::scenario::ScenarioAction,
     },

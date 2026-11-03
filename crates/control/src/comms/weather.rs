@@ -128,7 +128,7 @@ pub(super) fn weather_report(
         phraseology::altimeter(alt)
     );
     (
-        text,
+        text.split_whitespace().collect::<Vec<_>>().join(" "),
         Meaning::Weather {
             airport: station.airport.clone(),
             wind_from_deg: wind.wind_from_deg,

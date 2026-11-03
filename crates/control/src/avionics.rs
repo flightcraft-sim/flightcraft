@@ -53,6 +53,20 @@ impl Command for SetAvionics {
         "Set, step, or sync the shared heading bug, or control standby and glass equipment.";
     type Output = AvionicsState;
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError> {
+        if session.crew_owns_controls()
+            && matches!(
+                self.setting,
+                AvionicsSetting::Autopilot {
+                    setting: flightcraft_sim::equipment::PanelSetting::Engage { on: true }
+                        | flightcraft_sim::equipment::PanelSetting::Level
+                }
+            )
+        {
+            return Err(crate::invalid(
+                Self::NAME,
+                "crew owns controls; confirm a handover before coupling the autopilot",
+            ));
+        }
         match self.setting {
             AvionicsSetting::Glass { setting } => session.set_glass(setting)?,
             setting => session.sim_mut().set_avionics(setting)?,
