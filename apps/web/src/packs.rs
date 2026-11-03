@@ -49,7 +49,23 @@ async fn load_one(window: &web_sys::Window, url: &str) -> Result<PackContents, J
         total = total.saturating_add(text.len());
         files.insert(entry.path.clone(), text);
     }
-    Ok(PackContents { manifest, files })
+    let mut assets = std::collections::BTreeMap::new();
+    for path in manifest.asset_paths() {
+        let file_url = web_sys::Url::new_with_base(path, &url.href())?;
+        let bytes = fetch_bytes(
+            window,
+            &file_url.href(),
+            (4 * 1024 * 1024).min(MAX_PACK_BYTES.saturating_sub(total)),
+        )
+        .await?;
+        total = total.saturating_add(bytes.len());
+        assets.insert(path.to_owned(), bytes);
+    }
+    Ok(PackContents {
+        manifest,
+        files,
+        assets,
+    })
 }
 
 async fn fetch(window: &web_sys::Window, url: &str, max: usize) -> Result<String, JsValue> {

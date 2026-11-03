@@ -773,6 +773,7 @@ impl Variant {
 
 #[derive(Clone, Debug, Default)]
 pub struct AircraftCatalog {
+    pub(crate) exteriors: BTreeMap<String, std::sync::Arc<crate::exterior::ExteriorAsset>>,
     files: BTreeMap<(FileKind, String), (LayerFile, DefinitionSource)>,
 }
 
@@ -796,6 +797,10 @@ impl AircraftCatalog {
         )?;
         self.files.insert(key, (file, source));
         Ok(())
+    }
+
+    pub fn exterior(&self, aircraft: &str) -> Option<std::sync::Arc<crate::exterior::ExteriorAsset>> {
+        self.exteriors.get(aircraft).cloned()
     }
 
     pub fn get(&self, kind: FileKind, name: &str) -> Result<&LayerFile, AircraftError> {

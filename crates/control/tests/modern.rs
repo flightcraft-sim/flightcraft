@@ -45,7 +45,12 @@ fn session_with_audio(audio: bool) -> Session {
         }
     })
     .collect();
-    s.install_pack(&PackContents { manifest, files }).unwrap();
+    s.install_pack(&PackContents {
+        manifest,
+        files,
+        assets: Default::default(),
+    })
+    .unwrap();
     s.execute(
         "aircraft.load",
         json!({"source":{"kind":"installed","id":"equipment-demonstrator"},"reset":true}),

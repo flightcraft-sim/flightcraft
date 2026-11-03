@@ -170,6 +170,10 @@ fn root() -> Result<PathBuf, String> {
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
         (
+            "exterior.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::exterior::Exterior)),
+        ),
+        (
             "layout.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::screens::Layout)),
         ),

@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 pub struct PackContents {
     pub manifest: PackManifest,
     pub files: BTreeMap<String, String>,
+    pub assets: BTreeMap<String, Vec<u8>>,
 }
 
 #[derive(Debug, Default)]
@@ -23,6 +24,11 @@ pub struct PackOptions {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn read_bounded(path: &std::path::Path, max: usize) -> Result<String, String> {
+    String::from_utf8(read_bounded_bytes(path, max)?).map_err(|e| format!("requires UTF-8: {e}"))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn read_bounded_bytes(path: &std::path::Path, max: usize) -> Result<Vec<u8>, String> {
     use std::io::Read;
     if !std::fs::metadata(path).map_err(|e| e.to_string())?.is_file() {
         return Err("requires a regular file".into());
@@ -38,7 +44,7 @@ pub(crate) fn read_bounded(path: &std::path::Path, max: usize) -> Result<String,
     if bytes.len() > max {
         return Err(format!("file_size: exceeds {max} bytes"));
     }
-    String::from_utf8(bytes).map_err(|e| format!("requires UTF-8: {e}"))
+    Ok(bytes)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -80,7 +86,20 @@ pub fn read_pack(directory: &std::path::Path) -> Result<PackContents, String> {
         }
         files.insert(entry.path.clone(), text);
     }
-    Ok(PackContents { manifest, files })
+    let mut assets = BTreeMap::new();
+    for path in manifest.asset_paths() {
+        let bytes = read_bounded_bytes(
+            &regular_descendant(&root, path)?,
+            flightcraft_aero::exterior::MAX_MODEL_BYTES.min(MAX_PACK_BYTES.saturating_sub(total)),
+        )?;
+        total = total.saturating_add(bytes.len());
+        assets.insert(path.to_owned(), bytes);
+    }
+    Ok(PackContents {
+        manifest,
+        files,
+        assets,
+    })
 }
 
 impl Session {

@@ -278,7 +278,7 @@ impl Session {
     }
     pub fn install_pack(&mut self, pack: &crate::PackContents) -> Result<(), CommandError> {
         self.aircraft_catalog
-            .install_pack(&pack.manifest, &pack.files)
+            .install_pack_with_assets(&pack.manifest, &pack.files, &pack.assets)
             .map_err(SimError::from)?;
         Ok(())
     }

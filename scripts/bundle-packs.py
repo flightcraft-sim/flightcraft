@@ -32,6 +32,7 @@ def main(lock_path: str, out_dir: str) -> None:
             if dest.exists():
                 shutil.rmtree(dest)
             paths = ["pack.json"] + [f["path"] for f in manifest.get("files", [])] + [p for p in EXTRA if (src / p).is_file()]
+            paths += sorted({e[k] for e in manifest.get("exterior", []) for k in ("model", "lod1")})
             for rel in paths:
                 path = (src / rel).resolve()
                 if src.resolve() not in path.parents:

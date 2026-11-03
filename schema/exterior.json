@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Exterior",
+  "type": "object",
+  "properties": {
+    "aircraft": {
+      "type": "string"
+    },
+    "height_m": {
+      "type": "number",
+      "format": "float",
+      "maximum": 100,
+      "minimum": 0.01
+    },
+    "length_m": {
+      "type": "number",
+      "format": "float",
+      "maximum": 100,
+      "minimum": 0.01
+    },
+    "lights": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ExteriorLight"
+      },
+      "maxItems": 16
+    },
+    "lod1": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "moving_parts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MovingPart"
+      },
+      "maxItems": 64
+    },
+    "prop_diameter_m": {
+      "type": "number",
+      "format": "float",
+      "maximum": 100,
+      "minimum": 0.01
+    },
+    "registration": {
+      "$ref": "#/$defs/Registration"
+    },
+    "span_m": {
+      "type": "number",
+      "format": "float",
+      "maximum": 100,
+      "minimum": 0.01
+    },
+    "wing_area_m2": {
+      "type": "number",
+      "format": "float",
+      "maximum": 100,
+      "minimum": 0.01
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "aircraft",
+    "model",
+    "lod1",
+    "span_m",
+    "length_m",
+    "height_m",
+    "wing_area_m2",
+    "prop_diameter_m",
+    "moving_parts",
+    "lights",
+    "registration"
+  ],
+  "$defs": {
+    "ExteriorLight": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/LightKind"
+        },
+        "node": {
+          "type": "string"
+        },
+        "power_load": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "kind"
+      ]
+    },
+    "LightKind": {
+      "type": "string",
+      "enum": [
+        "nav_red",
+        "nav_green",
+        "nav_white",
+        "strobe",
+        "beacon",
+        "landing"
+      ]
+    },
+    "Motion": {
+      "type": "string",
+      "enum": [
+        "aileron",
+        "elevator",
+        "rudder",
+        "flaps",
+        "propeller",
+        "prop_blur",
+        "steering",
+        "wheel",
+        "oleo"
+      ]
+    },
+    "MovingPart": {
+      "type": "object",
+      "properties": {
+        "axis": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "gear_index": {
+          "type": "integer",
+          "format": "uint",
+          "default": 0,
+          "maximum": 15,
+          "minimum": 0
+        },
+        "motion": {
+          "$ref": "#/$defs/Motion"
+        },
+        "node": {
+          "type": "string"
+        },
+        "travel_rad": {
+          "description": "Angles at normalized -1 and +1 (flaps use 0 and 1).",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "wheel_radius_m": {
+          "type": "number",
+          "format": "float",
+          "default": 0.1899999976158142,
+          "maximum": 2,
+          "minimum": 0.01
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "motion",
+        "axis",
+        "travel_rad"
+      ]
+    },
+    "Registration": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 16,
+          "minLength": 1,
+          "pattern": "^[A-Z0-9-]+$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "text"
+      ]
+    }
+  }
+}

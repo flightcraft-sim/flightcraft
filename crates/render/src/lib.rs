@@ -1,6 +1,7 @@
 //! Read-only 3D presentation. NED and body coordinates are converted here only.
 
 mod camera;
+pub mod exterior;
 mod light_gun;
 pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
@@ -78,6 +79,8 @@ pub struct Scene {
     look_target: Vec2,
     look: Vec2,
     propeller_power: f32,
+    exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
+    exterior_pose: exterior::Pose,
     larrow: bool,
     sling: bool,
     conditions: flightcraft_world::Conditions,
@@ -103,6 +106,8 @@ impl Default for Scene {
             look_target: Vec2::ZERO,
             look: Vec2::ZERO,
             propeller_power: 0.0,
+            exterior: exterior::builtin("corvid"),
+            exterior_pose: Default::default(),
             larrow: false,
             sling: false,
             conditions: Default::default(),
@@ -141,6 +146,9 @@ impl Scene {
     /// Select the built-in display mesh by the active definition's identity.
     /// Unknown identities use the default trainer outline.
     pub fn set_aircraft(&mut self, id: &str) {
+        if self.exterior.as_ref().is_none_or(|a| a.definition.aircraft != id) {
+            self.exterior = exterior::builtin(id);
+        }
         let larrow = id == "larrow";
         let sling = id == "sling2";
         if self.larrow != larrow || self.sling != sling {
@@ -148,6 +156,16 @@ impl Scene {
             self.larrow = larrow;
             self.reset_camera();
         }
+    }
+
+    /// Installed pack geometry overrides the embedded fictional model.
+    pub fn set_exterior(&mut self, asset: std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>) {
+        self.exterior = Some(asset);
+    }
+
+    /// Read-only animation inputs; phases advance in simulation time, so pause freezes motion.
+    pub fn set_exterior_state(&mut self, sim: &flightcraft_sim::Sim) {
+        self.exterior_pose.update(sim);
     }
 
     /// Share the session's immutable terrain; GPU meshes are cached by content identity.
@@ -342,16 +360,26 @@ impl Scene {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),
             aspect,
-            0.05,
+            if self.camera == CameraMode::Wing {
+                0.015
+            } else {
+                0.05
+            },
             16000.0,
         );
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
         let mut uniform = gpu::Uniform {
+            landing_light: [0.; 4],
             atmosphere: [0.; 4],
             fog_color: [0.; 4],
             clouds: [[0.; 4]; 3],
             light_red: palette.light_red,
-            viewport: [rect.width().max(1.), rect.height().max(1.), 0., 0.],
+            viewport: [
+                rect.width().max(1.),
+                rect.height().max(1.),
+                self.exterior_pose.height_agl_m,
+                0.,
+            ],
             vision: [0.; 4],
             caution: palette.terrain_caution,
             warning: palette.terrain_warning,
@@ -370,6 +398,19 @@ impl Scene {
             eye: Vec4::new(eye.x, eye.y, eye.z, self.propeller_power).to_array(),
         };
         weather::apply(&mut uniform, &self.conditions, palette);
+        if self.lights_visible
+            && self.exterior.as_ref().is_some_and(|asset| {
+                asset.definition.lights.iter().any(|l| {
+                    l.kind == flightcraft_aero::exterior::LightKind::Landing && self.exterior_pose.lamp_on(l)
+                })
+            })
+        {
+            uniform.landing_light = (model
+                .transform_vector3(Vec3::new(1., 0., 0.12))
+                .normalize_or_zero())
+            .extend(1.)
+            .to_array();
+        }
         if self.hood && self.camera == CameraMode::Cockpit {
             uniform.atmosphere[3] = 1.;
             uniform.fog_color = palette.glare_shield;
@@ -386,6 +427,8 @@ impl Scene {
                 show_aircraft: self.camera != CameraMode::Cockpit,
                 larrow: self.larrow,
                 sling: self.sling,
+                exterior: self.exterior.clone(),
+                exterior_pose: self.exterior_pose.clone(),
             },
         ));
         self.draw_light_gun(ui, rect, eye, projection * view, palette);

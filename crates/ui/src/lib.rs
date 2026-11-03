@@ -1310,3 +1310,6 @@ mod scenario_preview;
 
 #[cfg(test)]
 mod main_ui_tests;
+
+#[cfg(test)]
+mod exterior_preview;

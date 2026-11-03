@@ -7,6 +7,7 @@ mod aircraft;
 pub mod autopilot;
 mod layers;
 pub use layers::*;
+pub mod exterior;
 mod packs;
 pub use aircraft::*;
 pub use packs::*;

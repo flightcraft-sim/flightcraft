@@ -5,11 +5,11 @@ use glam::Vec3;
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct Vertex {
-    position: [f32; 3],
-    normal: [f32; 3],
-    color: [f32; 4],
-    kind: f32,
-    water_coverage: f32,
+    pub(crate) position: [f32; 3],
+    pub(crate) normal: [f32; 3],
+    pub(crate) color: [f32; 4],
+    pub(crate) kind: f32,
+    pub(crate) water_coverage: f32,
 }
 
 #[derive(Default)]

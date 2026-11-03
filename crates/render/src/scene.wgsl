@@ -21,6 +21,7 @@ struct Uniforms {
     clouds: array<vec4<f32>, 3>,
     light_red: vec4<f32>,
     viewport: vec4<f32>,
+    landing_light: vec4<f32>,
 }
 @group(0) @binding(0) var<uniform> u: Uniforms;
 struct Sky { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32> }
@@ -85,7 +86,7 @@ struct Surface {
     var o: Surface;
     var world = vec4<f32>(position, 1.0);
     var n = normal;
-    if kind == 1.0 || kind == 2.0 || kind == -1.0 {
+    if kind == 1.0 || kind == 2.0 || kind == -1.0 || kind == -2.0 || kind == -3.0 {
         world = u.aircraft * world;
         n = (u.aircraft * vec4<f32>(normal, 0.0)).xyz;
     }
@@ -97,6 +98,13 @@ struct Surface {
     o.kind = kind;
     o.water_coverage = water_coverage;
     o.position = u.view_projection * world;
+    if kind == -2.0 {
+        // Aircraft lamps retain a luminous footprint when their physical lens is subpixel.
+        let projected = (u.view_projection * vec4<f32>(n, 0.0)).xy;
+        let direction = projected / max(length(projected), 0.0001);
+        o.position.x += direction.x * 2.0 / u.viewport.x * o.position.w;
+        o.position.y += direction.y * 2.0 / u.viewport.y * o.position.w;
+    }
     if kind >= 11.0 {
         // Subpixel fixtures retain a small luminous footprint, with geometric depth occlusion.
         let pixels = clamp(700.0 / max(o.position.w, 1.0), 1.1, 5.0);
@@ -138,6 +146,11 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     let fine = detail_lines(i.world.xz, 12.5);
     let coarse = detail_lines(i.world.xz, 100.0);
     let shore = 1.0 - smoothstep(0.0, 0.18, abs(i.water_coverage - 0.5));
+    if i.kind == -2.0 {
+        if u.atmosphere.z > 0.5 || u.atmosphere.w > 0.5 { return u.fog_color; }
+        let cloud = cloud_optical_depth(normalize(i.world - u.eye.xyz), distance);
+        return vec4<f32>(u.fog_color.rgb + i.color.rgb * exp(-distance * u.atmosphere.x * 0.45 - cloud), 1.0);
+    }
     if (i.kind == 12.0 || i.kind == 14.0) && i.light_facing > 0.0 { discard; }
     if u.vision.y < 0.5 && i.kind != 1.0 && i.kind != 2.0 && (u.atmosphere.w > 0.5 || u.atmosphere.z > 0.5) { return u.fog_color; }
     var color = i.color.rgb;
@@ -169,7 +182,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
         // Soft footprint on both terrain and pavement, fading with aircraft height.
         let center = u.aircraft[3].xz;
         let offset = (i.world.xz - center) / vec2<f32>(5.5, 2.4);
-        let shadow = exp(-dot(offset, offset)) * max(0.0, 1.0 - u.aircraft[3].y / 30.0);
+        let shadow = exp(-dot(offset, offset)) * max(0.0, 1.0 - u.viewport.z / 30.0);
         color *= 1.0 - shadow * 0.23;
     }
     if i.kind == 1.0 || i.kind == -1.0 {
@@ -195,6 +208,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     }
     if i.kind == 9.0 && fract(i.water_coverage / 300.0) > 0.55 { discard; }
     var alpha = select(1.0, i.color.a * u.eye.w, i.kind == 2.0);
+    if i.kind == -3.0 { alpha = i.color.a; }
     if i.kind >= 6.0 {
         // Keep chart colours readable at distance, independently of engine power and ground haze.
         color = i.color.rgb;
@@ -206,6 +220,12 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
         if !cockpit {
             if u.atmosphere.w > 0.5 { return u.fog_color; }
             color *= u.atmosphere.y;
+            if u.landing_light.w > 0.5 && (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0) {
+                let delta = i.world - u.aircraft[3].xyz;
+                let beam = smoothstep(0.94, 0.995, dot(normalize(delta), u.landing_light.xyz));
+                let falloff = 1.0 / (1.0 + dot(delta, delta) * 0.0025);
+                color += i.color.rgb * vec3<f32>(1.0, 0.94, 0.78) * beam * falloff * (1.0 - u.atmosphere.y);
+            }
             let cloud = cloud_optical_depth(normalize(i.world - u.eye.xyz), distance);
             var transmission = exp(-distance * u.atmosphere.x - cloud);
             if u.atmosphere.z > 0.5 { transmission = 0.0; }

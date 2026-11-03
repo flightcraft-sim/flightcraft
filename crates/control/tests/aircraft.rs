@@ -320,3 +320,22 @@ fn aircraft_load_schema_requires_one_complete_selection_and_matches_command_vali
         assert!(session.execute("aircraft.load", input).is_err());
     }
 }
+
+#[test]
+fn exterior_schema_rejects_unknown_motion_and_oversized_bindings() {
+    let schema = schemars::schema_for!(flightcraft_aero::exterior::Exterior).to_value();
+    jsonschema::meta::validate(&schema).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let definition: Value =
+        serde_json::from_str(include_str!("../../../aircraft/corvid/exterior.json")).unwrap();
+    assert!(validator.is_valid(&definition));
+    let mut bad = definition.clone();
+    bad["moving_parts"][0]["motion"] = json!("execute_script");
+    assert!(!validator.is_valid(&bad));
+    let mut bad = definition.clone();
+    bad["moving_parts"] = json!(vec![definition["moving_parts"][0].clone(); 65]);
+    assert!(!validator.is_valid(&bad));
+    let mut bad = definition;
+    bad["extension"] = json!(true);
+    assert!(!validator.is_valid(&bad));
+}

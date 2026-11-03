@@ -1,0 +1,293 @@
+{
+  "aircraft": "corvid",
+  "model": "exterior.glb",
+  "lod1": "exterior-lod1.glb",
+  "span_m": 10,
+  "length_m": 6.8,
+  "height_m": 2.7,
+  "wing_area_m2": 15,
+  "prop_diameter_m": 1.9,
+  "moving_parts": [
+    {
+      "node": "propeller",
+      "motion": "propeller",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "travel_rad": [
+        -0.42,
+        0.42
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "prop_blur",
+      "motion": "prop_blur",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "travel_rad": [
+        -0.42,
+        0.42
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "flaps_left",
+      "motion": "flaps",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0,
+        0.5235987755982988
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "aileron_left",
+      "motion": "aileron",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        -0.419,
+        0.419
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "flaps_right",
+      "motion": "flaps",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0,
+        0.5235987755982988
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "aileron_right",
+      "motion": "aileron",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0.419,
+        -0.419
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "elevator_left",
+      "motion": "elevator",
+      "axis": [
+        0,
+        -1,
+        0
+      ],
+      "travel_rad": [
+        -0.349,
+        0.524
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "elevator_right",
+      "motion": "elevator",
+      "axis": [
+        0,
+        -1,
+        0
+      ],
+      "travel_rad": [
+        -0.349,
+        0.524
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "rudder",
+      "motion": "rudder",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "travel_rad": [
+        -0.3665,
+        0.3665
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "oleo_0",
+      "motion": "oleo",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "wheel_0",
+      "motion": "wheel",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 0,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "oleo_1",
+      "motion": "oleo",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 1,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "wheel_1",
+      "motion": "wheel",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 1,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "oleo_2",
+      "motion": "oleo",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 2,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "steering",
+      "motion": "steering",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "travel_rad": [
+        -0.4,
+        0.4
+      ],
+      "gear_index": 2,
+      "wheel_radius_m": 0.19
+    },
+    {
+      "node": "wheel_2",
+      "motion": "wheel",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_rad": [
+        0,
+        0
+      ],
+      "gear_index": 2,
+      "wheel_radius_m": 0.16
+    }
+  ],
+  "lights": [
+    {
+      "node": "nav_left",
+      "kind": "nav_red",
+      "power_load": "lights"
+    },
+    {
+      "node": "nav_right",
+      "kind": "nav_green",
+      "power_load": "lights"
+    },
+    {
+      "node": "nav_tail",
+      "kind": "nav_white",
+      "power_load": "lights"
+    },
+    {
+      "node": "strobe_left",
+      "kind": "strobe",
+      "power_load": "lights"
+    },
+    {
+      "node": "strobe_right",
+      "kind": "strobe",
+      "power_load": "lights"
+    },
+    {
+      "node": "beacon",
+      "kind": "beacon",
+      "power_load": "lights"
+    },
+    {
+      "node": "landing",
+      "kind": "landing",
+      "power_load": "lights"
+    }
+  ],
+  "registration": {
+    "node": "registration",
+    "text": "N1234C"
+  }
+}

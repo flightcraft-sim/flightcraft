@@ -394,3 +394,49 @@ fn built_in_station_arms_change_cg_and_default_mass_properties_preserve_every_bi
     assert_eq!(balance.cg_m, [-25.0 / 880.0, -20.0 / 880.0, 0.0]);
     assert!(balance.in_limits);
 }
+
+#[test]
+fn exterior_manifest_version_and_installation_are_transactional() {
+    let (mut manifest, files) = demo();
+    let mut definition: flightcraft_aero::exterior::Exterior =
+        serde_json::from_str(include_str!("../../../aircraft/corvid/exterior.json")).unwrap();
+    definition.aircraft = "corvid-tourer".into();
+    definition.registration.text = LayerFile::from_json(&files["aircraft.json"])
+        .unwrap()
+        .identity()
+        .registration
+        .clone();
+    manifest.exterior = vec![definition];
+    assert!(
+        manifest.validate().is_err(),
+        "legacy manifests must reject exteriors"
+    );
+    manifest.format_version = 2;
+    assert!(manifest.validate().is_ok());
+    let assets = BTreeMap::from([
+        (
+            "exterior.glb".into(),
+            include_bytes!("../../../aircraft/corvid/exterior.glb").to_vec(),
+        ),
+        (
+            "exterior-lod1.glb".into(),
+            include_bytes!("../../../aircraft/corvid/exterior-lod1.glb").to_vec(),
+        ),
+    ]);
+    let mut catalog = AircraftCatalog::builtins().unwrap();
+    let mut bad = assets.clone();
+    bad.insert("exterior-lod1.glb".into(), vec![0; 100]);
+    assert!(catalog.install_pack_with_assets(&manifest, &files, &bad).is_err());
+    assert!(catalog.resolve_aircraft("corvid-tourer").is_err());
+    assert!(catalog.exterior("corvid-tourer").is_none());
+    catalog
+        .install_pack_with_assets(&manifest, &files, &assets)
+        .unwrap();
+    assert!(catalog.exterior("corvid-tourer").is_some());
+    let mut future = manifest.clone();
+    future.format_version = 3;
+    assert!(future.validate().is_err());
+    let mut traversal = manifest;
+    traversal.exterior[0].model = "../escape.glb".into();
+    assert!(traversal.validate().is_err());
+}

@@ -593,6 +593,10 @@ impl PageUi {
                 self.scene.set_world(s.sim().world());
                 self.scene.set_weather(s.sim().conditions(), s.sim().hood());
                 self.scene.set_aircraft(&s.sim().aircraft().identity.id);
+                if let Some(asset) = s.aircraft_catalog().exterior(&s.sim().aircraft().identity.id) {
+                    self.scene.set_exterior(asset);
+                }
+                self.scene.set_exterior_state(s.sim());
                 self.scene
                     .set_propeller_power(readout.effective_controls.throttle as f32);
                 self.scene.show(ui, s.sim().state(), 1. / 60., theme::scene());

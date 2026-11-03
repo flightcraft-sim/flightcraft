@@ -548,6 +548,48 @@ impl Sim {
     }
 
     #[must_use]
+    /// Electrical state of an exterior light, including its switch, breaker, and bus.
+    pub fn light_powered(&self, switch: flightcraft_aero::LoadSwitch) -> bool {
+        let s = &self.systems;
+        let Some(model) = &self.systems_model else {
+            return s.controls.master && s.controls.lights;
+        };
+        let installed = |kind| model.definition.electrical.loads.iter().any(|l| l.switch == kind);
+        let powered = |kind| {
+            model
+                .definition
+                .electrical
+                .loads
+                .iter()
+                .filter(|l| l.switch == kind)
+                .any(|l| {
+                    s.electrical
+                        .loads
+                        .iter()
+                        .any(|state| state.id == l.id && state.powered)
+                })
+        };
+        if installed(switch) {
+            return powered(switch);
+        }
+        let selected = s
+            .modern
+            .as_ref()
+            .and_then(|m| {
+                m.light_switches
+                    .iter()
+                    .find(|(kind, _)| *kind == switch)
+                    .map(|(_, on)| *on)
+            })
+            .unwrap_or(s.controls.lights);
+        selected
+            && if installed(flightcraft_aero::LoadSwitch::Lights) {
+                powered(flightcraft_aero::LoadSwitch::Lights)
+            } else {
+                s.electrical.main_bus_voltage > 9.
+            }
+    }
+
     pub fn systems(&self) -> &systems::SystemsState {
         &self.systems
     }

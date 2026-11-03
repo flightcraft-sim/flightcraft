@@ -30,6 +30,7 @@ pub(crate) struct Uniform {
     pub clouds: [[f32; 4]; 3],
     pub light_red: [f32; 4],
     pub viewport: [f32; 4],
+    pub landing_light: [f32; 4],
 }
 
 pub(crate) struct SceneCallback {
@@ -42,9 +43,18 @@ pub(crate) struct SceneCallback {
     pub show_lights: bool,
     pub larrow: bool,
     pub sling: bool,
+    pub exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
+    pub exterior_pose: crate::exterior::Pose,
+}
+
+struct ExteriorGpu {
+    vertices: wgpu::Buffer,
+    opaque_count: u32,
+    count: u32,
 }
 
 pub(crate) struct ViewGpu {
+    exterior: Option<ExteriorGpu>,
     uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
     targets: Targets,
@@ -487,6 +497,7 @@ impl CallbackTrait for SceneCallback {
                 }],
             });
             ViewGpu {
+                exterior: None,
                 uniform,
                 bind,
                 targets: targets(device, size, &gpu.texture_layout),
@@ -494,6 +505,39 @@ impl CallbackTrait for SceneCallback {
         });
         if view.targets.size != size {
             view.targets = targets(device, size, &gpu.texture_layout);
+        }
+        if self.show_aircraft
+            && let Some(asset) = &self.exterior
+        {
+            let eye = glam::Vec3::from_slice(&self.uniform.eye);
+            let center = glam::Mat4::from_cols_array_2d(&self.uniform.aircraft)
+                .w_axis
+                .truncate();
+            let mut pose = self.exterior_pose.clone();
+            if !self.show_lights {
+                pose.lights = [false; 4];
+                for powered in pose.powered_loads.values_mut() {
+                    *powered = false;
+                }
+            }
+            let frame = crate::exterior::frame(asset, &pose, eye.distance(center));
+            let opaque_count = frame.opaque.len() as u32;
+            let mut vertices = frame.opaque;
+            vertices.extend(frame.transparent);
+            let exterior = view.exterior.get_or_insert_with(|| ExteriorGpu {
+                vertices: device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("animated aircraft exterior"),
+                    size: (flightcraft_aero::exterior::MAX_VERTICES * std::mem::size_of::<mesh::Vertex>())
+                        as u64,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                }),
+                opaque_count: 0,
+                count: 0,
+            });
+            exterior.opaque_count = opaque_count;
+            exterior.count = vertices.len() as u32;
+            queue.write_buffer(&exterior.vertices, 0, bytemuck::cast_slice(&vertices));
         }
         queue.write_buffer(&view.uniform, 0, bytemuck::bytes_of(&self.uniform));
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -549,11 +593,24 @@ impl CallbackTrait for SceneCallback {
         pass.set_vertex_buffer(0, mesh.vertices.slice(..));
         pass.draw(0..mesh.world_count, 0..1);
         if self.show_aircraft {
-            pass.draw(mesh.world_count..mesh.exterior_end, 0..1);
+            if self.exterior.is_some()
+                && let Some(exterior) = &view.exterior
+            {
+                pass.set_vertex_buffer(0, exterior.vertices.slice(..));
+                pass.draw(0..exterior.opaque_count, 0..1);
+                pass.set_pipeline(&gpu.transparent);
+                pass.draw(exterior.opaque_count..exterior.count, 0..1);
+                pass.set_pipeline(&gpu.scene);
+                pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            } else {
+                pass.draw(mesh.world_count..mesh.exterior_end, 0..1);
+            }
         } else {
             pass.draw(mesh.exterior_end..mesh.cockpit_end, 0..1);
         }
-        if self.uniform.eye.get(3).is_some_and(|power| *power > 0.01) {
+        if (!self.show_aircraft || self.exterior.is_none())
+            && self.uniform.eye.get(3).is_some_and(|power| *power > 0.01)
+        {
             pass.set_pipeline(&gpu.transparent);
             pass.draw(mesh.cockpit_end..mesh.vertex_count, 0..1);
         }

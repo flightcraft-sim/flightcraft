@@ -31,8 +31,8 @@ points. Gear contacts have position, stiffness, damping, static weight fraction,
 angle. Fractions sum to one; each contact is below the loaded CG. Positive steering turns a
 forward wheel right; an aft steerable wheel uses a negative angle to yaw the nose right.
 Runway initialization aligns the foremost and aftmost contacts with the ground, then lets the
-spring/damper gear settle. Drawing currently chooses the procedural Corvid or Larrow mesh by id;
-unknown ids use the Corvid outline.
+spring/damper gear settle. Drawing uses validated exterior assets where available; unknown ids and definitions without
+artwork use a procedural outline. See the exterior section below.
 
 Aerodynamics retains the seven coefficient tables and nondimensional derivatives from version 1.
 Each table has 2–256 strictly increasing breakpoint/ordinate pairs and a nonempty `source` note.
@@ -56,7 +56,7 @@ Each panel instrument has a unique installation `id`, a known `module`, a `skin`
 `original`), a nonnegative `position: [x, y]`, and a positive `size: [width, height]`, in panel
 grid units. Modules include the six-pack, engine gauges, fuel, electrical, suction, and
 annunciators. The UI resolves skin ids against its runtime registry; unknown ids are panel load
-errors. See [instruments and skin registration](instruments.md) for the module catalogue,
+errors. See [instruments and skin registration](instruments.md) for the module catalog,
 presentation models, controls, and private pack extension point.
 
 ## Loads and weight and balance
@@ -131,7 +131,7 @@ including an explicitly allowed load outside limits.
 
 A `source` selection and explicit `variant`/`panel`/`load` are mutually exclusive. A JSON source
 `{"source":{"kind":"json","text":"<aircraft document>"}}` resolves version 2 references
-against the session catalogue. Native callers can use `{"source":{"kind":"file","path":"aircraft.json"}}`.
+against the session catalog. Native callers can use `{"source":{"kind":"file","path":"aircraft.json"}}`.
 These sources also accept complete version 1 files. Browser calls never open dialogs or read files.
 
 Rust callers use `LayerFile::from_json`, `AircraftCatalog::builtins`, `install_pack`, and `resolve`
@@ -166,10 +166,10 @@ three-instrument panel:
 }
 ```
 
-Every manifest field is required. `affiliation` must explicitly state the author's relationship
+All original manifest fields are required; the later format version and exterior fields are optional. `affiliation` must explicitly state the author's relationship
 or non-affiliation; real aircraft packs belong outside this brand-neutral repository. The loader
 requires a nonempty statement, and does not attempt to interpret legal language. A pack supplies
-definition data only; scripts, native code, arbitrary asset kinds, and unknown instrument modules
+definition data and the bounded exterior profile below; scripts, native code, arbitrary asset kinds, and unknown instrument modules
 are rejected.
 
 On native, `flightcraft --packs-dir examples/packs` scans immediate pack subdirectories. The
@@ -186,7 +186,7 @@ packs in URL-list order. It remains usable offline with the embedded definitions
 A bad pack produces an app error and is skipped as a whole. Other packs still load, and current
 flights continue. Duplicate pack ids and attempts to replace installed definitions are errors.
 Native callers can use `read_pack` and `Session::load_packs_directory`; browser transports supply
-`PackContents` to `Session::install_pack`, which shares the same catalogue validation.
+`PackContents` to `Session::install_pack`, which shares the same catalog validation.
 
 ## Hostile-input limits
 
@@ -201,12 +201,12 @@ family or engine. Physical validation is additional to JSON Schema validation.
 | Each JSON document | 1 MiB |
 | Whole pack, including manifest | 8 MiB |
 | Files per pack | 64 |
-| Packs per catalogue / directory entries / web URLs | 64 |
+| Packs per catalog / directory entries / web URLs | 64 |
 | Manifest authors | 1–32 |
 | Manifest name, version, licence, affiliation, each author | 1–4096 bytes each |
 | Relative file path | 256 bytes |
 
-File paths contain portable ASCII components, ending in `.json`. Absolute paths, URL syntax,
+Layer paths contain portable ASCII components, ending in `.json`; exterior asset paths end in `.glb`. Absolute paths, URL syntax,
 backslashes, empty or hidden components, traversal, case-insensitive duplicates, and `pack.json`
 as a provided layer are rejected. Native packs reject symlink files and subdirectories and check
 that resolved files remain under the pack directory. Reads are capped independently of metadata.
@@ -250,3 +250,67 @@ engine definitions and default flight dynamics are unchanged.
 
 Emergency procedures are optional systems-layer pack data. See [emergencies](emergencies.md#aircraft-procedures)
 for ordered memory/checklist items, glide parameters, validation, and fictional built-in guidance.
+
+## Exterior assets (pack format 2)
+
+Pack manifests now have an independent `format_version`. Omission means legacy pack format 1;
+explicit versions 1 and 2 are readable, and unknown versions are rejected. An `exterior` section
+requires `format_version: 2`. Existing version 2 aircraft layer documents and their physics remain
+unchanged. Older hosts reject the new manifest fields instead of silently discarding the artwork.
+The pack's semantic `version` identifies its release, independently of the manifest format.
+
+`exterior` is an optional list of up to 16 aircraft exteriors. Each must belong to an aircraft document
+in the same pack. GLBs are listed by `model` and `lod1`, separately from the JSON-only `files` list.
+Desktop and browser transports fetch only those listed assets and include them in the existing 8 MiB
+whole-pack budget. The desktop bundler includes both model files. Paths follow the same portable,
+relative, no-symlink policy as layers, but end in `.glb`.
+
+```json
+{
+  "format_version": 2,
+  "exterior": [{
+    "aircraft": "my-trainer",
+    "model": "exterior.glb",
+    "lod1": "exterior-lod1.glb",
+    "span_m": 10.0,
+    "length_m": 6.8,
+    "height_m": 2.7,
+    "wing_area_m2": 15.0,
+    "prop_diameter_m": 1.9,
+    "moving_parts": [{
+      "node": "aileron_left", "motion": "aileron",
+      "axis": [0, 1, 0], "travel_rad": [-0.42, 0.42],
+      "gear_index": 0, "wheel_radius_m": 0.19
+    }],
+    "lights": [{"node": "nav_left", "kind": "nav_red"}],
+    "registration": {"node": "registration", "text": "N1234C"}
+  }]
+}
+```
+
+This fragment extends the otherwise complete manifest; all existing required manifest fields remain
+required. `moving_parts` supports `aileron`, `elevator` (including a stabilator), `rudder`, `flaps`,
+`propeller`, `prop_blur`, `steering`, `wheel`, and `oleo`. A node has at most one motion binding.
+`gear_index` selects a family contact for steering, rolling, and compression; it defaults to zero.
+`wheel_radius_m` defaults to 0.19. `lights` supports `nav_red`, `nav_green`, `nav_white`, `strobe`,
+`beacon`, and `landing`. An optional `power_load` binds a fixture to an installed electrical load,
+including its actual switch, breaker, and bus; this supports shared nav/strobe circuits. Registration text is 1–16 uppercase ASCII letters, digits, or hyphens;
+its named node contains author-generated lettering geometry.
+
+Dimensions are in SI units. Nodes use pack body axes and share the family datum. Node-local transforms
+encode pivots; children inherit their parents' animation. Each named node must exist in both LODs.
+The renderer uses actual effective controls, propeller RPM, contact penetration, switches, and power.
+The cockpit omits the exterior model. See [exterior authoring](exterior-models.md) for motion signs,
+lighting, fallback behavior, the generator, source restrictions, and offscreen tests.
+
+Additional hostile-input limits: 4 MiB per GLB, 128 nodes, 64 motion bindings, 16 lights, 90,000 expanded
+vertices, and 30,000 triangles. LOD1 must contain fewer triangles than LOD0. Only embedded-buffer GLB
+2.0 triangles with POSITION/NORMAL and material base colors are supported. The texture/image cap is
+zero in this profile. External buffers, images, sparse accessors, embedded animations, morph targets,
+skins, cycles, duplicate names, invalid indices, and out-of-buffer accessors are rejected before
+rendering. New profile capabilities require an explicit compatible format extension or version change.
+
+The standalone [exterior schema](../schema/exterior.json) describes embedded definitions such as
+`aircraft/corvid/exterior.json`. `PackContents.assets` carries the bounded GLB bytes alongside JSON
+`files`; Rust integrations call `AircraftCatalog::install_pack_with_assets` for manifests with
+exteriors. The original JSON-only `install_pack` API remains available for older packs.

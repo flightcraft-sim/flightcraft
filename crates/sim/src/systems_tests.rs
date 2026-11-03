@@ -452,3 +452,38 @@ fn depleted_battery_sheds_main_bus_before_essential_fuel_pump() {
             .powered
     );
 }
+
+#[test]
+fn exterior_lights_follow_common_switch_breaker_and_master_power() {
+    use crate::{Sim, Start};
+    use flightcraft_aero::LoadSwitch;
+    let mut sim = Sim::new(&Start::Runway).unwrap();
+    assert!(!sim.light_powered(LoadSwitch::Nav));
+    sim.set_systems(SystemSetting::Switch {
+        switch: SystemSwitch::Lights,
+        on: true,
+    })
+    .unwrap();
+    sim.step(1);
+    assert!(sim.light_powered(LoadSwitch::Nav));
+    assert!(sim.light_powered(LoadSwitch::Landing));
+    sim.set_systems(SystemSetting::Breaker {
+        load: "lights".into(),
+        closed: false,
+    })
+    .unwrap();
+    sim.step(1);
+    assert!(!sim.light_powered(LoadSwitch::Nav));
+    sim.set_systems(SystemSetting::Breaker {
+        load: "lights".into(),
+        closed: true,
+    })
+    .unwrap();
+    sim.set_systems(SystemSetting::Switch {
+        switch: SystemSwitch::Master,
+        on: false,
+    })
+    .unwrap();
+    sim.step(1);
+    assert!(!sim.light_powered(LoadSwitch::Landing));
+}

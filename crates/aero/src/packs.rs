@@ -13,6 +13,13 @@ pub const MAX_PACKS: usize = 64;
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PackManifest {
+    /// Version 1 manifests remain readable; exterior assets require version 2.
+    #[serde(default = "manifest_v1")]
+    #[schemars(range(min = 1, max = 2))]
+    pub format_version: u32,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(length(max = 16))]
+    pub exterior: Vec<crate::exterior::Exterior>,
     pub id: String,
     pub name: String,
     pub version: String,
@@ -53,7 +60,20 @@ pub fn validate_pack_path(path: &str) -> Result<(), AircraftError> {
     )
 }
 
+fn manifest_v1() -> u32 {
+    1
+}
+
+/// GLB paths share the portable path policy, with a different extension.
+pub fn validate_asset_path(path: &str) -> Result<(), AircraftError> {
+    require(path.ends_with(".glb"), "exterior.path", "requires .glb")?;
+    validate_pack_path(&format!("{}.json", path.strip_suffix(".glb").unwrap_or(path)))
+}
+
 impl PackManifest {
+    pub fn asset_paths(&self) -> BTreeSet<&str> {
+        self.exterior.iter().flat_map(|e| e.paths()).collect()
+    }
     pub fn from_json(text: &str) -> Result<Self, AircraftError> {
         require(
             text.len() <= MAX_MANIFEST_BYTES,
@@ -110,7 +130,34 @@ impl PackManifest {
             "pack.files",
             "requires 1 to 64 files",
         )?;
+        require(
+            (1..=2).contains(&self.format_version) && (self.exterior.is_empty() || self.format_version == 2),
+            "pack.format_version",
+            "exterior assets require pack format version 2",
+        )?;
+        require(self.exterior.len() <= 16, "pack.exterior", "at most 16 exteriors")?;
+        let mut aircraft = BTreeSet::new();
+        for e in &self.exterior {
+            e.validate()?;
+            require(
+                aircraft.insert(&e.aircraft),
+                "pack.exterior",
+                "duplicate aircraft exterior",
+            )?;
+        }
+        require(
+            self.files.len() + self.asset_paths().len() <= MAX_PACK_FILES,
+            "pack.files",
+            "at most 64 layer and asset files combined",
+        )?;
         let mut paths = BTreeSet::new();
+        for path in self.asset_paths() {
+            require(
+                paths.insert(path.to_ascii_lowercase()),
+                "exterior.path",
+                "ambiguous asset path",
+            )?;
+        }
         for file in &self.files {
             validate_pack_path(&file.path)?;
             // Case-insensitive duplicates are ambiguous across native file systems.
@@ -131,7 +178,22 @@ impl AircraftCatalog {
         manifest: &PackManifest,
         files: &BTreeMap<String, String>,
     ) -> Result<(), AircraftError> {
+        self.install_pack_with_assets(manifest, files, &BTreeMap::new())
+    }
+
+    pub fn install_pack_with_assets(
+        &mut self,
+        manifest: &PackManifest,
+        files: &BTreeMap<String, String>,
+        assets: &BTreeMap<String, Vec<u8>>,
+    ) -> Result<(), AircraftError> {
         manifest.validate()?;
+        require(
+            assets.len() == manifest.asset_paths().len()
+                && assets.keys().all(|k| manifest.asset_paths().contains(k.as_str())),
+            "pack.assets",
+            "missing or unlisted assets",
+        )?;
         require(
             files.len() == manifest.files.len(),
             "pack.files",
@@ -154,6 +216,14 @@ impl AircraftCatalog {
             )?;
             total = total.saturating_add(text.len());
         }
+        for bytes in assets.values() {
+            require(
+                bytes.len() <= crate::exterior::MAX_MODEL_BYTES,
+                "exterior.size",
+                "model exceeds 4 MiB",
+            )?;
+            total = total.saturating_add(bytes.len());
+        }
         require(total <= MAX_PACK_BYTES, "pack_size", "pack exceeds 8 MiB")?;
         let mut candidate = self.clone();
         for entry in &manifest.files {
@@ -172,6 +242,80 @@ impl AircraftCatalog {
                     id: manifest.id.clone(),
                 },
             )?;
+        }
+        for definition in &manifest.exterior {
+            require(
+                candidate.source(FileKind::Aircraft, &definition.aircraft)
+                    == Some(&DefinitionSource::Pack {
+                        id: manifest.id.clone(),
+                    }),
+                "exterior.aircraft",
+                "exterior must belong to an aircraft defined by this pack",
+            )?;
+            let resolved = candidate.resolve_aircraft(&definition.aircraft)?;
+            require(
+                (definition.span_m as f64 / resolved.aircraft.geometry.span_m - 1.).abs() <= 0.02,
+                "exterior.span_m",
+                "exterior and family span differ by more than 2%",
+            )?;
+            require(
+                (definition.prop_diameter_m as f64 / resolved.aircraft.propulsion.prop_diameter_m - 1.).abs()
+                    <= 0.02,
+                "exterior.prop_diameter_m",
+                "exterior and engine propeller diameters differ by more than 2%",
+            )?;
+            for part in &definition.moving_parts {
+                if matches!(
+                    part.motion,
+                    crate::exterior::Motion::Oleo
+                        | crate::exterior::Motion::Wheel
+                        | crate::exterior::Motion::Steering
+                ) {
+                    require(
+                        part.gear_index < resolved.aircraft.geometry.gear.len(),
+                        "exterior.gear_index",
+                        "unresolved gear contact",
+                    )?;
+                }
+            }
+            require(
+                resolved.aircraft.identity.registration.is_empty()
+                    || definition.registration.text == resolved.aircraft.identity.registration,
+                "exterior.registration",
+                "painted registration differs from aircraft identity",
+            )?;
+            for light in &definition.lights {
+                if let Some(load) = &light.power_load {
+                    require(
+                        resolved
+                            .installed_systems
+                            .definition
+                            .as_ref()
+                            .is_some_and(|d| d.electrical.loads.iter().any(|l| &l.id == load)),
+                        "exterior.power_load",
+                        "unresolved electrical load",
+                    )?;
+                }
+            }
+            let model = |path: &str| -> Result<_, AircraftError> {
+                let bytes = assets
+                    .get(path)
+                    .ok_or_else(|| error("exterior.path", "missing asset"))?;
+                crate::exterior::load_glb(bytes, definition).map(std::sync::Arc::new)
+            };
+            let asset = crate::exterior::ExteriorAsset {
+                definition: definition.clone(),
+                lod0: model(&definition.model)?,
+                lod1: model(&definition.lod1)?,
+            };
+            require(
+                asset.lod1.triangles < asset.lod0.triangles,
+                "exterior.lod1",
+                "LOD1 must reduce triangles",
+            )?;
+            candidate
+                .exteriors
+                .insert(definition.aircraft.clone(), std::sync::Arc::new(asset));
         }
         candidate.validate()?;
         *self = candidate;

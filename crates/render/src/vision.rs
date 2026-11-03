@@ -208,6 +208,7 @@ impl SyntheticVision {
         projection.z_axis.x = 1. - 2. * (250. - x) / w;
         projection.z_axis.y = 2. * (125. - y) / h - 1.;
         gpu::Uniform {
+            landing_light: [0.; 4],
             atmosphere: [0., 1., 0., 0.],
             fog_color: palette.sky_horizon,
             clouds: [[0.; 4]; 3],
