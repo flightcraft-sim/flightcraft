@@ -57,6 +57,8 @@ Ranked: work goes roughly top to bottom. Each item names what it depends on. The
 | 33 | Tablet apps, plates, charts, and procedures: desktop GDL 90 and simulator position broadcast to EFB apps (done; traffic encoders ready, no traffic source yet), sectional and terminal chart tiles (done), FAA plates with georeferenced overlay, CIFP procedures in the GPS with ILS and VOR signals, and opt-in live weather and TFRs ([spec](docs/efb-and-charts.md)) | 30, 32 |
 | 34 | Training for students: weather and IMC visuals with a view-limiting hood, radios with CTAF traffic and towered ATC, readback checks, scenario scripts, emergencies graded against the POH, and instrument tasks ([spec](docs/training.md)) | 21, 31, 33 |
 | 35 | Freeze v1 formats (aircraft pack, panel, scenario, lesson, skin, hardware profile) with `format_version`, readers for every released version, `cargo xtask migrate`, and CI testing golden samples against `main` ([plan](docs/contributor-program.md#5-versioned-formats)) | 34 core phases |
+| 36 | Real-world scenery as OGC 3D Tiles: NAIP imagery on 3DEP lidar terrain with real trees, buildings, and water for 1N7 and the Delaware Water Gap (in progress); then open city models for New York and user-key streaming providers (Esri, then Google through Cesium ion), all with no card and no spend ([plan](docs/scenery-sources.md)) | 18 |
+| 37 | Photorealistic aircraft exteriors: Blender-scripted Sling 2 with PBR paint, glass, interior, and baked detail; full PBR exterior shading in the engine (in progress; [format](docs/exterior-models.md)) | 15 |
 
 ## Aircraft equipment
 
