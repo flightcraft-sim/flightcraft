@@ -98,17 +98,17 @@ offline cache. It only prints upload commands. Review and upload the generated a
 ## Radio identity
 
 Aircraft identity objects accept optional `registration` and `spoken_type` strings. Old packs still
-load; their compatibility default is the first display-name word and training registration N1234B.
+load; their compatibility default is the first display-name word and training registration N371FC.
 Declare both in new aircraft packs, for example:
 
 ```json
-{"registration":"N1234B","spoken_type":"Sling"}
+{"registration":"N371FC","spoken_type":"Sling"}
 ```
 
 `comms.callsign` reads the identity or overrides either field. The radio window exposes the same
 controls, and the app persists the choice. A typed `{callsign}` placeholder expands to the current
 spoken form. US registrations use the aircraft type in place of November: “Sling One Two Three
-Four Bravo,” then “Sling Three Four Bravo” after a completed, unblocked call on that carrier.
+Four Bravo,” then “Sling One Foxtrot Charlie” after a completed, unblocked call on that carrier.
 Changing frequency starts a new contact. `abbreviate_after_contact:false` retains full callsigns.
 On actual ATC frequencies, use an abbreviation only after the controller initiates it. The
 [tower and approach rules](atc.md) initiate the abbreviated reply after hearing the full first call. Traffic uses fictional civil GA registrations with

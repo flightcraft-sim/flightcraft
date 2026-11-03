@@ -122,7 +122,7 @@ mod tests {
                 id: "flight-123".into(),
                 created_unix_ms: 123,
                 aircraft: "corvid".into(),
-                registration: "N1234B".into(),
+                registration: "N371FC".into(),
                 duration_s: 42.,
                 events: 0,
             },

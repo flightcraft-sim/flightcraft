@@ -31,7 +31,7 @@ mod browser {
         first
             .execute(
                 "comms.callsign",
-                json!({"registration":"N1234B","spoken_type":"Sling"}),
+                json!({"registration":"N371FC","spoken_type":"Sling"}),
             )
             .map_err(|e| e.to_string())?;
         first
@@ -72,12 +72,12 @@ mod browser {
             .flight_archive_status()
             .loaded
             .ok_or("loaded record missing")?;
-        if loaded.summary.registration != "N1234B"
+        if loaded.summary.registration != "N371FC"
             || !loaded
                 .record
                 .events
                 .iter()
-                .any(|e| e.text.contains("Sling One Two Three Four Bravo"))
+                .any(|e| e.text.contains("Sling Three Seven One Foxtrot Charlie"))
         {
             return Err("saved radio identity/transmission changed".into());
         }
@@ -104,7 +104,7 @@ mod browser {
             s.run(FlightLoad { id: id.clone() }).map_err(|e| e.to_string())?;
             wait(&s).await?;
             let exported = s.run(FlightExport { id: Some(id) }).map_err(|e| e.to_string())?;
-            if !exported.json.contains("Sling One Two Three Four Bravo") {
+            if !exported.json.contains("Sling Three Seven One Foxtrot Charlie") {
                 return Err("reopened browser record differs".into());
             }
             Ok("PASS: previously saved IndexedDB flight survived a complete browser restart and exported its original transcript.".into())

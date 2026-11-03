@@ -5,7 +5,9 @@
     "id": "corvid-standard",
     "display_name": "Corvid",
     "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N373FC",
+    "spoken_type": "Corvid"
   },
   "family": "corvid-family",
   "engine": "corvid-engine",

@@ -106,7 +106,7 @@ fn atc_session(airport: &str) -> flightcraft_control::Session {
     );
     s.execute(
         "comms.callsign",
-        serde_json::json!({"registration":"N1234B","spoken_type":"Sling"}),
+        serde_json::json!({"registration":"N371FC","spoken_type":"Sling"}),
     )
     .unwrap();
     s.execute("sim.set_controls", serde_json::json!({"throttle":0.,"brake":1.}))

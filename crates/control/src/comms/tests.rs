@@ -570,22 +570,22 @@ fn pack_callsigns_override_first_contact_abbreviation_and_channel_change() {
     let identity = s
         .execute(
             "comms.callsign",
-            json!({"registration":"N1234B","spoken_type":"Sling"}),
+            json!({"registration":"N371FC","spoken_type":"Sling"}),
         )
         .unwrap();
-    assert_eq!(identity["current"], "Sling One Two Three Four Bravo");
+    assert_eq!(identity["current"], "Sling Three Seven One Foxtrot Charlie");
     s.execute(
         "comms.transmit",
         json!({"text":"Blairstown traffic, {callsign} taxiing runway 25, Blairstown"}),
     )
     .unwrap();
     advance(&mut s, 12);
-    assert_eq!(s.pilot_callsign().current, "Sling Three Four Bravo");
+    assert_eq!(s.pilot_callsign().current, "Sling One Foxtrot Charlie");
     s.execute("comms.tune", json!({"radio":1,"channel_khz":123500}))
         .unwrap();
     s.execute("comms.tune", json!({"radio":1,"channel_khz":122800}))
         .unwrap();
-    assert_eq!(s.pilot_callsign().current, "Sling One Two Three Four Bravo");
+    assert_eq!(s.pilot_callsign().current, "Sling Three Seven One Foxtrot Charlie");
     let before = s.pilot_callsign().registration;
     assert!(
         s.execute("comms.callsign", json!({"registration":"bad/../name"}))
@@ -708,7 +708,7 @@ fn instructor_waits_for_a_timely_call_to_finish_before_declaring_it_missing() {
     advance(&mut s, 16);
     s.execute(
         "comms.transmit",
-        json!({"text":"Blairstown traffic, Sling One Two Three Four Bravo, taxiing runway 25, Blairstown"}),
+        json!({"text":"Blairstown traffic, Sling Three Seven One Foxtrot Charlie, taxiing runway 25, Blairstown"}),
     )
     .unwrap();
     // Cross the twenty-second phase deadline while the spoken call is still on the carrier.

@@ -19,7 +19,7 @@ fn training_session() -> Session {
     tune_ctaf(&mut s);
     s.execute(
         "comms.callsign",
-        json!({"registration":"N1234B","spoken_type":"Sling"}),
+        json!({"registration":"N371FC","spoken_type":"Sling"}),
     )
     .unwrap();
     s
@@ -338,7 +338,7 @@ fn render_sling(out: &std::path::Path, path: &std::path::Path) {
     value["equipment"]["elements"].as_array_mut().unwrap().push(json!({"id":"radio-audio-preview","position":[570.,140.],"size":[190.,34.],"element":{"kind":"audio_panel"}}));
     for element in value["equipment"]["elements"].as_array_mut().unwrap() {
         if element["id"] == "registration" {
-            element["element"]["text"] = json!("N1234B");
+            element["element"]["text"] = json!("N371FC");
         }
     }
     *panel = serde_json::to_string(&value).unwrap();
@@ -352,7 +352,7 @@ fn render_sling(out: &std::path::Path, path: &std::path::Path) {
     tune_ctaf(&mut s);
     s.execute(
         "comms.callsign",
-        json!({"registration":"N1234B","spoken_type":"Sling"}),
+        json!({"registration":"N371FC","spoken_type":"Sling"}),
     )
     .unwrap();
     crate::panel_preview::render_equipment_panel(&mut s, 1728, 968)

@@ -387,7 +387,7 @@ mod preview {
             .unwrap()
             .text
             .clone();
-        assert!(radio.contains("Sling One Two Three Four Bravo"));
+        assert!(radio.contains("Sling Three Seven One Foxtrot Charlie"));
         for (name, text, voice, radio) in [
             ("intercom", intercom.as_str(), 10, false),
             ("pilot-ctaf", radio.as_str(), 0, true),

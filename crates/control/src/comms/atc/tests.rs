@@ -70,7 +70,7 @@ fn initial(s: &mut Session, airport: &str, kind: FacilityKind, request: &str) {
 fn spoken_grammar_covers_callsigns_frequencies_runways_and_numbers() {
     let s = atc_session("KABE");
     let m = parse_pilot(
-        "Allentown approach, Sling One Two Three Four Bravo, with information A, runway zero six, heading two seven zero, maintain three thousand five hundred, squawk zero four five six, contact ground one two one point niner zero",
+        "Allentown approach, Sling Three Seven One Foxtrot Charlie, with information A, runway zero six, heading two seven zero, maintain three thousand five hundred, squawk zero four five six, contact ground one two one point niner zero",
         &s.pilot_callsign(),
     );
     assert!(m.callsign_present);
@@ -675,7 +675,7 @@ fn natural_craft_readbacks_and_ifr_bravo_authority() {
         panic!("CRAFT");
     };
     let text = format!(
-        "Cleared to Allentown as filed, climb and maintain {}, expect five thousand in ten, departure {}, squawk {}, Sling Three Four Bravo",
+        "Cleared to Allentown as filed, climb and maintain {}, expect five thousand in ten, departure {}, squawk {}, Sling One Foxtrot Charlie",
         phraseology::altitude(*altitude_ft),
         phraseology::frequency(*departure_khz),
         phraseology::digits(code.parse().unwrap(), 4)
@@ -983,7 +983,7 @@ fn automatic_handoff_waits_until_the_pilot_finishes_transmitting() {
     s.comms.atc.takeoff = true;
     s.execute(
         "comms.transmit",
-        json!({"text":"Allentown Tower, Sling One Two Three Four Bravo, departing southwest."}),
+        json!({"text":"Allentown Tower, Sling Three Seven One Foxtrot Charlie, departing southwest."}),
     )
     .unwrap();
     s.monitor_atc();

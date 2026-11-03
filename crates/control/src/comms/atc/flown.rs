@@ -93,7 +93,7 @@ impl Flight {
         .unwrap();
         s.execute(
             "comms.callsign",
-            json!({"registration":"N1234B","spoken_type":"Sling"}),
+            json!({"registration":"N371FC","spoken_type":"Sling"}),
         )
         .unwrap();
         s.execute("sim.set_controls", json!({"brake":1.,"throttle":0.}))
@@ -292,7 +292,7 @@ impl Flight {
         s.execute("sim.reset",json!({"world":"atc-route","start":{"kind":"geographic_air","position":{"latitude_deg":lat,"longitude_deg":lon},"height_agl_m":agl,"airspeed_mps":36.,"heading_rad":heading_rad}})).unwrap();
         s.execute(
             "comms.callsign",
-            json!({"registration":"N1234B","spoken_type":"Sling"}),
+            json!({"registration":"N371FC","spoken_type":"Sling"}),
         )
         .unwrap();
         s.execute("atc.configure", json!({"airport":airport})).unwrap();

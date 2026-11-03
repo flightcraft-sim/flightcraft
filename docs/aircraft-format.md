@@ -283,7 +283,7 @@ relative, no-symlink policy as layers, but end in `.glb`.
       "gear_index": 0, "wheel_radius_m": 0.19
     }],
     "lights": [{"node": "nav_left", "kind": "nav_red"}],
-    "registration": {"node": "registration", "text": "N1234C"}
+    "registration": {"node": "registration", "text": "N373FC"}
   }]
 }
 ```

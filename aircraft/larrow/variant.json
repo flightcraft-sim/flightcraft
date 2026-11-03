@@ -5,7 +5,9 @@
     "id": "larrow-standard",
     "display_name": "Larrow",
     "description": "Original single-seat, low-wing aerobatic trainer with a steerable tailwheel and fixed-pitch propeller.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N925FC",
+    "spoken_type": "Larrow"
   },
   "family": "larrow-family",
   "engine": "larrow-engine",

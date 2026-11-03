@@ -5,7 +5,9 @@
     "id": "corvid-standby",
     "display_name": "Corvid standby pair",
     "description": "Fictional two-seat, high-wing, fixed-gear trainer.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N373FC",
+    "spoken_type": "Corvid"
   },
   "family": "corvid-family",
   "engine": "corvid-engine",

@@ -5,7 +5,9 @@
     "id": "corvid-glass-variant",
     "display_name": "Corvid glass",
     "description": "Integrated electronic flight displays with independent standby power.",
-    "author": "FlightCraft contributors"
+    "author": "FlightCraft contributors",
+    "registration": "N373FC",
+    "spoken_type": "Corvid"
   },
   "family": "corvid-family",
   "engine": "corvid-engine",

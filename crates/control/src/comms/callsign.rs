@@ -136,7 +136,7 @@ impl Session {
         let (registration, kind) = self.comms.callsign_override.clone().unwrap_or_else(|| {
             (
                 if identity.registration.is_empty() {
-                    "N1234B".into()
+                    "N371FC".into()
                 } else {
                     identity.registration.clone()
                 },
