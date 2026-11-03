@@ -239,3 +239,70 @@ fn mcp_reports_the_same_failure_flags_as_the_panel() {
             .unwrap()
     );
 }
+
+#[test]
+fn runway_reset_is_ready_for_departure_without_advancing_time() {
+    for id in ["corvid-glass", "corvid-standby"] {
+        let mut s = Session::new().unwrap();
+        s.execute(
+            "aircraft.load",
+            json!({"source":{"kind":"installed","id":id},"reset":true}),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            s.execute("sim.reset", json!({"start":{"kind":"runway"}}))
+                .unwrap();
+            assert_eq!(s.sim().state().time_s, 0.);
+            let systems = s.sim().systems();
+            assert!(systems.engine_running && systems.controls.master && systems.controls.avionics);
+            if id == "corvid-glass" {
+                let state = s.glass_state();
+                assert!(state.air_data.powered && state.air_data.attitude_valid);
+                assert!(state.standby.powered && state.standby.attitude_valid);
+                assert_eq!(state.air_data.alignment_remaining_s, 0.);
+                assert_eq!(state.standby.alignment_remaining_s, 0.);
+                assert!(!state.pfd_failed);
+            } else {
+                let state = s.execute("avionics.state", json!({})).unwrap();
+                assert_eq!(state["electronic_attitude"]["attitude_valid"], true);
+                assert_eq!(state["electronic_attitude"]["aligning"], false);
+                assert_eq!(
+                    state["electronic_hsi"]["reversion_attitude"]["attitude_valid"],
+                    true
+                );
+            }
+            s.execute(
+                "systems.set",
+                json!({"setting":{"kind":"switch","switch":"avionics","on":false}}),
+            )
+            .unwrap();
+        }
+    }
+}
+
+#[test]
+fn named_airport_runway_reset_aligns_sources_at_the_runway_attitude() {
+    let terrain = if let Some(path) = std::env::var_os("FLIGHTCRAFT_TEST_TERRAIN") {
+        std::path::PathBuf::from(path)
+    } else {
+        require_region_data!();
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain")
+    };
+    let root = terrain.join("eastern-pa");
+    let mut s = Session::new().unwrap();
+    s.install_region(read_region(&root).unwrap()).unwrap();
+    s.execute(
+        "aircraft.load",
+        json!({"source":{"kind":"installed","id":"corvid-glass"}}),
+    )
+    .unwrap();
+    s.execute(
+        "sim.reset",
+        json!({"world":"eastern-pa","start":{"kind":"airport_runway","airport":"1N7","end":"07"}}),
+    )
+    .unwrap();
+    let state = s.glass_state();
+    assert!(state.air_data.attitude_valid && state.standby.attitude_valid);
+    assert!((state.air_data.heading_rad - s.sim().readout().heading_rad).abs() < 1e-6);
+    assert_eq!(s.sim().state().time_s, 0.);
+}

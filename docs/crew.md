@@ -202,6 +202,10 @@ restore normal rate. The director uses cockpit, wing, chase, tower, and flyby vi
 Taxi exits are sampled at 0.5 m spacing for excessive grades, surface steps, and water. Without
 a safe path, the pilot stops on the runway; it never drives blindly off an unverified edge.
 
+Before takeoff, the crew holds the brakes until every installed attitude source is valid, including
+independent standby units. While aligning or failed it says, “Waiting for the attitude display to
+align.” Repairing a source does not bypass its normal alignment delay.
+
 The flight state machine includes before-takeoff checks, acceleration and rotation, best-rate
 climb, navigation legs, descent, a 45-degree entry to left downwind, base, final, flare, rollout,
 and a terrain-checked taxi-to-clear manoeuvre. An already aligned aircraft can join straight-in.

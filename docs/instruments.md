@@ -204,7 +204,9 @@ Distance and bearing use a bounded WGS84 inverse geodesic. CDI is signed great-c
 distance from that origin along the selected course, positive to the right; the needle points
 toward the path. Full scale is 5 nm en route and 1 nm at or within 30 nm of the destination.
 Selecting a new course rotates the reference through the captured leg origin. Selecting a new
-direct-to captures a new origin. Reset clears the destination and restarts alignment.
+direct-to captures a new origin. Reset clears the destination. Runway resets represent a ready-for-departure
+aircraft with aligned attitude sources; power-up after a cold installation or power loss retains
+the 45 s alignment delay.
 
 Click either screen to open its shared controls and searchable airport list. Heading, course,
 baro, selected altitude, direct-to, power, and reversion changes produce `avionics.set` commands.
@@ -256,3 +258,11 @@ The standby heading readout shows the selected bug heading, with actual heading 
 Slip/skid and a turn-rate trend replace diagnostic roll/turn text. Normal bus status is hidden;
 battery operation is annunciated. Valid calm wind displays 000° / 0 KT, and unavailable wind
 retains dashes. All instrument labels suppress signed zero after rounding.
+
+The fixed main panel fits the main dash shell and glare shield, excluding unused authoring-canvas
+margins and the separately authored lower console. All dash instruments and switches stay inside
+the host with their proportions preserved. The **Console** button at the panel's lower right opens
+an interactive **Lower console** window for controls below the dash, including the Sling fuel
+selector and its OFF guard. It uses the same `systems.set` and `equipment.set` commands as the
+installed controls; the fixed panel does not draw or accept input for those hidden controls.
+Full-panel capture/export and individual screen elements retain their complete authored geometry.

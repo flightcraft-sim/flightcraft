@@ -71,8 +71,9 @@ impl Canvas {
             .map_or(screen.layout.pixels_per_mm, |m| m.pixels_per_mm);
         let [sx, sy] = match screen.layout.units {
             Units::Px => {
-                let scale = (available.width() / cw).min(available.height() / ch);
-                [scale, scale]
+                // Logical pixel canvases fill their host. Pages preserve the proportions of
+                // instruments internally; monitor-calibrated millimetres remain physical.
+                [available.width() / cw, available.height() / ch]
             }
             Units::Mm => {
                 let [x, y] = calibration;
@@ -96,7 +97,10 @@ impl Canvas {
         for element in elements {
             let [x, y] = element.position;
             let [w, h] = element.size;
-            let rect = Rect::from_min_size(origin + egui::vec2(x * sx, y * sy), egui::vec2(w * sx, h * sy));
+            let rect = element_rect(screen, &element, available, [sx, sy], s);
+            #[cfg(test)]
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(egui::Id::new(("page-rect", element.id.clone())), rect));
             let page = self.pages.entry(element.id.clone()).or_insert_with(|| PageUi {
                 map: map::PlanningMap::with_root(self.chart_root.clone()),
                 ..Default::default()
@@ -309,6 +313,48 @@ impl Canvas {
             );
         }
     }
+}
+// The built-in outside/panel split follows the actual aircraft and current host size.
+// Authored layouts keep their element positions, including calibrated physical panels.
+pub(crate) fn element_rect(
+    screen: &Screen,
+    element: &Element,
+    available: Rect,
+    scale: [f32; 2],
+    s: &Session,
+) -> Rect {
+    let layout = &screen.layout;
+    let default_split =
+        matches!(layout.units, Units::Px)
+            && layout.canvas == [1280., 800.]
+            && layout.elements.len() == 2
+            && layout.elements.iter().any(|e| {
+                e.page.kind == PageKind::Outside && e.position == [0., 0.] && e.size == [1280., 480.]
+            })
+            && layout.elements.iter().any(|e| {
+                e.page.kind == PageKind::Panel && e.position == [0., 480.] && e.size == [1280., 320.]
+            });
+    if default_split && let Some(configuration) = s.aircraft_configuration() {
+        let height = instruments::view_panel_height(&configuration.panel, available.size(), true);
+        return if element.page.kind == PageKind::Panel {
+            Rect::from_min_max(
+                egui::pos2(available.left(), available.bottom() - height),
+                available.max,
+            )
+        } else {
+            Rect::from_min_max(
+                available.min,
+                egui::pos2(available.right(), available.bottom() - height),
+            )
+        };
+    }
+    let [x, y] = element.position;
+    let [w, h] = element.size;
+    let [sx, sy] = scale;
+    Rect::from_min_size(
+        available.min + egui::vec2(x * sx, y * sy),
+        egui::vec2(w * sx, h * sy),
+    )
 }
 trait ControlMut {
     fn control_mut(&mut self) -> &mut TouchControl;
@@ -550,6 +596,7 @@ impl PageUi {
                 self.scene
                     .set_propeller_power(readout.effective_controls.throttle as f32);
                 self.scene.show(ui, s.sim().state(), 1. / 60., theme::scene());
+                radio::captions(ui, s);
                 ui.painter().text(
                     ui.max_rect().center_bottom() - egui::vec2(0., 10.),
                     Align2::CENTER_BOTTOM,
@@ -594,6 +641,7 @@ impl PageUi {
                 }
                 self.panel.standalone = page.kind == PageKind::Instrument;
                 self.panel.fit_all = true;
+                self.panel.dash_only = page.kind == PageKind::Panel;
                 if self.panel.standalone {
                     for instrument in &mut configuration.panel.instruments {
                         instrument.position = [0., 0.];

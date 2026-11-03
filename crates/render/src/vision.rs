@@ -86,6 +86,49 @@ impl SyntheticVision {
         }
         self
     }
+    /// Advisory awareness bands are inhibited below 500 ft AGL, and below 1,000 ft
+    /// AGL within 1 NM of a runway. Terrain, runway outlines, and SVT remain visible.
+    pub fn terrain_awareness_enabled(&self) -> bool {
+        let north = f64::from(self.position.x);
+        let east = f64::from(self.position.y);
+        let agl = -f64::from(self.position.z) - self.world.ground(north, east).height_msl_m;
+        if agl < 500. * 0.3048 {
+            return false;
+        }
+        if agl >= 1000. * 0.3048 {
+            return true;
+        }
+        let near = |a: [f64; 2], b: [f64; 2]| {
+            let [dn, de] = [b[0] - a[0], b[1] - a[1]];
+            let length2 = dn * dn + de * de;
+            let along = if length2 > 0. {
+                ((north - a[0]) * dn + (east - a[1]) * de) / length2
+            } else {
+                0.
+            }
+            .clamp(0., 1.);
+            let n = north - a[0] - along * dn;
+            let e = east - a[1] - along * de;
+            n * n + e * e <= 1852. * 1852.
+        };
+        if self.world.runway_strips().is_empty() {
+            let runway = self.world.runway();
+            let [n, e, _] = runway.threshold_ned_m;
+            let heading = runway.heading_deg.to_radians();
+            !near(
+                [n, e],
+                [
+                    n + runway.length_m * heading.cos(),
+                    e + runway.length_m * heading.sin(),
+                ],
+            )
+        } else {
+            !self.world.runway_strips().iter().any(|r| {
+                let [a, b] = r.ends_m;
+                near(a, b)
+            })
+        }
+    }
     fn eye(&self) -> Vec3 {
         self.position + self.attitude * CORVID_PILOT_EYE_M
     }
@@ -185,7 +228,12 @@ impl SyntheticVision {
             water: palette.water,
             grid: palette.grid,
             eye: Vec4::new(eye.x, eye.y, eye.z, 0.).to_array(),
-            vision: [self.altitude_m, 1., 0., 0.],
+            vision: [
+                self.altitude_m,
+                1.,
+                if self.terrain_awareness_enabled() { 1. } else { 0. },
+                0.,
+            ],
             caution: palette.terrain_caution,
             warning: palette.terrain_warning,
         }
@@ -262,6 +310,33 @@ mod tests {
                     assert!((actual[1] - expected[1]).abs() < 0.001);
                 }
             }
+        }
+    }
+    #[test]
+    fn awareness_bands_are_inhibited_on_ground_low_and_near_runways() {
+        let world = World::default();
+        for (north, east, feet, enabled) in [
+            (0., 0., 0., false),
+            (4000., 4000., 499., false),
+            (0., 0., 750., false),
+            (0., 1851., 750., false),
+            (0., 1900., 750., true),
+            (4000., 4000., 750., true),
+            (0., 0., 1001., true),
+        ] {
+            let state = State {
+                position_m: [north, east, -feet * 0.3048],
+                ..State::default()
+            };
+            let view = SyntheticVision::new(&world, &state, 0., 0., feet * 0.3048).unwrap();
+            assert_eq!(
+                view.terrain_awareness_enabled(),
+                enabled,
+                "{north},{east} {feet}ft"
+            );
+            let uniform = view.uniform(crate::mesh::terrain_tests::palette());
+            assert_eq!(uniform.vision[1], 1., "SVT itself must stay on");
+            assert_eq!(uniform.vision[2], if enabled { 1. } else { 0. });
         }
     }
     #[test]

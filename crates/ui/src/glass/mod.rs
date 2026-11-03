@@ -166,6 +166,7 @@ fn engine_display(
     let (value, unit, precision) = match (v.unit.as_str(), units) {
         ("kg/h", EngineUnits::Us) => (v.value / (0.72 * 3.785411784), "gal/h", 1),
         ("kg", EngineUnits::Us) => (v.value / (0.72 * 3.785411784), "US gal", 1),
+        ("kPa", EngineUnits::Us) if v.label == "MANIFOLD" => (v.value / 3.386389, "inHg", 1),
         ("kPa", EngineUnits::Us) => (v.value / 6.894757293, "psi", 0),
         ("C", EngineUnits::Us) => (v.value * 1.8 + 32., "°F", 0),
         ("C", _) => (v.value, "°C", 0),
@@ -252,10 +253,14 @@ fn touch_engine(
     let mut s = state.clone();
     let mut bars = area;
     if style == EngineStripStyle::DialsAndBars {
-        let height = area.height() * 0.32;
+        let height = area.height() * 0.34;
         for (index, name) in ["RPM", "MANIFOLD"].into_iter().enumerate() {
-            let center = egui::pos2(area.center().x, area.top() + height * (index as f32 + 0.5) * 0.5);
-            let r = (height * 0.23).min(area.width() * 0.39);
+            let row = egui::Rect::from_min_size(
+                area.min + egui::vec2(0., height * 0.5 * index as f32),
+                egui::vec2(area.width(), height * 0.5),
+            );
+            let r = (row.height() * 0.27).min(row.width() * 0.32);
+            let center = egui::pos2(row.center().x, row.top() + r + 1.);
             ui.painter().circle_filled(center, r, crate::theme::DIAL);
             ui.painter()
                 .circle_stroke(center, r, egui::Stroke::new(1., crate::theme::MUTED));
@@ -266,16 +271,16 @@ fn touch_engine(
                     [center, center + egui::vec2(a.cos(), a.sin()) * r * 0.8],
                     egui::Stroke::new(1.3, crate::theme::ACCENT),
                 );
-                ui.painter().text(
-                    center + egui::vec2(0., r * 0.50),
-                    egui::Align2::CENTER_CENTER,
-                    format!(
-                        "{} {} {}",
-                        name,
-                        engine_display(v, input.options.engine).0,
-                        engine_display(v, input.options.engine).1
-                    ),
-                    egui::FontId::monospace((r * 0.24).max(5.)),
+                let (value, unit) = engine_display(v, input.options.engine);
+                let caption = egui::Rect::from_min_max(
+                    egui::pos2(row.left() + 2., center.y + r + 2.),
+                    row.right_bottom() - egui::vec2(2., 1.),
+                );
+                crate::panel_art::fit_text(
+                    ui,
+                    caption,
+                    &format!("{name} {value} {unit}"),
+                    (row.height() * 0.19).max(1.),
                     crate::theme::TEXT,
                 );
             }

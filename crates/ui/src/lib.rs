@@ -598,6 +598,164 @@ impl FlightCraftApp {
 }
 
 impl FlightCraftApp {
+    fn flight_menu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("Flight", |ui| {
+            let identity = self.session.sim().aircraft().identity.clone();
+            ui.menu_button(
+                RichText::new(&identity.display_name)
+                    .monospace()
+                    .size(11.0)
+                    .color(theme::MUTED),
+                |ui| match actions::aircraft_choices(&mut self.session) {
+                    Ok(choices) => {
+                        for aircraft in choices.aircraft {
+                            if ui
+                                .selectable_label(identity.id == aircraft.id, &aircraft.display_name)
+                                .on_hover_text(&aircraft.description)
+                                .clicked()
+                            {
+                                match actions::select_aircraft(&mut self.session, &aircraft.id) {
+                                    Ok(()) => {
+                                        self.paused = self.session.paused();
+                                        self.input.trim = 0.0;
+                                        self.scene.reset_camera();
+                                        self.error = None;
+                                    }
+                                    Err(e) => self.error = Some(e.to_string()),
+                                }
+                                ui.close();
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        self.error = Some(e.to_string());
+                    }
+                },
+            );
+            ui.menu_button("World", |ui| {
+                match self.session.run(flightcraft_control::ListWorlds {}) {
+                    Ok(choices) => {
+                        for world in choices.worlds {
+                            if ui
+                                .selectable_label(
+                                    self.session.sim().world().choice() == world.id,
+                                    &world.name,
+                                )
+                                .on_hover_text(&world.attribution)
+                                .clicked()
+                            {
+                                match self.session.run(flightcraft_control::Reset {
+                                    world: world.id,
+                                    start: flightcraft_control::ResetStart::Runway {},
+                                    weather: Some(self.session.pilot_weather()),
+                                    paused: Some(self.paused),
+                                }) {
+                                    Ok(_) => {
+                                        self.input.trim = 0.0;
+                                        self.scene.reset_camera();
+                                        self.error = None;
+                                    }
+                                    Err(e) => self.error = Some(e.to_string()),
+                                }
+                                ui.close();
+                            }
+                        }
+                    }
+                    Err(e) => self.error = Some(e.to_string()),
+                }
+            });
+            if self.session.sim().world().region().is_some() {
+                ui.menu_button("Start", |ui| {
+                    ui.label("Airport or name");
+                    ui.text_edit_singleline(&mut self.airport_search);
+                    match self
+                        .session
+                        .run(flightcraft_control::AirportQuery { nearest_to_m: None })
+                    {
+                        Ok(list) => {
+                            let search = self.airport_search.to_lowercase();
+                            egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
+                                for airport in list.airports.iter().filter(|a| {
+                                    a.ident.to_lowercase().contains(&search)
+                                        || a.name.to_lowercase().contains(&search)
+                                        || a.icao
+                                            .as_deref()
+                                            .is_some_and(|s| s.to_lowercase().contains(&search))
+                                }) {
+                                    ui.menu_button(format!("{} · {}", airport.ident, airport.name), |ui| {
+                                        for runway in &airport.runways {
+                                            for end in &runway.ends {
+                                                if ui
+                                                    .button(format!(
+                                                        "Runway {} · {:.0} × {:.0} m",
+                                                        end.ident, runway.length_m, runway.width_m
+                                                    ))
+                                                    .clicked()
+                                                {
+                                                    match self.session.run(flightcraft_control::Reset {
+                                                        world: self.session.sim().world().choice(),
+                                                        start:
+                                                            flightcraft_control::ResetStart::AirportRunway {
+                                                                airport: airport.ident.clone(),
+                                                                end: end.ident.clone(),
+                                                            },
+                                                        weather: Some(self.session.pilot_weather()),
+                                                        paused: Some(self.paused),
+                                                    }) {
+                                                        Ok(_) => {
+                                                            self.input.trim = 0.0;
+                                                            self.scene.reset_camera();
+                                                            self.error = None;
+                                                        }
+                                                        Err(e) => self.error = Some(e.to_string()),
+                                                    }
+                                                    ui.close();
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                            ui.separator();
+                            ui.label(&list.attribution);
+                        }
+                        Err(e) => self.error = Some(e.to_string()),
+                    }
+                });
+            }
+            {
+                let camera = match self.scene.camera {
+                    CameraMode::Chase => "Chase",
+                    CameraMode::Cockpit => "Cockpit",
+                    CameraMode::Wing => "Wing",
+                    CameraMode::Tower => "Tower",
+                    CameraMode::Flyby => "Flyby",
+                };
+                if ui
+                    .button(format!("{camera}  [{}]", self.keymap.label(Action::Camera)))
+                    .clicked()
+                    && let Err(e) = actions::toggle_camera(&mut self.session)
+                {
+                    self.error = Some(e.to_string());
+                }
+                if ui
+                    .button(format!("Reset  [{}]", self.keymap.label(Action::Reset)))
+                    .clicked()
+                {
+                    self.reset();
+                }
+                let pause = if self.paused { "Resume" } else { "Pause" };
+                if ui
+                    .button(format!("{pause}  [{}]", self.keymap.label(Action::Pause)))
+                    .clicked()
+                    && let Err(e) = actions::toggle_pause(&mut self.session, &mut self.paused)
+                {
+                    self.error = Some(e.to_string());
+                }
+            }
+        });
+    }
+
     /// One shell for both hosts. Automatic axes retain keyboard provenance in the Worker transport,
     /// so scripts and external levers keep ownership while menus use the regular command queue.
     pub(crate) fn show_main(
@@ -857,14 +1015,14 @@ impl FlightCraftApp {
                 });
         }
         let header = egui::TopBottomPanel::top("header")
-            .min_height(64.0)
+            .min_height(50.0)
             .frame(
                 egui::Frame::new()
                     .fill(theme::BACKGROUND)
                     .inner_margin(egui::Margin::symmetric(22, 10)),
             )
             .show(ctx, |ui| {
-                ui.horizontal_wrapped(|ui| {
+                ui.horizontal(|ui| {
                     let (logo, _) = ui.allocate_exact_size(egui::vec2(28.0, 30.0), egui::Sense::hover());
                     let c = logo.center();
                     ui.painter().line_segment(
@@ -876,162 +1034,52 @@ impl FlightCraftApp {
                         egui::Stroke::new(2.5_f32, theme::ACCENT),
                     );
                     ui.label(RichText::new("FlightCraft").size(23.0).strong());
-                    if ui.button(format!("Map [{}]", self.keymap.label(Action::PlanningMap))).clicked() { self.planning_map.open = !self.planning_map.open; }
+                    if ui
+                        .button(format!("Map [{}]", self.keymap.label(Action::PlanningMap)))
+                        .clicked()
+                    {
+                        self.planning_map.open = !self.planning_map.open;
+                    }
                     self.navigation.show(ui, &mut self.session);
                     ui.menu_button("Weather", |ui| {
-                        if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) { self.error = Some(e.to_string()); }
+                        if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) {
+                            self.error = Some(e.to_string());
+                        }
                     });
                     self.radio.button(ui, &self.keymap);
                     crate::crew::page_button(ui, &mut self.session, &self.keymap, &mut self.error);
-                    if ui.button("Scenarios").clicked() { self.scenarios.open = !self.scenarios.open; }
+                    if ui.button("Scenarios").clicked() {
+                        self.scenarios.open = !self.scenarios.open;
+                    }
                     if self.session.sim().failures() != flightcraft_sim::Failures::default() {
-                        ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| scenario::indications(ui,&self.session));
+                        ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| {
+                            scenario::indications(ui, &self.session)
+                        });
                     }
-                    for setting in self.procedure_controls.show(ui,&self.session){
-                        if let Err(error)=self.session.run(flightcraft_control::SetAvionics{setting}){self.error=Some(error.to_string());}
+                    for setting in self.procedure_controls.show(ui, &self.session) {
+                        if let Err(error) = self.session.run(flightcraft_control::SetAvionics { setting }) {
+                            self.error = Some(error.to_string());
+                        }
                     }
-                    ui.add_space(12.0);
-                    let identity = self.session.sim().aircraft().identity.clone();
-                    ui.menu_button(
-                        RichText::new(&identity.display_name)
-                            .monospace()
-                            .size(11.0)
-                            .color(theme::MUTED),
-                        |ui| match actions::aircraft_choices(&mut self.session) {
-                            Ok(choices) => {
-                                for aircraft in choices.aircraft {
-                                    if ui
-                                        .selectable_label(identity.id == aircraft.id, &aircraft.display_name)
-                                        .on_hover_text(&aircraft.description)
-                                        .clicked()
-                                    {
-                                        match actions::select_aircraft(&mut self.session, &aircraft.id) {
-                                            Ok(()) => {
-                                                self.paused = self.session.paused();
-                                                self.input.trim = 0.0;
-                                                                                self.scene.reset_camera();
-                                                self.error = None;
-                                            }
-                                            Err(e) => self.error = Some(e.to_string()),
-                                        }
-                                        ui.close();
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                self.error = Some(e.to_string());
-                            }
-                        },
-                    );
-                    ui.menu_button("World", |ui| {
-                        match self.session.run(flightcraft_control::ListWorlds {}) {
-                            Ok(choices) => {
-                                for world in choices.worlds {
-                                    if ui
-                                        .selectable_label(
-                                            self.session.sim().world().choice() == world.id,
-                                            &world.name,
-                                        )
-                                        .on_hover_text(&world.attribution)
-                                        .clicked()
-                                    {
-                                        match self.session.run(flightcraft_control::Reset {
-                                            world: world.id,
-                                            start: flightcraft_control::ResetStart::Runway {},
-                                            weather: Some(self.session.pilot_weather()),
-                                            paused: Some(self.paused),
-                                        }) {
-                                            Ok(_) => {
-                                                                                self.input.trim = 0.0;
-                                                self.scene.reset_camera();
-                                                self.error = None;
-                                            }
-                                            Err(e) => self.error = Some(e.to_string()),
-                                        }
-                                        ui.close();
-                                    }
-                                }
-                            }
-                            Err(e) => self.error = Some(e.to_string()),
+                    self.flight_menu(ui);
+                    ui.menu_button("Settings", |ui| {
+                        self.screens.menu(ui, &mut self.session);
+                        if ui.button("Preferences").clicked() {
+                            self.settings = !self.settings;
+                            ui.close();
                         }
                     });
                     if let Some((label, warning, attribution)) = airspace_status(&self.session) {
                         ui.separator();
-                        ui.label(RichText::new(label).size(11.0).color(if warning {
-                            theme::AMBER
-                        } else {
-                            theme::TEXT
-                        }))
-                        .on_hover_text(attribution);
-                    }
-                    if self.session.sim().world().region().is_some() {
-                        ui.menu_button("Start", |ui| {
-                            ui.label("Airport or name");
-                            ui.text_edit_singleline(&mut self.airport_search);
-                            match self.session.run(flightcraft_control::AirportQuery { nearest_to_m: None }) {
-                                Ok(list) => {
-                                    let search = self.airport_search.to_lowercase();
-                                    egui::ScrollArea::vertical().max_height(380.0).show(ui, |ui| {
-                                        for airport in list.airports.iter().filter(|a| a.ident.to_lowercase().contains(&search) || a.name.to_lowercase().contains(&search) || a.icao.as_deref().is_some_and(|s|s.to_lowercase().contains(&search))) {
-                                            ui.menu_button(format!("{} · {}", airport.ident, airport.name), |ui| {
-                                                for runway in &airport.runways {
-                                                    for end in &runway.ends {
-                                                        if ui.button(format!("Runway {} · {:.0} × {:.0} m", end.ident, runway.length_m, runway.width_m)).clicked() {
-                                                            match self.session.run(flightcraft_control::Reset {
-                                                                world: self.session.sim().world().choice(),
-                                                                start: flightcraft_control::ResetStart::AirportRunway { airport: airport.ident.clone(), end: end.ident.clone() },
-                                                                weather: Some(self.session.pilot_weather()), paused: Some(self.paused),
-                                                            }) {
-                                                                Ok(_) => { self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
-                                                                Err(e) => self.error = Some(e.to_string()),
-                                                            }
-                                                            ui.close();
-                                                        }
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    });
-                                    ui.separator();
-                                    ui.label(&list.attribution);
-                                }
-                                Err(e) => self.error = Some(e.to_string()),
-                            }
-                        });
-                    }
-                    {
-                        self.screens.menu(ui, &mut self.session);
-                        if ui.button("Preferences").clicked() {
-                            self.settings = !self.settings;
-                        }
-                        let camera = match self.scene.camera {
-                            CameraMode::Chase => "Chase",
-                            CameraMode::Cockpit => "Cockpit",
-                            CameraMode::Wing => "Wing",
-                            CameraMode::Tower => "Tower",
-                            CameraMode::Flyby => "Flyby",
-                        };
-                        if ui
-                            .button(format!("{camera}  [{}]", self.keymap.label(Action::Camera)))
-                            .clicked()
-                            && let Err(e) = actions::toggle_camera(&mut self.session)
-                        {
-                            self.error = Some(e.to_string());
-                        }
-                        if ui
-                            .button(format!("Reset  [{}]", self.keymap.label(Action::Reset)))
-                            .clicked()
-                        {
-                            self.reset();
-                        }
-                        let pause = if self.paused { "Resume" } else { "Pause" };
-                        if ui
-                            .button(format!("{pause}  [{}]", self.keymap.label(Action::Pause)))
-                            .clicked()
-                            && let Err(e) = actions::toggle_pause(&mut self.session, &mut self.paused)
-                        {
-                            self.error = Some(e.to_string());
-                        }
+                        ui.add(
+                            egui::Label::new(RichText::new(&label).size(11.0).color(if warning {
+                                theme::AMBER
+                            } else {
+                                theme::TEXT
+                            }))
+                            .truncate(),
+                        )
+                        .on_hover_text(format!("{label}\n{attribution}"));
                     }
                 });
             });

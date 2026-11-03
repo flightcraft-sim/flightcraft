@@ -474,6 +474,7 @@ fn valid_item(item: &DrawItem) -> bool {
 pub struct InstrumentPanel {
     pub standalone: bool,
     pub fit_all: bool,
+    pub(crate) dash_only: bool,
     modern: crate::modern::PanelUi,
     pub registry: Registry,
     pub options: DisplayOptions,
@@ -593,6 +594,7 @@ impl InstrumentPanel {
             self.generation = Some(generation);
         }
         if let Some(equipment) = &panel.equipment {
+            self.modern.dash_only = self.dash_only;
             let settings = self.modern.show(ui, equipment, input, &self.registry);
             self.heading_commands.append(&mut self.modern.avionics);
             return Ok(settings);
@@ -757,18 +759,19 @@ fn panel_dimensions(panel: &Panel) -> [f64; 2] {
         [w.max(x + iw), h.max(y + ih)]
     })
 }
-#[cfg(test)]
 pub(crate) fn view_panel_height(panel: &Panel, window: egui::Vec2, compact: bool) -> f32 {
-    let [w, h] = panel
-        .equipment
-        .as_ref()
-        .map_or_else(|| panel_dimensions(panel), |p| p.size);
+    let [w, h] = panel.equipment.as_ref().map_or_else(
+        || panel_dimensions(panel),
+        |p| {
+            crate::panel_art::dash_bounds(p).map_or(p.size, |r| [f64::from(r.width()), f64::from(r.height())])
+        },
+    );
     let controls = if panel.equipment.is_some() { 10. } else { 65. };
     (window.x * (h / w) as f32 + controls).min(window.y * if compact { 0.55 } else { 0.80 })
 }
 pub(crate) fn layout(panel: &Panel, rect: Rect) -> Vec<Rect> {
     let [width, height] = panel_dimensions(panel);
-    let rect = panel_fit(rect, [width as f32, height as f32], None);
+    let rect = panel_fit(rect, [width as f32, height as f32]);
     panel
         .instruments
         .iter()
@@ -801,17 +804,9 @@ pub(crate) fn fit_size(cell: Rect, [width, height]: [f32; 2]) -> Rect {
     let scale = (cell.width() / width).min(cell.height() / height);
     Rect::from_center_size(cell.center(), egui::vec2(width, height) * scale)
 }
-/// Preserve panel proportions and width; crop around essential instruments in short views.
-pub(crate) fn panel_fit(available: Rect, [width, height]: [f32; 2], essential: Option<[f32; 4]>) -> Rect {
-    let scale = available.width() / width;
-    let size = egui::vec2(width, height) * scale;
-    let top = if size.y <= available.height() {
-        available.bottom() - size.y
-    } else {
-        let [_, y, _, h] = essential.unwrap_or([0., 0., width, height * 0.65]);
-        (available.center().y - (y + h * 0.5) * scale).clamp(available.bottom() - size.y, available.top())
-    };
-    Rect::from_min_size(egui::pos2(available.left(), top), size)
+/// Fit the entire panel, including the lowest controls, inside its assigned host.
+pub(crate) fn panel_fit(available: Rect, size: [f32; 2]) -> Rect {
+    fit_size(available, size)
 }
 pub(crate) fn scaled(p: &Painter, cell: Rect, size: [f32; 2], draw: impl FnOnce(&Painter)) {
     let [width, _] = size;

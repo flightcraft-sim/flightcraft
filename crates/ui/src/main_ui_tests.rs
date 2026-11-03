@@ -27,7 +27,7 @@ impl BrowserMain {
         let owner = Session::from_worker_seed(seed.worker_seed()).unwrap();
         let snapshot: Snapshot =
             serde_json::from_str(&serde_json::to_string(&owner.screen_snapshot()).unwrap()).unwrap();
-        let mut presentation = Session::new().unwrap();
+        let mut presentation = Session::from_worker_seed(seed.worker_seed()).unwrap();
         presentation.apply_screen_snapshot(snapshot).unwrap();
         let app = FlightCraftApp::from_presentation(presentation, None, "WebGL 2", None).unwrap();
         let ctx = egui::Context::default();
@@ -44,7 +44,7 @@ impl BrowserMain {
         self.time += 1. / 60.;
         let output = self.ctx.run(
             egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280., 1200.))),
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280., 800.))),
                 time: Some(self.time),
                 events,
                 ..Default::default()
@@ -114,9 +114,8 @@ fn worker_snapshot_main_renders_native_header_and_windows() {
         "Weather",
         "Scenarios",
         "Procedures / NAV",
-        "World",
-        "Screens",
-        "Preferences",
+        "Flight",
+        "Settings",
     ] {
         assert!(web.has(label), "missing main menu {label}");
     }
@@ -129,14 +128,13 @@ fn worker_snapshot_main_renders_native_header_and_windows() {
                 "Weather",
                 "Scenarios",
                 "Procedures / NAV",
-                "World",
-                "Screens",
-                "Preferences",
+                "Flight",
+                "Settings",
             ]
             .contains(&s.as_str())
         })
         .collect();
-    let viewport = Rect::from_min_size(Pos2::ZERO, Vec2::new(1280., 1200.));
+    let viewport = Rect::from_min_size(Pos2::ZERO, Vec2::new(1280., 800.));
     for (i, (label, rect)) in header.iter().enumerate() {
         assert!(
             viewport.contains_rect(*rect),
@@ -149,6 +147,11 @@ fn worker_snapshot_main_renders_native_header_and_windows() {
             );
         }
     }
+    let top = header.first().unwrap().1.top();
+    assert!(
+        header.iter().all(|(_, r)| (r.top() - top).abs() < 12.),
+        "header wrapped: {header:?}"
+    );
     let menu_bottom = header.iter().map(|(_, r)| r.bottom()).fold(0.0_f32, f32::max);
     assert!(web.text.iter().any(|(s, _)| s.starts_with("Map [")));
     web.click("Scenarios");
@@ -170,9 +173,30 @@ fn worker_snapshot_main_renders_native_header_and_windows() {
         !web.app.scenarios.open,
         "the header button must close the window it opened"
     );
+    web.click("Settings");
     web.click("Preferences");
     assert!(web.has("Preferences and input"));
+    web.click("Settings");
     web.click("Preferences");
+    web.click("Settings");
+    web.click("Screens");
+    assert!(
+        web.has("Edit layouts (all windows)"),
+        "Screens menu did not open: {:?}",
+        web.text
+    );
+    web.render(vec![egui::Event::Key {
+        key: egui::Key::Escape,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: Default::default(),
+    }]);
+    web.click("Flight");
+    assert!(web.has("World"));
+    assert!(web.text.iter().any(|(s, _)| s.starts_with("Reset  [")));
+    assert!(web.text.iter().any(|(s, _)| s.starts_with("Pause  [")));
+    web.click("Flight");
     web.click("Procedures / NAV");
     assert!(web.has("CDI source"));
     assert!(web.has("NAV1"));
@@ -262,5 +286,70 @@ fn planning_map_releases_the_visible_panels_equipment_hold() {
             .take_screen_commands()
             .iter()
             .any(|(command, _)| command == "equipment.set")
+    );
+}
+
+#[test]
+fn regional_header_and_start_menu_fit_one_row_at_1280() {
+    let sample = crate::panel_fidelity_tests::geographic_session();
+    let world = sample
+        .sim()
+        .world()
+        .clone()
+        .with_airspace(flightcraft_world::AirspaceFile {
+            attribution: "Original header regression fixture".into(),
+            volumes: Vec::new(),
+        })
+        .unwrap();
+    let mut seed = Session::new().unwrap();
+    seed.install_region(world).unwrap();
+    seed.execute(
+        "sim.reset",
+        json!({"world":"panel-preview","start":{"kind":"runway"}}),
+    )
+    .unwrap();
+    let mut web = BrowserMain::with_seed(seed);
+    for _ in 0..3 {
+        web.render(Vec::new());
+    }
+    assert!(web.has("Class G"));
+    assert!(crate::theme::window_bounds(&web.ctx).top() <= 60.);
+    for (label, rect) in &web.text {
+        if rect.top() < 60. {
+            assert!(
+                rect.right() <= 1280.,
+                "header item outside window: {label} {rect:?}"
+            );
+            assert!(rect.bottom() <= 50., "header item wraps: {label} {rect:?}");
+        }
+    }
+    web.click("Flight");
+    assert!(web.has("World"));
+    assert!(web.has("Start"));
+    web.click("Start");
+    assert!(web.has("Airport or name"));
+}
+
+#[test]
+fn dash_console_button_exposes_fuel_selector_and_queues_the_regular_command() {
+    let mut web = BrowserMain::with_seed(Session::new().unwrap());
+    let mut snapshot = web.app.session.screen_snapshot();
+    snapshot.configuration.as_mut().unwrap().panel = crate::layout_tests::sling_panel();
+    web.app.session.apply_screen_snapshot(snapshot).unwrap();
+    for _ in 0..3 {
+        web.render(Vec::new());
+    }
+    assert!(web.has("Console"));
+    assert!(!web.has("FUEL SELECTOR"));
+    web.click("Console");
+    assert!(web.has("Lower console"));
+    assert!(web.has("FUEL SELECTOR"));
+    web.app.session.take_screen_commands();
+    web.click("RIGHT");
+    let commands = web.app.session.take_screen_commands();
+    assert!(
+        commands.iter().any(|(name, input)| name == "systems.set"
+            && input == &json!({"setting":{"kind":"fuel_selector","position":"right"}})),
+        "{commands:?}"
     );
 }

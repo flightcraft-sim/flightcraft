@@ -14,6 +14,9 @@ use flightcraft_sim::{
 
 #[derive(Default)]
 pub(crate) struct PanelUi {
+    pub dash_only: bool,
+    console_open: bool,
+    console: Option<Box<PanelUi>>,
     pub commands: Vec<EquipmentSetting>,
     pub avionics: Vec<AvionicsSetting>,
     controller: crate::autopilot::Controller,
@@ -157,6 +160,9 @@ impl PanelUi {
             });
             self.key_owned = false;
         }
+        if let Some(console) = &mut self.console {
+            commands.extend(console.cancel_holds());
+        }
         commands
     }
     fn system(&mut self, setting: ModernSetting) {
@@ -176,8 +182,24 @@ impl PanelUi {
         self.procedure_rect = None;
         let (available, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
         let [width, _] = panel.size;
-        let rect = crate::panel_preview::equipment_rect(panel, available);
+        let dash = self
+            .dash_only
+            .then(|| crate::panel_art::dash_bounds(panel))
+            .flatten();
+        let rect = if dash.is_some() {
+            crate::panel_preview::dash_rect(panel, available)
+        } else {
+            crate::panel_preview::equipment_rect(panel, available)
+        };
         let scale = rect.width() / width as f32;
+        #[cfg(test)]
+        {
+            let visible = dash.map_or(rect, |r| {
+                Rect::from_min_size(rect.min + r.min.to_vec2() * scale, r.size() * scale)
+            });
+            ui.ctx()
+                .data_mut(|data| data.insert_temp(egui::Id::new("painted-equipment-bounds"), visible));
+        }
         if panel.shell.is_none() {
             ui.painter().rect(
                 rect,
@@ -195,7 +217,15 @@ impl PanelUi {
                 egui::StrokeKind::Inside,
             );
         }
-        crate::panel_art::shell(ui, rect, panel);
+        if dash.is_some() {
+            let mut artwork = panel.clone();
+            if let Some(shell) = &mut artwork.shell {
+                shell.centre_console = None;
+            }
+            crate::panel_art::shell(ui, rect, &artwork);
+        } else {
+            crate::panel_art::shell(ui, rect, panel);
+        }
         let Some(glass) = input.glass else {
             return Vec::new();
         };
@@ -217,6 +247,12 @@ impl PanelUi {
             )
         });
         for e in &panel.elements {
+            if dash.is_some_and(|r| {
+                !r.expand(0.01)
+                    .contains_rect(crate::panel_art::installation_rect(e))
+            }) {
+                continue;
+            }
             if hosted_audio && matches!(e.element, PanelElement::AudioPanel) {
                 continue;
             }
@@ -983,6 +1019,35 @@ impl PanelUi {
                 position: KeyPosition::On,
             });
             self.key_owned = false;
+        }
+        if let Some(dash) = dash {
+            let button = Rect::from_min_size(
+                available.right_bottom() - egui::vec2(94., 31.),
+                egui::vec2(88., 25.),
+            );
+            if ui.put(button, egui::Button::new("Console")).clicked() {
+                self.console_open = true;
+            }
+            if self.console_open {
+                let console = crate::panel_art::console_panel(panel, dash);
+                let mut runtime = self.console.take().unwrap_or_default();
+                egui::Window::new("Lower console")
+                    .enabled(ui.is_enabled())
+                    .id(ui.id().with("lower-console"))
+                    .constrain_to(t::window_bounds(ui.ctx()))
+                    .open(&mut self.console_open)
+                    .fixed_size(egui::vec2(300., 300.))
+                    .show(ui.ctx(), |ui| {
+                        settings.extend(runtime.show(ui, &console, input, registry));
+                    });
+                if !self.console_open {
+                    self.commands.extend(runtime.cancel_holds());
+                }
+                self.commands.append(&mut runtime.commands);
+                self.avionics.append(&mut runtime.avionics);
+                self.maps.append(&mut runtime.maps);
+                self.console = Some(runtime);
+            }
         }
         settings
     }

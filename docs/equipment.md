@@ -354,22 +354,22 @@ The fidelity preview uses original analytic terrain, independent of downloaded d
 
 ## Window fit and essential instruments
 
-Panel views and pack previews fit the panel width with a uniform scale. Short windows crop
-vertically around the essential instruments; tall windows anchor the panel at the bottom.
-Cockpit views retain the outside scene above and behind the glare shield. Dedicated hardware
-and multiple-screen layouts retain their independently specified physical fit.
+Panel views fit the main dash with a uniform scale, using the full available width or height.
+For shells with a separately authored centre console, the fitted bounds cover the dash outline
+and glare shield. Controls below that dash open through **Console → Lower console**. Pack
+previews fit the complete authored panel. Both fits keep their visible controls inside the host.
+Dedicated hardware and multiple-screen layouts retain their independently specified physical fit.
 
 Equipment panels may set `essential: [left, top, width, height]` in panel millimetres. The
-rectangle must be finite, positive, and wholly inside `size`. Its centre anchors vertical
-cropping when the complete panel is taller than the viewport. Without it, the host uses the
-upper instrument area, allowing a lower console to crop first. The transform is shared by
-artwork, controls, maps, and preview crops, so hit targets follow the visible equipment.
+rectangle must be finite, positive, and wholly inside `size`. It remains accepted as panel
+metadata; visible geometry now determines the fit. Artwork, controls, maps, and preview crops
+share the same transform, so hit targets follow the visible equipment.
 
 The ignored `render_layout_previews` UI test captures the equipment and panel-fidelity demos,
 Corvid PFD and MFD, and an optional external pack at 1920×1080 under `out/layout/after/`.
 
 `panel_preview::equipment_transform` returns the pixel-space left, top, and uniform scale
-used by equipment captures, so comparison tools can locate crops after vertical anchoring.
+used by complete equipment captures, so comparison tools can locate crops after fitting.
 The ignored `render_layout_cockpit_previews` test adds GPU captures of the outside scene
 behind the demo panels and optional external pack under `out/layout/after/`.
 ## Audio panel and COM reception

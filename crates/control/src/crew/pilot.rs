@@ -206,6 +206,13 @@ impl Crew {
                 )
             });
         let mut phase = self.state.phase;
+        if phase == PilotPhase::Takeoff && r.on_ground && !departure_attitude_valid(s) {
+            let waiting = "Waiting for the attitude display to align.";
+            self.last_speech = r.time_s;
+            self.change(s, PilotPhase::BeforeTakeoff, waiting);
+            s.crew_say(waiting.into());
+            phase = self.state.phase;
+        }
         if matches!(phase, PilotPhase::BeforeTakeoff)
             && r.time_s - self.phase_since > 8.
             && self.departure_authorized(s)
@@ -220,8 +227,19 @@ impl Crew {
                 self.state.phase = PilotPhase::Refused;
                 return;
             }
-            self.change(s,PilotPhase::Takeoff,"Checks complete: engine, electrical power, runway alignment, performance, and wind. Taking off.");
-            phase = self.state.phase;
+            if !departure_attitude_valid(s) {
+                let waiting = "Waiting for the attitude display to align.";
+                if self.state.reason != waiting {
+                    s.crew_say(waiting.into());
+                    self.last_speech = r.time_s;
+                }
+                self.state.reason = waiting.into();
+                // Continue through the normal BeforeTakeoff guidance below: brakes held,
+                // idle power. A failed source cannot release this gate either.
+            } else {
+                self.change(s,PilotPhase::Takeoff,"Checks complete: engine, electrical power, runway alignment, performance, and wind. Taking off.");
+                phase = self.state.phase;
+            }
         }
         if phase == PilotPhase::Takeoff && dep_height > 15. && !r.on_ground {
             self.change(
@@ -718,4 +736,18 @@ impl Crew {
         }
         self.narrate_landmarks(s, phase, position, r.heading_grid_rad, r.time_s);
     }
+}
+
+/// Check every installed attitude source, including independent standby computers.
+fn departure_attitude_valid(s: &Session) -> bool {
+    let systems = s.sim.systems();
+    let installed = |id: &str| systems.electrical.loads.iter().any(|load| load.id == id);
+    let glass = s.sim.glass_computers();
+    (!installed("glass_ahrs") || glass.primary.attitude_valid)
+        && (!installed("glass_pfd") || !glass.pfd_failed)
+        && (!installed("glass_standby") || glass.standby.attitude_valid)
+        && (!systems.avionics.installed
+            || (systems.avionics.electronic_attitude.attitude_valid
+                && systems.avionics.electronic_hsi.reversion_attitude.attitude_valid))
+        && (installed("glass_ahrs") || systems.avionics.installed || systems.sensed.attitude_valid)
 }

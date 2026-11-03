@@ -580,6 +580,9 @@ impl Command for Reset {
         if let Some(configuration) = &session.selected_configuration {
             replacement.configure_systems(configuration)?;
         }
+        if matches!(start, Start::Runway | Start::RunwayAt { .. }) {
+            replacement.prepare_departure();
+        }
         if session.flight_archive.autosave_enabled {
             session.save_flight()?;
         }

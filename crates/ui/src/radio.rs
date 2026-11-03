@@ -67,7 +67,6 @@ impl RadioUi {
         }
         let state = s.comms_state();
         self.speech.observe(s, master_gain);
-        captions(ctx, s);
         let submitted = std::mem::take(&mut self.submit);
         if self.open {
             egui::Window::new("Audio panel and radios")
@@ -562,7 +561,7 @@ pub fn panel(
             });
     }
 }
-pub fn captions(ctx: &egui::Context, s: &Session) {
+pub fn captions(ui: &egui::Ui, s: &Session) {
     if !s.comms_state().panel.captions {
         return;
     }
@@ -574,23 +573,32 @@ pub fn captions(ctx: &egui::Context, s: &Session) {
         .rev()
         .find(|e| e.is_spoken() && e.reception == Reception::Heard && now - e.time_s - e.duration_s < 7.0)
     {
-        egui::TopBottomPanel::top("radio_caption")
-            .frame(egui::Frame::new().fill(theme::RAISED).inner_margin(8))
-            .show(ctx, |ui| {
-                ui.label(
-                    RichText::new(format!(
-                        "{}{} · {}",
-                        if event.is_simulated_atc() {
-                            "Simulated ATC · "
-                        } else {
-                            ""
-                        },
-                        event_speaker(event),
-                        event.text
-                    ))
-                    .color(theme::TEXT),
-                );
-            });
+        let area = ui.max_rect();
+        let text = format!(
+            "{}{} · {}",
+            if event.is_simulated_atc() {
+                "Simulated ATC · "
+            } else {
+                ""
+            },
+            event_speaker(event),
+            event.text
+        );
+        let mut job = egui::text::LayoutJob::simple(
+            text,
+            egui::FontId::proportional(14.),
+            theme::TEXT,
+            (area.width() - 48.).clamp(1., 884.),
+        );
+        job.wrap.max_rows = 2;
+        let galley = ui.painter().layout_job(job);
+        let rect = egui::Rect::from_center_size(
+            area.center_bottom() - egui::vec2(0., 32. + galley.size().y * 0.5),
+            galley.size() + egui::vec2(16., 10.),
+        );
+        let painter = ui.painter().with_clip_rect(ui.max_rect());
+        painter.rect_filled(rect, 4., theme::BACKGROUND.gamma_multiply(0.85));
+        painter.galley(rect.min + egui::vec2(8., 5.), galley, theme::TEXT);
     }
 }
 pub fn event_speaker(event: &flightcraft_control::Transmission) -> String {

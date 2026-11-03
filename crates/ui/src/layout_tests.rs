@@ -232,7 +232,7 @@ fn pfd_content_has_under_one_percent_unassigned_plain_background() {
 }
 
 #[test]
-fn panels_cover_at_least_ninety_five_percent_of_common_view_widths() {
+fn panels_use_available_width_without_clipping_in_short_hosts() {
     let catalog = flightcraft_aero::AircraftCatalog::builtins().unwrap();
     let mut audit = Vec::new();
     for (width, height) in [(1280., 720.), (1920., 1080.), (2560., 1440.), (390., 844.)] {
@@ -241,7 +241,7 @@ fn panels_cover_at_least_ninety_five_percent_of_common_view_widths() {
             let panel = catalog.resolve_aircraft(id).unwrap().panel;
             let cells = crate::instruments::layout(&panel, view);
             let bounds = cells.into_iter().fold(egui::Rect::NOTHING, |a, b| a.union(b));
-            assert!(bounds.intersect(view).width() / width >= 0.95, "{id}: {bounds:?}");
+            assert!(view.expand(0.1).contains_rect(bounds), "{id}: {bounds:?}");
             for compact in [false, true] {
                 let host = egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -264,7 +264,7 @@ fn panels_cover_at_least_ninety_five_percent_of_common_view_widths() {
                     },
                 );
                 assert!(
-                    bounds.intersect(host).width() / width >= 0.95,
+                    host.expand(0.1).contains_rect(bounds),
                     "{id} compact={compact}: {bounds:?}"
                 );
             }
@@ -306,24 +306,21 @@ fn panels_cover_at_least_ninety_five_percent_of_common_view_widths() {
                 );
                 let bounds = crate::panel_preview::equipment_rect(&panel, host);
                 assert!(
-                    bounds.intersect(host).width() / width >= 0.95,
+                    host.expand(0.1).contains_rect(bounds),
                     "{pack} compact={compact}: {bounds:?}"
                 );
             }
             for essential in [None, Some([80., 90., 1120., 430.])] {
                 panel.essential = essential;
                 let fit = crate::panel_preview::equipment_rect(&panel, view);
-                assert!(fit.intersect(view).width() / width >= 0.95);
+                assert!(view.expand(0.1).contains_rect(fit));
+                assert!(
+                    (fit.width() - view.width()).abs() < 0.1 || (fit.height() - view.height()).abs() < 0.1
+                );
                 let [w, h] = panel.size;
                 assert!((f64::from(fit.width() / fit.height()) - w / h).abs() < 1e-5);
-                if height < fit.height()
-                    && let Some([_, y, _, h]) = essential
-                {
-                    let cy = fit.top() + (y + h * 0.5) as f32 * fit.width() / w as f32;
-                    assert!((cy - view.center().y).abs() < 1.);
-                }
             }
-            audit.push(serde_json::json!({"panel":pack,"view":[width,height],"width_fraction":1.}));
+            audit.push(serde_json::json!({"panel":pack,"view":[width,height],"width_fraction":crate::panel_preview::equipment_rect(&panel,view).width()/width}));
         }
     }
     let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/layout");
@@ -383,4 +380,251 @@ fn wide_pfd_keeps_hsi_cardinal_labels_on_a_circle() {
         }
         assert_eq!(cardinals, 4);
     }
+}
+
+/// The packaged Sling panel is kept locally so this regression runs offline in CI.
+pub(crate) fn sling_panel() -> flightcraft_aero::Panel {
+    let file = serde_json::from_str(include_str!("../tests/fixtures/sling2-panel.json")).unwrap();
+    let panel = match file {
+        flightcraft_aero::LayerFile::Panel(panel) => Some(panel),
+        _ => None,
+    };
+    panel.unwrap()
+}
+
+#[test]
+fn main_outside_and_complete_panels_cover_central_area_at_desktop_sizes() {
+    use flightcraft_control::Session;
+    for (width, height) in [(1280., 800.), (1440., 900.), (1920., 1080.)] {
+        for id in ["sling2", "corvid", "larrow"] {
+            let mut seed = Session::new().unwrap();
+            if id != "sling2" {
+                seed.execute(
+                    "aircraft.load",
+                    serde_json::json!({"source":{"kind":"installed","id":id},"reset":true}),
+                )
+                .unwrap();
+            }
+            let mut snapshot = seed.screen_snapshot();
+            if id == "sling2" {
+                snapshot.configuration.as_mut().unwrap().panel = sling_panel();
+            }
+            let panel = snapshot.configuration.as_ref().unwrap().panel.clone();
+            let mut presentation = Session::new().unwrap();
+            presentation.apply_screen_snapshot(snapshot).unwrap();
+            let mut app = crate::FlightCraftApp::from_presentation(presentation, None, "test", None).unwrap();
+            let ctx = egui::Context::default();
+            crate::theme::install(&ctx);
+            for _ in 0..3 {
+                let _ = ctx.run(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, height),
+                        )),
+                        ..Default::default()
+                    },
+                    |ctx| app.show_main(ctx, |_, _| Ok(())),
+                );
+            }
+            let outside = ctx
+                .data(|d| d.get_temp::<egui::Rect>(egui::Id::new(("page-rect", "page".to_owned()))))
+                .unwrap();
+            let host = ctx
+                .data(|d| d.get_temp::<egui::Rect>(egui::Id::new(("page-rect", "panel".to_owned()))))
+                .unwrap();
+            let central = ctx.available_rect();
+            // Use the actual page allocations made by the main canvas, including shell margins.
+            assert!(
+                outside.left() <= 8. && width - outside.right() <= 8.,
+                "{id} {width}: {outside:?}"
+            );
+            assert!(
+                host.left() <= 8. && width - host.right() <= 8.,
+                "{id} {width}: {host:?}"
+            );
+            assert!((outside.bottom() - host.top()).abs() <= 1.);
+            assert!(outside.height() > height * 0.3);
+            assert!(host.bottom() <= height - 29.);
+            assert!(
+                central.expand(8.).contains_rect(outside.union(host)),
+                "{central:?}"
+            );
+            assert!((outside.top() - central.top()).abs() <= 8.);
+            assert!((host.bottom() - central.bottom()).abs() <= 8.);
+            assert!(
+                crate::theme::window_bounds(&ctx).top() <= 60.,
+                "header wrapped for {id}"
+            );
+            if let Some(equipment) = &panel.equipment {
+                let dash = crate::panel_art::dash_bounds(equipment);
+                let transform = if dash.is_some() {
+                    crate::panel_preview::dash_rect(equipment, host)
+                } else {
+                    crate::panel_preview::equipment_rect(equipment, host)
+                };
+                let scale = transform.width() / equipment.size[0] as f32;
+                let visible = dash.map_or(transform, |r| {
+                    egui::Rect::from_min_size(transform.min + r.min.to_vec2() * scale, r.size() * scale)
+                });
+                let painted = ctx
+                    .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("painted-equipment-bounds")))
+                    .unwrap();
+                assert!(
+                    (painted.min - visible.min).length() < 0.1 && (painted.max - visible.max).length() < 0.1,
+                    "main host did not paint the intended dash: {painted:?} vs {visible:?}"
+                );
+                assert!(
+                    host.expand(0.1).contains_rect(visible),
+                    "clipped dash: {visible:?} in {host:?}"
+                );
+                assert!(
+                    visible.width() >= host.width() * 0.92 || (visible.height() - host.height()).abs() < 0.1,
+                    "undersized dash {id}: {visible:?} in {host:?}"
+                );
+                for element in &equipment.elements {
+                    let logical = crate::panel_art::installation_rect(element);
+                    if dash.is_some_and(|r| !r.expand(0.01).contains_rect(logical)) {
+                        continue;
+                    }
+                    let rect = egui::Rect::from_min_size(
+                        transform.min + logical.min.to_vec2() * scale,
+                        logical.size() * scale,
+                    );
+                    assert!(
+                        host.expand(0.1).contains_rect(rect),
+                        "clipped dash control {}: {rect:?}",
+                        element.id
+                    );
+                }
+                if let Some(dash) = dash {
+                    let console = crate::panel_art::console_panel(equipment, dash);
+                    assert!(console.elements.iter().any(|e| e.id == "fuel_selector"));
+                    for e in &console.elements {
+                        assert!(
+                            egui::Rect::from_min_size(
+                                egui::Pos2::ZERO,
+                                egui::vec2(console.size[0] as f32, console.size[1] as f32)
+                            )
+                            .expand(0.1)
+                            .contains_rect(crate::panel_art::installation_rect(e))
+                        );
+                    }
+                }
+            } else {
+                // Switches occupy their own row before the conventional instrument grid.
+                let instrument_host = egui::Rect::from_min_max(host.min + egui::vec2(0., 65.), host.max);
+                for cell in crate::instruments::layout(&panel, instrument_host) {
+                    assert!(instrument_host.expand(0.1).contains_rect(cell));
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn crew_subtitles_are_at_most_two_lines_inside_view_and_do_not_move_shell() {
+    use flightcraft_control::{Session, presentation::Snapshot};
+    let mut seed = Session::new().unwrap();
+    seed.execute("crew.mode", serde_json::json!({"mode":"watching"}))
+        .unwrap();
+    seed.execute(
+        "crew.intent",
+        serde_json::json!({"intent":{"kind":"take_off","airport":"default","runway":"36"}}),
+    )
+    .unwrap();
+    let mut snapshot: Snapshot = seed.screen_snapshot();
+    let event = snapshot.record.events.last_mut().unwrap();
+    event.text = "A long crew subtitle for a full briefing. ".repeat(80);
+    let mut s = Session::new().unwrap();
+    s.apply_screen_snapshot(snapshot).unwrap();
+    let mut app = crate::FlightCraftApp::from_presentation(s, None, "test", None).unwrap();
+    let ctx = egui::Context::default();
+    crate::theme::install(&ctx);
+    let mut bounds = Vec::new();
+    for captions in [false, true] {
+        let mut snapshot = app.session.screen_snapshot();
+        snapshot.comms.panel.captions = captions;
+        app.session.apply_screen_snapshot(snapshot).unwrap();
+        let mut output = None;
+        for _ in 0..3 {
+            output = Some(ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280., 800.),
+                    )),
+                    ..Default::default()
+                },
+                |ctx| app.show_main(ctx, |_, _| Ok(())),
+            ));
+        }
+        let outside = ctx
+            .data(|d| d.get_temp::<egui::Rect>(egui::Id::new(("page-rect", "page".to_owned()))))
+            .unwrap();
+        bounds.push(outside);
+        let texts: Vec<_> = output
+            .unwrap()
+            .shapes
+            .into_iter()
+            .filter_map(|s| {
+                if let egui::Shape::Text(t) = s.shape {
+                    Some(t)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let caption = texts
+            .iter()
+            .find(|t| t.galley.text().contains("A long crew subtitle"));
+        assert_eq!(caption.is_some(), captions);
+        if let Some(caption) = caption {
+            assert!(caption.galley.rows.len() <= 2);
+            let rect = egui::Rect::from_min_size(caption.pos, caption.galley.size());
+            assert!(outside.contains_rect(rect));
+            assert!(rect.bottom() <= outside.bottom() - 24.);
+            assert!(rect.top() > outside.center().y);
+        }
+    }
+    assert_eq!(bounds[0], bounds[1], "captions changed layout");
+}
+
+#[test]
+#[ignore = "local corrected Sling bundle; writes CPU dash preview without an outside scene"]
+fn render_corrected_sling_dash_preview() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut s = flightcraft_control::Session::new().unwrap();
+    s.install_region(flightcraft_control::read_region(&root.join("assets/terrain/eastern-pa")).unwrap())
+        .unwrap();
+    s.install_pack(&flightcraft_control::read_pack(&root.join("out/polish/packs/sling2")).unwrap())
+        .unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"sling2"},"reset":true}),
+    )
+    .unwrap();
+    s.execute("sim.reset",serde_json::json!({"world":"eastern-pa","start":{"kind":"airport_runway","airport":"1N7","end":"07"}})).unwrap();
+    s.execute("sim.step", serde_json::json!({"steps":1})).unwrap();
+    let config = s.aircraft_configuration().unwrap().clone();
+    let state = s.glass_state();
+    let map = state.engine.iter().find(|e| e.label == "MANIFOLD").unwrap();
+    assert!((10. ..12.).contains(&(map.value / 3.386389)), "{} kPa", map.value);
+    let mut panel = InstrumentPanel::default();
+    panel.dash_only = true;
+    let image = crate::panel_preview::rasterize(1280, 396, |ui| {
+        panel
+            .show(
+                ui,
+                &config.panel,
+                InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+                    .with_aircraft(&config)
+                    .with_glass(&state)
+                    .with_autopilot(s.sim().installed_autopilot()),
+                s.flight_generation(),
+            )
+            .unwrap();
+    })
+    .unwrap();
+    image.save(root.join("out/polish/revised-dash-cpu.png")).unwrap();
 }

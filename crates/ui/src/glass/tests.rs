@@ -279,3 +279,150 @@ fn pfd_horizon_ladder_and_fixed_aircraft_symbol_share_the_camera_projection() {
         )));
     }
 }
+
+#[test]
+fn synthetic_vision_on_1n7_runway_keeps_terrain_without_awareness_bands() {
+    require_region_data!();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/eastern-pa");
+    let mut s = Session::new().unwrap();
+    s.install_region(flightcraft_control::read_region(&root).unwrap())
+        .unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"}}),
+    )
+    .unwrap();
+    s.execute("sim.reset",serde_json::json!({"world":"eastern-pa","start":{"kind":"airport_runway","airport":"1N7","end":"07"}})).unwrap();
+    let mut state = s.glass_state();
+    state.settings.synthetic_vision = true;
+    let draw = super::pfd::draw(
+        &state,
+        InstrumentInput::new(s.sim().systems(), 0.)
+            .with_glass(&state)
+            .with_vision(s.sim().world(), s.sim().state()),
+        false,
+    );
+    let views: Vec<_> = draw
+        .items
+        .iter()
+        .filter_map(|item| {
+            if let DrawItem::SyntheticVision { view, .. } = item {
+                Some(view)
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(views.len(), 1, "SVT should still show normal terrain");
+    assert!(
+        !views[0].terrain_awareness_enabled(),
+        "runway SVT must have neither caution nor warning shading"
+    );
+}
+
+#[test]
+fn manifold_pressure_uses_inches_of_mercury_and_oil_pressure_retains_psi() {
+    let value = |label: &str| flightcraft_control::EngineValue {
+        label: label.into(),
+        value: 37.25,
+        unit: "kPa".into(),
+        min: 0.,
+        max: 120.,
+        normal: [20., 105.],
+    };
+    assert_eq!(
+        super::engine_display(&value("MANIFOLD"), crate::instruments::EngineUnits::Us),
+        ("11.0".into(), "inHg".into())
+    );
+    assert_eq!(
+        super::engine_display(&value("OIL P"), crate::instruments::EngineUnits::Us).1,
+        "psi"
+    );
+    assert_eq!(
+        super::engine_display(&value("MANIFOLD"), crate::instruments::EngineUnits::Si).1,
+        "kPa"
+    );
+}
+
+#[test]
+fn engine_strip_captions_do_not_overlap_each_other_or_round_gauges() {
+    let session = crate::panel_fidelity_tests::geographic_session();
+    let mut state = session.glass_state();
+    state.engine.push(flightcraft_control::EngineValue {
+        label: "MANIFOLD".into(),
+        value: 37.25,
+        unit: "kPa".into(),
+        min: 0.,
+        max: 120.,
+        normal: [20., 105.],
+    });
+    for size in [egui::vec2(110., 380.), egui::vec2(63., 216.)] {
+        for units in [
+            crate::instruments::EngineUnits::Us,
+            crate::instruments::EngineUnits::Si,
+        ] {
+            let ctx = egui::Context::default();
+            crate::theme::install(&ctx);
+            let output = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default()
+                        .frame(egui::Frame::NONE)
+                        .show(ctx, |ui| {
+                            let mut input = InstrumentInput::new(session.sim().systems(), 0.);
+                            input.options.engine = units;
+                            super::touch_engine(
+                                ui,
+                                ui.max_rect(),
+                                &state,
+                                input,
+                                flightcraft_aero::modern::EngineStripStyle::DialsAndBars,
+                            );
+                        });
+                },
+            );
+            fn collect(shape: &egui::Shape, text: &mut Vec<(String, Rect)>, dials: &mut Vec<Rect>) {
+                match shape {
+                    egui::Shape::Text(t) => text.push((
+                        t.galley.text().into(),
+                        Rect::from_min_size(t.pos, t.galley.size()),
+                    )),
+                    egui::Shape::Circle(c) => dials.push(Rect::from_center_size(
+                        c.center,
+                        egui::Vec2::splat(c.radius * 2. + 2.),
+                    )),
+                    egui::Shape::Vec(shapes) => {
+                        for s in shapes {
+                            collect(s, text, dials);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let mut text = Vec::new();
+            let mut dials = Vec::new();
+            for shape in &output.shapes {
+                collect(&shape.shape, &mut text, &mut dials);
+            }
+            assert!(text.iter().any(|(t, _)| t.starts_with("MANIFOLD ")));
+            assert!(dials.len() >= 2);
+            for (i, (a, rect)) in text.iter().enumerate() {
+                assert!(
+                    Rect::from_min_size(Pos2::ZERO, size)
+                        .expand(0.1)
+                        .contains_rect(*rect),
+                    "clipped {a}: {rect:?}"
+                );
+                for dial in &dials {
+                    assert!(!rect.intersects(*dial), "{a} overlaps gauge: {rect:?} {dial:?}");
+                }
+                for (b, other) in text.iter().skip(i + 1) {
+                    assert!(!rect.intersects(*other), "{a} overlaps {b}");
+                }
+            }
+        }
+    }
+}

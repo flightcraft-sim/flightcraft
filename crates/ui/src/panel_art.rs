@@ -61,6 +61,49 @@ fn outline_points(outline: &Outline) -> Vec<[f64; 2]> {
             .collect(),
     }
 }
+/// The main dash excludes the separately authored lower console and unused canvas margins.
+pub(crate) fn dash_bounds(panel: &EquipmentPanel) -> Option<Rect> {
+    let shell = panel.shell.as_ref().filter(|s| s.centre_console.is_some())?;
+    let mut points = outline_points(&shell.outline);
+    if let Some(glare) = &shell.glare_shield {
+        points.extend(outline_points(glare));
+    }
+    let bounds = points.into_iter().fold(Rect::NOTHING, |rect, [x, y]| {
+        rect.union(Rect::from_min_max(
+            egui::pos2(x as f32, y as f32),
+            egui::pos2(x as f32, y as f32),
+        ))
+    });
+    bounds.is_positive().then_some(bounds)
+}
+pub(crate) fn installation_rect(e: &EquipmentInstallation) -> Rect {
+    Rect::from_min_size(
+        egui::pos2(e.position[0] as f32, e.position[1] as f32),
+        egui::vec2(e.size[0] as f32, e.size[1] as f32),
+    )
+}
+/// Rebase only the controls below the dash for an independent, interactive console host.
+pub(crate) fn console_panel(panel: &EquipmentPanel, dash: Rect) -> EquipmentPanel {
+    let mut console = panel.clone();
+    console
+        .elements
+        .retain(|e| !dash.expand(0.01).contains_rect(installation_rect(e)));
+    let bounds = console
+        .elements
+        .iter()
+        .fold(Rect::NOTHING, |a, e| a.union(installation_rect(e)));
+    console.size = [
+        f64::from(bounds.width().max(1.)),
+        f64::from(bounds.height().max(1.)),
+    ];
+    console.shell = None;
+    console.essential = None;
+    for e in &mut console.elements {
+        e.position[0] -= f64::from(bounds.left());
+        e.position[1] -= f64::from(bounds.top());
+    }
+    console
+}
 fn cross(a: Pos2, b: Pos2, c: Pos2) -> f32 {
     (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
 }

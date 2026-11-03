@@ -60,6 +60,11 @@ impl Ahrs {
             initial_seed: seed,
         }
     }
+    /// Seed a ready-for-departure source without advancing the simulation clock.
+    pub(crate) fn align(&mut self, state: State) {
+        self.q = state.attitude;
+        self.alignment_s = ALIGNMENT_S;
+    }
     pub fn hash_words(&self) -> Vec<u64> {
         let mut words = vec![
             u64::from(self.failed),

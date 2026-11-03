@@ -524,6 +524,29 @@ impl Sim {
         Ok(())
     }
 
+    /// A runway reset represents completed departure preparation. Power-cycle and
+    /// cold instrument installation still use their normal fixed-step alignment delay.
+    pub fn prepare_departure(&mut self) {
+        self.glass.primary.sensor.align(self.state);
+        self.glass.standby.sensor.align(self.state);
+        self.systems
+            .avionics
+            .electronic_attitude
+            .computer
+            .sensor
+            .align(self.state);
+        self.systems
+            .avionics
+            .electronic_hsi
+            .reversion_attitude
+            .computer
+            .sensor
+            .align(self.state);
+        self.refresh_glass_computers();
+        self.refresh_avionics(false);
+        self.refresh_equipment_sensors();
+    }
+
     #[must_use]
     pub fn systems(&self) -> &systems::SystemsState {
         &self.systems

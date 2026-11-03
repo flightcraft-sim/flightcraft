@@ -836,3 +836,128 @@ fn write_taxi_hold_diagnostics() {
     )
     .unwrap();
 }
+
+#[test]
+fn before_takeoff_holds_for_aligning_and_failed_attitude_sources() {
+    for (id, setting, repair) in [
+        (
+            "corvid-glass",
+            json!({"kind":"glass","setting":{"kind":"failure","target":"ahrs","failed":true}}),
+            json!({"kind":"glass","setting":{"kind":"failure","target":"ahrs","failed":false}}),
+        ),
+        (
+            "corvid-standby",
+            json!({"kind":"ahrs_failure","unit":"electronic_attitude","failed":true}),
+            json!({"kind":"ahrs_failure","unit":"electronic_attitude","failed":false}),
+        ),
+        (
+            "corvid-standby",
+            json!({"kind":"ahrs_failure","unit":"electronic_hsi","failed":true}),
+            json!({"kind":"ahrs_failure","unit":"electronic_hsi","failed":false}),
+        ),
+    ] {
+        let mut s = Session::new().unwrap();
+        call(
+            &mut s,
+            "aircraft.load",
+            json!({"source":{"kind":"installed","id":id},"reset":true}),
+        );
+        call(&mut s, "sim.reset", json!({"start":{"kind":"runway"}}));
+        call(&mut s, "avionics.set", json!({"setting":setting}));
+        activate(
+            &mut s,
+            json!({"kind":"take_off","airport":"default","runway":"36"}),
+        );
+        call(&mut s, "sim.step", json!({"steps":6000}));
+        assert_eq!(s.crew_state().phase, PilotPhase::BeforeTakeoff, "{id}");
+        assert!(s.sim().readout().on_ground);
+        assert!(s.sim().controls().brake >= 0.5);
+        assert_eq!(s.sim().controls().throttle, 0.);
+        let message = "Waiting for the attitude display to align.";
+        assert_eq!(s.crew_state().reason, message);
+        assert_eq!(
+            s.flight_record()
+                .events
+                .iter()
+                .filter(|e| e.text == message)
+                .count(),
+            1
+        );
+        call(&mut s, "avionics.set", json!({"setting":repair}));
+        call(&mut s, "sim.step", json!({"steps":4800}));
+        assert_eq!(
+            s.crew_state().phase,
+            PilotPhase::BeforeTakeoff,
+            "{id}: took off before alignment"
+        );
+        assert!(s.sim().controls().brake >= 0.5);
+        call(&mut s, "sim.step", json!({"steps":720}));
+        assert_eq!(
+            s.crew_state().phase,
+            PilotPhase::Takeoff,
+            "{id}: did not resume after alignment"
+        );
+    }
+}
+
+#[test]
+fn before_takeoff_waits_for_independent_glass_standby_alignment() {
+    let mut s = Session::new().unwrap();
+    call(
+        &mut s,
+        "aircraft.load",
+        json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    );
+    call(&mut s, "sim.reset", json!({"start":{"kind":"runway"}}));
+    // Model a freshly replaced standby computer while the primary remains ready.
+    s.sim_mut().glass_computers_mut().standby = Default::default();
+    s.sim_mut().refresh_glass_computers();
+    assert!(s.glass_state().air_data.attitude_valid);
+    assert!(!s.glass_state().standby.attitude_valid);
+    activate(
+        &mut s,
+        json!({"kind":"take_off","airport":"default","runway":"36"}),
+    );
+    call(&mut s, "sim.step", json!({"steps":4800}));
+    assert_eq!(s.crew_state().phase, PilotPhase::BeforeTakeoff);
+    assert_eq!(
+        s.crew_state().reason,
+        "Waiting for the attitude display to align."
+    );
+    assert!(s.sim().readout().on_ground && s.sim().controls().brake >= 0.5);
+    call(&mut s, "sim.step", json!({"steps":720}));
+    assert_eq!(s.crew_state().phase, PilotPhase::Takeoff);
+}
+
+#[test]
+fn before_takeoff_aborts_ground_roll_for_a_failed_attitude_display() {
+    let mut s = Session::new().unwrap();
+    call(
+        &mut s,
+        "aircraft.load",
+        json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    );
+    call(&mut s, "sim.reset", json!({"start":{"kind":"runway"}}));
+    activate(
+        &mut s,
+        json!({"kind":"take_off","airport":"default","runway":"36"}),
+    );
+    call(&mut s, "sim.step", json!({"steps":1080}));
+    assert_eq!(s.crew_state().phase, PilotPhase::Takeoff);
+    assert!(s.sim().readout().on_ground);
+    call(
+        &mut s,
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":{"kind":"failure","target":"pfd","failed":true}}}),
+    );
+    call(&mut s, "sim.step", json!({"steps":60}));
+    assert_eq!(s.crew_state().phase, PilotPhase::BeforeTakeoff);
+    assert_eq!(s.sim().controls().throttle, 0.);
+    assert!(s.sim().controls().brake >= 0.5);
+    assert!(
+        s.flight_record()
+            .events
+            .iter()
+            .any(|e| e.text == "Waiting for the attitude display to align.")
+    );
+}

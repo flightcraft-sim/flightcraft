@@ -185,7 +185,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     if i.kind == 1.0 || i.kind == 2.0 {
         fog = 1.0 - exp(-distance / 6800.0);
     }
-    if u.vision.y > 0.5 && (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0 || i.kind == 5.0) {
+    if u.vision.y > 0.5 && u.vision.z > 0.5 && (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0 || i.kind == 5.0) {
         let clearance = u.vision.x - i.world.y;
         let relief = 0.72 + 0.28 * max(dot(normal, sun), 0.0);
         if clearance <= 304.8 { color = u.caution.rgb * relief; }

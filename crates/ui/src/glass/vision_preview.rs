@@ -46,6 +46,56 @@ fn match_snapshot(glass: &mut GlassState, world: &flightcraft_world::World, pose
     glass.air_data.vertical_speed_mps = -pose.velocity_mps[2];
 }
 #[test]
+#[ignore = "requires a graphics adapter and fetched eastern-pa terrain; runway SVT pixel regression"]
+fn render_1n7_runway_without_terrain_awareness_bands() {
+    pollster::block_on(async {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut session = Session::new().unwrap();
+        session
+            .install_region(
+                flightcraft_control::read_region(&root.join("assets/terrain/eastern-pa")).unwrap(),
+            )
+            .unwrap();
+        session
+            .execute(
+                "sim.reset",
+                serde_json::json!({"world":"eastern-pa","start":{
+            "kind":"airport_runway","airport":"1N7","end":"07"}}),
+            )
+            .unwrap();
+        let world = session.sim().world();
+        let pose = session.sim().state();
+        let altitude = -pose.position_m[2];
+        let mut capture = Capture::new([1000, 440]).await;
+        let mut images = Vec::new();
+        // With inhibition, the real indicated altitude must produce exactly the same terrain
+        // pixels as an altitude far above all terrain bands. This catches a missing shader gate.
+        for indicated in [altitude, altitude + 2000.] {
+            let view = SyntheticVision::new(world, pose, 0., 0., indicated).unwrap();
+            assert!(!view.terrain_awareness_enabled());
+            for _ in 0..2 {
+                capture.frame += 4;
+                capture.draw(|ui| view.paint(ui.painter(), ui.max_rect()));
+            }
+            images.push(capture.image());
+        }
+        let changed = images[0]
+            .pixels()
+            .zip(images[1].pixels())
+            .filter(|(a, b)| a != b)
+            .count();
+        assert_eq!(changed, 0, "parked SVT painted awareness bands");
+        assert!(
+            images[0].pixels().any(|p| p != images[0].get_pixel(0, 0)),
+            "terrain capture must contain more than a blank background"
+        );
+        let directory = root.join("out/polish");
+        std::fs::create_dir_all(&directory).unwrap();
+        images[0].save(directory.join("svt-1n7-runway-gpu.png")).unwrap();
+        capture.validate().await;
+    });
+}
+#[test]
 #[ignore = "requires a graphics adapter; actual PFD terrain previews and pass-count checks"]
 fn render_synthetic_vision_previews() {
     pollster::block_on(async {
@@ -127,7 +177,7 @@ fn render_synthetic_vision_previews() {
             .image()
             .save(directory.join("kmmu-23-final-pfd.png"))
             .unwrap();
-        // A 50 ft AGL aircraft at the KMMU 23 threshold must see the warning band.
+        // A 50 ft AGL aircraft at the KMMU 23 threshold must retain normal terrain colours.
         let ground = world.ground(n, e).height_msl_m;
         let low = camera_pose([n, e, -ground - 50. * 0.3048], heading, 0.);
         let vision = SyntheticVision::new(&world, &low, 0., 0., ground + 50. * 0.3048).unwrap();
@@ -142,8 +192,8 @@ fn render_synthetic_vision_previews() {
                     && f32::from(p.0[0]) > f32::from(p.0[2]) * 1.6
             })
             .count();
-        assert!(red > 1000, "50 ft AGL terrain warning missing: {red}");
-        image.save(directory.join("kmmu-50ft-warning.png")).unwrap();
+        assert!(red < 1000, "50 ft AGL runway terrain must be inhibited: {red}");
+        image.save(directory.join("kmmu-50ft-inhibited.png")).unwrap();
         // Both physical displays request exactly the same view; 120 paint frames yield 30 passes.
         let before = synthetic_vision_stats(&capture.state).terrain_passes;
         capture.frame = 120;
@@ -247,18 +297,22 @@ fn render_synthetic_vision_previews() {
             .save(directory.join("equipment-panel.png"))
             .unwrap();
         capture.resize([1000, 880]);
-        // Pixel-level shader checks on level terrain, on both sides of each MFD threshold.
+        // Keep true height above the inhibition envelope while testing indicated-altitude bands.
+        // Separate low-height cases verify normal terrain colours with inhibition enabled.
         let flat = flightcraft_world::World::default();
-        for (height_ft, token) in [
-            (50., Some(crate::theme::DANGER)),
-            (100., Some(crate::theme::DANGER)),
-            (101., Some(crate::theme::AMBER)),
-            (1000., Some(crate::theme::AMBER)),
-            (1001., None),
+        for (true_height_ft, indicated_ft, token) in [
+            (2000., 50., Some(crate::theme::DANGER)),
+            (2000., 100., Some(crate::theme::DANGER)),
+            (2000., 101., Some(crate::theme::AMBER)),
+            (2000., 1000., Some(crate::theme::AMBER)),
+            (2000., 1001., None),
+            (50., 50., None),
+            (499., 499., None),
+            (750., 750., None),
         ] {
-            let height = height_ft * 0.3048;
+            let height = true_height_ft * 0.3048;
             let pose = camera_pose([-1000., 500., -height], 0., 0.);
-            let view = SyntheticVision::new(&flat, &pose, 0., 0., height).unwrap();
+            let view = SyntheticVision::new(&flat, &pose, 0., 0., indicated_ft * 0.3048).unwrap();
             capture.frame += 4;
             capture.draw(|ui| view.paint(ui.painter(), ui.max_rect()));
             let image = capture.image();
@@ -271,7 +325,7 @@ fn render_synthetic_vision_previews() {
                 });
                 assert!(
                     matches_hue && f32::from(p[0]) >= f32::from(expected[0]) * 0.7,
-                    "band at {height_ft} ft: {p:?}"
+                    "band at {indicated_ft} ft indicated, {true_height_ft} ft true AGL: {p:?}"
                 );
             } else {
                 assert!(

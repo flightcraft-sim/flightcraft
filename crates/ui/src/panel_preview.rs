@@ -6,12 +6,20 @@ use flightcraft_control::Session;
 use image::{Rgba, RgbaImage};
 use std::collections::BTreeMap;
 
-/// The same width fit used by equipment artwork, controls, maps, and comparison crops.
+/// The same complete-panel fit used by equipment artwork, controls, maps, and comparison crops.
 pub(crate) fn equipment_rect(panel: &flightcraft_aero::modern::EquipmentPanel, available: Rect) -> Rect {
-    crate::instruments::panel_fit(
-        available,
-        panel.size.map(|v| v as f32),
-        panel.essential.map(|r| r.map(|v| v as f32)),
+    crate::instruments::panel_fit(available, panel.size.map(|v| v as f32))
+}
+/// Transform the authored full canvas so the chosen dash viewport fits the host.
+pub(crate) fn dash_rect(panel: &flightcraft_aero::modern::EquipmentPanel, available: Rect) -> Rect {
+    let Some(dash) = crate::panel_art::dash_bounds(panel) else {
+        return equipment_rect(panel, available);
+    };
+    let fit = crate::instruments::fit_size(available, [dash.width(), dash.height()]);
+    let scale = fit.width() / dash.width();
+    Rect::from_min_size(
+        fit.min - dash.min.to_vec2() * scale,
+        egui::vec2(panel.size[0] as f32, panel.size[1] as f32) * scale,
     )
 }
 /// Pixel-space [left, top, scale] for crops of a full-window equipment capture.

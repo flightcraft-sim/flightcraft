@@ -18,7 +18,9 @@ indications carry validity flags, and the pilot sees a red X. No display changes
 suite, with independent instances for independently powered units. The AHRS integrates true
 body rates in a quaternion with deterministic seeded sensor noise, independent of vacuum gyros,
 with a 45-second alignment after power-up or an AHRS failure. Alignment advances only on fixed
-simulation steps. Paused frames and state queries consume no alignment or battery time.
+simulation steps. Paused frames and state queries consume no alignment or battery time. A runway
+`sim.reset` (including a named airport runway) starts ready for departure, with the engine running,
+avionics powered, and primary and standby attitude sources already aligned to the starting attitude.
 
 The ADC consumes `systems.sensed` pressure airspeed, altitude, and vertical speed. Sealed
 pitot and static lines therefore give physically consistent wrong indications. A blocked port
@@ -80,7 +82,17 @@ The camera and pitch ladder share a perspective projection with 2.5 local pixels
 the optical centre. Position and ground velocity come from the immutable flight snapshot, roll
 and pitch from the shared AHRS, and terrain awareness from indicated altitude. Terrain within
 1,000 ft below the aircraft is yellow, and terrain within 100 ft is red, including terrain above
-the aircraft. Shading within each band preserves slope relief. Water retains its water colour
+the aircraft. Shading within each band preserves slope relief. Awareness bands are inhibited
+on the ground and below 500 ft true AGL everywhere. From 500 to 1,000 ft AGL they remain inhibited
+within 1 NM horizontally of any loaded runway segment (including its thresholds), covering
+initial departure and final approach. Above 1,000 ft AGL the bands are enabled even near a runway.
+These are FlightCraft advisory-display design thresholds, not certified TAWS alert envelopes.
+Background for airport nuisance-alert inhibition is
+[FAA AC 23-18, Installation of Terrain Awareness and Warning System](https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_23-18.pdf).
+The 500/1,000 ft and 1 NM values are our presentation choices, not thresholds attributed to that AC. Inhibition uses true
+position and ground height, so a barometric setting error cannot paint the departure pavement red.
+Only the awareness colours are inhibited; terrain relief, runway outlines, and SVT remain visible.
+Water retains its water colour
 outside the awareness bands. Coverage depends on the loaded region; absent tiles are not invented.
 
 All enabled displays share one 750 × 285 terrain texture and one depth target, updated at most
@@ -100,9 +112,12 @@ not a certified terrain warning system.
 
 The ignored `render_synthetic_vision_previews` UI test captures actual GPU PFD images over the
 Kittatinny ridge near 1N7 and on final to KMMU 23 in `out/synthetic-vision`. It also checks the
-50 ft AGL red band at KMMU, the disabled pass, and sharing at 120 presentation frames per second.
+50 ft AGL awareness inhibition at KMMU, the disabled pass, and sharing at 120 presentation frames per second.
 It captures the equipment example with both touch displays showing synthetic vision and checks
 that the installed composition uses one terrain pass.
+The focused `render_1n7_runway_without_terrain_awareness_bands` GPU test compares runway-start
+terrain pixels at the actual indicated altitude and an altitude above all awareness bands. With
+inhibition, both pictures must match exactly; it writes `out/polish/svt-1n7-runway-gpu.png`.
 
 Rust panel hosts supply `InstrumentInput::with_vision(world, state)`; after installing the scene
 renderer, `render::initialize_synthetic_vision(render_state, context)` registers its shared image.
@@ -118,7 +133,11 @@ engine and systems. Temperature, oil pressure, current, and voltage bands use th
 original engineering estimates documented for the conventional instruments; they are not
 measured aircraft limits. The strip follows the same engine and fuel unit preference as the round instruments: US
 units by default (gal/h, psi, °F, and US gal), with SI available. OAT follows that temperature
-preference and includes its degree sign. Rounded zero has no minus sign.
+preference and includes its degree sign. Manifold pressure uses inHg in US mode (one decimal),
+while oil and fuel pressure retain psi; SI mode retains kPa. Rounded zero has no minus sign.
+
+The Sling pack's idle manifold pressure is an estimate (0.30 of ambient, about 9 inHg near sea
+level); its POH gives the 1,400 rpm minimum idle but no idle MAP.
 
 The nearest page lists eight airports with distance, bearing, and ETE. The flight-plan page
 shows the first eight airport legs with distance, initial magnetic bearing, and ETE; plans accept
