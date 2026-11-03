@@ -55,12 +55,15 @@ impl Command for ListAirspace {
 #[schemars(transform = coordinate_group)]
 pub struct AirspaceAt {
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -10000000, max = 10000000), transform = crate::without_default)]
     pub north_m: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -10000000, max = 10000000), transform = crate::without_default)]
     pub east_m: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -10000000, max = 10000000), transform = crate::without_default)]
     pub altitude_msl_m: Option<f64>,
 }

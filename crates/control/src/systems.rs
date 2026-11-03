@@ -54,49 +54,63 @@ impl Session {
 #[serde(deny_unknown_fields)]
 pub struct SetWeather {
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default, range(min = -60, max = 60))]
     pub temperature_c: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default, range(min = -100, max = 60))]
     pub dewpoint_c: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default, range(min = 80000, max = 110000))]
     pub sea_level_pressure_pa: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default)]
     #[schemars(range(min = 0, max = 360))]
     pub wind_from_deg: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default)]
     #[schemars(range(min = 0, max = 75))]
     pub wind_speed_mps: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "bool", transform = crate::without_default)]
     pub shear: Option<bool>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_world::TurbulenceLevel", transform = crate::without_default)]
     pub turbulence: Option<flightcraft_world::TurbulenceLevel>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u64", transform = crate::without_default)]
     pub seed: Option<u64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_world::WeatherPreset", transform = crate::without_default)]
     pub preset: Option<flightcraft_world::WeatherPreset>,
     #[schemars(length(max = 3))]
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Vec<flightcraft_world::CloudLayer>", transform = crate::without_default)]
     pub layers: Option<Vec<flightcraft_world::CloudLayer>>,
     #[schemars(range(min = 0.125, max = 100))]
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", transform = crate::without_default)]
     pub visibility_sm: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_world::Obscuration", transform = crate::without_default)]
     pub obscuration: Option<flightcraft_world::Obscuration>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_world::Precipitation", transform = crate::without_default)]
     pub precipitation: Option<flightcraft_world::Precipitation>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_world::TimeOfDay", transform = crate::without_default)]
     pub time_of_day: Option<flightcraft_world::TimeOfDay>,
 }

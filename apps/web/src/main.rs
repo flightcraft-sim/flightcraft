@@ -234,7 +234,20 @@ mod worker {
     }
     #[wasm_bindgen]
     pub fn screen_worker_snapshot() -> String {
-        OWNER.with_borrow(|owner|owner.as_ref().map(|o|serde_json::json!({"type":"snapshot","permission":"control","snapshot":o.session.screen_snapshot()}).to_string()).unwrap_or_default())
+        OWNER.with_borrow(|owner| {
+            owner
+                .as_ref()
+                .map(|owner| {
+                    serde_json::json!({
+                    "type": "snapshot",
+                    "permission": "control",
+                    "scripted": owner.script.active(),
+                    "external": js_sys::Date::now() < owner.external_until || owner.session.holds_active(),
+                    "snapshot": owner.session.screen_snapshot(),
+                }).to_string()
+                })
+                .unwrap_or_default()
+        })
     }
 }
 

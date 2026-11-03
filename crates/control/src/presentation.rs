@@ -250,3 +250,36 @@ impl Session {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{SetAutopilot, SetControls, SetWeather};
+    use serde_json::json;
+
+    #[test]
+    fn typed_patches_round_trip_over_the_screen_command_wire() {
+        let weather = serde_json::to_value(SetWeather {
+            preset: Some(flightcraft_world::WeatherPreset::Night),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(weather, json!({"preset":"night"}));
+        assert!(serde_json::from_value::<SetWeather>(weather).is_ok());
+        let controls = serde_json::to_value(SetControls {
+            throttle: Some(0.5),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(controls, json!({"throttle":0.5}));
+        assert!(serde_json::from_value::<SetControls>(controls).is_ok());
+        // This patch deliberately distinguishes omission from an explicit null (clear the hold).
+        let hold = serde_json::to_value(SetAutopilot {
+            wings_level: Some(None),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(hold, json!({"wings_level":null}));
+        let round_trip: SetAutopilot = serde_json::from_value(hold).unwrap();
+        assert_eq!(round_trip.wings_level, Some(None));
+    }
+}

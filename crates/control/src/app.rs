@@ -38,17 +38,21 @@ impl Default for CameraSettings {
 pub struct SetCamera {
     pub mode: CameraMode,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 2, max = 200), transform = crate::without_default)]
     pub distance_m: Option<f64>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 0, max = 100), transform = crate::without_default)]
     pub height_m: Option<f64>,
     /// Cockpit look: positive right, relative to the aircraft, in radians.
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -2.1, max = 2.1), transform = crate::without_default)]
     pub look_yaw_rad: Option<f64>,
     /// Cockpit look: positive up, relative to the aircraft, in radians.
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -1.4, max = 1.4), transform = crate::without_default)]
     pub look_pitch_rad: Option<f64>,
 }
@@ -94,6 +98,7 @@ impl Command for SetCamera {
 pub struct AppScreenshot {
     /// Directory for a newly created PNG. Required unless base64 is true.
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "String", transform = crate::without_default)]
     pub directory: Option<String>,
     #[serde(default)]

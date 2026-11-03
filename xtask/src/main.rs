@@ -153,21 +153,7 @@ fn ci() -> Result<(), String> {
     determinism()?;
     cargo(&["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"])?;
     cargo(&["test", "--workspace"])?;
-    cargo(&[
-        "check",
-        "--target",
-        "wasm32-unknown-unknown",
-        "-p",
-        "flightcraft-world",
-        "-p",
-        "flightcraft-aero",
-        "-p",
-        "flightcraft-sim",
-        "-p",
-        "flightcraft-control",
-        "-p",
-        "flightcraft-mcp",
-    ])?;
+    web::check_compile()?;
     eprintln!("xtask: ci passed (CI also runs cargo deny and the web build)");
     Ok(())
 }

@@ -25,26 +25,17 @@ pub mod script;
 pub mod theme;
 mod weather;
 
-#[cfg(not(target_arch = "wasm32"))]
 use eframe::egui::{self, RichText};
-#[cfg(not(target_arch = "wasm32"))]
 use flightcraft_control::Session;
 pub use flightcraft_control::{PackOptions, RegionOptions};
-#[cfg(not(target_arch = "wasm32"))]
 use flightcraft_render::{CameraMode, Scene};
-#[cfg(not(target_arch = "wasm32"))]
 use keymap::{Action, Keymap};
-#[cfg(target_arch = "wasm32")]
-pub use screens::web::ScreenApp as FlightCraftApp;
 
 #[cfg(not(target_arch = "wasm32"))]
 const PACKS_STORAGE: &str = "flightcraft.packs_directory.v1";
 
-#[cfg(not(target_arch = "wasm32"))]
 const KEYMAP_STORAGE: &str = "flightcraft.keymap.v1";
-#[cfg(not(target_arch = "wasm32"))]
 const DISPLAY_OPTIONS_STORAGE: &str = "flightcraft.instrument_units.v1";
-#[cfg(not(target_arch = "wasm32"))]
 const COMPACT_PANEL_STORAGE: &str = "flightcraft.compact_panel.v1";
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -100,8 +91,7 @@ pub struct AppOptions {
     pub regions: flightcraft_control::RegionOptions,
 }
 
-/// One session, one fixed-step accumulator, and read-only presentation of its state.
-#[cfg(not(target_arch = "wasm32"))]
+/// The main-window UI, presenting the session owner’s snapshots and sending it commands.
 pub struct FlightCraftApp {
     session: Session,
     efb_settings: flightcraft_control::EfbSettings,
@@ -111,7 +101,7 @@ pub struct FlightCraftApp {
     #[cfg(not(target_arch = "wasm32"))]
     packs_directory: String,
     #[cfg(not(target_arch = "wasm32"))]
-    runtime: runtime::Runtime,
+    runtime: Option<runtime::Runtime>,
     screens: screens::ScreensUi,
     scene: Scene,
     input: input::Input,
@@ -135,8 +125,8 @@ pub struct FlightCraftApp {
     scenarios: scenario::ScenarioUi,
     radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
-    #[cfg(target_arch = "wasm32")]
-    script: script::Script,
+    scripted: bool,
+    external: bool,
     #[cfg(not(target_arch = "wasm32"))]
     screenshot: Option<Screenshot>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -147,8 +137,8 @@ pub struct FlightCraftApp {
     requested_frame: u64,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl FlightCraftApp {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
         cc: &eframe::CreationContext<'_>,
         options: AppOptions,
@@ -170,18 +160,7 @@ impl FlightCraftApp {
             eframe::wgpu::Backend::Dx12 => "Direct3D 12",
             eframe::wgpu::Backend::Noop => "no GPU",
         };
-        let stored = cc.storage.and_then(|s| s.get_string(KEYMAP_STORAGE));
-        let (keymap, mut error) = match stored {
-            Some(json) => match Keymap::from_json(&json) {
-                Ok(map) => (map, None),
-                Err(e) => (
-                    Keymap::default(),
-                    Some(format!("Saved keymap could not be loaded: {e}")),
-                ),
-            },
-            None => (Keymap::default(), None),
-        };
-        let bindings_json = keymap.json()?;
+        let mut error = None;
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
         if let Some(json) = cc.storage.and_then(|s| s.get_string("flightcraft.callsign.v1"))
@@ -279,8 +258,6 @@ impl FlightCraftApp {
             }
         };
         session.run(flightcraft_control::Resume {})?;
-        let paused = session.paused();
-        let efb_applied = session.efb_status().settings;
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(saved) = cc.storage.and_then(|s| s.get_string("flightcraft.screens.v1")) {
             match serde_json::from_str(&saved)
@@ -335,17 +312,52 @@ impl FlightCraftApp {
                 screens.watcher = Some(screens::watch::Folder::new(root).map_err(std::io::Error::other)?);
             }
         }
+        let mut app = Self::from_presentation(session, cc.storage, renderer, chart_root)?;
+        app.error = error.or(app.error);
+        app.efb_serial = efb_serial;
+        app.packs_directory = packs_directory;
+        app.runtime = Some(runtime);
+        app.screens = screens;
+        app.screenshot = options.screenshot;
+        Ok(app)
+    }
+
+    /// Shared main-window presentation. Its session routes commands to an external owner.
+    pub(crate) fn from_presentation(
+        session: Session,
+        storage: Option<&dyn eframe::Storage>,
+        renderer: &'static str,
+        chart_root: Option<String>,
+    ) -> Result<Self, String> {
+        let stored = storage.and_then(|s| s.get_string(KEYMAP_STORAGE));
+        let (keymap, error) = match stored {
+            Some(json) => match Keymap::from_json(&json) {
+                Ok(map) => (map, None),
+                Err(e) => (
+                    Keymap::default(),
+                    Some(format!("Saved keymap could not be loaded: {e}")),
+                ),
+            },
+            None => (Keymap::default(), None),
+        };
+        let bindings_json = keymap.json().map_err(|e| e.to_string())?;
+        let paused = session.paused();
+        let efb_applied = session.efb_status().settings;
+        let efb_settings = storage
+            .and_then(|s| s.get_string("efb.settings"))
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
         Ok(Self {
             session,
             efb_applied,
             efb_settings,
             #[cfg(not(target_arch = "wasm32"))]
-            efb_serial,
+            efb_serial: None,
             #[cfg(not(target_arch = "wasm32"))]
-            packs_directory,
+            packs_directory: "packs".into(),
             #[cfg(not(target_arch = "wasm32"))]
-            runtime,
-            screens,
+            runtime: None,
+            screens: screens::ScreensUi::with_chart_root(chart_root.clone()),
             scene: Scene::default(),
             input: input::Input::default(),
             keymap,
@@ -354,14 +366,13 @@ impl FlightCraftApp {
             error,
             renderer,
             settings: false,
-            compact_panel: cc
-                .storage
+            compact_panel: storage
                 .and_then(|s| s.get_string(COMPACT_PANEL_STORAGE))
                 .as_deref()
                 == Some("true"),
             procedure_controls: procedures::Controls::default(),
             instrument_panel: instruments::InstrumentPanel::with_options(
-                cc.storage
+                storage
                     .and_then(|s| s.get_string(DISPLAY_OPTIONS_STORAGE))
                     .and_then(|json| serde_json::from_str(&json).ok())
                     .unwrap_or_default(),
@@ -375,16 +386,16 @@ impl FlightCraftApp {
             scenarios: scenario::ScenarioUi::default(),
             radio_ptt_held: [false; 2],
             audio: audio::Audio::with_preferences(
-                cc.storage
+                storage
                     .and_then(|s| s.get_string("flightcraft.audio.v1"))
                     .and_then(|json| serde_json::from_str(&json).ok())
                     .unwrap_or_default(),
             ),
             binding_message: None,
-            #[cfg(target_arch = "wasm32")]
-            script: options.script.unwrap_or_default(),
+            scripted: false,
+            external: false,
             #[cfg(not(target_arch = "wasm32"))]
-            screenshot: options.screenshot,
+            screenshot: None,
             #[cfg(not(target_arch = "wasm32"))]
             frames: 0,
             #[cfg(not(target_arch = "wasm32"))]
@@ -561,7 +572,6 @@ impl FlightCraftApp {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl FlightCraftApp {
     /// The GPU path drawing the app: "WebGPU", "WebGL 2", "Vulkan", "Metal", and so on.
     #[must_use]
@@ -570,19 +580,17 @@ impl FlightCraftApp {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl eframe::App for FlightCraftApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            match self.runtime.snapshot() {
-                Ok(s) => self.session = s,
-                Err(e) => self.error = Some(e),
-            }
-            if let Some(e) = self.runtime.error() {
-                self.error = Some(e);
-            }
-        }
+impl FlightCraftApp {
+    /// One shell for both hosts. Automatic axes retain keyboard provenance in the Worker transport,
+    /// so scripts and external levers keep ownership while menus use the regular command queue.
+    pub(crate) fn show_main(
+        &mut self,
+        ctx: &egui::Context,
+        mut keyboard_controls: impl FnMut(
+            &mut Session,
+            flightcraft_sim::Controls,
+        ) -> Result<(), flightcraft_control::CommandError>,
+    ) {
         if ctx.input(|input| {
             input.pointer.any_pressed()
                 || input
@@ -756,16 +764,6 @@ impl eframe::App for FlightCraftApp {
                 }
             }
         }
-        #[cfg(target_arch = "wasm32")]
-        let scripted = self.script.active();
-        #[cfg(not(target_arch = "wasm32"))]
-        let scripted = self.runtime.script_active();
-        #[cfg(target_arch = "wasm32")]
-        let sim_time_s = self.session.sim().state().time_s;
-        #[cfg(target_arch = "wasm32")]
-        if scripted && let Err(e) = self.script.run_due(&mut self.session, sim_time_s) {
-            self.error = Some(e);
-        }
         let [yaw, pitch] = frame.cockpit_look();
         if let Some(camera) = self.session.camera() {
             let looking =
@@ -785,17 +783,7 @@ impl eframe::App for FlightCraftApp {
             }
         }
         self.paused = self.session.paused();
-        let external = {
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                self.runtime.external_active()
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                false
-            }
-        };
-        let controlled = if scripted || external || self.session.holds_active() {
+        let controlled = if self.scripted || self.external || self.session.holds_active() {
             Ok(())
         } else {
             self.input.trim = self.session.sim().systems().controls.trim;
@@ -813,7 +801,7 @@ impl eframe::App for FlightCraftApp {
             } else {
                 Ok(())
             };
-            trimmed.and_then(|()| actions::set_controls(&mut self.session, controls))
+            trimmed.and_then(|()| keyboard_controls(&mut self.session, controls))
         };
         if let Err(e) = controlled {
             self.error = Some(e.to_string());
@@ -851,14 +839,14 @@ impl eframe::App for FlightCraftApp {
                 });
         }
         egui::TopBottomPanel::top("header")
-            .exact_height(64.0)
+            .min_height(64.0)
             .frame(
                 egui::Frame::new()
                     .fill(theme::BACKGROUND)
                     .inner_margin(egui::Margin::symmetric(22, 10)),
             )
             .show(ctx, |ui| {
-                ui.horizontal_centered(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     let (logo, _) = ui.allocate_exact_size(egui::vec2(28.0, 30.0), egui::Sense::hover());
                     let c = logo.center();
                     ui.painter().line_segment(
@@ -992,7 +980,7 @@ impl eframe::App for FlightCraftApp {
                             }
                         });
                     }
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    {
                         self.screens.menu(ui, &mut self.session);
                         if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
@@ -1022,7 +1010,7 @@ impl eframe::App for FlightCraftApp {
                         {
                             self.error = Some(e.to_string());
                         }
-                    });
+                    }
                 });
             });
         let readout = self.session.sim().readout();
@@ -1084,6 +1072,7 @@ impl eframe::App for FlightCraftApp {
                 });
             });
         if self.planning_map.open {
+            self.screens.main.cancel_equipment_holds(&mut self.session);
             for setting in self
                 .instrument_panel
                 .cancel_equipment_holds(self.session.flight_generation())
@@ -1102,8 +1091,6 @@ impl eframe::App for FlightCraftApp {
                     self.screens.root(ui, &mut self.session);
                 }
             });
-        #[cfg(not(target_arch = "wasm32"))]
-        self.screens.viewports(ctx, &self.runtime, &mut self.session);
         if let Some(error) = &self.error {
             egui::Window::new("FlightCraft message")
                 .collapsible(false)
@@ -1112,14 +1099,37 @@ impl eframe::App for FlightCraftApp {
                 });
         }
         self.bindings_window(ctx);
-        #[cfg(not(target_arch = "wasm32"))]
-        self.screenshot(ctx);
-        #[cfg(not(target_arch = "wasm32"))]
-        self.session.update_efb();
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(1.0 / 60.0));
+    }
+}
+
+impl eframe::App for FlightCraftApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(runtime) = &self.runtime {
+            match runtime.snapshot() {
+                Ok(s) => self.session = s,
+                Err(e) => self.error = Some(e),
+            }
+            if let Some(e) = runtime.error() {
+                self.error = Some(e);
+            }
+            self.scripted = runtime.script_active();
+            self.external = runtime.external_active();
+        }
+        self.show_main(ctx, actions::set_controls);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(runtime) = &self.runtime {
+                self.screens.viewports(ctx, runtime, &mut self.session);
+            }
+            self.screenshot(ctx);
+            self.session.update_efb();
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        #[cfg(not(target_arch = "wasm32"))]
         self.session.autosave_flight();
         if let Ok(json) = serde_json::to_string(self.session.screens()) {
             storage.set_string("flightcraft.screens.v1", json);
@@ -1165,7 +1175,6 @@ pub fn control_listener(port: u16) -> std::io::Result<flightcraft_control::bridg
 }
 
 /// The status and remote query use identical geometry and altitude semantics.
-#[cfg(not(target_arch = "wasm32"))]
 fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bool, String)> {
     use flightcraft_world::{AirspaceKind, AltitudeReference};
     let world = session.sim().world();
@@ -1226,3 +1235,6 @@ mod weather_preview;
 mod navigator_audio_tests;
 #[cfg(test)]
 mod scenario_preview;
+
+#[cfg(test)]
+mod main_ui_tests;

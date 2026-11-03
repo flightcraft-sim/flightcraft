@@ -15,6 +15,8 @@ struct Inbox {
     latest: Option<Snapshot>,
     regions: Option<Vec<RegionTransfer>>,
     permission: bool,
+    scripted: bool,
+    external: bool,
     error: Option<String>,
 }
 struct Link {
@@ -44,6 +46,8 @@ impl Link {
                 }
                 if let Some(snapshot) = value.get("snapshot") {
                     inbox.latest = Some(serde_json::from_value(snapshot.clone()).map_err(|e| e.to_string())?);
+                    inbox.scripted = value.get("scripted").and_then(Value::as_bool).unwrap_or(false);
+                    inbox.external = value.get("external").and_then(Value::as_bool).unwrap_or(false);
                 }
                 if let Some(permission) = value.get("permission").and_then(Value::as_str) {
                     inbox.permission = permission == "control";
@@ -183,10 +187,11 @@ impl Drop for Link {
     }
 }
 pub struct ScreenApp {
-    session: Session,
+    main: crate::FlightCraftApp,
     canvas: Canvas,
     link: Option<Link>,
     remote: bool,
+    main_window: bool,
     paired: bool,
     token: String,
     name: String,
@@ -223,7 +228,10 @@ impl ScreenApp {
             eframe::wgpu::Backend::Gl => "WebGL 2",
             _ => "wgpu",
         };
+        let chart_root = options.regions.directory.clone();
         let mut session = Session::new()?;
+        let mut errors = options.regions.errors;
+        errors.extend(options.packs.errors);
         for region in options.regions.fetched {
             session.install_region(region)?;
         }
@@ -264,11 +272,17 @@ impl ScreenApp {
         } else {
             Some(Link::worker(&cc.egui_ctx, session.worker_seed(), script).map_err(std::io::Error::other)?)
         };
+        session
+            .apply_screen_snapshot(session.screen_snapshot())
+            .map_err(std::io::Error::other)?;
+        let main = crate::FlightCraftApp::from_presentation(session, cc.storage, renderer, chart_root)
+            .map_err(std::io::Error::other)?;
         Ok(Self {
-            session,
+            main,
             canvas: Canvas::default(),
             link,
             remote,
+            main_window: !remote && screen == 0 && page.is_none(),
             paired: !remote,
             token: String::new(),
             name: "Browser screen".into(),
@@ -276,7 +290,7 @@ impl ScreenApp {
             page,
             next_id: 1,
             last_poll: 0.,
-            error: None,
+            error: (!errors.is_empty()).then(|| errors.join("\n")),
             renderer,
             import: String::new(),
             layout,
@@ -315,157 +329,182 @@ impl eframe::App for ScreenApp {
             }
             let mut inbox = link.inbox.borrow_mut();
             if let Some(regions) = inbox.regions.take()
-                && let Err(e) = self.session.install_screen_regions(regions)
+                && let Err(e) = self.main.session.install_screen_regions(regions)
             {
                 self.error = Some(e);
             }
             if let Some(snapshot) = inbox.latest.take()
-                && let Err(e) = self.session.apply_screen_snapshot(snapshot)
+                && let Err(e) = self.main.session.apply_screen_snapshot(snapshot)
             {
                 self.error = Some(e);
             }
+            self.main.scripted = inbox.scripted;
+            self.main.external = inbox.external;
             if let Some(e) = inbox.error.take() {
                 self.error = Some(e);
             }
         }
         let control = self.link.as_ref().is_some_and(|l| l.inbox.borrow().permission);
-        let elapsed = (now - self.previous).clamp(0., 0.1);
-        self.previous = now;
-        if ctx.input(|i| i.pointer.any_pressed()) {
-            self.audio.user_gesture();
-        }
-        let frame = self.input.collect(ctx, &self.keymap);
-        if control {
-            use crate::keymap::Action;
-            if frame.pressed(Action::Pause) {
-                let _ = self.session.execute(
-                    if self.session.paused() {
-                        "sim.resume"
-                    } else {
-                        "sim.pause"
-                    },
-                    json!({}),
-                );
+        if self.main_window {
+            if let Some(error) = self.error.take() {
+                self.main.error = Some(error);
             }
-            if frame.pressed(Action::Reset) {
-                let _ = crate::actions::reset(&mut self.session);
-            }
-            if frame.pressed(Action::Camera) {
-                let _ = crate::actions::toggle_camera(&mut self.session);
-            }
-            let held = [frame.held(Action::ComPtt), frame.held(Action::IntercomPtt)];
-            if held != self.radio_ptt {
-                self.radio_ptt = held;
-                let _ = self
-                    .session
-                    .execute("comms.audio_panel", json!({"ptt":held[0],"intercom_ptt":held[1]}));
-            }
-            let [yaw, pitch] = frame.cockpit_look();
-            if yaw != 0. || pitch != 0. {
-                if let Some(camera) = self.session.camera() {
-                    let [base_yaw, base_pitch] = *self
-                        .glance
-                        .get_or_insert([camera.look_yaw_rad, camera.look_pitch_rad]);
-                    let _ = crate::actions::cockpit_look(
-                        &mut self.session,
-                        base_yaw + yaw * 1.35,
-                        base_pitch + pitch * 0.9,
-                    );
-                }
-            } else if let Some([yaw, pitch]) = self.glance.take() {
-                let _ = crate::actions::cockpit_look(&mut self.session, yaw, pitch);
-            }
-            if frame.pressed(Action::PlanningMap) {
-                self.page = if self.page == Some(PageKind::Map) {
-                    None
-                } else {
-                    Some(PageKind::Map)
-                };
-            }
-            for action in [
-                Action::ComPtt,
-                Action::IntercomPtt,
-                Action::RadioPanel,
-                Action::Kneeboard,
-                Action::RadioTransmit,
-            ] {
-                if frame.pressed(action) {
-                    self.radio.shortcut(action);
-                }
-            }
-            if !self.remote && self.screen == 0 {
-                self.input.trim = self.session.sim().systems().controls.trim;
-                let controls = self
-                    .input
-                    .controls(&frame, self.session.sim().controls(), elapsed);
-                if self.input.trim != self.session.sim().systems().controls.trim {
-                    let _ = self.session.execute(
-                        "systems.set",
-                        json!({"setting":{"kind":"trim","value":self.input.trim}}),
-                    );
-                }
+            let mut keyboard = None;
+            self.main.show_main(ctx, |_, controls| {
+                keyboard = Some(controls);
+                Ok(())
+            });
+            if control
+                && let Some(controls) = keyboard
+                && let Some(link) = &self.link
+            {
                 let request = json!({"id":0,"source":"keyboard","command":"sim.set_controls","input":{"elevator":controls.elevator,"aileron":controls.aileron,"rudder":controls.rudder,"throttle":controls.throttle,"flaps":controls.flaps,"brake":controls.brake}});
-                if let Some(link) = &self.link {
-                    let _ = link.send(json!({"type":"command","request":request}));
+                if let Err(e) = link.send(json!({"type":"command","request":request})) {
+                    self.error = Some(e);
                 }
             }
-        }
-        self.audio.observe(
-            self.session.flight_generation(),
-            self.session
-                .sim()
-                .installed_autopilot()
-                .map_or(0, |a| a.disconnect_sequence),
-        );
-        self.radio.show(
-            ctx,
-            &mut self.session,
-            &self.keymap,
-            self.audio.preferences.gain(),
-        );
-        egui::TopBottomPanel::top("screen-toolbar").show(ctx,|ui|{
+        } else {
+            let elapsed = (now - self.previous).clamp(0., 0.1);
+            self.previous = now;
+            if ctx.input(|i| i.pointer.any_pressed()) {
+                self.audio.user_gesture();
+            }
+            let frame = self.input.collect(ctx, &self.keymap);
+            if control {
+                use crate::keymap::Action;
+                if frame.pressed(Action::Pause) {
+                    let _ = self.main.session.execute(
+                        if self.main.session.paused() {
+                            "sim.resume"
+                        } else {
+                            "sim.pause"
+                        },
+                        json!({}),
+                    );
+                }
+                if frame.pressed(Action::Reset) {
+                    let _ = crate::actions::reset(&mut self.main.session);
+                }
+                if frame.pressed(Action::Camera) {
+                    let _ = crate::actions::toggle_camera(&mut self.main.session);
+                }
+                let held = [frame.held(Action::ComPtt), frame.held(Action::IntercomPtt)];
+                if held != self.radio_ptt {
+                    self.radio_ptt = held;
+                    let _ = self
+                        .main
+                        .session
+                        .execute("comms.audio_panel", json!({"ptt":held[0],"intercom_ptt":held[1]}));
+                }
+                let [yaw, pitch] = frame.cockpit_look();
+                if yaw != 0. || pitch != 0. {
+                    if let Some(camera) = self.main.session.camera() {
+                        let [base_yaw, base_pitch] = *self
+                            .glance
+                            .get_or_insert([camera.look_yaw_rad, camera.look_pitch_rad]);
+                        let _ = crate::actions::cockpit_look(
+                            &mut self.main.session,
+                            base_yaw + yaw * 1.35,
+                            base_pitch + pitch * 0.9,
+                        );
+                    }
+                } else if let Some([yaw, pitch]) = self.glance.take() {
+                    let _ = crate::actions::cockpit_look(&mut self.main.session, yaw, pitch);
+                }
+                if frame.pressed(Action::PlanningMap) {
+                    self.page = if self.page == Some(PageKind::Map) {
+                        None
+                    } else {
+                        Some(PageKind::Map)
+                    };
+                }
+                for action in [
+                    Action::ComPtt,
+                    Action::IntercomPtt,
+                    Action::RadioPanel,
+                    Action::Kneeboard,
+                    Action::RadioTransmit,
+                ] {
+                    if frame.pressed(action) {
+                        self.radio.shortcut(action);
+                    }
+                }
+                if !self.remote && self.screen == 0 {
+                    self.input.trim = self.main.session.sim().systems().controls.trim;
+                    let controls = self
+                        .input
+                        .controls(&frame, self.main.session.sim().controls(), elapsed);
+                    if self.input.trim != self.main.session.sim().systems().controls.trim {
+                        let _ = self.main.session.execute(
+                            "systems.set",
+                            json!({"setting":{"kind":"trim","value":self.input.trim}}),
+                        );
+                    }
+                    let request = json!({"id":0,"source":"keyboard","command":"sim.set_controls","input":{"elevator":controls.elevator,"aileron":controls.aileron,"rudder":controls.rudder,"throttle":controls.throttle,"flaps":controls.flaps,"brake":controls.brake}});
+                    if let Some(link) = &self.link {
+                        let _ = link.send(json!({"type":"command","request":request}));
+                    }
+                }
+            }
+            self.audio.observe(
+                self.main.session.flight_generation(),
+                self.main
+                    .session
+                    .sim()
+                    .installed_autopilot()
+                    .map_or(0, |a| a.disconnect_sequence),
+            );
+            self.radio.show(
+                ctx,
+                &mut self.main.session,
+                &self.keymap,
+                self.audio.preferences.gain(),
+            );
+            egui::TopBottomPanel::top("screen-toolbar").show(ctx,|ui|{
             ui.horizontal_wrapped(|ui|{
                 ui.strong("FLIGHTCRAFT · SCREENS");ui.label(if control{"CONTROL"}else{"READ ONLY"});
                 egui::ComboBox::from_id_salt("page").selected_text(self.page.map_or("Window layout",PageKind::label)).show_ui(ui,|ui|{ui.selectable_value(&mut self.page,None,"Window layout");for kind in PageKind::ALL{ui.selectable_value(&mut self.page,Some(kind),kind.label());}});
                 if ui.add_enabled(control,egui::Checkbox::new(&mut self.canvas.edit,"Edit layout")).changed() && self.canvas.edit {
-                    if let Some(kind)=self.page.take() { let _=self.session.execute("screen.set_page",json!({"id":self.screen,"page":{"kind":kind}})); }
-                    if let Some(layout)=self.layout.take() { let _=self.session.execute("layout.set",json!({"id":self.screen,"layout":layout})); }
+                    if let Some(kind)=self.page.take() { let _=self.main.session.execute("screen.set_page",json!({"id":self.screen,"page":{"kind":kind}})); }
+                    if let Some(layout)=self.layout.take() { let _=self.main.session.execute("layout.set",json!({"id":self.screen,"layout":layout})); }
                 }
                 if !self.remote&&ui.button("Open another screen").clicked(){
                     let page=self.page.unwrap_or(PageKind::Panel);
-                    match self.session.execute("screen.open",json!({"page":{"kind":page}})) {
+                    match self.main.session.execute("screen.open",json!({"page":{"kind":page}})) {
                         Ok(screen)=>{if let Some(id)=screen.get("id").and_then(Value::as_u64)&&let Some(window)=web_sys::window(){let _=window.open_with_url(&format!("?screen={id}"));}},
                         Err(error)=>self.error=Some(error.to_string()),
                     }
                 }
-                if ui.button("Undo layout").clicked()&&control{let _=self.session.execute("layout.undo",json!({}));}
-                ui.menu_button("Import / export layout",|ui|{ui.label("Paste a layout JSON document");ui.add(egui::TextEdit::multiline(&mut self.import).desired_rows(4));if ui.add_enabled(control,egui::Button::new("Apply layout")).clicked(){match Layout::from_json(&self.import){Ok(layout)=>{if let Err(e)=self.session.execute("layout.set",json!({"id":self.screen,"layout":layout})){self.error=Some(e.to_string());}},Err(e)=>self.error=Some(e)}}if ui.button("Copy layout JSON").clicked()&&let Some(screen)=self.session.screens().windows.iter().find(|w|w.id==self.screen)&&let Ok(text)=serde_json::to_string_pretty(&screen.layout){ctx.copy_text(text);}});
+                if ui.button("Undo layout").clicked()&&control{let _=self.main.session.execute("layout.undo",json!({}));}
+                ui.menu_button("Import / export layout",|ui|{ui.label("Paste a layout JSON document");ui.add(egui::TextEdit::multiline(&mut self.import).desired_rows(4));if ui.add_enabled(control,egui::Button::new("Apply layout")).clicked(){match Layout::from_json(&self.import){Ok(layout)=>{if let Err(e)=self.main.session.execute("layout.set",json!({"id":self.screen,"layout":layout})){self.error=Some(e.to_string());}},Err(e)=>self.error=Some(e)}}if ui.button("Copy layout JSON").clicked()&&let Some(screen)=self.main.session.screens().windows.iter().find(|w|w.id==self.screen)&&let Ok(text)=serde_json::to_string_pretty(&screen.layout){ctx.copy_text(text);}});
             });
             if self.remote&&self.link.is_none(){ui.label("Enter the pairing token shown in the host's Screens menu. The host grants control separately.");ui.horizontal(|ui|{ui.label("Screen name");ui.text_edit_singleline(&mut self.name);ui.label("Token");ui.add(egui::TextEdit::singleline(&mut self.token).password(true));if ui.button("Pair").clicked(){match Link::remote(ctx,&self.token,&self.name){Ok(link)=>{self.link=Some(link);self.paired=false;},Err(e)=>self.error=Some(e)}}});}
             if self.remote&&ui.button("Disconnect / reconnect").clicked(){self.link=None;self.paired=false;}
             if let Some(error)=&self.error{ui.colored_label(theme::AMBER,error);}
         });
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(theme::BACKGROUND))
-            .show(ctx, |ui| {
-                if let Some(mut screen) = self
-                    .session
-                    .screens()
-                    .windows
-                    .iter()
-                    .find(|w| w.id == self.screen)
-                    .cloned()
-                {
-                    if let Some(layout) = &self.layout {
-                        screen.layout = layout.clone();
+            egui::CentralPanel::default()
+                .frame(egui::Frame::new().fill(theme::BACKGROUND))
+                .show(ctx, |ui| {
+                    if let Some(mut screen) = self
+                        .main
+                        .session
+                        .screens()
+                        .windows
+                        .iter()
+                        .find(|w| w.id == self.screen)
+                        .cloned()
+                    {
+                        if let Some(layout) = &self.layout {
+                            screen.layout = layout.clone();
+                        }
+                        if let Some(kind) = self.page {
+                            screen.layout = Layout::single(Page::new(kind));
+                        }
+                        self.canvas.show(ui, &screen, &mut self.main.session, control);
                     }
-                    if let Some(kind) = self.page {
-                        screen.layout = Layout::single(Page::new(kind));
-                    }
-                    self.canvas.show(ui, &screen, &mut self.session, control);
-                }
-            });
-        for (command, input) in self.session.take_screen_commands() {
+                });
+        }
+        for (command, input) in self.main.session.take_screen_commands() {
             if !control {
                 continue;
             }
@@ -485,7 +524,9 @@ impl eframe::App for ScreenApp {
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(1. / 60.));
     }
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if let Ok(layout) = serde_json::to_string(self.session.screens()) {
+        if self.main_window {
+            eframe::App::save(&mut self.main, storage);
+        } else if let Ok(layout) = serde_json::to_string(self.main.session.screens()) {
             storage.set_string("flightcraft.screens.v1", layout);
         }
     }

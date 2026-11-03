@@ -128,7 +128,12 @@ Control permission admits flight/panel/layout commands, not arbitrary host file 
 HTTP/WebSocket traffic is unencrypted, so use a trusted private LAN. Public addresses, wildcard
 binds, arbitrary Origins, and automatic grants are refused.
 
-For more local browser windows, choose **Open another screen**. They share the named Worker and
+The main browser window and desktop window share the same header, Weather and Procedures / NAV
+menus, Scenarios and emergencies window, planning map, radio controls, and preferences. Browser
+commands go to the Worker; repainting the main window never advances its presentation copy.
+Tablet UDP broadcast remains available only on desktop.
+
+For more local browser windows, choose **Screens → Open …** in the main window, or **Open another screen** in a page tab. They share the named Worker and
 its flight, rather than creating another simulation. The first page initializes the flight and
 script; later pages observe it. The packaged site requires SharedWorker support. Browser process
 suspension, device sleep, and OS timer scheduling can still interrupt real-time operation.
@@ -142,6 +147,11 @@ Remote pairing/Origin/permission tests exercise an actual local WebSocket connec
 and touch tests cover validation, last-good files, moves, restart, undo, and independent contacts.
 The browser check also connects two ports to one Worker and verifies that its clock advances
 without presentation repaint callbacks and that a pause reaches both ports.
+
+`cargo xtask web --check` compiles the entire CI Web package set with warnings denied before
+validating showcase packaging. `cargo xtask ci` uses the same strict Web compile check.
+The main-window regression tests render a serialized Worker snapshot, open the shared menus and
+windows, and round-trip Weather commands to the owner without stepping the presentation.
 
 Fetch the locked region data and prepare the pinned Sling fixture with
 `python3 scripts/bundle-packs.py bundled-packs.json out/screens/packs`.

@@ -82,27 +82,35 @@ fn airspeed_schema(schema: &mut schemars::Schema) {
 #[serde(deny_unknown_fields)]
 pub struct SetAutopilot {
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "HoldTarget", transform = pitch_schema)]
     pub pitch_rad: Option<HoldTarget>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "HoldTarget", transform = altitude_schema)]
     pub altitude_m: Option<HoldTarget>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "HoldTarget", transform = vertical_speed_schema)]
     pub vertical_speed_mps: Option<HoldTarget>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "HoldTarget", transform = heading_schema)]
     pub heading_rad: Option<HoldTarget>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "HoldTarget", transform = airspeed_schema)]
     pub airspeed_mps: Option<HoldTarget>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Option<bool>", transform = without_default)]
     pub wings_level: Option<Option<bool>>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 0.05, max = 0.6), transform = without_default)]
     pub bank_limit_rad: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "AirspeedMode", transform = without_default)]
     pub airspeed_mode: Option<AirspeedMode>,
 }

@@ -74,15 +74,19 @@ pub enum AircraftSource {
 pub struct LoadAircraft {
     /// Legacy source selection and explicit variant/panel/load selection are mutually exclusive.
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "AircraftSource", transform = crate::without_default)]
     pub source: Option<AircraftSource>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "String", transform = crate::without_default)]
     pub variant: Option<String>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "String", transform = crate::without_default)]
     pub panel: Option<String>,
     #[serde(default, deserialize_with = "crate::provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Load", transform = crate::without_default)]
     pub load: Option<Load>,
     /// Permit a structurally valid load beyond certified limits, returning warnings.

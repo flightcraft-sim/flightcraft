@@ -10,20 +10,15 @@ pub fn build() -> Result<(), String> {
         (Some("--check"), None) => true,
         _ => return Err("usage: cargo xtask web [--check|--debug]".into()),
     };
+    if check {
+        check_compile()?;
+    }
     super::data::fetch(
         false,
         &root.join(".cache/data"),
         std::env::var("FLIGHTCRAFT_DATA_URL").ok().as_deref(),
     )?;
     if check {
-        super::cargo(&[
-            "check",
-            "--locked",
-            "--target",
-            "wasm32-unknown-unknown",
-            "-p",
-            "flightcraft-web",
-        ])?;
         let stage = root.join(".cache/web-check");
         if stage.exists() {
             std::fs::remove_dir_all(&stage).map_err(|e| e.to_string())?;
@@ -170,6 +165,52 @@ pub fn build() -> Result<(), String> {
     Ok(())
 }
 
+/// The same package set as CI, with warnings treated as build failures.
+pub(crate) fn check_compile() -> Result<(), String> {
+    eprintln!("xtask: checking all CI Web packages with RUSTFLAGS=-D warnings");
+    let status = wasm_check_command()
+        .status()
+        .map_err(|e| format!("cannot run cargo: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("strict Web compile check failed".into())
+    }
+}
+
+fn wasm_check_command() -> Command {
+    let mut command = Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()));
+    command.args([
+        "check",
+        "--target",
+        "wasm32-unknown-unknown",
+        "-p",
+        "flightcraft-world",
+        "-p",
+        "flightcraft-aero",
+        "-p",
+        "flightcraft-sim",
+        "-p",
+        "flightcraft-control",
+        "-p",
+        "flightcraft-web",
+        "-p",
+        "flightcraft-mcp",
+    ]);
+    let mut flags = std::env::var("RUSTFLAGS").unwrap_or_default();
+    flags.push_str(" -D warnings");
+    command.env("RUSTFLAGS", flags.trim());
+    // Cargo gives encoded flags priority over RUSTFLAGS when both are supplied.
+    if let Ok(mut encoded) = std::env::var("CARGO_ENCODED_RUSTFLAGS") {
+        if !encoded.is_empty() {
+            encoded.push('\x1f');
+        }
+        encoded.push_str("-D\x1fwarnings");
+        command.env("CARGO_ENCODED_RUSTFLAGS", encoded);
+    }
+    command
+}
+
 fn bindgen_version(lock: &str) -> Result<&str, String> {
     lock.split("[[package]]")
         .find(|package| {
@@ -210,6 +251,36 @@ fn copy_tree(source: &std::path::Path, target: &std::path::Path) -> Result<(), S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn web_check_includes_every_ci_package_and_denies_warnings() {
+        let command = wasm_check_command();
+        let args: Vec<_> = command.get_args().map(|a| a.to_str().unwrap()).collect();
+        assert_eq!(
+            args,
+            [
+                "check",
+                "--target",
+                "wasm32-unknown-unknown",
+                "-p",
+                "flightcraft-world",
+                "-p",
+                "flightcraft-aero",
+                "-p",
+                "flightcraft-sim",
+                "-p",
+                "flightcraft-control",
+                "-p",
+                "flightcraft-web",
+                "-p",
+                "flightcraft-mcp"
+            ]
+        );
+        assert!(
+            command.get_envs().any(|(name, value)| name == "RUSTFLAGS"
+                && value.unwrap().to_str().unwrap().ends_with("-D warnings"))
+        );
+    }
 
     #[test]
     fn version_comes_from_the_bindgen_package() {

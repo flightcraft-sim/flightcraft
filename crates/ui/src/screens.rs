@@ -44,6 +44,16 @@ fn execute(s: &mut Session, name: &str, input: serde_json::Value, error: &mut Op
     }
 }
 impl Canvas {
+    /// Release push-to-hold equipment before a planning map hides the panel.
+    pub(crate) fn cancel_equipment_holds(&mut self, session: &mut Session) {
+        for page in self.pages.values_mut() {
+            for setting in page.panel.cancel_equipment_holds(session.flight_generation()) {
+                if let Err(error) = session.run(flightcraft_control::SetEquipment { setting }) {
+                    self.error = Some(error.to_string());
+                }
+            }
+        }
+    }
     pub fn with_chart_root(chart_root: Option<String>) -> Self {
         Self {
             chart_root,
@@ -855,6 +865,7 @@ fn control_value(s: &Session, kind: ControlKind) -> f64 {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Copy, PartialEq)]
 struct WindowGeometry {
     size: [f32; 2],
@@ -865,6 +876,7 @@ struct WindowGeometry {
 #[derive(Default)]
 pub struct ScreensUi {
     pub main: Canvas,
+    #[cfg(not(target_arch = "wasm32"))]
     root_geometry: Option<WindowGeometry>,
     #[cfg(not(target_arch = "wasm32"))]
     windows: BTreeMap<u64, std::sync::Arc<std::sync::Mutex<Canvas>>>,
@@ -885,12 +897,21 @@ impl ScreensUi {
             ui.checkbox(&mut self.main.edit, "Edit layouts (all windows)");
             for kind in PageKind::ALL {
                 if ui.button(format!("Open {}", kind.label())).clicked() {
-                    execute(
-                        s,
-                        "screen.open",
-                        json!({"page":{"kind":kind}}),
-                        &mut self.main.error,
-                    );
+                    match s.execute("screen.open", json!({"page":{"kind":kind}})) {
+                        Ok(screen) => {
+                            #[cfg(target_arch = "wasm32")]
+                            if let Some(id) = screen.get("id").and_then(serde_json::Value::as_u64)
+                                && let Some(window) = web_sys::window()
+                            {
+                                if let Err(error) = window.open_with_url(&format!("?screen={id}")) {
+                                    self.main.error = Some(format!("Could not open screen: {error:?}"));
+                                }
+                            }
+                            #[cfg(not(target_arch = "wasm32"))]
+                            let _ = screen;
+                        }
+                        Err(error) => self.main.error = Some(error.to_string()),
+                    }
                     ui.close();
                 }
             }
@@ -1008,26 +1029,29 @@ impl ScreensUi {
     }
     pub fn root(&mut self, ui: &mut egui::Ui, s: &mut Session) {
         if let Some(screen) = s.screens().windows.iter().find(|s| s.id == 0).cloned() {
-            let geometry = WindowGeometry {
-                size: screen.size,
-                position: screen.position,
-                fullscreen: screen.fullscreen,
-                borderless: screen.borderless,
-            };
-            if self.root_geometry != Some(geometry) {
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(screen.size.into()));
-                if let Some(position) = screen.position {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let geometry = WindowGeometry {
+                    size: screen.size,
+                    position: screen.position,
+                    fullscreen: screen.fullscreen,
+                    borderless: screen.borderless,
+                };
+                if self.root_geometry != Some(geometry) {
                     ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::OuterPosition(position.into()));
+                        .send_viewport_cmd(egui::ViewportCommand::InnerSize(screen.size.into()));
+                    if let Some(position) = screen.position {
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::OuterPosition(position.into()));
+                    }
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Fullscreen(screen.fullscreen));
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Decorations(!screen.borderless));
+                    self.root_geometry = Some(geometry);
+                } else {
+                    capture_geometry(ui.ctx(), s, &screen);
                 }
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(screen.fullscreen));
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::Decorations(!screen.borderless));
-                self.root_geometry = Some(geometry);
-            } else {
-                capture_geometry(ui.ctx(), s, &screen);
             }
             self.main.show(ui, &screen, s, true);
         }
@@ -1217,6 +1241,7 @@ pub fn split_panel(panel: &flightcraft_aero::Panel, loads: &[flightcraft_sim::sy
     layout
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn capture_geometry(ctx: &egui::Context, s: &mut Session, screen: &Screen) {
     let viewport = ctx.input(|i| i.viewport().clone());
     if viewport.minimized == Some(true) || viewport.fullscreen == Some(true) {

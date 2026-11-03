@@ -412,10 +412,12 @@ pub struct Reset {
     pub start: ResetStart,
     /// Omission starts in calm air. Supplying weather makes its seed part of the start.
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "flightcraft_sim::Weather", transform = without_default)]
     pub weather: Option<flightcraft_sim::Weather>,
     /// Defaults to paused. The existing rate is retained across resets.
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "bool", extend("default" = true))]
     pub paused: Option<bool>,
 }
@@ -574,21 +576,27 @@ fn without_default(schema: &mut schemars::Schema) {
 #[serde(deny_unknown_fields)]
 pub struct SetControls {
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -1, max = 1), transform = without_default)]
     pub elevator: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -1, max = 1), transform = without_default)]
     pub aileron: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = -1, max = 1), transform = without_default)]
     pub rudder: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 0, max = 1), transform = without_default)]
     pub throttle: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 0, max = 1), transform = without_default)]
     pub flaps: Option<f64>,
     #[serde(default, deserialize_with = "provided")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "f64", range(min = 0, max = 1), transform = without_default)]
     pub brake: Option<f64>,
 }

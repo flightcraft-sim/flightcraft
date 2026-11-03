@@ -207,6 +207,23 @@ def run(config):
                     return {ports:2, world:snapshots[0].world, advanced_without_repaints_s:advanced, shared_pause_time_s:time};
                 })()""")
                 cdp.screenshot(output / "local-worker.png")
+                main_url = f"{address.scheme}://{address.netloc}/?gpu=webgl2&region=assets/terrain/new-york/region.json&script=preview.jsonl"
+                cdp.call("Page.navigate", dict(url=main_url))
+                deadline = time.monotonic() + 60
+                ready = f"location.href === {json.dumps(main_url)} && document.readyState === 'complete' && document.querySelector('canvas') !== null && document.getElementById('loading') === null"
+                while not cdp.evaluate(ready):
+                    if time.monotonic() > deadline:
+                        raise RuntimeError("Main Worker window did not finish starting")
+                    time.sleep(1)
+                time.sleep(2)
+                cdp.screenshot(output / "web-main.png")
+                cdp.click(575, 25)  # Weather in the shared main header.
+                cdp.screenshot(output / "web-main-weather.png")
+                cdp.call("Input.dispatchKeyEvent", dict(type="keyDown", key="Escape", code="Escape", windowsVirtualKeyCode=27))
+                cdp.call("Input.dispatchKeyEvent", dict(type="keyUp", key="Escape", code="Escape", windowsVirtualKeyCode=27))
+                cdp.click(750, 25)  # Scenarios, beside Radios.
+                time.sleep(0.5)
+                cdp.screenshot(output / "web-main-scenarios.png")
                 if cdp.errors:
                     raise RuntimeError("Browser exceptions: " + json.dumps(cdp.errors))
                 (output / "browser-report.json").write_text(json.dumps(dict(worker=worker,
