@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Layout",
+  "type": "object",
+  "properties": {
+    "canvas": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "float"
+      },
+      "maxItems": 2,
+      "minItems": 2
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Element"
+      },
+      "maxItems": 128
+    },
+    "name": {
+      "type": "string"
+    },
+    "pixels_per_mm": {
+      "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+      "type": "array",
+      "default": [
+        3.7795276641845703,
+        3.7795276641845703
+      ],
+      "items": {
+        "type": "number",
+        "format": "float"
+      },
+      "maxItems": 2,
+      "minItems": 2
+    },
+    "units": {
+      "$ref": "#/$defs/Units",
+      "default": "px"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "canvas",
+    "elements"
+  ],
+  "$defs": {
+    "Camera": {
+      "type": "object",
+      "properties": {
+        "fov_deg": {
+          "type": "number",
+          "format": "float",
+          "default": 60.0,
+          "maximum": 150,
+          "minimum": 15
+        },
+        "heading_offset_deg": {
+          "type": "number",
+          "format": "float",
+          "default": 0.0,
+          "maximum": 180,
+          "minimum": -180
+        },
+        "view": {
+          "$ref": "#/$defs/View",
+          "default": "forward"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ControlKind": {
+      "type": "string",
+      "enum": [
+        "throttle",
+        "mixture",
+        "prop",
+        "carb_heat",
+        "fuel_selector",
+        "flaps",
+        "trim",
+        "parking_brake",
+        "magnetos",
+        "primer",
+        "heading",
+        "altitude",
+        "range",
+        "fms",
+        "baro",
+        "course"
+      ]
+    },
+    "Element": {
+      "type": "object",
+      "properties": {
+        "accepts_input": {
+          "type": "boolean",
+          "default": true
+        },
+        "bezel": {
+          "type": "boolean",
+          "default": true
+        },
+        "brightness": {
+          "type": "number",
+          "format": "float",
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0
+        },
+        "id": {
+          "type": "string"
+        },
+        "lighting_group": {
+          "type": "string",
+          "default": ""
+        },
+        "mask": {
+          "$ref": "#/$defs/Mask",
+          "default": "rectangle"
+        },
+        "page": {
+          "$ref": "#/$defs/Page"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "rotation_deg": {
+          "type": "integer",
+          "format": "uint16",
+          "default": 0,
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "z": {
+          "type": "integer",
+          "format": "int32",
+          "default": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "page",
+        "position",
+        "size"
+      ]
+    },
+    "Mask": {
+      "type": "string",
+      "enum": [
+        "rectangle",
+        "circle"
+      ]
+    },
+    "Page": {
+      "type": "object",
+      "properties": {
+        "camera": {
+          "$ref": "#/$defs/Camera",
+          "default": {
+            "fov_deg": 60.0,
+            "heading_offset_deg": 0.0,
+            "view": "forward"
+          }
+        },
+        "control": {
+          "$ref": "#/$defs/TouchControl",
+          "default": {
+            "detents": [],
+            "friction_locked": false,
+            "kind": "throttle"
+          }
+        },
+        "follow_main_camera": {
+          "type": "boolean",
+          "default": false
+        },
+        "instruments": {
+          "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64
+        },
+        "item": {
+          "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "kind": {
+          "$ref": "#/$defs/PageKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ]
+    },
+    "PageKind": {
+      "type": "string",
+      "enum": [
+        "outside",
+        "panel",
+        "instrument",
+        "pfd",
+        "mfd",
+        "navigator",
+        "map",
+        "charts",
+        "instructor",
+        "atc",
+        "radio",
+        "debrief",
+        "control",
+        "panel_item",
+        "switch",
+        "breaker",
+        "readout",
+        "image"
+      ]
+    },
+    "TouchControl": {
+      "type": "object",
+      "properties": {
+        "detents": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "friction_locked": {
+          "type": "boolean",
+          "default": false
+        },
+        "kind": {
+          "$ref": "#/$defs/ControlKind",
+          "default": "throttle"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Units": {
+      "type": "string",
+      "enum": [
+        "px",
+        "mm"
+      ]
+    },
+    "View": {
+      "type": "string",
+      "enum": [
+        "forward",
+        "left",
+        "right",
+        "chase",
+        "tower",
+        "top_down"
+      ]
+    }
+  }
+}

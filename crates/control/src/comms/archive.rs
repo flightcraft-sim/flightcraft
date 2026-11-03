@@ -53,7 +53,7 @@ pub struct ArchiveStatus {
     pub loaded: Option<SavedFlight>,
     pub last_saved: Option<String>,
 }
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct FlightArchive {
     pub(super) state: Arc<Mutex<ArchiveStatus>>,
     current: Option<(u64, String, u64)>,
@@ -85,6 +85,17 @@ impl Session {
     }
     /// Called by the application on a wall-time cadence. Headless callers save explicitly.
     pub fn autosave_flight(&mut self) {
+        if self.presentation_commands.is_some() {
+            return;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(host) = self.host.clone() {
+            let _ = host.submit(crate::host::SessionJob {
+                external_controls: false,
+                execute: Box::new(|s| s.autosave_flight()),
+            });
+            return;
+        }
         self.flight_archive.autosave_enabled = true;
         let signature = (
             self.flight_generation(),
@@ -156,7 +167,7 @@ fn flight_nonce() -> u64 {
         (js_sys::Math::random() * 9_007_199_254_740_991.) as u64
     }
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlightSave {}
 impl Command for FlightSave {
@@ -168,7 +179,7 @@ impl Command for FlightSave {
         s.save_flight()
     }
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlightRecords {
     #[serde(default)]
@@ -198,7 +209,7 @@ impl Command for FlightRecords {
         Ok(s.flight_archive_status())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlightLoad {
     pub id: String,
@@ -227,7 +238,7 @@ impl Command for FlightLoad {
         Ok(s.flight_archive_status())
     }
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlightExport {
     #[serde(default)]

@@ -177,7 +177,7 @@ impl MapState {
         Ok(())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetMap {
     #[serde(default)]
@@ -244,7 +244,7 @@ impl Command for SetMap {
         Ok(state)
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetMap {}
 impl Command for GetMap {

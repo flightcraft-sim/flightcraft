@@ -27,7 +27,7 @@ pub enum RadioBand {
     Com,
     Nav,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct NavigatorState {
     pub powered: bool,
     pub page: NavigatorPage,
@@ -58,7 +58,7 @@ impl Default for NavigatorState {
         }
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TouchDisplayState {
     pub id: String,
     pub layout: TouchLayout,
@@ -68,7 +68,7 @@ pub struct TouchDisplayState {
     pub powered: bool,
     pub reversion: bool,
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TouchState {
     pub navigator: Option<NavigatorState>,
     pub displays: Vec<TouchDisplayState>,
@@ -79,7 +79,7 @@ pub(crate) struct TouchAvionics {
     pub navigator: NavigatorState,
     pub displays: BTreeMap<String, (TouchLayout, bool, bool, bool)>,
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum NavigatorAction {
     Avionics {
@@ -115,7 +115,7 @@ pub enum NavigatorAction {
         setting: GlassSetting,
     },
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DisplayAction {
     SyntheticVision { enabled: bool },
@@ -123,7 +123,7 @@ pub enum DisplayAction {
     EngineStrip { visible: bool },
     Failure { failed: bool },
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EquipmentSetting {
     AudioPanel {
@@ -140,7 +140,7 @@ pub enum EquipmentSetting {
         action: DisplayAction,
     },
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetEquipment {
     pub setting: EquipmentSetting,

@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A boolean that accepts only `false`, used to disengage a numeric hold.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 #[serde(try_from = "bool")]
 pub struct Disengage;
 
@@ -34,7 +34,7 @@ impl JsonSchema for Disengage {
 }
 
 /// Numeric target, or `null`/`false` to disengage. Omitted fields keep their current setting.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(untagged)]
 pub enum HoldTarget {
     Target(f64),
@@ -78,7 +78,7 @@ fn airspeed_schema(schema: &mut schemars::Schema) {
 /// Patch any subset of holds. Conflicting vertical or lateral holds must be disengaged in the
 /// same call. Bounds: pitch -0.25..0.35 rad, altitude 2..10000 m, climb -8..8 m/s, heading 0..2π,
 /// airspeed 25..80 m/s, and bank limit 0.05..0.6 rad.
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetAutopilot {
     #[serde(default, deserialize_with = "provided")]
@@ -147,7 +147,7 @@ impl SetAutopilot {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AssistOff {}
 
@@ -248,7 +248,7 @@ fn default_max_steps() -> u32 {
     MAX_STEPS
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RunUntil {
     /// Stop when any condition matches; at most 16. An empty list runs to the step cap.
@@ -325,7 +325,7 @@ impl Command for RunUntil {
 }
 
 /// Canonical script hold command; unrelated to installed equipment.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(transparent)]
 pub struct SetAssist(pub SetAutopilot);
 impl Command for SetAssist {
@@ -337,7 +337,7 @@ impl Command for SetAssist {
     }
 }
 /// Deprecated for one release; use `assist.off` for script holds.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AutopilotOff {}
 impl Command for AutopilotOff {

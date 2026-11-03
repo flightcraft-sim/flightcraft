@@ -36,6 +36,10 @@ pub mod efb;
 pub use efb::*;
 mod app;
 mod holds;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod host;
+pub mod presentation;
+pub mod screens;
 pub use app::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod bridge;
@@ -53,12 +57,12 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 pub const MAX_STEPS: u32 = 120 * 600;
 
 /// A command: a name, a typed input, and a typed output, both with JSON schemas.
-pub trait Command: DeserializeOwned + schemars::JsonSchema {
+pub trait Command: Serialize + DeserializeOwned + schemars::JsonSchema + Send + 'static {
     /// Dotted name, for example `sim.step`.
     const NAME: &'static str;
     /// One sentence for the command list and MCP tool description.
     const DESCRIPTION: &'static str;
-    type Output: Serialize + schemars::JsonSchema;
+    type Output: Serialize + schemars::JsonSchema + Send + 'static;
     fn run(self, session: &mut Session) -> Result<Self::Output, CommandError>;
 }
 
@@ -88,6 +92,17 @@ pub enum CommandError {
 /// One flight session: the simulation and the settings commands change.
 #[derive(Debug)]
 pub struct Session {
+    pub(crate) screens: screens::ScreenSet,
+    presentation_glass: Option<GlassState>,
+    presentation_comms: Option<CommsSnapshot>,
+    presentation_atc: Option<comms::AtcState>,
+    pub(crate) presentation_commands: Option<Vec<(String, serde_json::Value)>>,
+    layout_undo: Vec<screens::ScreenSet>,
+    layout_redo: Vec<screens::ScreenSet>,
+    #[cfg(not(target_arch = "wasm32"))]
+    host: Option<host::SessionHost>,
+    #[cfg(not(target_arch = "wasm32"))]
+    presentation_efb: Option<EfbStatus>,
     scenario: scenario::ScenarioRuntime,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
@@ -118,6 +133,17 @@ impl Session {
             .resolve_aircraft("corvid")
             .map_err(SimError::from)?;
         Ok(Self {
+            screens: Default::default(),
+            presentation_glass: None,
+            presentation_comms: None,
+            presentation_atc: None,
+            presentation_commands: None,
+            layout_undo: Vec::new(),
+            layout_redo: Vec::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            host: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            presentation_efb: None,
             scenario: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
@@ -141,7 +167,7 @@ impl Session {
         })
     }
 
-    /// Enable app commands for the session hosted by the UI thread.
+    /// Enable app commands for the session owner.
     pub fn enable_app(&mut self) {
         self.camera = Some(CameraSettings::default());
     }
@@ -196,6 +222,25 @@ impl Session {
 
     /// Run a typed command.
     pub fn run<C: Command>(&mut self, command: C) -> Result<C::Output, CommandError> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(host) = self.host.clone() {
+            let (result, mut snapshot) = host.run(command)?;
+            snapshot.host = Some(host);
+            *self = snapshot;
+            return result;
+        }
+        if self.presentation_commands.is_some() && !screens::read_only(C::NAME) {
+            let input = serde_json::to_value(&command).map_err(|e| CommandError::Failed(e.to_string()))?;
+            if let Some(commands) = self.presentation_commands.as_mut() {
+                if commands.len() >= 256 {
+                    return Err(CommandError::Failed("screen command queue full".into()));
+                }
+                commands.push((C::NAME.into(), input));
+            }
+        }
+        if self.presentation_commands.is_some() {
+            return command.run(self);
+        }
         self.sequence_glass();
         self.sequence_comms();
         let result = command.run(self);
@@ -301,7 +346,7 @@ pub struct Playback {
 }
 
 /// Start on the default runway or in the air above its threshold.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ResetStart {
     Runway {},
@@ -328,19 +373,19 @@ pub enum ResetStart {
     },
 }
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, serde::Serialize)]
 #[serde(untagged)]
 enum StartInput {
     Existing(ResetStart),
     Runway(RunwayInput),
     Air(AirInput),
 }
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct RunwayInput {
     runway: AirportRunwayStart,
 }
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct AirInput {
     air: AirportAirStart,
@@ -356,7 +401,7 @@ fn deserialize_start<'de, D: serde::Deserializer<'de>>(d: D) -> Result<ResetStar
     })
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Reset {
     /// World data is part of the start. Omission retains the original flat world.
@@ -525,7 +570,7 @@ fn without_default(schema: &mut schemars::Schema) {
 }
 
 /// Partial controls; values persist until explicitly changed. Surface inputs are dimensionless.
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetControls {
     #[serde(default, deserialize_with = "provided")]
@@ -573,7 +618,7 @@ impl Command for SetControls {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Step {
     #[schemars(range(min = 0, max = MAX_STEPS))]
@@ -595,7 +640,7 @@ impl Command for Step {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetState {}
 
@@ -609,7 +654,7 @@ impl Command for GetState {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Pause {}
 
@@ -624,7 +669,7 @@ impl Command for Pause {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Resume {}
 
@@ -639,7 +684,7 @@ impl Command for Resume {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetRate {
     #[schemars(range(min = 0.25, max = 8))]
@@ -658,7 +703,7 @@ impl Command for SetRate {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListCommands {}
 
@@ -735,6 +780,20 @@ macro_rules! registry {
 }
 
 registry!(
+    screens::OpenScreen,
+    screens::CloseScreen,
+    screens::ListScreens,
+    screens::SetScreenPage,
+    screens::SetLayout,
+    screens::ConfigureScreen,
+    screens::ConfigureMonitor,
+    screens::EditElement,
+    screens::MoveElement,
+    screens::AddElement,
+    screens::RemoveElement,
+    screens::UndoLayout,
+    screens::RedoLayout,
+    screens::SaveLayout,
     ScenarioValidate,
     ScenarioStart,
     ScenarioAmend,
@@ -825,7 +884,7 @@ registry!(
 );
 
 /// Query the selected world's elevation, upward NED normal, and surface.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct WorldHeight {
     #[schemars(range(min = -100_000_000.0, max = 100_000_000.0))]

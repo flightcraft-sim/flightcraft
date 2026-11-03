@@ -1,4 +1,4 @@
-//! App command contracts. Platform IO and deferred work belong to the UI thread.
+//! App command contracts. The owner handles waits and IO; viewport captures complete in egui.
 use crate::{Command, CommandError, Session, StateOutput, invalid, range};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ pub enum CameraMode {
     Cockpit,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
 pub struct CameraSettings {
     pub mode: CameraMode,
     pub distance_m: f64,
@@ -33,7 +33,7 @@ impl Default for CameraSettings {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetCamera {
     pub mode: CameraMode,
@@ -89,7 +89,7 @@ impl Command for SetCamera {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AppScreenshot {
     /// Directory for a newly created PNG. Required unless base64 is true.
@@ -130,7 +130,7 @@ impl Command for AppScreenshot {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Wait {
     #[schemars(range(min = 0, max = 60))]

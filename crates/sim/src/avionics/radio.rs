@@ -58,7 +58,7 @@ impl Default for NavRadio {
         }
     }
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum RadioSetting {
     Standby { radio: u8, frequency_hz: u32 },
@@ -68,7 +68,7 @@ pub enum RadioSetting {
     Ident { radio: u8, on: bool },
     ServiceVolume { radio: u8, class: ServiceVolume },
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct RadioState {
     /// Published magnetic localizer course or the pilot's magnetic OBS selection.
     pub course_magnetic_deg: Option<f64>,
@@ -89,7 +89,7 @@ impl NavSource for RadioState {
         self.guidance
     }
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct Radios {
     pub source: CdiSource,
     pub receivers: [NavRadio; 2],

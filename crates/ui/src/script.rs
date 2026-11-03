@@ -16,7 +16,7 @@ use serde::Deserialize;
 /// The most commands one script may hold.
 pub const MAX_LINES: usize = 10_000;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct Line {
     at_s: f64,
@@ -59,6 +59,14 @@ impl Script {
         // Stable: commands at the same time keep their order in the file.
         lines.sort_by(|a, b| a.at_s.total_cmp(&b.at_s));
         Ok(Self { lines, next: 0 })
+    }
+
+    pub fn jsonl(&self) -> Result<String, String> {
+        self.lines
+            .iter()
+            .map(|line| serde_json::to_string(line).map_err(|e| e.to_string()))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|lines| lines.join("\n"))
     }
 
     /// True while commands remain.

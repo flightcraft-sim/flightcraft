@@ -701,7 +701,12 @@ fn export_record(
     }
 }
 
-fn atc_panel(ui: &mut egui::Ui, s: &mut Session, airport: &mut String, error: &mut Option<String>) {
+pub(crate) fn atc_panel(
+    ui: &mut egui::Ui,
+    s: &mut Session,
+    airport: &mut String,
+    error: &mut Option<String>,
+) {
     egui::CollapsingHeader::new("Tower and approach training")
         .default_open(true)
         .show(ui, |ui| {

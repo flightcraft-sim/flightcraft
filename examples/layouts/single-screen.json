@@ -1,0 +1,53 @@
+{
+  "windows": [
+    {
+      "id": 0,
+      "title": "FlightCraft",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Single screen",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "outside",
+            "page": {
+              "kind": "outside",
+              "follow_main_camera": true
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              470
+            ]
+          },
+          {
+            "id": "panel",
+            "page": {
+              "kind": "panel"
+            },
+            "position": [
+              0,
+              470
+            ],
+            "size": [
+              1280,
+              330
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "next_id": 1
+}

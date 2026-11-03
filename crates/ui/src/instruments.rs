@@ -72,7 +72,7 @@ impl<'a> InstrumentInput<'a> {
     }
 }
 
-pub trait Instrument {
+pub trait Instrument: Send {
     fn update(&mut self, input: InstrumentInput<'_>) -> DrawList;
 }
 
@@ -213,7 +213,7 @@ impl DrawList {
     }
 }
 
-pub trait Skin {
+pub trait Skin: Send {
     fn paint(&self, painter: &Painter, draw: &DrawList);
 }
 
@@ -290,7 +290,11 @@ impl Skin for SkinPack {
                         Align2::CENTER_CENTER,
                         text,
                         FontId::monospace(*size),
-                        color(*ink),
+                        color(if matches!(ink, Ink::Inactive) {
+                            Ink::Muted
+                        } else {
+                            *ink
+                        }),
                     );
                 }
             }
@@ -313,7 +317,7 @@ pub struct EquipmentSnapshot<'a> {
     pub input: InstrumentInput<'a>,
 }
 /// Paint artwork only. The host retains all command hit regions and hold ownership.
-pub trait EquipmentSkin {
+pub trait EquipmentSkin: Send {
     fn paint(&self, painter: &Painter, rect: Rect, snapshot: EquipmentSnapshot<'_>);
 }
 pub struct Registry {
@@ -468,6 +472,8 @@ fn valid_item(item: &DrawItem) -> bool {
 
 #[derive(Default)]
 pub struct InstrumentPanel {
+    pub standalone: bool,
+    pub fit_all: bool,
     modern: crate::modern::PanelUi,
     pub registry: Registry,
     pub options: DisplayOptions,
@@ -533,6 +539,7 @@ impl InstrumentPanel {
         generation: u64,
     ) -> Result<Vec<SystemSetting>, String> {
         let panel = Panel {
+            touch_controls: Vec::new(),
             audio_panel: Default::default(),
             equipment: None,
             autopilot: None,
@@ -590,7 +597,7 @@ impl InstrumentPanel {
             self.heading_commands.append(&mut self.modern.avionics);
             return Ok(settings);
         }
-        let mut settings = if input.systems.enabled {
+        let mut settings = if input.systems.enabled && !self.standalone {
             let (mut settings, pointer_held) = switches::show(ui, input.systems);
             settings.extend(
                 self.starter_hold
@@ -601,9 +608,51 @@ impl InstrumentPanel {
             Vec::new()
         };
         let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
+        let rect = if self.standalone || self.fit_all {
+            let [width, height] = panel_dimensions(panel);
+            fit_size(rect, [width as f32, height as f32])
+        } else {
+            rect
+        };
         let cells = layout(panel, rect);
         for ((installation, module), cell) in panel.instruments.iter().zip(&mut self.modules).zip(cells) {
-            let draw = module.update(input);
+            let mut draw = module.update(input);
+            if self.standalone
+                && matches!(
+                    installation.module.as_str(),
+                    "airspeed"
+                        | "attitude"
+                        | "altimeter"
+                        | "turn_coordinator"
+                        | "heading"
+                        | "vertical_speed"
+                        | "tachometer"
+                )
+            {
+                draw.items.retain(|item| !matches!(item, DrawItem::Label { at, .. } if at.get(1).is_some_and(|y| *y > 158. || *y < 24.)));
+                // Crop the explanatory caption margin; artwork and live knobs retain their coordinates.
+                let shift = |point: &mut [f32; 2]| {
+                    let [x, y] = *point;
+                    *point = [x - 26., y - 14.];
+                };
+                for item in &mut draw.items {
+                    match item {
+                        DrawItem::Circle { center, .. } => shift(center),
+                        DrawItem::Label { at, .. } => shift(at),
+                        DrawItem::Line { a, b, .. } => {
+                            shift(a);
+                            shift(b);
+                        }
+                        DrawItem::Polygon { points, .. } => {
+                            for p in points {
+                                shift(p);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                draw.size = [148., 148.];
+            }
             if installation.module.starts_with("electronic_")
                 && ui
                     .interact(cell, ui.id().with(&installation.id), Sense::click())
@@ -708,6 +757,7 @@ fn panel_dimensions(panel: &Panel) -> [f64; 2] {
         [w.max(x + iw), h.max(y + ih)]
     })
 }
+#[cfg(test)]
 pub(crate) fn view_panel_height(panel: &Panel, window: egui::Vec2, compact: bool) -> f32 {
     let [w, h] = panel
         .equipment
@@ -780,6 +830,7 @@ pub(crate) fn scaled(p: &Painter, cell: Rect, size: [f32; 2], draw: impl FnOnce(
     });
 }
 
+#[cfg(test)]
 pub(crate) fn panel_height(window_height: f32, compact: bool) -> f32 {
     if compact {
         260.

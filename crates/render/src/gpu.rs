@@ -33,6 +33,7 @@ pub(crate) struct Uniform {
 }
 
 pub(crate) struct SceneCallback {
+    pub resources: std::sync::Arc<std::sync::Mutex<Option<ViewGpu>>>,
     pub world: flightcraft_world::World,
     pub uniform: Uniform,
     pub size: [f32; 2],
@@ -40,6 +41,12 @@ pub(crate) struct SceneCallback {
     pub show_airspace: bool,
     pub show_lights: bool,
     pub larrow: bool,
+}
+
+pub(crate) struct ViewGpu {
+    uniform: wgpu::Buffer,
+    bind: wgpu::BindGroup,
+    targets: Targets,
 }
 
 struct Targets {
@@ -75,10 +82,8 @@ struct Gpu {
     transparent: wgpu::RenderPipeline,
     blit: wgpu::RenderPipeline,
     meshes: [DrawMesh; 2],
-    uniform: wgpu::Buffer,
-    uniform_bind: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
-    targets: Targets,
     vision_targets: Targets,
     vision_uniform: wgpu::Buffer,
     vision_bind: wgpu::BindGroup,
@@ -167,12 +172,6 @@ impl Gpu {
             label: Some("flight scene WGSL"),
             source: wgpu::ShaderSource::Wgsl(include_str!("scene.wgsl").into()),
         });
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scene uniforms"),
-            size: std::mem::size_of::<Uniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scene uniform layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -184,14 +183,6 @@ impl Gpu {
                     min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<Uniform>() as u64),
                 },
                 count: None,
-            }],
-        });
-        let uniform_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("scene uniform bind"),
-            layout: &uniform_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform.as_entire_binding(),
             }],
         });
         let scene_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -352,7 +343,6 @@ impl Gpu {
             }],
         });
         let vision_targets = targets(device, [750, 285], &texture_layout);
-        let targets = targets(device, [1, 1], &texture_layout);
         Self {
             sky,
             scene,
@@ -363,10 +353,8 @@ impl Gpu {
             airspace: None,
             terrain_fingerprint: None,
             palette,
-            uniform,
-            uniform_bind,
+            uniform_layout,
             texture_layout,
-            targets,
             vision_targets,
             vision_uniform,
             vision_bind,
@@ -469,14 +457,38 @@ impl CallbackTrait for SceneCallback {
         let size = self
             .size
             .map(|v| (v * screen.pixels_per_point).round().clamp(1.0, max_dimension) as u32);
-        if gpu.targets.size != size {
-            gpu.targets = targets(device, size, &gpu.texture_layout);
+        let Ok(mut resources) = self.resources.lock() else {
+            return Vec::new();
+        };
+        let view = resources.get_or_insert_with(|| {
+            let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("screen uniforms"),
+                size: std::mem::size_of::<Uniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("screen uniforms"),
+                layout: &gpu.uniform_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                }],
+            });
+            ViewGpu {
+                uniform,
+                bind,
+                targets: targets(device, size, &gpu.texture_layout),
+            }
+        });
+        if view.targets.size != size {
+            view.targets = targets(device, size, &gpu.texture_layout);
         }
-        queue.write_buffer(&gpu.uniform, 0, bytemuck::bytes_of(&self.uniform));
+        queue.write_buffer(&view.uniform, 0, bytemuck::bytes_of(&self.uniform));
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("flight scene"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &gpu.targets.color,
+                view: &view.targets.color,
                 resolve_target: None,
                 depth_slice: None,
                 ops: wgpu::Operations {
@@ -485,7 +497,7 @@ impl CallbackTrait for SceneCallback {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &gpu.targets.depth,
+                view: &view.targets.depth,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Discard,
@@ -495,7 +507,7 @@ impl CallbackTrait for SceneCallback {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
-        pass.set_bind_group(0, &gpu.uniform_bind, &[]);
+        pass.set_bind_group(0, &view.bind, &[]);
         pass.set_pipeline(&gpu.sky);
         pass.draw(0..3, 0..1);
         pass.set_pipeline(&gpu.scene);
@@ -551,9 +563,12 @@ impl CallbackTrait for SceneCallback {
         pass: &mut wgpu::RenderPass<'static>,
         resources: &CallbackResources,
     ) {
-        if let Some(gpu) = resources.get::<Gpu>() {
+        if let Some(gpu) = resources.get::<Gpu>()
+            && let Ok(resources) = self.resources.lock()
+            && let Some(view) = resources.as_ref()
+        {
             pass.set_pipeline(&gpu.blit);
-            pass.set_bind_group(0, &gpu.targets.bind, &[]);
+            pass.set_bind_group(0, &view.targets.bind, &[]);
             pass.draw(0..3, 0..1);
         }
     }

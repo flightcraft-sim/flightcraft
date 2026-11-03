@@ -189,14 +189,14 @@ pub struct EmergencyDebrief {
     pub has_been_airborne: bool,
     pub last_sample_time_s: f64,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EmergencyObservation {
     Recognized,
     Checklist { item: String },
     ChooseField { id: String },
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmergencyRecord {
     pub observation: EmergencyObservation,

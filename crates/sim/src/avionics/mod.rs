@@ -19,7 +19,7 @@ pub enum Unit {
     ElectronicHsi,
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AvionicsSetting {
     LoadProcedure {
@@ -100,7 +100,7 @@ pub enum AvionicsSetting {
         enabled: bool,
     },
 }
-#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct AvionicsState {
     pub installed: bool,
     pub electronic_attitude: electronic_attitude::ElectronicAttitude,

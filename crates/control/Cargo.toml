@@ -13,6 +13,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+base64.workspace = true
 libm.workspace = true
 flightcraft-world.workspace = true
 flightcraft-aero.workspace = true

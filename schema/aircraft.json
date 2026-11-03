@@ -280,6 +280,13 @@
         "kind": {
           "type": "string",
           "const": "panel"
+        },
+        "touch_controls": {
+          "description": "Original touch ergonomics for independently placed controls; values are normalized commands.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TouchControlDefinition"
+          }
         }
       },
       "additionalProperties": false,
@@ -2718,6 +2725,57 @@
         "unusable_kg",
         "gauge_lag_s",
         "gauge_bias_kg"
+      ]
+    },
+    "TouchControlDefinition": {
+      "type": "object",
+      "properties": {
+        "detents": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number",
+                "format": "double"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "style": {
+          "$ref": "#/$defs/TouchControlStyle"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "style"
+      ]
+    },
+    "TouchControlStyle": {
+      "type": "string",
+      "enum": [
+        "black_plunger",
+        "red_lock_plunger",
+        "push_pull",
+        "trim_wheel",
+        "flap_lever",
+        "fuel_selector",
+        "quadrant",
+        "choke"
       ]
     },
     "TouchLayout": {

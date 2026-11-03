@@ -38,7 +38,7 @@ pub enum SystemSwitch {
 }
 
 /// One atomic panel action. Numeric values are validated before any state changes.
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SystemSetting {
     Equipment {
@@ -53,6 +53,10 @@ pub enum SystemSetting {
     },
     FuelSelector {
         position: FuelSelector,
+    },
+    Trim {
+        #[schemars(range(min=-0.3,max=0.3))]
+        value: f64,
     },
     Mixture {
         #[schemars(range(min = 0, max = 1))]
@@ -95,7 +99,7 @@ pub enum SystemSetting {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct SystemControls {
     pub master: bool,
     pub avionics: bool,
@@ -109,6 +113,8 @@ pub struct SystemControls {
     pub starter: bool,
     pub magnetos: Magnetos,
     pub mixture: f64,
+    #[serde(default)]
+    pub trim: f64,
     pub fuel_selector: FuelSelector,
     pub altimeter_setting_pa: f64,
     pub temperature_c: f64,
@@ -129,6 +135,7 @@ impl Default for SystemControls {
             starter: false,
             magnetos: Magnetos::Both,
             mixture: 1.0,
+            trim: 0.0,
             fuel_selector: FuelSelector::Both,
             altimeter_setting_pa: 101325.0,
             temperature_c: 15.0,
@@ -137,7 +144,7 @@ impl Default for SystemControls {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct LoadState {
     pub id: String,
     pub breaker_closed: bool,
@@ -149,7 +156,7 @@ pub struct LoadState {
     pub on_backup: bool,
     pub backup_remaining_ah: f64,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ElectricalState {
     pub battery_capacity_ah: f64,
     pub battery_soc: f64,
@@ -161,7 +168,7 @@ pub struct ElectricalState {
     pub essential_bus_voltage: f64,
     pub loads: Vec<LoadState>,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TankState {
     pub id: String,
     pub wing: Wing,
@@ -170,7 +177,7 @@ pub struct TankState {
     pub quantity_kg: f64,
     pub indicated_kg: f64,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct SensedInstruments {
     pub indicated_airspeed_mps: f64,
     pub altitude_msl_m: f64,
@@ -184,7 +191,7 @@ pub struct SensedInstruments {
     pub turn_coordinator_rate_rps: f64,
     pub lateral_acceleration_g: f64,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct SystemsState {
     /// Normalized cockpit smoke obscuration; accumulates under a smoke source, clears after isolation.
     pub smoke_density: f64,
@@ -338,6 +345,9 @@ impl SystemsState {
         let sensed = self.sensed;
         let mut words = vec![c.magnetos as u64, c.fuel_selector as u64];
         words.extend(self.failures.emergency_hash_words());
+        if c.trim != 0.0 {
+            words.extend([0x7472696d, c.trim.to_bits()]);
+        }
         if self.smoke_density > 0.0 {
             words.extend([0x736d6f6b65, self.smoke_density.to_bits()]);
         }
@@ -615,6 +625,10 @@ impl SystemsState {
                     return Err(invalid("BOTH not installed"));
                 }
                 self.controls.fuel_selector = position;
+            }
+            SystemSetting::Trim { value } => {
+                bounded(value, -0.3, 0.3)?;
+                self.controls.trim = value;
             }
             SystemSetting::Mixture { value } => {
                 if self.modern.as_ref().is_some_and(|s| s.electronic) {

@@ -233,7 +233,7 @@ impl FlightRecord {
         self.inputs.push(RecordedInput { time_s, controls });
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FlightEvents {
     #[serde(default)]

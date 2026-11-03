@@ -19,6 +19,7 @@ to watch a scripted takeoff).
 - An MCP server (`flightcraft-mcp`, see [docs/mcp.md](docs/mcp.md)): an agent resets, sets controls,
   steps, and reads the state. With the autopilot holds and `sim.run_until`, a test flies the full
   traffic pattern in 32 calls.
+- [Multiple screens](docs/multiple-screens.md): native windows, individual panel pieces, touch controls, shared browser pages, and opt-in paired LAN panels.
 - Bridged MCP: `flightcraft --control 7890` and `flightcraft-mcp --connect 7890` let an agent fly the
   app a person is watching, and take screenshots of it.
 - Wind, shear, and repeatable turbulence; engine failure, partial power, and jammed controls.

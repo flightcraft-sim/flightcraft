@@ -14,7 +14,7 @@ pub enum GeocodeProvider {
     Census,
     Nominatim,
 }
-#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GeocodeLookup {
     pub address: String,
@@ -34,7 +34,7 @@ pub struct GeocodeOutput {
     pub results: Vec<GeocodeResult>,
     pub cached: bool,
 }
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct GeocodeState {
     cache: BTreeMap<String, GeocodeOutput>,
 }

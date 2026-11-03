@@ -1,0 +1,164 @@
+{
+  "windows": [
+    {
+      "id": 0,
+      "title": "Outside forward",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Outside forward",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "outside",
+            "page": {
+              "kind": "outside",
+              "camera": {
+                "view": "forward",
+                "fov_deg": 60,
+                "heading_offset_deg": -60
+              }
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "position": [
+        0,
+        40
+      ]
+    },
+    {
+      "id": 1,
+      "title": "Outside forward",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Outside forward",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "outside",
+            "page": {
+              "kind": "outside",
+              "camera": {
+                "view": "forward",
+                "fov_deg": 60,
+                "heading_offset_deg": 0
+              }
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "position": [
+        100,
+        90
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Outside forward",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Outside forward",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "outside",
+            "page": {
+              "kind": "outside",
+              "camera": {
+                "view": "forward",
+                "fov_deg": 60,
+                "heading_offset_deg": 60
+              }
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              800
+            ]
+          }
+        ]
+      },
+      "position": [
+        200,
+        140
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Panel",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Aircraft panel",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "panel",
+            "page": {
+              "kind": "panel"
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              800
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "next_id": 4
+}

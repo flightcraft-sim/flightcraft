@@ -3,12 +3,12 @@ use crate::{Command, CommandError, GlassState, Session};
 pub use flightcraft_sim::avionics::AvionicsSetting;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetAvionics {
     pub setting: AvionicsSetting,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetAvionics {}
 pub type GetAvionicsState = GetAvionics;
@@ -74,7 +74,7 @@ impl Command for GetAvionics {
 pub struct AutopilotOutput {
     pub autopilot: Option<flightcraft_sim::equipment::EquipmentState>,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetAutopilot {}
 impl Command for GetAutopilot {

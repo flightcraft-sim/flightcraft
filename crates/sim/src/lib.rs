@@ -214,6 +214,7 @@ pub struct InstrumentTime {
 /// One simulation: an aircraft, a world, and its state.
 #[derive(Clone, Debug)]
 pub struct Sim {
+    presentation: Option<Readout>,
     aircraft: Aircraft,
     world: World,
     magnetism: magnetic::Magnetism,
@@ -241,6 +242,26 @@ pub struct Sim {
 }
 
 impl Sim {
+    /// Install a display-only snapshot. A presentation must never be stepped.
+    pub fn install_presentation(
+        &mut self,
+        state: State,
+        readout: Readout,
+        mut systems: systems::SystemsState,
+    ) {
+        self.state = state;
+        self.controls = readout.controls;
+        self.pilot_controls = readout.controls;
+        self.failures = readout.failures;
+        self.crashed = readout.crashed;
+        if let (Some(source), Some(target)) = (&self.systems.modern, &mut systems.modern) {
+            target.panel_bindings = source.panel_bindings.clone();
+            target.wigwag_installed = source.wigwag_installed;
+        }
+        self.systems = systems;
+        self.presentation = Some(readout);
+    }
+
     /// A new simulation of the default aircraft at `start`.
     pub fn new(start: &Start) -> Result<Self, SimError> {
         Self::new_with_weather(start, Weather::default())
@@ -374,6 +395,7 @@ impl Sim {
             aircraft,
             world,
             magnetism,
+            presentation: None,
             conditions: world::Conditions::default(),
             hood: false,
             instrument_time: InstrumentTime::default(),
@@ -429,6 +451,7 @@ impl Sim {
             aircraft,
             world,
             magnetism,
+            presentation: None,
             conditions: world::Conditions::default(),
             hood: false,
             instrument_time: InstrumentTime::default(),
@@ -772,10 +795,18 @@ impl Sim {
     }
 
     #[must_use]
+    fn trimmed_controls(&self) -> Controls {
+        let mut controls = self.controls;
+        if self.systems.controls.trim != 0.0 {
+            controls.elevator = (controls.elevator + self.systems.controls.trim).clamp(-1.0, 1.0);
+        }
+        controls
+    }
     pub fn effective_controls(&self) -> Controls {
-        let c = self
-            .aircraft
-            .limit_controls(self.failures.apply(dynamics::aero_controls(self.controls)));
+        let c = self.aircraft.limit_controls(
+            self.failures
+                .apply(dynamics::aero_controls(self.trimmed_controls())),
+        );
         Controls {
             elevator: c.elevator,
             aileron: c.aileron,
@@ -1030,6 +1061,9 @@ impl Sim {
     /// Advance up to `n` fixed steps of [`DT_S`], stopping at a crash or numerical envelope exit.
     /// The last finite state is retained. Crashed simulations remain frozen.
     pub fn step(&mut self, n: u32) {
+        if self.presentation.is_some() {
+            return;
+        }
         for _ in 0..n {
             if self.crashed {
                 break;
@@ -1112,7 +1146,7 @@ impl Sim {
                 dynamics::rk4(
                     &self.aircraft,
                     self.state,
-                    self.controls,
+                    self.trimmed_controls(),
                     &self.wind,
                     self.propulsion_failures(),
                     &self.world,
@@ -1226,6 +1260,9 @@ impl Sim {
 
     #[must_use]
     pub fn readout(&self) -> Readout {
+        if let Some(readout) = self.presentation {
+            return readout;
+        }
         let s = &self.state;
         let [_, _, z] = s.position_m;
         let [vn, ve, vd] = s.velocity_mps;
@@ -1235,7 +1272,7 @@ impl Sim {
         let loads = dynamics::loads(
             &self.aircraft,
             s,
-            self.controls,
+            self.trimmed_controls(),
             &self.wind,
             self.propulsion_failures(),
         );

@@ -53,7 +53,7 @@ pub enum WaypointKind {
     Pin,
     Coordinate,
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum GlassSetting {
     SyntheticVision {
@@ -120,7 +120,7 @@ pub enum GlassSetting {
         failed: bool,
     },
 }
-#[derive(Clone, Copy, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GlassFailure {
     Ahrs,

@@ -3,7 +3,7 @@ use crate::{Command, CommandError, Session, navigation::failed};
 use flightcraft_world::GeoPoint;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CurrentLocation {
     #[serde(default)]

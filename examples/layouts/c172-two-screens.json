@@ -1,0 +1,300 @@
+{
+  "windows": [
+    {
+      "id": 0,
+      "title": "C172-style student view (fictional Corvid)",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Outside, six-pack, and radio",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "outside",
+            "page": {
+              "kind": "outside",
+              "follow_main_camera": true
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              1280,
+              460
+            ]
+          },
+          {
+            "id": "airspeed",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "airspeed"
+              ]
+            },
+            "position": [
+              0,
+              470
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "attitude",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "attitude"
+              ]
+            },
+            "position": [
+              220,
+              470
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "altimeter",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "altimeter"
+              ]
+            },
+            "position": [
+              440,
+              470
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "turn_coordinator",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "turn_coordinator"
+              ]
+            },
+            "position": [
+              0,
+              630
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "heading",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "heading"
+              ]
+            },
+            "position": [
+              220,
+              630
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "vertical_speed",
+            "page": {
+              "kind": "instrument",
+              "instruments": [
+                "vertical_speed"
+              ]
+            },
+            "position": [
+              440,
+              630
+            ],
+            "size": [
+              210,
+              158
+            ],
+            "bezel": false
+          },
+          {
+            "id": "radio",
+            "page": {
+              "kind": "radio"
+            },
+            "position": [
+              675,
+              470
+            ],
+            "size": [
+              605,
+              330
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "title": "Touchscreen engine controls",
+      "size": [
+        950,
+        580
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Tablet engine controls",
+        "units": "px",
+        "canvas": [
+          950,
+          580
+        ],
+        "elements": [
+          {
+            "id": "throttle",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "throttle",
+                "detents": []
+              }
+            },
+            "position": [
+              10,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          },
+          {
+            "id": "mixture",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "mixture",
+                "detents": []
+              }
+            },
+            "position": [
+              165,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          },
+          {
+            "id": "carb_heat",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "carb_heat",
+                "detents": [
+                  0,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            "position": [
+              320,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          },
+          {
+            "id": "flaps",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "flaps",
+                "detents": [
+                  0,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            "position": [
+              475,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          },
+          {
+            "id": "trim",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "trim",
+                "detents": []
+              }
+            },
+            "position": [
+              630,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          },
+          {
+            "id": "fuel_selector",
+            "page": {
+              "kind": "control",
+              "control": {
+                "kind": "fuel_selector",
+                "detents": [
+                  0,
+                  0.5,
+                  1
+                ]
+              }
+            },
+            "position": [
+              785,
+              15
+            ],
+            "size": [
+              140,
+              540
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "next_id": 2
+}

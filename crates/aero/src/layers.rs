@@ -219,6 +219,9 @@ impl Default for AudioPanelInstallation {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Panel {
+    /// Original touch ergonomics for independently placed controls; values are normalized commands.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub touch_controls: Vec<TouchControlDefinition>,
     /// Omitted installations share the existing avionics load and retain legacy power demand.
     #[serde(default)]
     pub audio_panel: AudioPanelInstallation,
@@ -231,6 +234,28 @@ pub struct Panel {
     pub identity: Identity,
     #[schemars(length(max = 64))]
     pub instruments: Vec<InstrumentInstallation>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TouchControlStyle {
+    BlackPlunger,
+    RedLockPlunger,
+    PushPull,
+    TrimWheel,
+    FlapLever,
+    FuelSelector,
+    Quadrant,
+    Choke,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TouchControlDefinition {
+    pub id: String,
+    pub label: String,
+    pub style: TouchControlStyle,
+    #[serde(default)]
+    pub detents: Vec<(f64, String)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -294,7 +319,7 @@ pub enum DefinitionSource {
     Pack { id: String },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ResolvedAircraft {
     pub aircraft: Aircraft,
     pub variant: Variant,
@@ -403,6 +428,26 @@ impl LayerFile {
         match self {
             Self::Variant(v) => v.validate(),
             Self::Panel(p) => {
+                require(
+                    p.touch_controls.len() <= 32,
+                    "touch_controls",
+                    "at most 32 controls",
+                )?;
+                let mut ids = std::collections::BTreeSet::new();
+                for c in &p.touch_controls {
+                    id(&c.id, "touch_controls.id")?;
+                    require(
+                        ids.insert(&c.id)
+                            && !c.label.is_empty()
+                            && c.label.len() <= 64
+                            && c.detents.len() <= 32
+                            && c.detents.iter().all(|(v, l)| {
+                                v.is_finite() && (0. ..=1.).contains(v) && !l.is_empty() && l.len() <= 32
+                            }),
+                        "touch_controls",
+                        "invalid control label or detent",
+                    )?;
+                }
                 for load in [
                     &p.audio_panel.power_load,
                     &p.audio_panel.com1_load,
@@ -1052,6 +1097,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         ],
     };
     let panel = Panel {
+        touch_controls: Vec::new(),
         audio_panel: Default::default(),
         equipment: None,
         autopilot: None,

@@ -21,6 +21,7 @@ flightcraft-render = { path = "crates/render" }
 flightcraft-ui = { path = "crates/ui" }
 
 sha2 = "0.10"
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 time = { version = "0.3", features = ["formatting"] }
 getrandom = "0.3"
 thiserror = "2"
@@ -48,7 +49,7 @@ image = { version = "0.25", default-features = false, features = ["png", "webp",
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
-web-sys = { version = "0.3", features = ["Window", "Document", "HtmlCanvasElement", "Blob", "BlobPropertyBag", "HtmlAnchorElement", "HtmlElement", "Node", "Location", "UrlSearchParams", "Response", "ReadableStream", "ReadableStreamDefaultReader", "Url", "console", "Storage", "Navigator", "Geolocation", "Position", "Coordinates", "PositionError", "PositionOptions", "Request", "RequestInit", "Headers"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "SharedWorker", "WorkerOptions", "WorkerType", "MessagePort", "MessageEvent", "WebSocket", "BinaryType", "ErrorEvent", "BroadcastChannel", "HtmlCanvasElement", "Blob", "BlobPropertyBag", "HtmlAnchorElement", "HtmlElement", "Node", "Location", "UrlSearchParams", "Response", "ReadableStream", "ReadableStreamDefaultReader", "Url", "console", "Storage", "Navigator", "Geolocation", "Position", "Coordinates", "PositionError", "PositionOptions", "Request", "RequestInit", "Headers"] }
 cpal = { version = "0.16", default-features = false }
 pollster = "0.4"
 zip = { version = "9", default-features = false, features = ["deflate-flate2"] }

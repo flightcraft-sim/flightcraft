@@ -23,7 +23,7 @@ pub enum EquipmentFailure {
     PressureSensor,
     AttitudeSensor,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DisconnectReason {
     Pilot,
@@ -92,7 +92,7 @@ pub enum PanelSetting {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct EquipmentState {
     pub installation: AutopilotInstallation,
     pub engaged: bool,
@@ -134,7 +134,7 @@ pub struct EquipmentState {
     pub ap_flash_visible: bool,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, serde::Deserialize)]
 pub(super) struct Loop {
     integral: f64,
 }
@@ -149,7 +149,7 @@ impl Loop {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, serde::Deserialize)]
 pub(crate) struct Equipment {
     pub(crate) state: EquipmentState,
     roll: Loop,

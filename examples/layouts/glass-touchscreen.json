@@ -1,0 +1,52 @@
+{
+  "windows": [
+    {
+      "id": 0,
+      "title": "Glass touchscreen",
+      "size": [
+        1280,
+        800
+      ],
+      "layout": {
+        "version": 1,
+        "name": "Glass touchscreen",
+        "units": "px",
+        "canvas": [
+          1280,
+          800
+        ],
+        "elements": [
+          {
+            "id": "pfd",
+            "page": {
+              "kind": "pfd"
+            },
+            "position": [
+              0,
+              0
+            ],
+            "size": [
+              640,
+              800
+            ]
+          },
+          {
+            "id": "mfd",
+            "page": {
+              "kind": "mfd"
+            },
+            "position": [
+              640,
+              0
+            ],
+            "size": [
+              640,
+              800
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "next_id": 1
+}

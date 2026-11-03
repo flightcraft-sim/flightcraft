@@ -458,8 +458,9 @@ impl PlanningMap {
                     theme::MUTED,
                 );
             }
-            p.text(
-                rect.right_top() - egui::vec2(8., -8.),
+            map_label(
+                &p,
+                rect.right_top() + egui::vec2(-8., if compact { 24. } else { 8. }),
                 Align2::RIGHT_TOP,
                 format!(
                     "{} · {} · {:.1} NM",
@@ -472,7 +473,6 @@ impl PlanningMap {
                     state.range_nm
                 ),
                 FontId::monospace(11.),
-                theme::ACCENT,
             );
         }
         self.gestures(ui, s, &view, &response, &features, compact);
@@ -597,7 +597,8 @@ impl PlanningMap {
                 .and_then(|m| m.declination(a.latitude_deg, a.longitude_deg, s.simulation_date()))
                 .unwrap_or(0.);
             p.line_segment([x, y], Stroke::new(2., theme::AMBER));
-            p.text(
+            map_label(
+                p,
                 x.lerp(y, 0.5),
                 Align2::CENTER_BOTTOM,
                 format!(
@@ -606,7 +607,6 @@ impl PlanningMap {
                     (bearing - variation).rem_euclid(360.)
                 ),
                 FontId::monospace(12.),
-                theme::AMBER,
             );
         }
     }
@@ -918,6 +918,14 @@ fn terrain(p: &egui::Painter, v: &View, s: &Session, state: &MapState, warnings_
     }
     p.add(egui::Shape::mesh(mesh));
 }
+/// Fixed label backplates keep feature names readable over terrain and chart imagery.
+fn map_label(p: &egui::Painter, at: Pos2, anchor: Align2, text: impl ToString, font: FontId) -> Rect {
+    let galley = p.layout_no_wrap(text.to_string(), font, theme::TEXT);
+    let rect = anchor.anchor_size(at, galley.size());
+    p.rect_filled(rect.expand(2.), 2., theme::DIAL);
+    p.galley(rect.min, galley, theme::TEXT);
+    rect
+}
 fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState) -> Vec<Feature> {
     let mut features = Vec::new();
     let text = if state.night {
@@ -965,7 +973,8 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                         ceiling.reference
                     );
                     if labels.iter().all(|other| other.distance(pos) > 75.) {
-                        p.text(
+                        map_label(
+                            p,
                             pos,
                             Align2::LEFT_TOP,
                             format!(
@@ -975,7 +984,6 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                                 ceiling.value_ft / 100.
                             ),
                             font.clone(),
-                            color,
                         );
                         labels.push(pos);
                     }
@@ -1015,12 +1023,12 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                         .find(|point| v.rect.shrink(24.).contains(*point))
                         && labels.iter().all(|other| other.distance(pos) > 70.)
                     {
-                        p.text(
+                        map_label(
+                            p,
                             pos,
                             Align2::LEFT_BOTTOM,
                             &airway.ident,
                             FontId::proportional(10.),
-                            theme::MUTED.linear_multiply(state.opacity(Overlay::Airways)),
                         );
                         labels.push(pos);
                     }
@@ -1041,12 +1049,12 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                             p.line_segment([pos + d * 13., pos + d * 17.], Stroke::new(0.7, color));
                         }
                     }
-                    p.text(
+                    map_label(
+                        p,
                         pos + egui::vec2(8., 0.),
                         Align2::LEFT_CENTER,
                         &navaid.ident,
                         font.clone(),
-                        color,
                     );
                     let frequency = navaid
                         .components
@@ -1096,12 +1104,12 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                         Stroke::new(0.7, color),
                     ));
                     if across_nm < state.declutter.fixes_across_nm || on_route {
-                        p.text(
+                        map_label(
+                            p,
                             pos + egui::vec2(4., 0.),
                             Align2::LEFT_CENTER,
                             &fix.ident,
                             FontId::proportional(9.),
-                            color,
                         );
                     }
                     features.push(Feature {
@@ -1155,12 +1163,12 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                     }
                 }
                 if !inset && labels.iter().all(|p| p.distance(pos) > 45.) {
-                    p.text(
+                    map_label(
+                        p,
                         pos + egui::vec2(7., -7.),
                         Align2::LEFT_BOTTOM,
                         airport.icao.as_deref().unwrap_or(&airport.ident),
                         font.clone(),
-                        color,
                     );
                     labels.push(pos);
                 }
@@ -1196,12 +1204,12 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
             if let Some(pos) = v.point(pin.position).filter(|p| v.rect.contains(*p)) {
                 let color = theme::AMBER.linear_multiply(state.opacity(Overlay::Pins));
                 p.circle_filled(pos, 4., color);
-                p.text(
+                map_label(
+                    p,
                     pos + egui::vec2(6., 0.),
                     Align2::LEFT_CENTER,
                     &pin.name,
                     font.clone(),
-                    color,
                 );
                 features.push(Feature {
                     position: pin.position,
@@ -1237,7 +1245,8 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                 ],
                 Stroke::new(1.5, color),
             ));
-            p.text(
+            map_label(
+                p,
                 pos + egui::vec2(9., 0.),
                 Align2::LEFT_CENTER,
                 format!(
@@ -1246,7 +1255,6 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                     (traffic.altitude_msl_m - s.sim().readout().altitude_msl_m) / 30.48
                 ),
                 FontId::proportional(11.),
-                color,
             );
         }
     }
@@ -1295,12 +1303,12 @@ fn route(
     for w in &s.flight_plan().waypoints {
         if let Some(pos) = v.point(w.waypoint.position) {
             p.circle_filled(pos, 4., color);
-            p.text(
+            map_label(
+                p,
                 pos + egui::vec2(0., 7.),
                 Align2::CENTER_TOP,
                 &w.waypoint.ident,
                 FontId::proportional(12.),
-                color,
             );
         }
     }
@@ -1352,11 +1360,11 @@ fn rings(p: &egui::Painter, v: &View, state: &MapState) {
         [origin, origin + egui::vec2(pixels, 0.)],
         Stroke::new(2., theme::ACCENT),
     );
-    p.text(
+    map_label(
+        p,
         origin - egui::vec2(0., 3.),
         Align2::LEFT_BOTTOM,
         format!("{length:.1} NM"),
         FontId::monospace(11.),
-        theme::ACCENT,
     );
 }

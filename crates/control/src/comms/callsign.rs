@@ -76,7 +76,7 @@ fn forms(registration: &str, kind: &str) -> (String, String) {
         format!("{kind} {}", spoken_registration(&short)),
     )
 }
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsCallsign {
     #[serde(default)]

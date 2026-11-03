@@ -14,7 +14,7 @@ pub(crate) fn failed(s: impl Into<String>) -> CommandError {
 pub(crate) fn valid_point(p: GeoPoint) -> Result<(), CommandError> {
     p.validate().map_err(|e| failed(e.to_string()))
 }
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct NavigationState {
     pub date: SimulationDate,
     pub pins: PinsFile,
@@ -24,7 +24,7 @@ pub(crate) struct NavigationState {
     #[cfg(not(target_arch = "wasm32"))]
     pub storage: Option<std::path::PathBuf>,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetSimulationDate {
     pub date: SimulationDate,
@@ -208,7 +208,7 @@ macro_rules! pins_command {
         }
     };
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsList {}
 pins_command!(
@@ -217,7 +217,7 @@ pins_command!(
     "List locally saved user pins.",
     |_: PinsList, s: &mut Session| Ok(s.navigation.pins.clone())
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsAdd {
     pub pin: Pin,
@@ -232,7 +232,7 @@ pins_command!(
         s.replace_pins(p)
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsUpdate {
     pub pin: Pin,
@@ -252,7 +252,7 @@ pins_command!(
         s.replace_pins(p)
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsRemove {
     pub id: String,
@@ -271,7 +271,7 @@ pins_command!(
         s.replace_pins(p)
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsImport {
     pub document: PinsFile,
@@ -293,7 +293,7 @@ pins_command!(
         s.replace_pins(p)
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PinsExport {}
 pins_command!(
@@ -332,7 +332,7 @@ pub struct SearchOutput {
     pub snapshot_date: Option<String>,
     pub notice: String,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SearchQuery {
     pub text: String,
@@ -344,7 +344,7 @@ pub struct SearchQuery {
 fn search_limit() -> usize {
     20
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct NearestNavdata {
     pub position: GeoPoint,

@@ -13,7 +13,7 @@ pub const GREEN: Color32 = Color32::from_rgb(110, 211, 132);
 pub const AMBER: Color32 = Color32::from_rgb(247, 194, 97);
 pub const DANGER: Color32 = Color32::from_rgb(242, 103, 103);
 pub const DIAL: Color32 = Color32::from_rgb(10, 18, 26);
-pub const SKY: Color32 = Color32::from_rgb(64, 126, 167);
+pub const SKY: Color32 = Color32::from_rgb(42, 91, 122);
 pub const EARTH: Color32 = Color32::from_rgb(126, 94, 64);
 pub const GLASS_GPS: Color32 = Color32::from_rgb(224, 116, 218);
 pub const AIRSPACE_BLUE: Color32 = Color32::from_rgb(75, 143, 255);
@@ -101,4 +101,28 @@ pub fn scene() -> Palette {
         glare_shield: [0.035, 0.055, 0.07, 1.0],
         propeller: [0.68, 0.75, 0.76, 0.16],
     }
+}
+
+/// A page owns an opaque dark background, including in deferred viewports and capture harnesses.
+pub(crate) fn page(ui: &mut egui::Ui) {
+    let mut v = egui::Visuals::dark();
+    v.override_text_color = Some(TEXT);
+    v.panel_fill = PANEL;
+    v.window_fill = PANEL;
+    v.extreme_bg_color = BACKGROUND;
+    v.faint_bg_color = RAISED;
+    v.widgets.noninteractive.bg_fill = PANEL;
+    v.widgets.noninteractive.fg_stroke.color = TEXT;
+    for widget in [
+        &mut v.widgets.inactive,
+        &mut v.widgets.hovered,
+        &mut v.widgets.active,
+        &mut v.widgets.open,
+    ] {
+        widget.bg_fill = RAISED;
+        widget.weak_bg_fill = RAISED;
+        widget.fg_stroke.color = TEXT;
+    }
+    ui.style_mut().visuals = v;
+    ui.painter().rect_filled(ui.max_rect(), 0., PANEL);
 }

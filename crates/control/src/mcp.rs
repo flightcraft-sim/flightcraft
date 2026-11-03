@@ -76,14 +76,14 @@ fn params<T: DeserializeOwned>(value: Value) -> Result<T, (i32, String)> {
     serde_path_to_error::deserialize(value).map_err(|error| (-32602, error.to_string()))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct EmptyParams {
     #[serde(rename = "_meta")]
     _meta: Option<serde_json::Map<String, Value>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct InitializeParams {
     protocol_version: String,
@@ -93,14 +93,14 @@ struct InitializeParams {
     _meta: Option<serde_json::Map<String, Value>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ClientInfo {
     name: String,
     version: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct ListParams {
     cursor: Option<String>,
@@ -108,7 +108,7 @@ struct ListParams {
     _meta: Option<serde_json::Map<String, Value>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 struct CallParams {
     name: String,

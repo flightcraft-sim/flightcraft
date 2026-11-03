@@ -1,5 +1,6844 @@
 [
   {
+    "name": "screen.open",
+    "description": "Open a native screen with an independent page and camera.",
+    "input_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "borderless": {
+          "default": false,
+          "type": "boolean"
+        },
+        "fullscreen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "monitor": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "page": {
+          "$ref": "#/$defs/Page"
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "size": {
+          "default": [
+            1000.0,
+            700.0
+          ],
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "title": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "title": "OpenScreen",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "borderless": {
+          "default": false,
+          "type": "boolean"
+        },
+        "fullscreen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout": {
+          "$ref": "#/$defs/Layout"
+        },
+        "monitor": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "size": {
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "size",
+        "layout"
+      ],
+      "title": "Screen",
+      "type": "object"
+    }
+  },
+  {
+    "name": "screen.close",
+    "description": "Close an extra screen; the main window cannot be closed by this command.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "CloseScreen",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "screen.list",
+    "description": "List the saved window set, layouts, and independent cameras.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ListScreens",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "screen.set_page",
+    "description": "Replace a screen's layout with a single page.",
+    "input_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "page": {
+          "$ref": "#/$defs/Page"
+        }
+      },
+      "required": [
+        "id",
+        "page"
+      ],
+      "title": "SetScreenPage",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "borderless": {
+          "default": false,
+          "type": "boolean"
+        },
+        "fullscreen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout": {
+          "$ref": "#/$defs/Layout"
+        },
+        "monitor": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "size": {
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "size",
+        "layout"
+      ],
+      "title": "Screen",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.set",
+    "description": "Validate and replace a screen layout atomically, retaining the last good layout on errors.",
+    "input_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout": {
+          "$ref": "#/$defs/Layout"
+        }
+      },
+      "required": [
+        "id",
+        "layout"
+      ],
+      "title": "SetLayout",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "borderless": {
+          "default": false,
+          "type": "boolean"
+        },
+        "fullscreen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout": {
+          "$ref": "#/$defs/Layout"
+        },
+        "monitor": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "size": {
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "size",
+        "layout"
+      ],
+      "title": "Screen",
+      "type": "object"
+    }
+  },
+  {
+    "name": "screen.configure",
+    "description": "Change a window's monitor, position, size, fullscreen, or borderless setting.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "borderless": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "fullscreen": {
+          "default": null,
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "monitor": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "size": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ConfigureScreen",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "screen.monitor",
+    "description": "Define a monitor origin, size in desktop points, and independent physical X/Y calibration.",
+    "input_schema": {
+      "$defs": {
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "monitor": {
+          "$ref": "#/$defs/Monitor"
+        }
+      },
+      "required": [
+        "index",
+        "monitor"
+      ],
+      "title": "ConfigureMonitor",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.update",
+    "description": "Replace an element atomically; records one undo entry.",
+    "input_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "element": {
+          "$ref": "#/$defs/Element"
+        },
+        "screen": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screen",
+        "element"
+      ],
+      "title": "EditElement",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.move",
+    "description": "Move an element between screens, converting calibrated physical units; atomic and undoable.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "element": {
+          "type": "string"
+        },
+        "from": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "position": {
+          "default": null,
+          "items": {
+            "format": "float",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "to": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "element"
+      ],
+      "title": "MoveElement",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.add",
+    "description": "Add an independent instrument, display, switch, knob, breaker, or lever.",
+    "input_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "element": {
+          "$ref": "#/$defs/Element"
+        },
+        "screen": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screen",
+        "element"
+      ],
+      "title": "AddElement",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.remove",
+    "description": "Remove a layout element with undo.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "element": {
+          "type": "string"
+        },
+        "screen": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screen",
+        "element"
+      ],
+      "title": "RemoveElement",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.undo",
+    "description": "Undo the last layout edit across all screens.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "UndoLayout",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.redo",
+    "description": "Redo a layout edit.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "RedoLayout",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "Camera": {
+          "additionalProperties": false,
+          "properties": {
+            "fov_deg": {
+              "default": 60.0,
+              "format": "float",
+              "maximum": 150,
+              "minimum": 15,
+              "type": "number"
+            },
+            "heading_offset_deg": {
+              "default": 0.0,
+              "format": "float",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            "view": {
+              "$ref": "#/$defs/View",
+              "default": "forward"
+            }
+          },
+          "type": "object"
+        },
+        "ControlKind": {
+          "enum": [
+            "throttle",
+            "mixture",
+            "prop",
+            "carb_heat",
+            "fuel_selector",
+            "flaps",
+            "trim",
+            "parking_brake",
+            "magnetos",
+            "primer",
+            "heading",
+            "altitude",
+            "range",
+            "fms",
+            "baro",
+            "course"
+          ],
+          "type": "string"
+        },
+        "Element": {
+          "additionalProperties": false,
+          "properties": {
+            "accepts_input": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bezel": {
+              "default": true,
+              "type": "boolean"
+            },
+            "brightness": {
+              "default": 1.0,
+              "format": "float",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "id": {
+              "type": "string"
+            },
+            "lighting_group": {
+              "default": "",
+              "type": "string"
+            },
+            "mask": {
+              "$ref": "#/$defs/Mask",
+              "default": "rectangle"
+            },
+            "page": {
+              "$ref": "#/$defs/Page"
+            },
+            "position": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "rotation_deg": {
+              "default": 0,
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "z": {
+              "default": 0,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "page",
+            "position",
+            "size"
+          ],
+          "type": "object"
+        },
+        "Layout": {
+          "additionalProperties": false,
+          "properties": {
+            "canvas": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/Element"
+              },
+              "maxItems": 128,
+              "type": "array"
+            },
+            "name": {
+              "type": "string"
+            },
+            "pixels_per_mm": {
+              "default": [
+                3.7795276641845703,
+                3.7795276641845703
+              ],
+              "description": "Independent X and Y monitor calibration; CSS mm are never assumed physical.",
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "units": {
+              "$ref": "#/$defs/Units",
+              "default": "px"
+            },
+            "version": {
+              "format": "uint32",
+              "maximum": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "name",
+            "canvas",
+            "elements"
+          ],
+          "type": "object"
+        },
+        "Mask": {
+          "enum": [
+            "rectangle",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "Monitor": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "pixels_per_mm": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "origin",
+            "size",
+            "pixels_per_mm"
+          ],
+          "type": "object"
+        },
+        "Page": {
+          "additionalProperties": false,
+          "properties": {
+            "camera": {
+              "$ref": "#/$defs/Camera",
+              "default": {
+                "fov_deg": 60.0,
+                "heading_offset_deg": 0.0,
+                "view": "forward"
+              }
+            },
+            "control": {
+              "$ref": "#/$defs/TouchControl",
+              "default": {
+                "detents": [],
+                "friction_locked": false,
+                "kind": "throttle"
+              }
+            },
+            "follow_main_camera": {
+              "default": false,
+              "type": "boolean"
+            },
+            "instruments": {
+              "default": [],
+              "description": "Empty selects the aircraft's full panel. Instrument pages select one module id.",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "item": {
+              "default": null,
+              "description": "An equipment installation id for an independently movable switch, knob, or breaker.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/PageKind"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "PageKind": {
+          "enum": [
+            "outside",
+            "panel",
+            "instrument",
+            "pfd",
+            "mfd",
+            "navigator",
+            "map",
+            "charts",
+            "instructor",
+            "atc",
+            "radio",
+            "debrief",
+            "control",
+            "panel_item",
+            "switch",
+            "breaker",
+            "readout",
+            "image"
+          ],
+          "type": "string"
+        },
+        "Screen": {
+          "additionalProperties": false,
+          "properties": {
+            "borderless": {
+              "default": false,
+              "type": "boolean"
+            },
+            "fullscreen": {
+              "default": false,
+              "type": "boolean"
+            },
+            "id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "layout": {
+              "$ref": "#/$defs/Layout"
+            },
+            "monitor": {
+              "default": null,
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "position": {
+              "default": null,
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "size": {
+              "items": {
+                "format": "float",
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "size",
+            "layout"
+          ],
+          "type": "object"
+        },
+        "TouchControl": {
+          "additionalProperties": false,
+          "properties": {
+            "detents": {
+              "default": [],
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "friction_locked": {
+              "default": false,
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/ControlKind",
+              "default": "throttle"
+            }
+          },
+          "type": "object"
+        },
+        "Units": {
+          "enum": [
+            "px",
+            "mm"
+          ],
+          "type": "string"
+        },
+        "View": {
+          "enum": [
+            "forward",
+            "left",
+            "right",
+            "chase",
+            "tower",
+            "top_down"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "monitors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Monitor"
+          },
+          "type": "array"
+        },
+        "next_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/Screen"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "next_id"
+      ],
+      "title": "ScreenSet",
+      "type": "object"
+    }
+  },
+  {
+    "name": "layout.save",
+    "description": "Save a layout to an explicit JSON path, without a dialog.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "screen": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screen",
+        "path"
+      ],
+      "title": "SaveLayout",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "LayoutSaved",
+      "type": "object"
+    }
+  },
+  {
     "name": "scenario.validate",
     "description": "Validate a bounded scenario against the active region and route; return all errors.",
     "input_schema": {
@@ -43704,6 +50543,11 @@
             "temperature_c": {
               "format": "double",
               "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
@@ -47751,6 +54595,11 @@
             "temperature_c": {
               "format": "double",
               "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
@@ -49369,6 +56218,11 @@
             "temperature_c": {
               "format": "double",
               "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
@@ -50727,6 +57581,11 @@
               "type": "boolean"
             },
             "temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
               "format": "double",
               "type": "number"
             }
@@ -52097,6 +58956,11 @@
             "temperature_c": {
               "format": "double",
               "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
@@ -52853,6 +59717,26 @@
               "required": [
                 "kind",
                 "position"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "trim",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 0.3,
+                  "minimum": -0.3,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
               ],
               "type": "object"
             },
@@ -54081,6 +60965,11 @@
               "type": "boolean"
             },
             "temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
               "format": "double",
               "type": "number"
             }
@@ -62360,6 +69249,11 @@
             "temperature_c": {
               "format": "double",
               "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
+              "format": "double",
+              "type": "number"
             }
           },
           "required": [
@@ -63751,6 +70645,11 @@
               "type": "boolean"
             },
             "temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
               "format": "double",
               "type": "number"
             }
@@ -66269,6 +73168,11 @@
               "type": "boolean"
             },
             "temperature_c": {
+              "format": "double",
+              "type": "number"
+            },
+            "trim": {
+              "default": 0.0,
               "format": "double",
               "type": "number"
             }

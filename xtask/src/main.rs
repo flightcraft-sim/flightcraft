@@ -182,6 +182,20 @@ fn root() -> Result<PathBuf, String> {
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
         (
+            "layout.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::screens::Layout)),
+        ),
+        (
+            "screens.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::screens::ScreenSet)),
+        ),
+        (
+            "screen-snapshot.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(
+                flightcraft_control::presentation::Snapshot
+            )),
+        ),
+        (
             "scenario.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::scenario::Scenario)),
         ),

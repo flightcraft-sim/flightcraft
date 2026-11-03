@@ -27,7 +27,7 @@ impl From<&AirspaceVolume> for AirspaceInfo {
         }
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListAirspace {}
 #[derive(Debug, Serialize, JsonSchema)]
@@ -50,7 +50,7 @@ impl Command for ListAirspace {
         })
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 #[schemars(transform = coordinate_group)]
 pub struct AirspaceAt {
@@ -97,7 +97,7 @@ impl Command for AirspaceAt {
         })
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetAirspaceView {
     pub visible: bool,

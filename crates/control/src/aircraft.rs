@@ -7,7 +7,7 @@ use flightcraft_sim::{Sim, SimError, Start};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListAircraft {}
 
@@ -50,7 +50,7 @@ impl Command for ListAircraft {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AircraftSource {
     BuiltIn {
@@ -68,7 +68,7 @@ pub enum AircraftSource {
     },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 #[schemars(transform = load_selection_schema)]
 pub struct LoadAircraft {
@@ -239,7 +239,7 @@ fn decode_source(
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComputeWeightBalance {
     pub variant: String,

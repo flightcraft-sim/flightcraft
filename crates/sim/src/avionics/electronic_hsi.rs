@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::navigation::{cross_track, inverse_nm as inverse};
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
 pub struct ElectronicHsi {
     pub reversion_attitude: ElectronicAttitude,
     pub heading_bug_deg: f64,

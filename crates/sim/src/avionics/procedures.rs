@@ -49,7 +49,7 @@ pub fn hold_entry(inbound_deg: f64, arrival_track_deg: f64, turn: Turn) -> HoldE
         HoldEntry::Teardrop
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct LoadedProcedure {
     pub airport: String,
     pub ident: String,
@@ -58,7 +58,7 @@ pub struct LoadedProcedure {
     pub plate: Option<PlateLink>,
     pub capabilities: Vec<ApproachCapability>,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct FlightLeg {
     pub leg: ProcedureLeg,
     pub course_magnetic_deg: Option<f64>,
@@ -70,7 +70,7 @@ pub struct FlightLeg {
     pub variation_deg: f64,
     pub fix_elevation_m: Option<f64>,
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ProcedureReceiver {
     pub loaded: Vec<LoadedProcedure>,
     pub legs: Vec<FlightLeg>,

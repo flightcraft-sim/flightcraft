@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "name": "Tablet engine controls",
+  "units": "px",
+  "canvas": [
+    950,
+    580
+  ],
+  "elements": [
+    {
+      "id": "throttle",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "throttle",
+          "detents": []
+        }
+      },
+      "position": [
+        10,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    },
+    {
+      "id": "mixture",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "mixture",
+          "detents": []
+        }
+      },
+      "position": [
+        165,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    },
+    {
+      "id": "carb_heat",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "carb_heat",
+          "detents": [
+            0,
+            0.5,
+            1
+          ]
+        }
+      },
+      "position": [
+        320,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    },
+    {
+      "id": "flaps",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "flaps",
+          "detents": [
+            0,
+            0.5,
+            1
+          ]
+        }
+      },
+      "position": [
+        475,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    },
+    {
+      "id": "trim",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "trim",
+          "detents": []
+        }
+      },
+      "position": [
+        630,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    },
+    {
+      "id": "fuel_selector",
+      "page": {
+        "kind": "control",
+        "control": {
+          "kind": "fuel_selector",
+          "detents": [
+            0,
+            0.5,
+            1
+          ]
+        }
+      },
+      "position": [
+        785,
+        15
+      ],
+      "size": [
+        140,
+        540
+      ]
+    }
+  ]
+}

@@ -80,7 +80,7 @@ impl Default for AudioPanel {
         }
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct CommsSnapshot {
     pub callsign: PilotCallsign,
     pub adf_khz: Option<u32>,
@@ -94,7 +94,7 @@ pub struct CommsSnapshot {
     pub traffic: TrafficState,
     pub expected_call: Option<PatternLeg>,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct TrafficCall {
     khz: u32,
     speaker: Speaker,
@@ -102,7 +102,7 @@ struct TrafficCall {
     meaning: Meaning,
     origin: [f64; 3],
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Comms {
     pub(crate) atc: atc::Atc,
     callsign_override: Option<(String, String)>,
@@ -147,7 +147,7 @@ impl Default for Comms {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Pending {
     id: u64,
     end_s: f64,
@@ -160,7 +160,7 @@ struct Pending {
     radio: Option<u8>,
     atc_receiver: Option<ComStation>,
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsTune {
     /// Optional ADF tuning for NDB identification, 190–1750 kHz.
@@ -233,7 +233,7 @@ pub(super) fn radio_mut(radios: &mut [ComRadio; 2], radio: u8) -> Result<&mut Co
         ))
         .ok_or_else(|| invalid("comms.tune", "radio is 1 or 2"))
 }
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsAudioPanel {
     #[serde(default)]
@@ -288,7 +288,7 @@ impl Command for CommsAudioPanel {
         Ok(s.comms_state())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsTransmit {
     #[schemars(length(min = 1, max = 1024))]
@@ -381,10 +381,10 @@ impl Command for CommsTransmit {
         Ok(event.clone())
     }
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsListen {}
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct HeardTransmission {
     pub transmission: Option<Transmission>,
     pub pending: usize,
@@ -402,7 +402,7 @@ impl Command for CommsListen {
         })
     }
 }
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsFacilities {
     /// Optional bounded FAA-normalized catalogue; omission only lists the active world's stations.
@@ -471,6 +471,9 @@ impl Session {
         &self.comms.record
     }
     pub fn comms_state(&self) -> CommsSnapshot {
+        if let Some(state) = &self.presentation_comms {
+            return state.clone();
+        }
         let (powered, com1_powered, com2_powered) = self.comms_power();
         let [com1, com2] = self.comms.radios.clone();
         CommsSnapshot {

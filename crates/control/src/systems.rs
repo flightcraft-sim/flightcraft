@@ -50,7 +50,7 @@ impl Session {
     }
 }
 /// Visual weather patches retain wind; a supplied wind group must be complete.
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetWeather {
     #[serde(default, deserialize_with = "crate::provided")]
@@ -162,7 +162,7 @@ impl Command for SetWeather {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetWeather {}
 impl Command for GetWeather {
@@ -174,7 +174,7 @@ impl Command for GetWeather {
         Ok(current(session))
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetHood {
     pub enabled: bool,
@@ -227,7 +227,7 @@ pub enum Failure {
     },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetFailure {
     pub failure: Failure,
@@ -295,7 +295,7 @@ pub enum FailureTarget {
     Flaps,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ClearFailure {
     #[serde(default)]
@@ -339,7 +339,7 @@ impl Command for ClearFailure {
 }
 
 /// A switch, selector, knob, breaker, or ground-servicing action.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetSystems {
     pub setting: flightcraft_sim::systems::SystemSetting,

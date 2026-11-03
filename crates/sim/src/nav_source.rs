@@ -52,7 +52,7 @@ pub trait NavSource {
     fn guidance(&self, north_m: f64, east_m: f64) -> Option<NavGuidance>;
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize, serde::Deserialize)]
 pub struct DirectTo {
     origin: [f64; 2],
     destination: [f64; 2],
@@ -149,7 +149,7 @@ impl NavSource for GpsNavSource {
 }
 
 /// A receiver's geographic leg, evaluated by the shared GPS geodesy module each fixed step.
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize, serde::Deserialize)]
 pub struct ReceiverLeg {
     pub start_deg: [f64; 2],
     pub end_deg: [f64; 2],

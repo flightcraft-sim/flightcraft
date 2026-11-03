@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 /// Each unit has its own rechargeable battery. Endurance is at rated continuous load.
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct Power {
     pub switch_on: bool,
     pub powered: bool,
@@ -109,7 +109,7 @@ impl Ahrs {
 }
 
 pub const ALIGNMENT_S: f64 = 45.;
-#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct AirDataComputer {
     pub alignment_remaining_s: f64,
     pub powered: bool,

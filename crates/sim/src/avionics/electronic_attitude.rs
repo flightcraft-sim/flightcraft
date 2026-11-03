@@ -4,7 +4,7 @@ use crate::{Readout, State, systems::SystemsState};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
 pub struct ElectronicAttitude {
     pub power: Power,
     pub aligning: bool,

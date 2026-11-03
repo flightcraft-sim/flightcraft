@@ -5,6 +5,9 @@ mod packs;
 mod regions;
 #[cfg(target_arch = "wasm32")]
 fn main() {
+    if web_sys::window().is_none() {
+        return;
+    }
     wasm_bindgen_futures::spawn_local(async {
         if let Err(error) = start().await {
             web_sys::console::error_1(&error);
@@ -28,6 +31,7 @@ async fn start() -> Result<(), wasm_bindgen::JsValue> {
         .ok_or_else(|| wasm_bindgen::JsValue::from_str("Flight canvas missing"))?
         .dyn_into::<web_sys::HtmlCanvasElement>()?;
     let script = load_script().await?;
+    let layout = load_layout().await?;
     let packs = packs::load().await;
     let regions = regions::load().await;
     let runner = eframe::WebRunner::new();
@@ -36,9 +40,10 @@ async fn start() -> Result<(), wasm_bindgen::JsValue> {
             canvas,
             web_options()?,
             Box::new(move |cc| {
-                let app = flightcraft_ui::FlightCraftApp::new(
+                let app = flightcraft_ui::screens::web::ScreenApp::new(
                     cc,
                     flightcraft_ui::AppOptions {
+                        layout,
                         script,
                         packs,
                         regions,
@@ -116,4 +121,134 @@ async fn load_script() -> Result<Option<flightcraft_ui::script::Script>, wasm_bi
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     eprintln!("Build this app for wasm32-unknown-unknown with cargo xtask web or trunk serve.");
+}
+
+#[cfg(target_arch = "wasm32")]
+mod worker {
+    use flightcraft_control::Session;
+    use flightcraft_ui::{clock::FixedStep, script::Script};
+    use std::cell::RefCell;
+    use wasm_bindgen::prelude::*;
+    struct Owner {
+        session: Session,
+        clock: FixedStep,
+        script: Script,
+        previous: f64,
+        external_until: f64,
+        last_save: f64,
+    }
+    thread_local! {static OWNER:RefCell<Option<Owner>>=const{RefCell::new(None)};}
+    #[wasm_bindgen]
+    pub fn screen_worker_start(seed: &str, script: &str) -> Result<(), JsValue> {
+        if seed.len() > 256 * 1024 * 1024 {
+            return Err(JsValue::from_str("worker seed too large"));
+        }
+        let seed = serde_json::from_str(seed).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let session = Session::from_worker_seed(seed).map_err(|e| JsValue::from_str(&e))?;
+        let script = Script::parse(script).map_err(|e| JsValue::from_str(&e))?;
+        OWNER.with_borrow_mut(|owner| {
+            if owner.is_none() {
+                *owner = Some(Owner {
+                    session,
+                    clock: FixedStep::default(),
+                    script,
+                    previous: js_sys::Date::now(),
+                    external_until: 0.,
+                    last_save: 0.,
+                });
+            }
+        });
+        Ok(())
+    }
+    #[wasm_bindgen]
+    pub fn screen_worker_tick() -> Result<(), JsValue> {
+        OWNER.with_borrow_mut(|owner| {
+            let o = owner
+                .as_mut()
+                .ok_or_else(|| JsValue::from_str("worker not started"))?;
+            let now = js_sys::Date::now();
+            let elapsed = (now - o.previous) / 1000.;
+            o.previous = now;
+            if now - o.last_save >= 5000. {
+                o.session.autosave_flight();
+                o.last_save = now;
+            }
+            let steps = o.clock.advance(elapsed * o.session.rate(), o.session.paused());
+            for _ in 0..steps {
+                let time = o.session.sim().state().time_s;
+                o.script
+                    .run_due(&mut o.session, time)
+                    .map_err(|e| JsValue::from_str(&e))?;
+                if o.session.paused() {
+                    o.clock.reset();
+                    break;
+                }
+                o.session
+                    .run(flightcraft_control::Step { steps: 1 })
+                    .map_err(|e| JsValue::from_str(&e.to_string()))?;
+            }
+            Ok(())
+        })
+    }
+    #[wasm_bindgen]
+    pub fn screen_worker_command(line: &str) -> String {
+        OWNER.with_borrow_mut(|owner| {
+            let result = (|| {
+                if line.len() > 65536 {
+                    return Err("worker command too large".to_string());
+                }
+                let value: serde_json::Value = serde_json::from_str(line).map_err(|e| e.to_string())?;
+                let name = value
+                    .get("command")
+                    .and_then(|v| v.as_str())
+                    .ok_or("command missing")?;
+                let input = value.get("input").cloned().ok_or("input missing")?;
+                let owner = owner.as_mut().ok_or("worker not started")?;
+                if name == "sim.set_controls" {
+                    if value.get("source").and_then(|v| v.as_str()) == Some("keyboard") {
+                        if js_sys::Date::now() < owner.external_until
+                            || owner.script.active()
+                            || owner.session.holds_active()
+                        {
+                            return Ok(
+                                serde_json::json!({"id":value.get("id"),"ok":owner.session.sim().controls()}),
+                            );
+                        }
+                    } else {
+                        owner.external_until = js_sys::Date::now() + 3000.;
+                    }
+                }
+                if name == "sim.reset" {
+                    owner.clock.reset();
+                }
+                owner
+                    .session
+                    .execute(name, input)
+                    .map(|v| serde_json::json!({"id":value.get("id"),"ok":v}))
+                    .map_err(|e| e.to_string())
+            })();
+            result
+                .unwrap_or_else(|e| serde_json::json!({"error":e}))
+                .to_string()
+        })
+    }
+    #[wasm_bindgen]
+    pub fn screen_worker_snapshot() -> String {
+        OWNER.with_borrow(|owner|owner.as_ref().map(|o|serde_json::json!({"type":"snapshot","permission":"control","snapshot":o.session.screen_snapshot()}).to_string()).unwrap_or_default())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn load_layout() -> Result<Option<flightcraft_control::screens::Layout>, wasm_bindgen::JsValue> {
+    use wasm_bindgen::JsValue;
+    let window = web_sys::window().ok_or_else(|| JsValue::from_str("browser unavailable"))?;
+    let query = web_sys::UrlSearchParams::new_with_str(&window.location().search()?)?;
+    let Some(url) = query.get("layout") else {
+        return Ok(None);
+    };
+    let bytes = crate::packs::fetch_bytes(&window, &url, 1024 * 1024).await?;
+    let text = std::str::from_utf8(&bytes).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    flightcraft_control::screens::Layout::from_json(text)
+        .map(Some)
+        .map_err(|e| JsValue::from_str(&e))
 }

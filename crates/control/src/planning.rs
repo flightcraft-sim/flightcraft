@@ -108,7 +108,7 @@ macro_rules! edit {
         }
     };
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanNew {
     pub name: String,
@@ -134,7 +134,7 @@ edit!(
         Ok::<_, CommandError>(())
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanAdd {
     pub point: PlanWaypoint,
@@ -148,7 +148,7 @@ edit!(
         Ok::<_, CommandError>(())
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanInsert {
     pub index: usize,
@@ -166,7 +166,7 @@ edit!(
         Ok(())
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanMove {
     pub from: usize,
@@ -191,7 +191,7 @@ edit!(
         Ok(())
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanRemove {
     pub index: usize,
@@ -208,7 +208,7 @@ edit!(
         Ok(())
     }
 );
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanSetAltitude {
     pub index: usize,
@@ -279,7 +279,7 @@ pub struct PlanProfile {
     pub conflicts: Vec<PlanConflict>,
     pub spacing_m: f64,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProfilePlan {
     #[serde(default = "profile_spacing")]
@@ -401,7 +401,7 @@ impl Command for ProfilePlan {
         profile(s, self.spacing_m)
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SummaryPlan {}
 impl Command for SummaryPlan {
@@ -491,12 +491,12 @@ impl Command for SummaryPlan {
         })
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanSave {
     pub name: String,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanLoad {
     pub name: String,
@@ -590,7 +590,7 @@ pub enum PlanFormat {
     Gpx,
     Fpl,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanExport {
     pub format: PlanFormat,
@@ -600,7 +600,7 @@ pub struct PlanDocument {
     pub format: PlanFormat,
     pub text: String,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanImport {
     pub format: PlanFormat,
@@ -629,7 +629,7 @@ impl Command for PlanImport {
         Ok(p)
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PlanActivate {}
 #[derive(Debug, Serialize, JsonSchema)]

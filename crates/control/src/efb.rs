@@ -39,7 +39,7 @@ pub struct EfbStatus {
     /// Why no aircraft packets are currently being sent.
     pub reason: Option<String>,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct EfbBroadcast {
     pub enabled: bool,
@@ -91,7 +91,7 @@ impl Command for EfbBroadcast {
         }
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct EfbGetStatus {}
 impl Command for EfbGetStatus {
@@ -104,6 +104,10 @@ impl Command for EfbGetStatus {
 }
 impl Session {
     pub fn efb_status(&self) -> EfbStatus {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(status) = &self.presentation_efb {
+            return status.clone();
+        }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(sender) = &self.efb {
             return sender.status();

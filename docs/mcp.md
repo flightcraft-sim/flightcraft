@@ -145,7 +145,7 @@ Use this client configuration (with an absolute executable path when needed):
 ```
 
 Bridged and headless modes expose the same tool list and schemas. Every bridged tool call goes to
-one session owned by the desktop UI thread, including state reads. Disconnecting leaves that flight
+one session owned by the desktop flight thread, including state reads. Disconnecting leaves that flight
 running; reconnecting observes the same session. The desktop starts running, whereas a headless
 server starts paused. App-only tools return a clear "needs the app" error in headless mode.
 
@@ -167,8 +167,8 @@ numbers, or null. Unknown envelope fields, missing fields, malformed JSON, inval
 oversized lines receive errors; unusable IDs become null. Request lines are capped at 1 MiB,
 including the newline. Oversized lines are drained before the next request. At most eight clients
 connect at once, each with one outstanding request; the channel queue and pending app work are also
-bounded. Commands execute at the start of a UI frame through `Session::execute`. Threads move
-lines and responses through standard channels and never access the simulation. Calls on one
+bounded. Commands execute on the flight thread through `Session::execute`, independently of repaint. Transport threads move
+lines and responses through bounded channels and never step the simulation. Calls on one
 connection are ordered; a waiting client can be interrupted by another client's pause or reset.
 The synchronous MCP stdio server handles one call at a time.
 
@@ -177,11 +177,11 @@ The synchronous MCP stdio server handles one call at a time.
 - In the desktop, `sim.step` and `sim.run_until` require pause. While running they fail with an
   instruction to use `sim.pause` first or `sim.wait` for real-time flight. Scripts use the same rule.
   Explicit stepping while paused still updates the visible flight on the following render.
-- `sim.wait` waits for 0 to 60 simulated seconds to pass in the app's frame loop. It does no explicit
+- `sim.wait` waits for 0 to 60 simulated seconds to pass in the app's flight thread. It does no explicit
   stepping and requires a running session. `sim.set_rate` scales that loop while preserving fixed
   steps. Pause, reset, a crash, or a 120-second wall-clock deadline interrupts an outstanding wait with an
   error. The response contains the state observed when the target time is reached, which can be
-  slightly later than requested because frames contain several fixed steps.
+  slightly later than requested because a scheduling tick can contain several fixed steps.
 - Keyboard and gamepad flight controls are suppressed while a script has commands remaining,
   while any hold is engaged, or for three seconds after a successful external `sim.set_controls`,
   `assist.set`, `assist.off`, or `sim.reset`. State reads and waits do not renew this interval.
@@ -486,6 +486,7 @@ implemented by these commands. There are no modal dialogs in any radio command.
 Scenario tools are registered automatically: `scenario.validate`, `scenario.start`, `scenario.amend`,
 `scenario.state`, `scenario.signal`, `scenario.instructor_failure`, `comms.atc`, and `emergency.record`.
 See [scenarios](scenarios.md) for inputs and [emergencies](emergencies.md) for debrief data.
+
 ## Tower and approach training
 
 The shared registry exposes `atc.state` (`{}`), `atc.configure`
@@ -504,3 +505,43 @@ reading the resulting clearance state. Programmatic calls do not open dialogs. S
 
 Radio text and debrief clients share the small [phraseology API](phraseology.md); saved transmissions
 retain their readable NASR speaker name.
+
+## Screens, layouts, and LAN panels
+
+See [Multiple screens](multiple-screens.md). Screen and layout commands are in the same generated
+registry as flight commands, so MCP names replace dots with underscores as usual.
+
+| Command | Input and output |
+|---|---|
+| `screen.open` | `page`, optional `title`, `monitor`, `position`, `size`, `fullscreen`, and `borderless`; returns the new window. |
+| `screen.close` | `id` of an extra window; returns the window set. Window 0 is protected. |
+| `screen.list` | `{}`; returns saved windows, cameras, layouts, and monitor profiles. |
+| `screen.set_page` | `id`, `page`; replaces that window's canvas with a single page. |
+| `screen.configure` | `id` and optional monitor, position, size, fullscreen, and borderless fields. |
+| `screen.monitor` | `index` and `monitor` with name, origin, size, and X/Y pixels per mm. |
+| `layout.set` | `id`, `layout`; validates and replaces a canvas with undo. |
+| `layout.add`, `layout.update` | `screen`, full `element`; create or replace a piece with undo. |
+| `layout.remove` | `screen`, `element` id. |
+| `layout.move` | `from`, `to`, `element` id, optional destination `position`; calibrated unit conversion and atomic validation. |
+| `layout.undo`, `layout.redo` | `{}`; history spans all windows. |
+| `layout.save` | `screen`, explicit JSON `path`; atomic native save, no dialog. |
+
+For example, open a side view and then an instructor station:
+
+```jsonl
+{"id":1,"command":"screen.open","input":{"page":{"kind":"outside","camera":{"view":"left","fov_deg":60,"heading_offset_deg":0}},"size":[1280,800]}}
+{"id":2,"command":"screen.open","input":{"page":{"kind":"instructor"}}}
+{"id":3,"command":"screen.open","input":{"page":{"kind":"atc"}}}
+```
+
+The native runtime owns the session; UI commands on presentation copies route back to it. Browser
+screens queue typed JSON commands and receive versioned `screen-snapshot.json` presentations from
+a SharedWorker or desktop host. Snapshot transport carries recent flight events for live grades;
+the complete archive remains with its owner. Typed ATC state is carried in the snapshot, and the
+ATC/radio pages use the shared phraseology renderer. No presentation has a physics clock.
+
+LAN panels use `/screens` WebSocket on the explicitly enabled private-address HTTP host. They must
+present the exact host Origin and pairing token. Pairing grants read-only access; the host changes
+permission for each connected screen in **Screens**. Read-only connections cannot execute any
+commands. Control connections use a flight/panel/layout allowlist, and cannot save arbitrary host
+files. The native loopback MCP transport is separate and remains local-process only.

@@ -106,5 +106,86 @@
     "yaw_damper": true,
     "minimum_ias_mps": 27.0,
     "maximum_ias_mps": 70.0
-  }
+  },
+  "touch_controls": [
+    {
+      "id": "throttle",
+      "label": "Throttle",
+      "style": "black_plunger",
+      "detents": []
+    },
+    {
+      "id": "mixture",
+      "label": "Mixture",
+      "style": "red_lock_plunger",
+      "detents": []
+    },
+    {
+      "id": "carb_heat",
+      "label": "Carb heat",
+      "style": "push_pull",
+      "detents": [
+        [
+          0,
+          "Cold"
+        ],
+        [
+          1,
+          "Hot"
+        ]
+      ]
+    },
+    {
+      "id": "trim",
+      "label": "Trim",
+      "style": "trim_wheel",
+      "detents": []
+    },
+    {
+      "id": "flaps",
+      "label": "Flaps",
+      "style": "flap_lever",
+      "detents": [
+        [
+          0,
+          "0\u00b0"
+        ],
+        [
+          0.3333333333333333,
+          "10\u00b0"
+        ],
+        [
+          0.6666666666666666,
+          "20\u00b0"
+        ],
+        [
+          1,
+          "30\u00b0"
+        ]
+      ]
+    },
+    {
+      "id": "fuel_selector",
+      "label": "Fuel selector",
+      "style": "fuel_selector",
+      "detents": [
+        [
+          0,
+          "OFF"
+        ],
+        [
+          0.33,
+          "LEFT"
+        ],
+        [
+          0.6,
+          "RIGHT"
+        ],
+        [
+          1,
+          "BOTH"
+        ]
+      ]
+    }
+  ]
 }

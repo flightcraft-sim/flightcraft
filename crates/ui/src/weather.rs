@@ -13,11 +13,19 @@ pub fn note(session: &Session) -> String {
         .collect::<Vec<_>>()
         .join(" / ");
     format!(
-        "{} · {:.1} SM · {:?} {:?} · {:?}{}{}",
+        "{} · {:.1} SM{}{} · {:?}{}{}",
         if layers.is_empty() { "CLR" } else { &layers },
         c.effective_visibility_m() / 1609.344,
-        c.obscuration,
-        c.precipitation,
+        if c.obscuration == Obscuration::None {
+            String::new()
+        } else {
+            format!(" · {:?}", c.obscuration)
+        },
+        if c.precipitation == Precipitation::None {
+            String::new()
+        } else {
+            format!(" · {:?}", c.precipitation)
+        },
         c.time_of_day,
         if c.in_cloud(session.sim().state().position_m) {
             " · IN CLOUD"

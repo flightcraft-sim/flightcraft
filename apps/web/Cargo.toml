@@ -22,3 +22,4 @@ wasm-bindgen-futures.workspace = true
 web-sys.workspace = true
 js-sys.workspace = true
 flightcraft-control.workspace = true
+serde_json.workspace = true

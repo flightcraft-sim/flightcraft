@@ -143,15 +143,10 @@ impl Input {
             let target = frame.value(positive) - frame.value(negative);
             value + (target - value).clamp(-2.5 * dt, 2.5 * dt)
         };
-        let old_trim = self.trim;
         self.trim = (self.trim + (frame.value(Action::TrimUp) - frame.value(Action::TrimDown)) * dt * 0.15)
             .clamp(-0.3, 0.3);
         Controls {
-            elevator: axis(
-                current.elevator - old_trim,
-                Action::ElevatorUp,
-                Action::ElevatorDown,
-            ) + self.trim,
+            elevator: axis(current.elevator, Action::ElevatorUp, Action::ElevatorDown),
             aileron: axis(current.aileron, Action::AileronRight, Action::AileronLeft),
             rudder: axis(current.rudder, Action::RudderRight, Action::RudderLeft),
             throttle: current.throttle

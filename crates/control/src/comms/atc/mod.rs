@@ -10,7 +10,7 @@ use parser::letter;
 pub use parser::{PilotMessage, PilotRequest, parse_pilot};
 pub use types::*;
 
-#[derive(Debug, Default, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetAtcState {}
 impl Command for GetAtcState {
@@ -22,7 +22,7 @@ impl Command for GetAtcState {
         Ok(s.atc_state())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigureAtc {
     pub airport: String,
@@ -63,7 +63,7 @@ impl Command for ConfigureAtc {
         Ok(s.atc_state())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetLightGun {
     pub airport: String,
@@ -84,6 +84,9 @@ impl Command for SetLightGun {
 }
 impl Session {
     pub fn atc_state(&self) -> AtcState {
+        if let Some(state) = &self.presentation_atc {
+            return state.clone();
+        }
         let a = &self.comms.atc;
         AtcState {
             airport: a.airport.clone(),

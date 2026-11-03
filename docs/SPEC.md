@@ -71,9 +71,10 @@ outputs that ask for them.
 
 ### Time
 
-The simulation steps at a fixed 120 Hz. The app runs as many steps as real time needs per frame
-(capped, so a stalled tab does not spiral) and can pause or run faster. Headless callers step
-explicitly.
+The simulation steps at a fixed 120 Hz. A native owner thread or browser SharedWorker runs the
+session independently of window repaint. It uses a capped real-time accumulator, can pause or run
+faster, and publishes presentation snapshots. Window commands return to that owner. Headless
+callers step explicitly.
 
 ## 6. Flight model
 
@@ -190,8 +191,8 @@ The exchange format is agreed with SolidCraft before either side builds it (an o
 
 - Target `wasm32-unknown-unknown`, built with `trunk`; WebGPU where the browser has it, WebGL 2
   otherwise.
-- Single-threaded, so it needs no cross-origin isolation headers and the simulation stays
-  deterministic.
+- A single shared Worker owns the fixed-step simulation; browser windows display snapshots and
+  send commands. This uses no shared wasm memory or cross-origin isolation headers.
 - No server: the page and its assets are static files. Settings persist in browser storage.
 - Keyboard and the browser gamepad API; touch controls later.
 - The same golden trajectory hash in the browser as on the desktop, checked in CI under a wasm

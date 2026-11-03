@@ -6,7 +6,7 @@ use serde::Serialize;
 const NM: f64 = 1852.0;
 
 pub use flightcraft_sim::avionics::glass::*;
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassSettings {
     pub synthetic_vision: bool,
     pub heading_bug_rad: f64,
@@ -50,14 +50,14 @@ impl Default for GlassSettings {
         }
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct NavigationLeg {
     pub airport: String,
     pub distance_nm: f64,
     pub bearing_rad: f64,
     pub ete_s: Option<f64>,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GpsState {
     pub valid: bool,
     pub active_leg: usize,
@@ -78,7 +78,7 @@ pub struct GpsState {
     pub ete_s: Option<f64>,
     pub legs: Vec<NavigationLeg>,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerrainBand {
     Clear,
@@ -96,7 +96,7 @@ pub fn terrain_band(aircraft_m: f64, terrain_m: f64) -> TerrainBand {
         TerrainBand::Clear
     }
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TerrainRaster {
     pub columns: u32,
     pub rows: u32,
@@ -111,19 +111,19 @@ impl TerrainRaster {
         self.elevation_m.is_empty()
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct MapOutline {
     pub id: String,
     pub class: Option<flightcraft_world::AirspaceClass>,
     pub rings: Vec<Vec<[f64; 2]>>,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct MapAirport {
     pub ident: String,
     pub position: [f64; 2],
     pub runways: Vec<[[f64; 2]; 2]>,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct EngineValue {
     pub label: String,
     pub value: f64,
@@ -132,13 +132,13 @@ pub struct EngineValue {
     pub max: f64,
     pub normal: [f64; 2],
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct MapTraffic {
     pub callsign: String,
     pub position: [f64; 2],
     pub relative_altitude_m: f64,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassState {
     pub comms: crate::CommsSnapshot,
     pub traffic: Vec<MapTraffic>,
@@ -347,6 +347,9 @@ impl Session {
         self.sync_receiver_leg();
     }
     pub fn glass_state(&self) -> GlassState {
+        if let Some(state) = &self.presentation_glass {
+            return state.clone();
+        }
         let sim = &self.sim;
         let world = sim.world();
         let r = sim.readout();

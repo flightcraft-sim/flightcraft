@@ -17,22 +17,34 @@ pub mod panel_preview;
 mod procedures;
 pub mod radio;
 mod radio_speech;
+#[cfg(not(target_arch = "wasm32"))]
+mod runtime;
 mod scenario;
+pub mod screens;
 pub mod script;
 pub mod theme;
 mod weather;
 
-use eframe::egui::{self, Align2, FontId, RichText};
+#[cfg(not(target_arch = "wasm32"))]
+use eframe::egui::{self, RichText};
+#[cfg(not(target_arch = "wasm32"))]
 use flightcraft_control::Session;
 pub use flightcraft_control::{PackOptions, RegionOptions};
+#[cfg(not(target_arch = "wasm32"))]
 use flightcraft_render::{CameraMode, Scene};
+#[cfg(not(target_arch = "wasm32"))]
 use keymap::{Action, Keymap};
+#[cfg(target_arch = "wasm32")]
+pub use screens::web::ScreenApp as FlightCraftApp;
 
 #[cfg(not(target_arch = "wasm32"))]
 const PACKS_STORAGE: &str = "flightcraft.packs_directory.v1";
 
+#[cfg(not(target_arch = "wasm32"))]
 const KEYMAP_STORAGE: &str = "flightcraft.keymap.v1";
+#[cfg(not(target_arch = "wasm32"))]
 const DISPLAY_OPTIONS_STORAGE: &str = "flightcraft.instrument_units.v1";
+#[cfg(not(target_arch = "wasm32"))]
 const COMPACT_PANEL_STORAGE: &str = "flightcraft.compact_panel.v1";
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -71,6 +83,13 @@ impl Screenshot {
 
 #[derive(Default)]
 pub struct AppOptions {
+    pub layout: Option<flightcraft_control::screens::Layout>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub screen_set: Option<std::path::PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub layouts_dir: Option<std::path::PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub panels: Option<(std::net::SocketAddr, std::path::PathBuf)>,
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot: Option<Screenshot>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -82,6 +101,7 @@ pub struct AppOptions {
 }
 
 /// One session, one fixed-step accumulator, and read-only presentation of its state.
+#[cfg(not(target_arch = "wasm32"))]
 pub struct FlightCraftApp {
     session: Session,
     efb_settings: flightcraft_control::EfbSettings,
@@ -91,9 +111,9 @@ pub struct FlightCraftApp {
     #[cfg(not(target_arch = "wasm32"))]
     packs_directory: String,
     #[cfg(not(target_arch = "wasm32"))]
-    bridge: bridge::Bridge,
+    runtime: runtime::Runtime,
+    screens: screens::ScreensUi,
     scene: Scene,
-    clock: clock::FixedStep,
     input: input::Input,
     keymap: Keymap,
     paused: bool,
@@ -104,21 +124,18 @@ pub struct FlightCraftApp {
     settings: bool,
     compact_panel: bool,
     instrument_panel: instruments::InstrumentPanel,
-    glass_controls: glass::GlassControls,
     procedure_controls: procedures::Controls,
-    glass_popout_knob: instruments::heading::Knob,
     bindings_json: String,
     airport_search: String,
     planning_map: map::PlanningMap,
-    mfd_map: map::PlanningMap,
     navigation: navigation::SearchPanel,
     glance_origin: Option<[f64; 2]>,
-    autopilot_controller: autopilot::Controller,
     audio: audio::Audio,
     radio: radio::RadioUi,
     scenarios: scenario::ScenarioUi,
     radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
+    #[cfg(target_arch = "wasm32")]
     script: script::Script,
     #[cfg(not(target_arch = "wasm32"))]
     screenshot: Option<Screenshot>,
@@ -130,6 +147,7 @@ pub struct FlightCraftApp {
     requested_frame: u64,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl FlightCraftApp {
     pub fn new(
         cc: &eframe::CreationContext<'_>,
@@ -263,6 +281,60 @@ impl FlightCraftApp {
         session.run(flightcraft_control::Resume {})?;
         let paused = session.paused();
         let efb_applied = session.efb_status().settings;
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(saved) = cc.storage.and_then(|s| s.get_string("flightcraft.screens.v1")) {
+            match serde_json::from_str(&saved)
+                .map_err(|e| e.to_string())
+                .and_then(|set| session.restore_screens(set))
+            {
+                Ok(()) => (),
+                Err(e) => error = Some(e),
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(path) = options.screen_set {
+            if std::fs::metadata(&path)?.len() > 1024 * 1024 {
+                return Err(std::io::Error::other("screen set exceeds 1 MiB").into());
+            }
+            let data = std::fs::read_to_string(path)?;
+            if data.len() > 1024 * 1024 {
+                return Err(std::io::Error::other("screen set exceeds 1 MiB").into());
+            }
+            session
+                .restore_screens(serde_json::from_str(&data)?)
+                .map_err(std::io::Error::other)?;
+        }
+        if let Some(layout) = options.layout {
+            session.execute("layout.set", serde_json::json!({"id":0,"layout":layout}))?;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let runtime = runtime::Runtime::start(
+            session,
+            options.script.unwrap_or_default(),
+            bridge::Bridge::new(options.control),
+            cc.egui_ctx.clone(),
+        )?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let session = runtime.snapshot().map_err(std::io::Error::other)?;
+        #[cfg(target_arch = "wasm32")]
+        let screens = screens::ScreensUi::with_chart_root(chart_root.clone());
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut screens = screens::ScreensUi::with_chart_root(chart_root.clone());
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some((address, root)) = options.panels {
+                screens.remote = Some(
+                    screens::remote::Server::start(address, root, runtime.source())
+                        .map_err(std::io::Error::other)?,
+                );
+            }
+            if let Some(root) = options
+                .layouts_dir
+                .or_else(|| flightcraft_control::navigation_data_directory().map(|root| root.join("layouts")))
+            {
+                screens.watcher = Some(screens::watch::Folder::new(root).map_err(std::io::Error::other)?);
+            }
+        }
         Ok(Self {
             session,
             efb_applied,
@@ -272,9 +344,9 @@ impl FlightCraftApp {
             #[cfg(not(target_arch = "wasm32"))]
             packs_directory,
             #[cfg(not(target_arch = "wasm32"))]
-            bridge: bridge::Bridge::new(options.control),
+            runtime,
+            screens,
             scene: Scene::default(),
-            clock: clock::FixedStep::default(),
             input: input::Input::default(),
             keymap,
             paused,
@@ -287,9 +359,7 @@ impl FlightCraftApp {
                 .and_then(|s| s.get_string(COMPACT_PANEL_STORAGE))
                 .as_deref()
                 == Some("true"),
-            glass_controls: glass::GlassControls::default(),
             procedure_controls: procedures::Controls::default(),
-            glass_popout_knob: Default::default(),
             instrument_panel: instruments::InstrumentPanel::with_options(
                 cc.storage
                     .and_then(|s| s.get_string(DISPLAY_OPTIONS_STORAGE))
@@ -299,10 +369,8 @@ impl FlightCraftApp {
             bindings_json,
             airport_search: String::new(),
             planning_map: map::PlanningMap::with_root(chart_root.clone()),
-            mfd_map: map::PlanningMap::with_root(chart_root),
             navigation: navigation::SearchPanel::default(),
             glance_origin: None,
-            autopilot_controller: autopilot::Controller::default(),
             radio: radio::RadioUi::default(),
             scenarios: scenario::ScenarioUi::default(),
             radio_ptt_held: [false; 2],
@@ -313,6 +381,7 @@ impl FlightCraftApp {
                     .unwrap_or_default(),
             ),
             binding_message: None,
+            #[cfg(target_arch = "wasm32")]
             script: options.script.unwrap_or_default(),
             #[cfg(not(target_arch = "wasm32"))]
             screenshot: options.screenshot,
@@ -333,7 +402,6 @@ impl FlightCraftApp {
     fn reset(&mut self) {
         match actions::reset(&mut self.session) {
             Ok(()) => {
-                self.clock.reset();
                 self.input.trim = 0.0;
                 self.scene.reset_camera();
                 self.error = None;
@@ -493,6 +561,7 @@ impl FlightCraftApp {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl FlightCraftApp {
     /// The GPU path drawing the app: "WebGPU", "WebGL 2", "Vulkan", "Metal", and so on.
     #[must_use]
@@ -501,10 +570,19 @@ impl FlightCraftApp {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl eframe::App for FlightCraftApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(not(target_arch = "wasm32"))]
-        self.bridge.update(ctx, &mut self.session);
+        {
+            match self.runtime.snapshot() {
+                Ok(s) => self.session = s,
+                Err(e) => self.error = Some(e),
+            }
+            if let Some(e) = self.runtime.error() {
+                self.error = Some(e);
+            }
+        }
         if ctx.input(|input| {
             input.pointer.any_pressed()
                 || input
@@ -515,6 +593,12 @@ impl eframe::App for FlightCraftApp {
             self.audio.user_gesture();
         }
         self.paused = self.session.paused();
+        if let Some(camera) = self.session.camera() {
+            self.scene.camera = match camera.mode {
+                flightcraft_control::CameraMode::Chase => CameraMode::Chase,
+                flightcraft_control::CameraMode::Cockpit => CameraMode::Cockpit,
+            };
+        }
         let now = ctx.input(|i| i.time);
         let elapsed = self
             .last_time
@@ -672,8 +756,13 @@ impl eframe::App for FlightCraftApp {
                 }
             }
         }
+        #[cfg(target_arch = "wasm32")]
         let scripted = self.script.active();
+        #[cfg(not(target_arch = "wasm32"))]
+        let scripted = self.runtime.script_active();
+        #[cfg(target_arch = "wasm32")]
         let sim_time_s = self.session.sim().state().time_s;
+        #[cfg(target_arch = "wasm32")]
         if scripted && let Err(e) = self.script.run_due(&mut self.session, sim_time_s) {
             self.error = Some(e);
         }
@@ -699,7 +788,7 @@ impl eframe::App for FlightCraftApp {
         let external = {
             #[cfg(not(target_arch = "wasm32"))]
             {
-                self.bridge.controls_active()
+                self.runtime.external_active()
             }
             #[cfg(target_arch = "wasm32")]
             {
@@ -709,13 +798,24 @@ impl eframe::App for FlightCraftApp {
         let controlled = if scripted || external || self.session.holds_active() {
             Ok(())
         } else {
+            self.input.trim = self.session.sim().systems().controls.trim;
             let controls = self
                 .input
                 .controls(&frame, self.session.sim().controls(), elapsed);
-            actions::set_controls(&mut self.session, controls)
+            let trimmed = if self.input.trim != self.session.sim().systems().controls.trim {
+                self.session
+                    .run(flightcraft_control::SetSystems {
+                        setting: flightcraft_sim::systems::SystemSetting::Trim {
+                            value: self.input.trim,
+                        },
+                    })
+                    .map(|_| ())
+            } else {
+                Ok(())
+            };
+            trimmed.and_then(|()| actions::set_controls(&mut self.session, controls))
         };
-        let steps = self.clock.advance(elapsed * self.session.rate(), self.paused);
-        if let Err(e) = controlled.and_then(|()| actions::step(&mut self.session, steps)) {
+        if let Err(e) = controlled {
             self.error = Some(e.to_string());
         }
         let disconnect_sequence = self
@@ -802,8 +902,7 @@ impl eframe::App for FlightCraftApp {
                                             Ok(()) => {
                                                 self.paused = self.session.paused();
                                                 self.input.trim = 0.0;
-                                                self.clock.reset();
-                                                self.scene.reset_camera();
+                                                                                self.scene.reset_camera();
                                                 self.error = None;
                                             }
                                             Err(e) => self.error = Some(e.to_string()),
@@ -836,8 +935,7 @@ impl eframe::App for FlightCraftApp {
                                             paused: Some(self.paused),
                                         }) {
                                             Ok(_) => {
-                                                self.clock.reset();
-                                                self.input.trim = 0.0;
+                                                                                self.input.trim = 0.0;
                                                 self.scene.reset_camera();
                                                 self.error = None;
                                             }
@@ -877,7 +975,7 @@ impl eframe::App for FlightCraftApp {
                                                                 start: flightcraft_control::ResetStart::AirportRunway { airport: airport.ident.clone(), end: end.ident.clone() },
                                                                 weather: Some(self.session.pilot_weather()), paused: Some(self.paused),
                                                             }) {
-                                                                Ok(_) => { self.clock.reset(); self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
+                                                                Ok(_) => { self.input.trim = 0.0; self.scene.reset_camera(); self.error = None; }
                                                                 Err(e) => self.error = Some(e.to_string()),
                                                             }
                                                             ui.close();
@@ -895,6 +993,7 @@ impl eframe::App for FlightCraftApp {
                         });
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        self.screens.menu(ui, &mut self.session);
                         if ui.button("Preferences").clicked() {
                             self.settings = !self.settings;
                         }
@@ -994,332 +1093,17 @@ impl eframe::App for FlightCraftApp {
                 }
             }
         }
-        if !self.planning_map.open {
-            if self
-                .session
-                .aircraft_configuration()
-                .is_none_or(|c| c.panel.equipment.is_none())
-                && let Some(state) = self.session.sim().installed_autopilot().cloned()
-            {
-                egui::TopBottomPanel::bottom("autopilot-controller").show(ctx, |ui| {
-                    for setting in self.autopilot_controller.show(
-                        ui,
-                        &state,
-                        self.session.sim().systems().controls.heading_bug_rad,
-                        frame.held(Action::ControlWheelSteering),
-                    ) {
-                        if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
-                            self.error = Some(e.to_string());
-                        }
-                    }
-                });
-            }
-            egui::TopBottomPanel::bottom("instruments")
-                .exact_height(self.session.aircraft_configuration().map_or_else(
-                    || instruments::panel_height(ctx.content_rect().height(), self.compact_panel),
-                    |c| {
-                        instruments::view_panel_height(
-                            &c.panel,
-                            ctx.content_rect().size(),
-                            self.compact_panel,
-                        )
-                    },
-                ))
-                .frame(
-                    egui::Frame::new()
-                        .fill(egui::Color32::TRANSPARENT)
-                        .inner_margin(egui::Margin::symmetric(0, 5)),
-                )
-                .show(ctx, |ui| {
-                    let state = self.session.glass_state();
-                    let mut glass_commands = if glass_active {
-                        self.glass_controls.show(ui, &state)
-                    } else {
-                        Vec::new()
-                    };
-                    let result = if let Some(configuration) = self.session.aircraft_configuration() {
-                        self.instrument_panel.show(
-                            ui,
-                            &configuration.panel,
-                            instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
-                                .with_aircraft(configuration)
-                                .with_airports(self.session.sim().world().airports())
-                                .with_vision(self.session.sim().world(), self.session.sim().state())
-                                .with_glass(&state)
-                                .with_autopilot(self.session.sim().installed_autopilot()),
-                            self.session.flight_generation(),
-                        )
-                    } else {
-                        self.instrument_panel.show_legacy(
-                            ui,
-                            instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s),
-                            self.session.flight_generation(),
-                        )
-                    };
-                    self.instrument_panel.show_shared_hosts(ui, &mut self.session);
-                    if let Some(rect) = self.instrument_panel.map_rect() {
-                        self.mfd_map.options = self.instrument_panel.options;
-                        self.mfd_map.show_mfd(ui, rect, &mut self.session);
-                    }
-                    for setting in self.instrument_panel.avionics_controls.take_settings() {
-                        if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
-                            self.error = Some(e.to_string());
-                        }
-                    }
-                    for setting in self.instrument_panel.take_heading_commands() {
-                        if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
-                            self.error = Some(e.to_string());
-                        }
-                    }
-                    for setting in self.instrument_panel.take_equipment_commands() {
-                        if let Err(e) = self.session.run(flightcraft_control::SetEquipment { setting }) {
-                            self.error = Some(e.to_string());
-                        }
-                    }
-                    glass_commands.extend(self.instrument_panel.take_glass_commands());
-                    for setting in glass_commands {
-                        if let Err(e) = self.session.run(flightcraft_control::SetAvionics {
-                            setting: flightcraft_control::AvionicsSetting::Glass { setting },
-                        }) {
-                            self.error = Some(e.to_string());
-                        }
-                    }
-                    match result {
-                        Ok(settings) => {
-                            for setting in settings {
-                                if let Err(e) = self.session.run(flightcraft_control::SetSystems { setting })
-                                {
-                                    self.error = Some(e.to_string());
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            ui.colored_label(theme::DANGER, &e);
-                            self.error = Some(e);
-                        }
-                    }
-                });
-        }
-        if glass_active && let Some(id) = self.glass_controls.popout.clone() {
-            let mut open = true;
-            let state = self.session.glass_state();
-            let mut knob_commands = Vec::new();
-            egui::Window::new(format!("{} display", id))
-                .open(&mut open)
-                .default_size(egui::vec2(650., 510.))
-                .show(ctx, |ui| {
-                    if let Ok(mut display) = glass::create(&id) {
-                        let mut input =
-                            instruments::InstrumentInput::new(self.session.sim().systems(), readout.time_s)
-                                .with_vision(self.session.sim().world(), self.session.sim().state())
-                                .with_glass(&state)
-                                .with_autopilot(self.session.sim().installed_autopilot());
-                        input.aircraft = self.session.aircraft_configuration();
-                        input.options = self.instrument_panel.options;
-                        let draw = display.update(input);
-                        let (rect, _) = ui.allocate_exact_size(ui.available_size(), egui::Sense::hover());
-                        let [canvas_width, canvas_height] = draw.size;
-                        let sx = rect.width() / canvas_width;
-                        let sy = rect.height() / canvas_height;
-                        glass::paint_fill(ui, rect, draw);
-                        if id == "glass_mfd"
-                            && !state.mfd_failed
-                            && state.settings.page == flightcraft_control::GlassPage::Map
-                        {
-                            let map_rect = egui::Rect::from_min_max(
-                                rect.min + egui::vec2(110. * sx, 28. * sy),
-                                rect.max,
-                            );
-                            self.mfd_map.options = self.instrument_panel.options;
-                            self.mfd_map.show_mfd(ui, map_rect, &mut self.session);
-                        }
-                        if id == "glass_pfd" {
-                            let knob_rect = egui::Rect::from_center_size(
-                                rect.min + egui::vec2(359. * sx, 404. * sy),
-                                egui::vec2(26., 26.) * sx.min(sy),
-                            );
-                            knob_commands.extend(self.glass_popout_knob.show(
-                                ui,
-                                ui.id().with("popout_hdg"),
-                                knob_rect,
-                            ));
-                        }
-                    }
-                });
-            for setting in knob_commands {
-                if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
-                    self.error = Some(e.to_string());
-                }
-            }
-            if !open {
-                self.glass_controls.popout = None;
-            }
-        }
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE)
+            .frame(egui::Frame::new().fill(theme::BACKGROUND))
             .show(ctx, |ui| {
                 if self.planning_map.open {
-                    self.planning_map.options = self.instrument_panel.options;
                     self.planning_map.show(ui, ui.max_rect(), &mut self.session);
-                    return;
-                }
-                if let Some(camera) = self.session.camera() {
-                    let mode = match camera.mode {
-                        flightcraft_control::CameraMode::Chase => CameraMode::Chase,
-                        flightcraft_control::CameraMode::Cockpit => CameraMode::Cockpit,
-                    };
-                    if self.scene.camera != mode {
-                        self.scene.camera = mode;
-                        self.scene.reset_camera();
-                    }
-                    self.scene
-                        .set_chase_offsets(camera.distance_m as f32, camera.height_m as f32);
-                    self.scene
-                        .set_cockpit_look(camera.look_yaw_rad as f32, camera.look_pitch_rad as f32);
-                }
-                self.scene.set_world(self.session.sim().world());
-                self.scene
-                    .set_weather(self.session.sim().conditions(), self.session.sim().hood());
-                self.scene
-                    .set_light_gun(self.session.atc_state().light_gun.map(|g| {
-                        flightcraft_render::LightGun {
-                            position_m: g.position_m,
-                            elapsed_s: self.session.sim().state().time_s - g.since_s,
-                            pattern: match g.signal {
-                                flightcraft_control::LightGunSignal::SteadyGreen => {
-                                    flightcraft_render::LightGunPattern::SteadyGreen
-                                }
-                                flightcraft_control::LightGunSignal::FlashingGreen => {
-                                    flightcraft_render::LightGunPattern::FlashingGreen
-                                }
-                                flightcraft_control::LightGunSignal::SteadyRed => {
-                                    flightcraft_render::LightGunPattern::SteadyRed
-                                }
-                                flightcraft_control::LightGunSignal::FlashingRed => {
-                                    flightcraft_render::LightGunPattern::FlashingRed
-                                }
-                                flightcraft_control::LightGunSignal::FlashingWhite => {
-                                    flightcraft_render::LightGunPattern::FlashingWhite
-                                }
-                                flightcraft_control::LightGunSignal::AlternatingRedGreen => {
-                                    flightcraft_render::LightGunPattern::AlternatingRedGreen
-                                }
-                            },
-                        }
-                    }));
-                self.scene.airspace_visible = self.session.airspace_visible();
-                self.scene.set_propeller_power(
-                    (readout.effective_controls.throttle * readout.failures.engine_power_fraction) as f32,
-                );
-                self.scene
-                    .set_aircraft(&self.session.sim().aircraft().identity.id);
-                let layer = egui::LayerId::new(egui::Order::Background, egui::Id::new("outside-world"));
-                let mut outside = egui::Ui::new(
-                    ctx.clone(),
-                    egui::Id::new("outside-world-ui"),
-                    egui::UiBuilder::new()
-                        .layer_id(layer)
-                        .max_rect(ctx.content_rect()),
-                );
-                self.scene.show(
-                    &mut outside,
-                    self.session.sim().state(),
-                    elapsed as f32,
-                    theme::scene(),
-                );
-                if self.scene.camera == CameraMode::Cockpit
-                    && self.session.sim().systems().smoke_density > 0.0
-                {
-                    outside.painter().rect_filled(
-                        ctx.content_rect(),
-                        0.0,
-                        theme::MUTED
-                            .gamma_multiply((self.session.sim().systems().smoke_density * 0.85) as f32),
-                    );
-                }
-                ctx.set_sublayer(layer, egui::LayerId::background());
-                let rect = ui.max_rect().shrink(24.0);
-                let conditions = ui.painter().layout(
-                    weather::note(&self.session),
-                    FontId::monospace(12.),
-                    theme::TEXT,
-                    ui.max_rect().width() * 0.7,
-                );
-                let origin = ui.max_rect().center_top() + egui::vec2(-conditions.size().x * 0.5, 12.);
-                ui.painter().rect_filled(
-                    egui::Rect::from_min_size(origin, conditions.size()).expand(5.),
-                    3.,
-                    theme::PANEL,
-                );
-                ui.painter().galley(origin, conditions, theme::TEXT);
-                let painter = ui.painter();
-                painter.text(
-                    rect.left_top(),
-                    Align2::LEFT_TOP,
-                    self.session
-                        .sim()
-                        .world()
-                        .region()
-                        .map_or("TRAINING FIELD", |r| r.name.as_str()),
-                    FontId::monospace(12.0),
-                    theme::BACKGROUND,
-                );
-                painter.text(
-                    rect.left_top() + egui::vec2(0.0, 20.0),
-                    Align2::LEFT_TOP,
-                    runway_label(self.session.sim().world(), self.session.sim().state().position_m),
-                    FontId::monospace(10.0),
-                    theme::BACKGROUND,
-                );
-                painter.text(
-                    rect.right_top(),
-                    Align2::RIGHT_TOP,
-                    format!(
-                        "SESSION   {:02}:{:05.2}",
-                        (readout.time_s / 60.0) as u64,
-                        readout.time_s % 60.0
-                    ),
-                    FontId::monospace(12.0),
-                    theme::BACKGROUND,
-                );
-                let hint = if self.scene.camera == CameraMode::Cockpit {
-                    format!(
-                        "HOLD TO LOOK   {} LEFT  ·  {} RIGHT  ·  {} UP",
-                        self.keymap.label(Action::LookLeft),
-                        self.keymap.label(Action::LookRight),
-                        self.keymap.label(Action::LookUp)
-                    )
                 } else {
-                    format!(
-                        "PITCH {}  ·  ROLL {}  ·  THROTTLE {} / {}",
-                        self.keymap.label(Action::ElevatorUp),
-                        self.keymap.label(Action::AileronLeft),
-                        self.keymap.label(Action::ThrottleUp),
-                        self.keymap.label(Action::ThrottleDown)
-                    )
-                };
-                let hint_rect = egui::Rect::from_min_size(
-                    rect.left_bottom() - egui::vec2(0.0, 29.0),
-                    egui::vec2((rect.width() - 4.0).min(660.0), 29.0),
-                );
-                painter.rect_filled(hint_rect, 4.0, theme::BACKGROUND.linear_multiply(0.82));
-                painter.text(
-                    hint_rect.left_center() + egui::vec2(12.0, 0.0),
-                    Align2::LEFT_CENTER,
-                    hint,
-                    FontId::monospace(10.0),
-                    theme::TEXT,
-                );
-                if self.paused {
-                    painter.text(
-                        rect.center_top() + egui::vec2(0.0, 20.0),
-                        Align2::CENTER_TOP,
-                        "P A U S E D",
-                        FontId::monospace(18.0),
-                        theme::BACKGROUND,
-                    );
+                    self.screens.root(ui, &mut self.session);
                 }
             });
+        #[cfg(not(target_arch = "wasm32"))]
+        self.screens.viewports(ctx, &self.runtime, &mut self.session);
         if let Some(error) = &self.error {
             egui::Window::new("FlightCraft message")
                 .collapsible(false)
@@ -1337,6 +1121,9 @@ impl eframe::App for FlightCraftApp {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         self.session.autosave_flight();
+        if let Ok(json) = serde_json::to_string(self.session.screens()) {
+            storage.set_string("flightcraft.screens.v1", json);
+        }
         let callsign = self.session.pilot_callsign();
         storage.set_string(
             "flightcraft.callsign.v1",
@@ -1378,6 +1165,7 @@ pub fn control_listener(port: u16) -> std::io::Result<flightcraft_control::bridg
 }
 
 /// The status and remote query use identical geometry and altitude semantics.
+#[cfg(not(target_arch = "wasm32"))]
 fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bool, String)> {
     use flightcraft_world::{AirspaceKind, AltitudeReference};
     let world = session.sim().world();
@@ -1423,35 +1211,6 @@ fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bo
         query.nearest.is_some_and(|b| b.warning),
         airspace.attribution.clone(),
     ))
-}
-
-/// Identify the nearest threshold in a region; built-in worlds keep their original readout.
-fn runway_label(world: &flightcraft_control::TerrainWorld, [n, e, _]: [f64; 3]) -> String {
-    if let Some(catalogue) = world.airports() {
-        let nearest = catalogue
-            .airports
-            .iter()
-            .flat_map(|a| a.runways.iter().map(move |r| (a, r)))
-            .zip(world.runway_strips())
-            .flat_map(|((a, r), strip)| {
-                strip.ends_m.iter().zip(&r.ends).map(move |([rn, re], end)| {
-                    let distance = (n - rn) * (n - rn) + (e - re) * (e - re);
-                    (distance, a, r, end)
-                })
-            })
-            .min_by(|a, b| a.0.total_cmp(&b.0));
-        if let Some((_, airport, runway, end)) = nearest {
-            return format!(
-                "NEAREST {} / {}   ·   {:.0} × {:.0} m",
-                airport.ident, end.ident, runway.length_m, runway.width_m
-            );
-        }
-    }
-    let runway = world.runway();
-    format!(
-        "RUNWAY {:03.0}   /   {:.0} × {:.0} m",
-        runway.heading_deg, runway.length_m, runway.width_m
-    )
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]

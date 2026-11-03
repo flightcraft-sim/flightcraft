@@ -32,7 +32,7 @@ pub enum Component {
     Pump1,
     Pump2,
 }
-#[derive(Clone, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ModernSetting {
     BackupPower {
@@ -84,7 +84,7 @@ pub enum ModernSetting {
     /// Explicit pilot command; bypasses the UI hold, but never the safety pin.
     ParachuteDeploy,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct LaneState {
     pub on: bool,
     pub failed: bool,
@@ -101,7 +101,7 @@ impl Default for LaneState {
         }
     }
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct PumpState {
     pub on: bool,
     pub failed: bool,
@@ -116,7 +116,7 @@ impl Default for PumpState {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RecoveryPhase {
     Stowed,
@@ -125,7 +125,7 @@ pub enum RecoveryPhase {
     Descending,
     Impact,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct RecoveryState {
     pub pin_inserted: bool,
     pub handle_held: bool,
@@ -148,21 +148,21 @@ impl Default for RecoveryState {
         }
     }
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct Annunciation {
     pub source: AnnunciationSource,
     pub severity: Severity,
     pub label: String,
     pub active: bool,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct BackupBusState {
     pub circuit: BackupCircuit,
     pub on: bool,
     pub remaining_ah: f64,
     pub voltage: f64,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ModernState {
     #[serde(skip)]
     pub(crate) panel_bindings: std::collections::BTreeMap<String, ControlBinding>,

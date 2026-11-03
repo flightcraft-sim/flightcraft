@@ -91,7 +91,7 @@ pub fn strip_draw(draw: &mut DrawList, s: &EquipmentState, [x, y, w, h]: [f32; 4
     label(
         0.08,
         9.,
-        s.active_lateral.map_or("---", lateral).into(),
+        s.active_lateral.map_or("AP OFF", lateral).into(),
         Ink::Normal,
         10.,
     );
@@ -141,7 +141,7 @@ pub fn strip_draw(draw: &mut DrawList, s: &EquipmentState, [x, y, w, h]: [f32; 4
     label(
         0.68,
         9.,
-        s.active_vertical.map_or("---", vertical).into(),
+        s.active_vertical.map_or("", vertical).into(),
         Ink::Normal,
         10.,
     );
@@ -437,7 +437,7 @@ impl Controller {
             text(
                 ui,
                 at(114., 42.),
-                s.active_vertical.map_or("---", vertical),
+                s.active_vertical.map_or("", vertical),
                 13.,
                 t::GREEN,
             );

@@ -150,7 +150,7 @@ pub struct LightGunState {
     pub since_s: f64,
     pub indication: String,
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AtcState {
     pub airport: Option<String>,
     pub current_facility: Option<ComStation>,
@@ -166,7 +166,7 @@ pub struct AtcState {
     pub light_gun: Option<LightGunState>,
     pub squawk: String,
 }
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct Atc {
     pub airport: Option<String>,
     pub destination: Option<String>,
@@ -197,7 +197,7 @@ pub(crate) struct Atc {
     pub next_check: f64,
     pub info_epochs: std::collections::BTreeMap<String, (String, u64)>,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Reply {
     pub station: ComStation,
     pub text: String,

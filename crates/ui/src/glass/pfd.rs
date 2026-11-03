@@ -366,7 +366,7 @@ pub(super) fn draw_composed(
         if a.attitude_valid {
             format!("{}°", crate::instruments::heading::degrees_text(a.heading_rad))
         } else {
-            "---°".into()
+            "HDG FAIL".into()
         },
         16.,
         Ink::Text,
@@ -414,7 +414,7 @@ pub(super) fn draw_composed(
             if a.air_data_valid {
                 format!("TAS {:.0} KT", a.true_airspeed_mps * KNOTS)
             } else {
-                "TAS ---".into()
+                "TAS FAIL".into()
             },
         ),
         (167., 166., format!("GS {:.0} KT", s.ground_speed_mps * KNOTS)),

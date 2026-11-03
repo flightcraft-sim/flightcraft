@@ -176,7 +176,7 @@ pub enum Instruction {
     RequestReadback { text: String },
     Advisory { text: String },
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ScenarioEvent {
     pub time_s: f64,
     pub step: String,
@@ -184,7 +184,7 @@ pub struct ScenarioEvent {
     pub action: ScenarioAction,
     pub error: Option<String>,
 }
-#[derive(Clone, Debug, Default, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ScenarioState {
     pub id: Option<String>,
     pub step: usize,
@@ -194,7 +194,7 @@ pub struct ScenarioState {
     pub dropped_events: u64,
     pub emergency: Option<EmergencyDebrief>,
 }
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct ScenarioRuntime {
     pub document: Option<Scenario>,
     pub state: ScenarioState,
@@ -211,7 +211,7 @@ pub(crate) struct ScenarioRuntime {
     pub scheduled: Vec<(f64, Failure)>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioValidate {
     pub scenario: Scenario,
@@ -225,7 +225,7 @@ impl Command for ScenarioValidate {
         Ok(validate(&self.scenario, s))
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioStart {
     pub scenario: Scenario,
@@ -253,7 +253,7 @@ impl Command for ScenarioStart {
         Ok(s.scenario.state.clone())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioAmend {
     pub scenario: Scenario,
@@ -292,7 +292,7 @@ impl Command for ScenarioAmend {
         Ok(s.scenario.state.clone())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GetScenarioState {}
 impl Command for GetScenarioState {
@@ -304,7 +304,7 @@ impl Command for GetScenarioState {
         Ok(s.scenario.state.clone())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioSignal {
     pub name: String,
@@ -323,7 +323,7 @@ impl Command for ScenarioSignal {
         Ok(s.scenario.state.clone())
     }
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CommsAtc {
     pub facility: String,
@@ -384,7 +384,7 @@ pub fn library() -> Result<Vec<Scenario>, CommandError> {
     .collect()
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct InstructorFailure {
     pub failure: Failure,

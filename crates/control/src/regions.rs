@@ -192,7 +192,7 @@ pub fn read_region(directory: &std::path::Path) -> Result<World, String> {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListWorlds {}
 #[derive(Debug, Serialize, JsonSchema)]
@@ -236,7 +236,7 @@ impl Command for ListWorlds {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AirportQuery {
     /// Optional local north/east position; results are ordered by airport distance.
@@ -279,20 +279,20 @@ fn projection(world: &World) -> Result<flightcraft_world::geo::LocalProjection, 
     flightcraft_world::geo::LocalProjection::new(r.origin.latitude_deg, r.origin.longitude_deg)
         .map_err(|e| CommandError::Failed(e.to_string()))
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(untagged)]
 #[schemars(extend("type" = "object"))]
 pub enum Geodetic {
     ToGeographic(LocalCoordinate),
     ToLocal(GeographicCoordinate),
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct LocalCoordinate {
     pub north_m: f64,
     pub east_m: f64,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GeographicCoordinate {
     pub latitude_deg: f64,
@@ -338,13 +338,13 @@ impl Command for Geodetic {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AirportRunwayStart {
     pub airport: String,
     pub end: String,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AirportAirStart {
     pub airport: String,

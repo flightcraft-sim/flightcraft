@@ -166,13 +166,13 @@ impl Pattern {
         }
     }
 }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TrafficState {
     pub airport: Option<String>,
     pub runway: Option<String>,
     pub aircraft: Vec<TrafficAircraft>,
 }
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct SetTraffic {
     #[schemars(range(min = 0, max = 3))]

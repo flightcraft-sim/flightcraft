@@ -61,6 +61,7 @@ pub enum CameraMode {
 }
 
 pub struct Scene {
+    gpu_view: std::sync::Arc<std::sync::Mutex<Option<gpu::ViewGpu>>>,
     world: flightcraft_world::World,
     pub airspace_visible: bool,
     /// Read-only presentation switch for comparative lighting captures.
@@ -68,6 +69,7 @@ pub struct Scene {
     eye: Option<Vec3>,
     target: Option<Vec3>,
     pub camera: CameraMode,
+    screen_view: Option<ScreenView>,
     chase_distance_m: f32,
     chase_height_m: f32,
     look_target: Vec2,
@@ -82,12 +84,14 @@ pub struct Scene {
 impl Default for Scene {
     fn default() -> Self {
         Self {
+            gpu_view: Default::default(),
             world: flightcraft_world::World::default(),
             airspace_visible: true,
             lights_visible: true,
             eye: None,
             target: None,
             camera: CameraMode::Chase,
+            screen_view: None,
             chase_distance_m: 19.0,
             chase_height_m: 7.0,
             look_target: Vec2::ZERO,
@@ -105,7 +109,19 @@ fn drawing(v: Vec3) -> Vec3 {
     Vec3::new(v.y, -v.z, -v.x)
 }
 
+/// Independent camera settings for a page; never change the flight or another window.
+#[derive(Clone, Copy, Debug)]
+pub struct ScreenView {
+    pub heading_offset_rad: f32,
+    pub pitch_rad: f32,
+    pub fov_rad: f32,
+    pub fixed_eye_ned_m: Option<[f32; 3]>,
+}
 impl Scene {
+    pub fn set_screen_view(&mut self, view: Option<ScreenView>) {
+        self.screen_view = view;
+    }
+
     pub fn set_weather(&mut self, conditions: &flightcraft_world::Conditions, hood: bool) {
         if conditions.validate().is_ok() {
             self.conditions = conditions.clone();
@@ -217,8 +233,43 @@ impl Scene {
                 )
             }
         };
+        let (eye, view) = if let Some(settings) = self.screen_view {
+            if let Some(fixed) = settings.fixed_eye_ned_m {
+                let eye = drawing(Vec3::from_array(fixed));
+                let target = position;
+                let up = if (target - eye).normalize_or_zero().dot(Vec3::Y).abs() > 0.99 {
+                    Vec3::NEG_Z
+                } else {
+                    Vec3::Y
+                };
+                (eye, Mat4::look_at_rh(eye, target, up))
+            } else if self.camera == CameraMode::Chase {
+                (eye, view)
+            } else {
+                let eye = position + drawing(attitude * CORVID_PILOT_EYE_M);
+                (
+                    eye,
+                    camera::cockpit_view(
+                        position,
+                        attitude,
+                        settings.heading_offset_rad,
+                        settings.pitch_rad,
+                        CORVID_PILOT_EYE_M,
+                    ),
+                )
+            }
+        } else {
+            (eye, view)
+        };
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
-        let projection = Mat4::perspective_rh(camera::VERTICAL_FOV_RAD, aspect, 0.05, 16000.0);
+        let projection = Mat4::perspective_rh(
+            self.screen_view.map_or(camera::VERTICAL_FOV_RAD, |s| {
+                s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
+            }),
+            aspect,
+            0.05,
+            16000.0,
+        );
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
         let mut uniform = gpu::Uniform {
             atmosphere: [0.; 4],
@@ -251,6 +302,7 @@ impl Scene {
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
             gpu::SceneCallback {
+                resources: self.gpu_view.clone(),
                 uniform,
                 show_airspace: self.airspace_visible,
                 show_lights: self.lights_visible,

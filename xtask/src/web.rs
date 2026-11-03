@@ -126,6 +126,15 @@ pub fn build() -> Result<(), String> {
             "    <link data-trunk rel=\"copy-dir\" href=\"../../assets/terrain\">\n",
             "",
         );
+    let index = index.replace(
+        "    <link data-trunk rel=\"copy-file\" href=\"screen-worker.js\">\n",
+        "",
+    );
+    std::fs::copy(
+        root.join("apps/web/screen-worker.js"),
+        dist.join("screen-worker.js"),
+    )
+    .map_err(|e| e.to_string())?;
     std::fs::write(dist.join("index.html"), index).map_err(|e| e.to_string())?;
     std::fs::copy(root.join("apps/web/bootstrap.js"), dist.join("bootstrap.js"))
         .map_err(|e| e.to_string())?;

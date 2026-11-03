@@ -1,4 +1,4 @@
-//! Native loopback transport. Threads move bounded lines; the owner executes on its UI thread.
+//! Native loopback transport. Threads move bounded lines; the flight owner executes at a step boundary.
 use crate::CommandError;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -64,7 +64,7 @@ impl Lines {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
     pub id: Value,

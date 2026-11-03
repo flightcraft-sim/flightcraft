@@ -6,7 +6,7 @@ use flightcraft_world::{
 };
 use schemars::JsonSchema;
 use serde::Serialize;
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct HeadingReference {
     /// East-positive WMM declination at the aircraft and simulation date.
     pub declination_rad: f64,

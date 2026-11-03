@@ -1,6 +1,6 @@
 # External hardware, multiple screens, and home-built panels
 
-Status: specification, not yet implemented.
+Status: hardware and physical-panel specification; screens and layout runtime are implemented as described in section 4.
 
 FlightCraft should drive any physical cockpit. That covers a USB yoke and throttle quadrant
 plugged in today, and a hobbyist's panel built from microcontroller boards and switches. It also
@@ -192,57 +192,53 @@ like the rest of the repository.
 
 ## 4. Screens, windows, and layouts
 
-### Windows
+### Implemented screens and layout runtime
 
-- **Native desktop:** the app can open any number of extra windows. Each has a monitor,
-  fullscreen or borderless, a size, and a layout.
-- **Browser:** extra browser windows are separate app instances in panel mode. Exactly one
-  instance owns and runs the simulation; the others show its state and send input to it over a
-  BroadcastChannel. Two instances never both run the simulation.
-- **Remote panel:** a second device (a tablet, an old laptop, or a Raspberry Pi in kiosk mode)
-  opens panel mode served by the desktop app itself over HTTP on the LAN, after pairing. The page
-  and its WebSocket share one origin, so there is no mixed-content problem; the public HTTPS site
-  cannot reach a LAN address, so it is never the remote-panel host. It shows a layout and sends
-  knob and touch input back. This is the easy path for a screen behind a wooden dashboard: plug in
-  any computer with a browser.
-- **The simulation never depends on a window.** It runs on its own thread (a Worker in the
-  browser), not tied to any window's frame. A covered native window stops repainting, and browsers
-  throttle hidden tabs to about one frame a second; neither may slow the simulation. A kiosk panel
-  behind another window keeps updating.
-- **One container and one camera path:** every window draws through the same layout container
-  and the same camera code, with a CI check that no window bypasses them.
+See the [Multiple screens guide](multiple-screens.md) for setup, touch controls, pairing, command
+examples, starter layouts, and current limits. Layout and window-set contracts are generated as
+`schema/layout.json` and `schema/screens.json`.
 
-### Layouts (`schema/layout.json`)
+- The native session has one fixed-step owner thread, independent of repaint. Windows read
+  presentation copies and route validated commands to that owner. The existing MCP bridge is
+  serviced there too; minimizing a window does not stop waits or commands.
+- Local browser screens use one named SharedWorker. The Worker owns the session, scripts, and
+  fixed-step accumulator. UI frames never step the simulation. Same-origin browser screens share
+  that Worker; paired LAN screens connect to the desktop owner instead.
+- Native egui viewports have independent layouts, cameras, positions, sizes, fullscreen, and
+  borderless settings. Saved window sets restore through app storage or `--screens`.
+  `screen.open`, `screen.close`, `screen.list`, `screen.set_page`, `screen.configure`, and
+  `screen.monitor` have input and output schemas and never open dialogs.
+- The shared page canvas hosts outside views, panels and individual pieces, PFD/MFD, navigator,
+  map, regional charts, instructor, radio/kneeboard, and debrief. Only visible pages render.
+  Outside pages have independent FOV and heading offset, with forward, left, right, chase, tower,
+  and top-down cameras. Each scene owns its GPU target and uniform buffer.
+- **Split aircraft panel into pieces** creates independently movable instruments and equipment
+  installations, including switches, knobs, breakers, touch displays, and engine controls.
+  Edit mode supports dragging, resize handles, grid snapping, alignment guides, context-menu
+  properties, direct dragging across windows with a target drop outline, a touch-friendly
+  **Move to screen** menu, and undo/redo. Global pointer and viewport rectangles locate the drop;
+  explicit desktop origins provide a fallback where the compositor hides window positions.
+  Aircraft definitions select the touch control styles and detents. Levers capture contacts
+  separately with drag slop, and conventional glass pages add bottom softkeys, rotary knobs,
+  concentric FMS controls, and magnified knobs. ATC is available as a separate page or element.
+- `layout.set`, `layout.add`, `layout.update`, `layout.remove`, `layout.move`, `layout.undo`,
+  `layout.redo`, and `layout.save` validate edits. Transfers convert between calibrated pixel and
+  millimetre units. `--layouts-dir` watches the folder with debounce, supports rename saves, and
+  preserves last-good layouts without destroying invalid editor files. Browser pages import and
+  export layout JSON.
+- Starter setups live in `examples/layouts/`: single screen, three outside monitors plus panel,
+  instructor and map, five-screen home cockpit, a C172-style six-pack plus controls tablet using
+  the fictional Corvid, and a glass touchscreen.
+- LAN hosting requires `--panels <private-address:port> --web-dir <packaged-site>`. It serves the
+  browser app and same-origin WebSocket, checks Origin and a random host-displayed pairing token,
+  and starts every paired screen read-only. The host grants or revokes control per screen and can
+  disconnect it from **Screens**. Message, rate, and connection bounds apply. Remote control
+  cannot invoke host file commands. The localhost MCP line transport retains its separate policy.
 
-- **What a layout is:** a set of elements on a canvas.
-- **What an element can be:**
-  - any instrument module with its skin;
-  - a glass display (PFD or MFD);
-  - the outside view, with its own camera (for example a side window on a third monitor);
-  - the moving map;
-  - a switch panel;
-  - a text readout of any variable;
-  - an image (a background or a placard).
-- **Each element has:**
-  - a position and size, in pixels or in millimetres;
-  - rotation in 90° steps, z-order, and an optional circular or rectangular mask;
-  - bezel on or off, and a brightness and night-lighting group;
-  - "accepts input" on or off (for touch screens).
-- **Layouts are files:** the app watches the folder (editors save by renaming, so watching the
-  file alone misses saves). A change is debounced and validated. On an error, the last good layout
-  stays on screen with the error shown in place. The web version has no file watching; it loads
-  layouts by URL or upload.
-- **Edit mode, from a toggle or a shortcut:**
-  - drag to move and handles to resize;
-  - snap to a grid or to other elements;
-  - align and distribute, and lock elements;
-  - a properties panel;
-  - undo and redo.
-- **Edits are commands:** every edit is a `layout.*` command, so the same layout can be built by
-  dragging, by writing JSON, or by an agent ("put the engine gauges along the bottom of
-  monitor 2").
-- **Starting layouts:** layouts ship for each aircraft's panel and a few common setups. Examples
-  are "second monitor: full panel", "laptop: compact", and "two glass displays".
+The physical-panel workflow below remains a specification. Rotation/lighting metadata, complete align/distribute tools, cut-template export, and portable
+monitor autodetection are unfinished. Explicit monitor profiles carry measured X/Y calibration
+and desktop origins. Browser suspension and OS sleep are outside the fixed-step scheduler's
+real-time guarantee; deterministic explicit stepping remains available.
 
 ### Physical panels (a CNC-cut board in front of a screen)
 

@@ -2,7 +2,10 @@
 use crate::{instruments::*, theme as t};
 use eframe::egui::{self, Rect};
 use flightcraft_control::Session;
-use std::{cell::Cell, rc::Rc};
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 fn session(pack: &str, aircraft: &str) -> Session {
     let mut s = Session::new().unwrap();
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -17,12 +20,12 @@ fn session(pack: &str, aircraft: &str) -> Session {
     .unwrap();
     s
 }
-struct TestSkin(Rc<Cell<usize>>);
+struct TestSkin(Arc<AtomicUsize>);
 impl EquipmentSkin for TestSkin {
     fn paint(&self, p: &egui::Painter, rect: Rect, s: EquipmentSnapshot<'_>) {
         assert_eq!(s.installation.id, "switch_master");
         assert!(s.input.systems.controls.master);
-        self.0.set(self.0.get() + 1);
+        self.0.fetch_add(1, Ordering::Relaxed);
         p.rect_filled(rect, 0., t::ACCENT);
     }
 }
@@ -37,7 +40,7 @@ fn equipment_registry_artwork_preserves_host_hit_regions_and_read_only_state() {
         .find(|e| e.id == "switch_master")
         .unwrap();
     let mut panel = InstrumentPanel::default();
-    let calls = Rc::new(Cell::new(0));
+    let calls = Arc::new(AtomicUsize::new(0));
     panel
         .registry
         .register_equipment_skin("private_art".into(), Box::new(TestSkin(calls.clone())))
@@ -106,7 +109,7 @@ fn equipment_registry_artwork_preserves_host_hit_regions_and_read_only_state() {
             },
         );
     }
-    assert_eq!(calls.get(), 3);
+    assert_eq!(calls.load(Ordering::Relaxed), 3);
     assert_eq!(&before, s.sim().systems());
     assert!(settings.iter().any(|s| matches!(
         s,
