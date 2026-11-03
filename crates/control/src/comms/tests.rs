@@ -585,7 +585,10 @@ fn pack_callsigns_override_first_contact_abbreviation_and_channel_change() {
         .unwrap();
     s.execute("comms.tune", json!({"radio":1,"channel_khz":122800}))
         .unwrap();
-    assert_eq!(s.pilot_callsign().current, "Sling Three Seven One Foxtrot Charlie");
+    assert_eq!(
+        s.pilot_callsign().current,
+        "Sling Three Seven One Foxtrot Charlie"
+    );
     let before = s.pilot_callsign().registration;
     assert!(
         s.execute("comms.callsign", json!({"registration":"bad/../name"}))
