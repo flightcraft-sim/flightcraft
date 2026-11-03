@@ -83,6 +83,19 @@ Class B), with attribution in ATTRIBUTION.md. The licence of each file is checke
 
 **Use:** like option 1: a user's own key, streamed imagery, off by default, never shipped.
 
+## Web showcase: "Fly NYC"
+
+The website is one polished showcase, not the whole world: the Hudson River corridor and the
+Manhattan skyline, departing from Teterboro or Linden. It uses public-data scenery (imagery of
+about 0.6 m near the river and coarser outward, lidar terrain, and New York City's own open
+building data) sized to fit GitHub Pages' roughly 1 GB site limit with no new account. The desktop
+app carries everything else (1N7 in full detail, the Water Gap, eastern Pennsylvania, and later the
+whole US) through GitHub Releases.
+
+If the showcase outgrows 1 GB, only the scenery tiles move to a free host without that cap
+(Cloudflare Pages: up to 20,000 files of 25 MB each with no bandwidth cap; or a Hugging Face
+dataset repository). Both need a free account, which is the owner's decision.
+
 ## Order
 
 1. Option 2 for 1N7, then the Water Gap corridor, then the wider region.
