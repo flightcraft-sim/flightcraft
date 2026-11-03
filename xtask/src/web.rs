@@ -175,8 +175,13 @@ pub fn build() -> Result<(), String> {
 
 fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), String> {
     let scenery = region.join("scenery");
+    // Until accepted Fly NYC scenery exists, the site ships on the region's existing terrain.
+    // Once any scenery is staged, the showcase must be complete (buildings and budget below).
     let mut nyc = false;
     let files = super::data::files(&scenery)?;
+    if files.is_empty() {
+        return Ok(());
+    }
     let mut roots = Vec::new();
     for path in &files {
         if path.file_name().is_some_and(|n| n == "tileset.json") {
@@ -358,11 +363,10 @@ mod scenery_package_tests {
     fn scenery_packaging_requires_lidar_counts_bytes_and_rejects_portal_and_tum() {
         let root = std::env::temp_dir().join(format!("fc-web-scenery-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        assert!(
-            validate_showcase_scenery(&root, "new-york")
-                .unwrap_err()
-                .contains("Fly NYC")
-        );
+        // No staged scenery: the site ships on the region's existing terrain.
+        assert!(validate_showcase_scenery(&root, "new-york").is_ok());
+        std::fs::create_dir_all(root.join("scenery")).unwrap();
+        assert!(validate_showcase_scenery(&root, "new-york").is_ok());
         let area = root.join("scenery/nyc-lidar");
         std::fs::create_dir_all(area.join("tiles")).unwrap();
         let mut set = serde_json::json!({"asset":{"version":"1.1","copyright":"Original fixture"},"geometricError":0,"root":{"boundingVolume":{"region":[-1.3,0.7,-1.2,0.8,0,100]},"geometricError":0,"content":{"uri":"tiles/test.glb"}},"extras":{"flightcraft":crate::scenery::nyc_test_flags()}});
