@@ -1,17 +1,21 @@
 //! Bounded, immutable presentation assets. No geometry affects flight dynamics.
 use crate::AircraftError;
 use crate::aircraft::{error, require};
+pub use gltf::material::AlphaMode as MaterialAlpha;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-pub const MAX_MODEL_BYTES: usize = 4 * 1024 * 1024;
-pub const MAX_TRIANGLES: usize = 30_000;
-pub const MAX_VERTICES: usize = 90_000;
+pub const MAX_MODEL_BYTES: usize = 64 * 1024 * 1024;
+pub const MAX_TRIANGLES: usize = 120_000;
+pub const MAX_VERTICES: usize = MAX_TRIANGLES * 3;
 pub const MAX_NODES: usize = 128;
-/// The initial exterior profile uses material colors and geometry lettering; textures are rejected.
-pub const MAX_TEXTURES: usize = 0;
+pub const MAX_TEXTURES: usize = 64;
+pub const MAX_IMAGES: usize = 8;
+pub const MAX_MATERIALS: usize = 32;
+pub const MAX_TEXTURE_DIMENSION: u32 = 4096;
+pub const MAX_DECODED_BYTES: usize = 5 * 4096 * 4096 * 4;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -19,6 +23,8 @@ pub struct Exterior {
     pub aircraft: String,
     pub model: String,
     pub lod1: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lod2: Option<String>,
     #[schemars(range(min = 0.01, max = 100))]
     pub span_m: f32,
     #[schemars(range(min = 0.01, max = 100))]
@@ -41,6 +47,19 @@ pub struct Registration {
     pub node: String,
     #[schemars(length(min = 1, max = 16), regex(pattern = "^[A-Z0-9-]+$"))]
     pub text: String,
+    /// Body-space patch for replacing registration baked into the base-color atlas.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub surface: Option<RegistrationSurface>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RegistrationSurface {
+    pub node: String,
+    pub x_m: [f32; 2],
+    pub z_m: [f32; 2],
+    pub height_m: f32,
+    pub background: [f32; 3],
+    pub color: [f32; 3],
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -93,8 +112,11 @@ pub struct ExteriorLight {
 }
 
 impl Exterior {
-    pub fn paths(&self) -> [&str; 2] {
-        [&self.model, &self.lod1]
+    pub fn paths(&self) -> Vec<&str> {
+        std::iter::once(self.model.as_str())
+            .chain(std::iter::once(self.lod1.as_str()))
+            .chain(self.lod2.as_deref())
+            .collect()
     }
     pub fn validate(&self) -> Result<(), AircraftError> {
         crate::layers::id(&self.aircraft, "exterior.aircraft")?;
@@ -145,6 +167,26 @@ impl Exterior {
             require(names.insert(&l.node), "exterior.node", "duplicate light binding")?;
         }
         valid_name(&self.registration.node)?;
+        if let Some(surface) = &self.registration.surface {
+            valid_name(&surface.node)?;
+            let [left, right] = surface.x_m;
+            let [top, bottom] = surface.z_m;
+            require(
+                [left, right, top, bottom, surface.height_m]
+                    .iter()
+                    .all(|v| v.is_finite() && v.abs() <= 100.)
+                    && (0.01..=3.).contains(&(right - left))
+                    && (0.01..=1.).contains(&(bottom - top))
+                    && (0.01..=(bottom - top)).contains(&surface.height_m)
+                    && surface
+                        .background
+                        .iter()
+                        .chain(&surface.color)
+                        .all(|v| v.is_finite() && (0.0..=1.).contains(v)),
+                "exterior.registration.surface",
+                "invalid registration paint surface",
+            )?;
+        }
         require(
             !self.registration.text.is_empty()
                 && self.registration.text.len() <= 16
@@ -173,6 +215,30 @@ pub struct ModelVertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
     pub color: [f32; 4],
+    pub uv: [f32; 2],
+    pub tangent: [f32; 4],
+    pub material: usize,
+}
+#[derive(Clone, Debug)]
+pub struct ModelImage {
+    pub size: [u32; 2],
+    pub rgba: Arc<[u8]>,
+}
+#[derive(Clone, Debug)]
+pub struct ModelMaterial {
+    pub base_color: [f32; 4],
+    pub emissive: [f32; 3],
+    pub metallic: f32,
+    pub roughness: f32,
+    pub normal_scale: f32,
+    pub occlusion_strength: f32,
+    pub alpha_cutoff: f32,
+    pub alpha_mode: gltf::material::AlphaMode,
+    pub double_sided: bool,
+    pub clearcoat: f32,
+    pub clearcoat_roughness: f32,
+    /// Base color, metallic-roughness, normal, AO, emissive image indices.
+    pub images: [Option<usize>; 5],
 }
 #[derive(Clone, Debug)]
 pub struct ModelNode {
@@ -185,12 +251,15 @@ pub struct ModelNode {
 pub struct ExteriorModel {
     pub nodes: Vec<ModelNode>,
     pub triangles: usize,
+    pub materials: Vec<ModelMaterial>,
+    pub images: Vec<ModelImage>,
 }
 #[derive(Clone, Debug)]
 pub struct ExteriorAsset {
     pub definition: Exterior,
     pub lod0: Arc<ExteriorModel>,
     pub lod1: Arc<ExteriorModel>,
+    pub lod2: Option<Arc<ExteriorModel>>,
 }
 
 /// Only self-contained GLB 2.0 triangle meshes, POSITION/NORMAL, and material base colors.
@@ -201,7 +270,7 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
     require(
         bytes.len() <= MAX_MODEL_BYTES && bytes.starts_with(b"glTF"),
         "exterior.glb",
-        "requires a GLB of at most 4 MiB",
+        "requires a GLB of at most 64 MiB",
     )?;
     let gltf = gltf::Gltf::from_slice(bytes).map_err(|e| fail(e.to_string()))?;
     let blob = gltf
@@ -218,12 +287,13 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
     )?;
     require(
         gltf.nodes().len() <= MAX_NODES
-            && gltf.images().len() == 0
-            && gltf.textures().len() == MAX_TEXTURES
+            && gltf.images().len() <= MAX_IMAGES
+            && gltf.materials().len() < MAX_MATERIALS
+            && gltf.textures().len() <= MAX_TEXTURES
             && gltf.animations().len() == 0
             && gltf.skins().len() == 0,
         "exterior.resources",
-        "node cap exceeded, or unsupported textures, animations, or skins",
+        "resource cap exceeded, or unsupported animations or skins",
     )?;
     for a in gltf.accessors() {
         require(
@@ -247,6 +317,169 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
             "accessor exceeds binary bounds",
         )?;
     }
+    // Validate every binary view, including images, before invoking any decoder or reader.
+    for view in gltf.views() {
+        require(
+            view.offset()
+                .checked_add(view.length())
+                .is_some_and(|end| end <= blob.len()),
+            "exterior.view",
+            "view exceeds binary storage",
+        )?;
+    }
+    let mut decoded_bytes = 0usize;
+    let mut encoded_images = Vec::new();
+    for image in gltf.images() {
+        let gltf::image::Source::View { view, mime_type } = image.source() else {
+            return Err(fail("external image URIs are unsupported".into()));
+        };
+        let data = blob
+            .get(view.offset()..view.offset() + view.length())
+            .ok_or_else(|| fail("invalid image storage".into()))?;
+        require(
+            mime_type == "image/png"
+                && data.starts_with(b"\x89PNG\r\n\x1a\n")
+                && data.get(12..16) == Some(b"IHDR"),
+            "exterior.image",
+            "requires an embedded PNG",
+        )?;
+        let header = data
+            .get(16..24)
+            .ok_or_else(|| fail("truncated PNG header".into()))?;
+        let dimension = |range: std::ops::Range<usize>| -> Result<u32, AircraftError> {
+            let b: [u8; 4] = header
+                .get(range)
+                .ok_or_else(|| fail("missing PNG dimensions".into()))?
+                .try_into()
+                .map_err(|_| fail("invalid PNG dimensions".into()))?;
+            Ok(u32::from_be_bytes(b))
+        };
+        let size = [dimension(0..4)?, dimension(4..8)?];
+        require(
+            size.iter().all(|n| (1..=MAX_TEXTURE_DIMENSION).contains(n)),
+            "exterior.image",
+            "PNG dimension limit exceeded",
+        )?;
+        let [width, height] = size;
+        decoded_bytes = decoded_bytes.saturating_add(width as usize * height as usize * 4);
+        require(
+            decoded_bytes <= MAX_DECODED_BYTES,
+            "exterior.image",
+            "decoded texture budget exceeded",
+        )?;
+        encoded_images.push((size, data));
+    }
+    let mut images = Vec::new();
+    for (size, data) in encoded_images {
+        let [width, height] = size;
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(MAX_TEXTURE_DIMENSION);
+        limits.max_image_height = Some(MAX_TEXTURE_DIMENSION);
+        limits.max_alloc = Some(u64::from(width) * u64::from(height) * 8 + 1024 * 1024);
+        let decoder = image::codecs::png::PngDecoder::with_limits(std::io::Cursor::new(data), limits)
+            .map_err(|e| fail(e.to_string()))?;
+        let rgba = image::DynamicImage::from_decoder(decoder)
+            .map_err(|e| fail(e.to_string()))?
+            .into_rgba8();
+        require(
+            rgba.dimensions() == (width, height),
+            "exterior.image",
+            "PNG dimensions changed during decoding",
+        )?;
+        images.push(ModelImage {
+            size,
+            rgba: rgba.into_raw().into(),
+        });
+    }
+    let mut materials = Vec::new();
+    for material in gltf.materials() {
+        let p = material.pbr_metallic_roughness();
+        for coord in [
+            p.base_color_texture().map(|t| t.tex_coord()),
+            p.metallic_roughness_texture().map(|t| t.tex_coord()),
+            material.normal_texture().map(|t| t.tex_coord()),
+            material.occlusion_texture().map(|t| t.tex_coord()),
+            material.emissive_texture().map(|t| t.tex_coord()),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            require(coord == 0, "exterior.texture", "only TEXCOORD_0 is supported")?;
+        }
+        let extension = material.extension_value("KHR_materials_clearcoat");
+        let factor = |name: &str| {
+            extension
+                .and_then(|v| v.get(name))
+                .and_then(serde_json::Value::as_f64)
+                .unwrap_or(0.) as f32
+        };
+        let strength = material
+            .extension_value("KHR_materials_emissive_strength")
+            .and_then(|v| v.get("emissiveStrength"))
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(1.) as f32;
+        let entry = ModelMaterial {
+            base_color: p.base_color_factor(),
+            emissive: material.emissive_factor().map(|v| v * strength),
+            metallic: p.metallic_factor(),
+            roughness: p.roughness_factor(),
+            normal_scale: material.normal_texture().map_or(1., |t| t.scale()),
+            occlusion_strength: material.occlusion_texture().map_or(1., |t| t.strength()),
+            alpha_cutoff: material.alpha_cutoff().unwrap_or(0.5),
+            alpha_mode: material.alpha_mode(),
+            double_sided: material.double_sided(),
+            clearcoat: factor("clearcoatFactor"),
+            clearcoat_roughness: factor("clearcoatRoughnessFactor"),
+            images: [
+                p.base_color_texture().map(|t| t.texture().source().index()),
+                p.metallic_roughness_texture()
+                    .map(|t| t.texture().source().index()),
+                material.normal_texture().map(|t| t.texture().source().index()),
+                material.occlusion_texture().map(|t| t.texture().source().index()),
+                material.emissive_texture().map(|t| t.texture().source().index()),
+            ],
+        };
+        require(
+            entry
+                .base_color
+                .iter()
+                .chain(
+                    [
+                        entry.metallic,
+                        entry.roughness,
+                        entry.occlusion_strength,
+                        entry.alpha_cutoff,
+                        entry.clearcoat,
+                        entry.clearcoat_roughness,
+                    ]
+                    .iter(),
+                )
+                .all(|x| x.is_finite() && (0.0..=1.).contains(x))
+                && entry
+                    .emissive
+                    .iter()
+                    .all(|x| x.is_finite() && (0.0..=100.).contains(x))
+                && entry.normal_scale.is_finite()
+                && (0.0..=4.).contains(&entry.normal_scale),
+            "exterior.material",
+            "invalid PBR factors",
+        )?;
+        materials.push(entry);
+    }
+    materials.push(ModelMaterial {
+        base_color: [1.; 4],
+        emissive: [0.; 3],
+        metallic: 1.,
+        roughness: 1.,
+        normal_scale: 1.,
+        occlusion_strength: 1.,
+        alpha_cutoff: 0.5,
+        alpha_mode: gltf::material::AlphaMode::Opaque,
+        double_sided: false,
+        clearcoat: 0.,
+        clearcoat_roughness: 0.,
+        images: [None; 5],
+    });
     let mut parents = BTreeMap::new();
     for n in gltf.nodes() {
         for c in n.children() {
@@ -324,6 +557,23 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
                     "exterior.normals",
                     "normal count differs",
                 )?;
+                let uvs: Vec<_> = reader
+                    .read_tex_coords(0)
+                    .map(|v| v.into_f32().collect())
+                    .unwrap_or_else(|| vec![[0.; 2]; positions.len()]);
+                let tangents: Option<Vec<_>> = reader.read_tangents().map(Iterator::collect);
+                require(
+                    uvs.len() == positions.len()
+                        && tangents.as_ref().is_none_or(|v| v.len() == positions.len()),
+                    "exterior.vertex",
+                    "UV or tangent count differs",
+                )?;
+                require(
+                    p.material().normal_texture().is_none()
+                        || (tangents.is_some() && reader.read_tex_coords(0).is_some()),
+                    "exterior.normal",
+                    "normal maps require UVs and tangents",
+                )?;
                 let indices: Vec<u32> = reader
                     .read_indices()
                     .map(|x| x.into_u32().collect())
@@ -357,10 +607,35 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
                         "exterior.vertex",
                         "invalid vertex or normal",
                     )?;
+                    let uv = *uvs
+                        .get(i as usize)
+                        .ok_or_else(|| fail("index outside UVs".into()))?;
+                    let tangent = tangents
+                        .as_ref()
+                        .and_then(|v| v.get(i as usize))
+                        .copied()
+                        .unwrap_or_else(|| {
+                            let [x, y, z] = normal;
+                            let t = if x.abs() < 0.9 { [0., z, -y] } else { [-z, 0., x] };
+                            let len = libm::sqrtf(t.iter().map(|v| v * v).sum());
+                            let [tx, ty, tz] = t;
+                            [tx / len, ty / len, tz / len, 1.]
+                        });
+                    let [_, _, _, handedness] = tangent;
+                    require(
+                        uv.iter().all(|v| v.is_finite() && v.abs() <= 10000.)
+                            && tangent.iter().all(|v| v.is_finite() && v.abs() <= 1.001)
+                            && handedness.abs() > 0.99,
+                        "exterior.vertex",
+                        "invalid UV or tangent",
+                    )?;
                     vertices.push(ModelVertex {
                         position,
                         normal,
                         color,
+                        uv,
+                        tangent,
+                        material: p.material().index().unwrap_or(materials.len().saturating_sub(1)),
                     });
                 }
             }
@@ -378,6 +653,13 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
         .map(|p| &p.node)
         .chain(definition.lights.iter().map(|p| &p.node))
         .chain(std::iter::once(&definition.registration.node))
+        .chain(
+            definition
+                .registration
+                .surface
+                .as_ref()
+                .map(|surface| &surface.node),
+        )
     {
         require(
             nodes.iter().any(|n| &n.name == name),
@@ -420,12 +702,17 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
             .zip([definition.length_m, definition.span_m, definition.height_m])
     {
         require(
-            ((high - low) / stated - 1.).abs() <= 0.02,
+            ((high - low) / stated - 1.).abs() <= 0.01,
             "exterior.bounds",
-            "model dimensions differ by more than 2%",
+            "model dimensions differ by more than 1%",
         )?;
     }
-    Ok(ExteriorModel { nodes, triangles })
+    Ok(ExteriorModel {
+        nodes,
+        triangles,
+        materials,
+        images,
+    })
 }
 
 fn multiply(a: [[f32; 4]; 4], b: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
@@ -498,6 +785,91 @@ mod tests {
         ] {
             assert!(load_glb(&bad, &d).is_err());
         }
+    }
+    fn with_png(bytes: &[u8], png: &[u8], count: usize) -> Vec<u8> {
+        let size = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let mut doc: serde_json::Value = serde_json::from_slice(&bytes[20..20 + size]).unwrap();
+        let mut blob = bytes[28 + size..].to_vec();
+        let offset = blob.len();
+        blob.extend(png);
+        while !blob.len().is_multiple_of(4) {
+            blob.push(0);
+        }
+        let views = doc["bufferViews"].as_array_mut().unwrap();
+        let view = views.len();
+        views.push(serde_json::json!({"buffer":0,"byteOffset":offset,"byteLength":png.len()}));
+        doc["images"] = serde_json::json!(
+            (0..count)
+                .map(|_| serde_json::json!({"bufferView":view,"mimeType":"image/png"}))
+                .collect::<Vec<_>>()
+        );
+        doc["textures"] = serde_json::json!([{"source":0}]);
+        doc["materials"][0]["pbrMetallicRoughness"]["baseColorTexture"] = serde_json::json!({"index":0});
+        doc["buffers"][0]["byteLength"] = blob.len().into();
+        let mut json = serde_json::to_vec(&doc).unwrap();
+        while !json.len().is_multiple_of(4) {
+            json.push(b' ');
+        }
+        let mut out = b"glTF".to_vec();
+        out.extend(2u32.to_le_bytes());
+        out.extend(((28 + json.len() + blob.len()) as u32).to_le_bytes());
+        out.extend((json.len() as u32).to_le_bytes());
+        out.extend(0x4e4f534au32.to_le_bytes());
+        out.extend(json);
+        out.extend((blob.len() as u32).to_le_bytes());
+        out.extend(0x004e4942u32.to_le_bytes());
+        out.extend(blob);
+        out
+    }
+    #[test]
+    fn embedded_pngs_decode_and_hostile_headers_fail_before_decompression() {
+        use image::ImageEncoder;
+        let (d, b) = fixture();
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png)
+            .write_image(&[23, 45, 67, 255], 1, 1, image::ExtendedColorType::Rgba8)
+            .unwrap();
+        let valid = with_png(&b, &png, 1);
+        let model = load_glb(&valid, &d).unwrap();
+        assert_eq!(model.images[0].size, [1, 1]);
+        assert_eq!(&*model.images[0].rgba, &[23, 45, 67, 255]);
+        let mut oversized = png.clone();
+        oversized[16..20].copy_from_slice(&4097u32.to_be_bytes());
+        assert!(
+            load_glb(&with_png(&b, &oversized, 1), &d)
+                .unwrap_err()
+                .to_string()
+                .contains("dimension limit")
+        );
+        let mut bomb = png.clone();
+        bomb[16..20].copy_from_slice(&4096u32.to_be_bytes());
+        bomb[20..24].copy_from_slice(&4096u32.to_be_bytes());
+        assert!(
+            load_glb(&with_png(&b, &bomb, 6), &d)
+                .unwrap_err()
+                .to_string()
+                .contains("decoded texture budget")
+        );
+        assert!(load_glb(&with_png(&b, &png, 9), &d).is_err());
+        assert!(
+            load_glb(
+                &edit(&valid, |v| v["materials"][0]["normalTexture"] =
+                    serde_json::json!({"index":0})),
+                &d
+            )
+            .is_err()
+        );
+        assert!(
+            load_glb(
+                &edit(&valid, |v| v["bufferViews"]
+                    .as_array_mut()
+                    .unwrap()
+                    .last_mut()
+                    .unwrap()["byteOffset"] = u32::MAX.into()),
+                &d
+            )
+            .is_err()
+        );
     }
     #[test]
     fn binding_numbers_paths_and_unknown_fields_are_hostile() {

@@ -1,8 +1,8 @@
 //! Pack transports stay above the deterministic aircraft definition layer.
 use crate::Session;
 pub use flightcraft_aero::{
-    AircraftCatalog, MAX_AIRCRAFT_BYTES, MAX_MANIFEST_BYTES, MAX_PACK_BYTES, MAX_PACK_FILES, MAX_PACKS,
-    PackManifest,
+    AircraftCatalog, MAX_AIRCRAFT_BYTES, MAX_MANIFEST_BYTES, MAX_PACK_BYTES, MAX_PACK_FILES,
+    MAX_PACK_TEXT_BYTES, MAX_PACKS, PackManifest,
 };
 use std::collections::BTreeMap;
 
@@ -81,7 +81,7 @@ pub fn read_pack(directory: &std::path::Path) -> Result<PackContents, String> {
     for entry in &manifest.files {
         let text = read_bounded(&regular_descendant(&root, &entry.path)?, MAX_AIRCRAFT_BYTES)?;
         total = total.saturating_add(text.len());
-        if total > MAX_PACK_BYTES {
+        if total > MAX_PACK_TEXT_BYTES {
             return Err("pack_size: exceeds 8 MiB".into());
         }
         files.insert(entry.path.clone(), text);

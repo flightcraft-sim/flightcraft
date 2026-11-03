@@ -13,10 +13,18 @@ pub(crate) struct Override {
 pub(crate) fn paint(base: &ExteriorAsset, text: &str) -> Arc<ExteriorAsset> {
     let mut definition = base.definition.clone();
     definition.registration.text = text.into();
+    let paint = |model: &ExteriorModel| {
+        if let Some(surface) = &base.definition.registration.surface {
+            crate::registration_atlas::paint(base, model, text, surface)
+        } else {
+            paint_model(model, &base.definition.registration.node, text)
+        }
+    };
     Arc::new(ExteriorAsset {
         definition,
-        lod0: Arc::new(paint_model(&base.lod0, &base.definition.registration.node, text)),
-        lod1: Arc::new(paint_model(&base.lod1, &base.definition.registration.node, text)),
+        lod0: Arc::new(paint(&base.lod0)),
+        lod1: Arc::new(paint(&base.lod1)),
+        lod2: base.lod2.as_ref().map(|model| Arc::new(paint(model))),
     })
 }
 
@@ -70,6 +78,9 @@ fn paint_model(model: &ExteriorModel, name: &str, text: &str) -> ExteriorModel {
                     position: [x, y, z],
                     normal: nearest.normal,
                     color: sample.color,
+                    uv: nearest.uv,
+                    tangent: nearest.tangent,
+                    material: sample.material,
                 }
             };
             let mut flat = Vec::new();
@@ -140,7 +151,7 @@ fn arc(center: [f32; 2], radius: [f32; 2], start: f32, end: f32) -> Vec<Vec2> {
 }
 
 /// Coordinates run left-to-right and top-to-bottom, with inset strokes at 0.08 and 0.92.
-fn glyph(c: char) -> Vec<Vec<Vec2>> {
+pub(super) fn glyph(c: char) -> Vec<Vec<Vec2>> {
     let mut paths = Vec::new();
     let strokes: &[&[[f32; 2]]] = match c {
         'A' => &[

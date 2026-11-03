@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 use flightcraft_aero::{
     Aircraft, AircraftCatalog, DefinitionSource, FileKind, LayerFile, Load, MAX_AIRCRAFT_BYTES,
-    MAX_PACK_BYTES, PackManifest, StationLoad, migrate_v1,
+    MAX_PACK_TEXT_BYTES, PackManifest, StationLoad, migrate_v1,
 };
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -277,7 +277,7 @@ fn hostile_pack_files_are_rejected_atomically_even_when_unused() {
     let mut large = manifest.clone();
     large.files.clear();
     let mut large_files = BTreeMap::new();
-    for n in 0..MAX_PACK_BYTES / MAX_AIRCRAFT_BYTES + 1 {
+    for n in 0..MAX_PACK_TEXT_BYTES / MAX_AIRCRAFT_BYTES + 1 {
         let path = format!("file-{n}.json");
         large.files.push(flightcraft_aero::PackFile {
             path: path.clone(),

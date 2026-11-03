@@ -1397,6 +1397,7 @@ name = "flightcraft-aero"
 version = "0.1.0"
 dependencies = [
  "gltf",
+ "image",
  "libm",
  "schemars",
  "serde",

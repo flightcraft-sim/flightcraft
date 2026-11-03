@@ -7,6 +7,7 @@ mod registration;
 pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
 mod mesh;
+mod registration_atlas;
 pub mod scenery;
 mod vision;
 mod weather;
@@ -87,6 +88,7 @@ pub struct Scene {
     exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     exterior_pose: exterior::Pose,
     registration: Option<registration::Override>,
+    exterior_environment: Option<std::sync::Arc<exterior::ExteriorEnvironment>>,
     larrow: bool,
     sling: bool,
     conditions: flightcraft_world::Conditions,
@@ -118,6 +120,7 @@ impl Default for Scene {
             exterior: exterior::builtin("corvid"),
             exterior_pose: Default::default(),
             registration: None,
+            exterior_environment: None,
             larrow: false,
             sling: false,
             conditions: Default::default(),
@@ -181,6 +184,14 @@ impl Scene {
     }
 
     /// Installed pack geometry overrides the embedded fictional model.
+    /// Supply scenery lighting and an optional GGX-prefiltered sky probe to all exterior views.
+    pub fn set_exterior_environment(
+        &mut self,
+        environment: Option<std::sync::Arc<exterior::ExteriorEnvironment>>,
+    ) {
+        self.exterior_environment = environment;
+    }
+
     pub fn set_exterior(&mut self, asset: std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>) {
         self.exterior = Some(asset);
     }
@@ -518,6 +529,7 @@ impl Scene {
                 sling: self.sling,
                 exterior: self.exterior.clone(),
                 exterior_pose: self.exterior_pose.clone(),
+                exterior_environment: self.exterior_environment.clone(),
             },
         ));
         if !scenery_attribution.is_empty() {
@@ -612,3 +624,6 @@ mod aircraft_tests {
         assert!(!scene.larrow && scene.eye.is_none());
     }
 }
+
+#[cfg(test)]
+mod exterior_proof;

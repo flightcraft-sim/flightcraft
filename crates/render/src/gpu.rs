@@ -48,9 +48,14 @@ pub(crate) struct SceneCallback {
     pub exterior_pose: crate::exterior::Pose,
     pub scenery: crate::scenery::Selection,
     pub scenery_quality: crate::scenery::Quality,
+    pub exterior_environment: Option<std::sync::Arc<crate::exterior::ExteriorEnvironment>>,
 }
 
 struct ExteriorGpu {
+    pbr: crate::exterior::PbrRenderer,
+    asset: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
+    lod: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorModel>>,
+    ready: bool,
     vertices: wgpu::Buffer,
     opaque_count: u32,
     count: u32,
@@ -533,6 +538,10 @@ impl CallbackTrait for SceneCallback {
             let mut vertices = frame.opaque;
             vertices.extend(frame.transparent);
             let exterior = view.exterior.get_or_insert_with(|| ExteriorGpu {
+                pbr: crate::exterior::PbrRenderer::new(device),
+                asset: None,
+                lod: None,
+                ready: false,
                 vertices: device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("animated aircraft exterior"),
                     size: (flightcraft_aero::exterior::MAX_VERTICES * std::mem::size_of::<mesh::Vertex>())
@@ -546,6 +555,54 @@ impl CallbackTrait for SceneCallback {
             exterior.opaque_count = opaque_count;
             exterior.count = vertices.len() as u32;
             queue.write_buffer(&exterior.vertices, 0, bytemuck::cast_slice(&vertices));
+            let lod = crate::exterior::model_at_distance(asset, eye.distance(center));
+            let changed = exterior
+                .asset
+                .as_ref()
+                .is_none_or(|a| !std::sync::Arc::ptr_eq(a, asset))
+                || exterior
+                    .lod
+                    .as_ref()
+                    .is_none_or(|m| !std::sync::Arc::ptr_eq(m, lod));
+            let result = (|| -> Result<(), String> {
+                if changed {
+                    exterior
+                        .pbr
+                        .set_materials(device, queue, &crate::exterior::pbr_materials(lod))?;
+                    exterior.asset = Some(asset.clone());
+                    exterior.lod = Some(lod.clone());
+                }
+                let mut lighting = self
+                    .exterior_environment
+                    .as_ref()
+                    .map_or_else(crate::exterior::PbrFrame::default, |environment| {
+                        environment.frame
+                    });
+                lighting.view_projection = self.uniform.view_projection;
+                lighting.world_from_body = self.uniform.aircraft;
+                lighting.eye = eye.extend(1.).to_array();
+                if self.exterior_environment.is_none() {
+                    lighting.sky_zenith = self.uniform.sky_top;
+                    lighting.sky_horizon = self.uniform.sky_horizon;
+                    lighting.ground_radiance = self.uniform.ground;
+                }
+                let probe = self
+                    .exterior_environment
+                    .as_ref()
+                    .and_then(|e| e.probe.as_ref())
+                    .map(|p| crate::exterior::SkyProbe {
+                        view: &p.view,
+                        mip_count: p.mip_count,
+                    });
+                exterior.pbr.prepare(
+                    device,
+                    queue,
+                    lighting,
+                    &crate::exterior::pbr_primitives(asset, lod, &pose),
+                    probe,
+                )
+            })();
+            exterior.ready = result.is_ok();
         }
         gpu.scenery.prepare(
             device,
@@ -615,10 +672,15 @@ impl CallbackTrait for SceneCallback {
             if self.exterior.is_some()
                 && let Some(exterior) = &view.exterior
             {
-                pass.set_vertex_buffer(0, exterior.vertices.slice(..));
-                pass.draw(0..exterior.opaque_count, 0..1);
-                pass.set_pipeline(&gpu.transparent);
-                pass.draw(exterior.opaque_count..exterior.count, 0..1);
+                if exterior.ready {
+                    exterior.pbr.draw_opaque(&mut pass);
+                    pass.set_bind_group(0, &view.bind, &[]);
+                } else {
+                    pass.set_vertex_buffer(0, exterior.vertices.slice(..));
+                    pass.draw(0..exterior.opaque_count, 0..1);
+                    pass.set_pipeline(&gpu.transparent);
+                    pass.draw(exterior.opaque_count..exterior.count, 0..1);
+                }
                 pass.set_pipeline(&gpu.scene);
                 pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             } else {
@@ -646,6 +708,12 @@ impl CallbackTrait for SceneCallback {
             pass.set_pipeline(&gpu.transparent);
             pass.set_vertex_buffer(0, vertices.slice(..));
             pass.draw(0..*count, 0..1);
+        }
+        if self.show_aircraft
+            && let Some(exterior) = &view.exterior
+            && exterior.ready
+        {
+            exterior.pbr.draw_transparent(&mut pass);
         }
         Vec::new()
     }

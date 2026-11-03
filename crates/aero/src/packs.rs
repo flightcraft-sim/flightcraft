@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_MANIFEST_BYTES: usize = 64 * 1024;
-pub const MAX_PACK_BYTES: usize = 8 * 1024 * 1024;
+pub const MAX_PACK_BYTES: usize = 128 * 1024 * 1024;
+pub const MAX_PACK_TEXT_BYTES: usize = 8 * 1024 * 1024;
 pub const MAX_PACK_FILES: usize = 64;
 pub const MAX_PACKS: usize = 64;
 
@@ -216,15 +217,20 @@ impl AircraftCatalog {
             )?;
             total = total.saturating_add(text.len());
         }
+        require(
+            total <= MAX_PACK_TEXT_BYTES,
+            "pack_size",
+            "pack text exceeds 8 MiB",
+        )?;
         for bytes in assets.values() {
             require(
                 bytes.len() <= crate::exterior::MAX_MODEL_BYTES,
                 "exterior.size",
-                "model exceeds 4 MiB",
+                "model exceeds 64 MiB",
             )?;
             total = total.saturating_add(bytes.len());
         }
-        require(total <= MAX_PACK_BYTES, "pack_size", "pack exceeds 8 MiB")?;
+        require(total <= MAX_PACK_BYTES, "pack_size", "pack exceeds 128 MiB")?;
         let mut candidate = self.clone();
         for entry in &manifest.files {
             let text = files
@@ -307,9 +313,15 @@ impl AircraftCatalog {
                 definition: definition.clone(),
                 lod0: model(&definition.model)?,
                 lod1: model(&definition.lod1)?,
+                lod2: definition.lod2.as_deref().map(model).transpose()?,
             };
             require(
-                asset.lod1.triangles < asset.lod0.triangles,
+                asset.lod1.triangles < asset.lod0.triangles
+                    && asset.lod1.triangles <= 25000
+                    && asset
+                        .lod2
+                        .as_ref()
+                        .is_none_or(|m| m.triangles <= 5000 && m.triangles < asset.lod1.triangles),
                 "exterior.lod1",
                 "LOD1 must reduce triangles",
             )?;
