@@ -102,7 +102,7 @@ pub(super) fn list(directory: &Path) -> Result<Vec<FlightSummary>, String> {
     for id in result {
         flights.push(load(directory, &id)?.summary);
     }
-    flights.sort_by(|a, b| b.created_unix_ms.cmp(&a.created_unix_ms));
+    flights.sort_by_key(|flight| std::cmp::Reverse(flight.created_unix_ms));
     Ok(flights)
 }
 use std::collections::BTreeSet;

@@ -22,7 +22,7 @@ impl Controller {
             plate,
             3.,
             bezel,
-            Stroke::new(1., t::BORDER),
+            Stroke::new(1.0_f32, t::BORDER),
             egui::StrokeKind::Inside,
         );
         let [w, h] = size;
@@ -35,7 +35,7 @@ impl Controller {
         for section in &layout.sections {
             let r = rect(section.rect);
             ui.painter()
-                .rect_stroke(r, 0., Stroke::new(0.6, t::MUTED), egui::StrokeKind::Inside);
+                .rect_stroke(r, 0., Stroke::new(0.6_f32, t::MUTED), egui::StrokeKind::Inside);
             fit_text(
                 ui,
                 Rect::from_min_size(r.min, egui::vec2(r.width(), r.height() * 0.15)),
@@ -94,7 +94,7 @@ impl Controller {
                         dial.center(),
                         dial.width() * 0.48,
                         t::DIAL,
-                        Stroke::new(1., t::MUTED),
+                        Stroke::new(1.0_f32, t::MUTED),
                     );
                     fit_text(
                         ui,
@@ -142,7 +142,7 @@ impl Controller {
                         let y = r.top() + r.height() * i as f32 / 8.;
                         ui.painter().line_segment(
                             [egui::pos2(r.left(), y), egui::pos2(r.right(), y)],
-                            Stroke::new(1., t::MUTED),
+                            Stroke::new(1.0_f32, t::MUTED),
                         );
                     }
                     fit_text(ui, r, label, r.height() * 0.13, t::TEXT);
@@ -169,7 +169,7 @@ impl Controller {
                         r,
                         2.,
                         t::DIAL,
-                        Stroke::new(1., if active { lit } else { t::BORDER }),
+                        Stroke::new(1.0_f32, if active { lit } else { t::BORDER }),
                         egui::StrokeKind::Inside,
                     );
                     fit_text(

@@ -174,8 +174,12 @@ pub(super) fn outline(ui: &egui::Ui, id: u64, shared: &Arc<Mutex<Transfer>>) {
         && let Some((target, _, rect)) = state.target()
         && target == id
     {
-        ui.painter()
-            .rect_stroke(rect, 4., Stroke::new(3., theme::ACCENT), egui::StrokeKind::Inside);
+        ui.painter().rect_stroke(
+            rect,
+            4.,
+            Stroke::new(3.0_f32, theme::ACCENT),
+            egui::StrokeKind::Inside,
+        );
         ui.painter().rect_filled(
             Rect::from_min_size(rect.min, egui::vec2(104., 28.)),
             2.,

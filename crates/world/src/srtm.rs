@@ -53,13 +53,11 @@ impl HgtTile {
             _ => return Err(TerrainError("HGT must be 1201² or 3601² big-endian i16 samples")),
         };
         let samples = bytes
-            .chunks_exact(2)
-            .map(|pair| {
-                let [a, b] = pair else {
-                    return VOID;
-                };
-                i16::from_be_bytes([*a, *b])
-            })
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .copied()
+            .map(i16::from_be_bytes)
             .collect();
         Ok(Self {
             south,

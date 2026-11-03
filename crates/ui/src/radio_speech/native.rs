@@ -291,8 +291,10 @@ fn decode_wave(bytes: &[u8]) -> Result<(Vec<f32>, u32), String> {
         .chunks_exact(usize::from(channels) * 2)
         .map(|frame| {
             frame
-                .chunks_exact(2)
-                .filter_map(|s| <[u8; 2]>::try_from(s).ok())
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .copied()
                 .map(|v| f32::from(i16::from_le_bytes(v)) / 32768.0)
                 .sum::<f32>()
                 / f32::from(channels)

@@ -959,7 +959,9 @@ pub(crate) mod terrain_tests {
             let (fine, coarse) = mesh.vertices.split_at(mesh.fine_end as usize);
             let shore_triangles = |vertices: &[Vertex]| {
                 vertices
-                    .chunks_exact(3)
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
                     .filter(|triangle| {
                         triangle
                             .iter()
@@ -1036,10 +1038,9 @@ pub(crate) mod terrain_tests {
             let (fine, coarse) = mesh.vertices.split_at(mesh.fine_end as usize);
             for lod in [fine, coarse] {
                 let mut water_area = 0.0;
-                for triangle in lod.chunks_exact(3) {
-                    if let [a, b, c] = triangle
-                        && a.kind == 5.0
-                    {
+                for triangle in lod.as_chunks::<3>().0.iter() {
+                    let [a, b, c] = triangle;
+                    if a.kind == 5.0 {
                         for vertex in triangle {
                             let [_, height, _] = vertex.position;
                             assert_eq!(height, 35.0);

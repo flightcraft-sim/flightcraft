@@ -208,18 +208,18 @@ impl PlanningMap {
             let e = (east / spacing).floor() * spacing + f64::from(i) * spacing;
             p.line_segment(
                 [point([n, east - span * 2.]), point([n, east + span * 2.])],
-                Stroke::new(0.5, theme::BORDER),
+                Stroke::new(0.5_f32, theme::BORDER),
             );
             p.line_segment(
                 [point([north - span * 2., e]), point([north + span * 2., e])],
-                Stroke::new(0.5, theme::BORDER),
+                Stroke::new(0.5_f32, theme::BORDER),
             );
         }
         for fraction in [0.5, 1.] {
             p.circle_stroke(
                 rect.center(),
                 rect.width().min(rect.height()) * 0.48 * fraction,
-                Stroke::new(0.6, theme::MUTED),
+                Stroke::new(0.6_f32, theme::MUTED),
             );
         }
         let runway = s.sim().world().runway();
@@ -232,11 +232,11 @@ impl PlanningMap {
                     e + runway.length_m * runway.heading_deg.to_radians().sin(),
                 ]),
             ],
-            Stroke::new(2., theme::TEXT),
+            Stroke::new(2.0_f32, theme::TEXT),
         );
         let path: Vec<_> = self.local_track.iter().copied().map(point).collect();
         if path.len() > 1 {
-            p.add(egui::Shape::line(path, Stroke::new(1., theme::GLASS_GPS)));
+            p.add(egui::Shape::line(path, Stroke::new(1.0_f32, theme::GLASS_GPS)));
         }
         let (sn, cs) = (heading - angle).sin_cos();
         let at = |x: f32, y: f32| {
@@ -579,7 +579,10 @@ impl PlanningMap {
             if let (Some(a), Some(b)) = (v.point(*a), v.point(*b)) {
                 p.line_segment(
                     [a, b],
-                    Stroke::new(1., theme::ACCENT.linear_multiply(state.opacity(Overlay::Track))),
+                    Stroke::new(
+                        1.0_f32,
+                        theme::ACCENT.linear_multiply(state.opacity(Overlay::Track)),
+                    ),
                 );
             }
         }
@@ -596,7 +599,7 @@ impl PlanningMap {
             let variation = flightcraft_world::geomag::MagneticModel::wmm2025()
                 .and_then(|m| m.declination(a.latitude_deg, a.longitude_deg, s.simulation_date()))
                 .unwrap_or(0.);
-            p.line_segment([x, y], Stroke::new(2., theme::AMBER));
+            p.line_segment([x, y], Stroke::new(2.0_f32, theme::AMBER));
             map_label(
                 p,
                 x.lerp(y, 0.5),
@@ -958,7 +961,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                 let points: Vec<_> = ring.iter().map(|c| v.local(*c)).collect();
                 for edge in points.windows(2) {
                     if let [a, b] = edge {
-                        p.line_segment([*a, *b], Stroke::new(1.2, color));
+                        p.line_segment([*a, *b], Stroke::new(1.2_f32, color));
                     }
                 }
                 if let Some(pos) = points.iter().find(|p| v.rect.shrink(40.).contains(**p)).copied() {
@@ -1010,7 +1013,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                     if let [a, b] = edge
                         && let (Some(a), Some(b)) = (v.point(*a), v.point(*b))
                     {
-                        p.line_segment([a, b], Stroke::new(0.45, color));
+                        p.line_segment([a, b], Stroke::new(0.45_f32, color));
                     }
                 }
             }
@@ -1040,14 +1043,14 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
             for navaid in &nav.navaids {
                 if let Some(pos) = v.point(navaid.position).filter(|p| v.rect.contains(*p)) {
                     let color = theme::AIRSPACE_BLUE.linear_multiply(state.opacity(Overlay::Navaids));
-                    p.circle_stroke(pos, 5., Stroke::new(1.5, color));
+                    p.circle_stroke(pos, 5., Stroke::new(1.5_f32, color));
                     if state.range_nm < 60. {
-                        p.circle_stroke(pos, 16., Stroke::new(0.7, color));
+                        p.circle_stroke(pos, 16., Stroke::new(0.7_f32, color));
                         for i in 0..12 {
                             let a =
                                 i as f32 * std::f32::consts::TAU / 12. + (v.north_grid_rad - v.angle) as f32;
                             let d = egui::vec2(a.sin(), -a.cos());
-                            p.line_segment([pos + d * 13., pos + d * 17.], Stroke::new(0.7, color));
+                            p.line_segment([pos + d * 13., pos + d * 17.], Stroke::new(0.7_f32, color));
                         }
                     }
                     map_label(
@@ -1102,7 +1105,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                             pos + egui::vec2(3., 3.),
                             pos + egui::vec2(-3., 3.),
                         ],
-                        Stroke::new(0.7, color),
+                        Stroke::new(0.7_f32, color),
                     ));
                     if across_nm < state.declutter.fixes_across_nm || on_route {
                         map_label(
@@ -1141,7 +1144,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                 }
                 symbols.push(pos);
                 let color = text.linear_multiply(state.opacity(Overlay::Airports));
-                p.circle_stroke(pos, if inset { 2. } else { 4. }, Stroke::new(1., color));
+                p.circle_stroke(pos, if inset { 2. } else { 4. }, Stroke::new(1.0_f32, color));
                 if !inset && state.range_nm < 35. {
                     for runway in &airport.runways {
                         let [a, b] = &runway.ends;
@@ -1244,7 +1247,7 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
                     pos + egui::vec2(0., 6.),
                     pos + egui::vec2(-6., 0.),
                 ],
-                Stroke::new(1.5, color),
+                Stroke::new(1.5_f32, color),
             ));
             map_label(
                 p,
@@ -1285,7 +1288,7 @@ fn route(
         }
         for pair in points.windows(2) {
             if let [a, b] = pair {
-                p.line_segment([*a, *b], Stroke::new(3., theme::GLASS_GPS));
+                p.line_segment([*a, *b], Stroke::new(3.0_f32, theme::GLASS_GPS));
             }
         }
         for point in points {
@@ -1304,7 +1307,7 @@ fn route(
         if let [a, b] = leg
             && let (Some(a), Some(b)) = (v.point(a.waypoint.position), v.point(b.waypoint.position))
         {
-            p.line_segment([a, b], Stroke::new(2.5, color));
+            p.line_segment([a, b], Stroke::new(2.5_f32, color));
             if v.rect.width() >= 350.
                 && let Some(leg) = summary.as_ref().and_then(|s| s.legs.get(i))
             {
@@ -1374,7 +1377,7 @@ fn rings(p: &egui::Painter, v: &View, state: &MapState) {
     let radius = v.rect.width().min(v.rect.height()) * 0.5;
     if state.opacity(Overlay::RangeRings) > 0. {
         for f in [0.25, 0.5, 0.75] {
-            p.circle_stroke(v.rect.center(), radius * f, Stroke::new(0.7, color));
+            p.circle_stroke(v.rect.center(), radius * f, Stroke::new(0.7_f32, color));
         }
     }
     if v.rect.width() < 200. || v.rect.height() < 150. {
@@ -1385,7 +1388,7 @@ fn rings(p: &egui::Painter, v: &View, state: &MapState) {
     let origin = v.rect.left_bottom() + egui::vec2(12., -60.);
     p.line_segment(
         [origin, origin + egui::vec2(pixels, 0.)],
-        Stroke::new(2., theme::ACCENT),
+        Stroke::new(2.0_f32, theme::ACCENT),
     );
     map_label(
         p,

@@ -190,3 +190,4 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check licenses advisories bans sources
+          rust-version: '1.98.0'

@@ -279,7 +279,7 @@ fn button(ui: &mut egui::Ui, rect: Rect, label: &str, selected: bool) -> egui::R
     ui.painter().rect_stroke(
         rect,
         3.,
-        Stroke::new(1., if selected { t::GREEN } else { t::BORDER }),
+        Stroke::new(1.0_f32, if selected { t::GREEN } else { t::BORDER }),
         egui::StrokeKind::Inside,
     );
     text(
@@ -295,17 +295,17 @@ fn knob(ui: &egui::Ui, rect: Rect, dual: bool) {
     let center = rect.center();
     let radius = rect.width() * 0.43;
     ui.painter()
-        .circle(center, radius, t::DIAL, Stroke::new(2., t::BORDER));
+        .circle(center, radius, t::DIAL, Stroke::new(2.0_f32, t::BORDER));
     if dual {
         ui.painter()
-            .circle(center, radius * 0.63, t::RAISED, Stroke::new(1., t::MUTED));
+            .circle(center, radius * 0.63, t::RAISED, Stroke::new(1.0_f32, t::MUTED));
     }
     ui.painter().line_segment(
         [
             center - egui::vec2(0., radius - 5.),
             center - egui::vec2(0., radius * 0.45),
         ],
-        Stroke::new(3., t::ACCENT),
+        Stroke::new(3.0_f32, t::ACCENT),
     );
 }
 impl Controller {
@@ -368,7 +368,7 @@ impl Controller {
             plate,
             5.,
             t::PANEL,
-            Stroke::new(2., t::BORDER),
+            Stroke::new(2.0_f32, t::BORDER),
             egui::StrokeKind::Inside,
         );
         for p in [
@@ -617,7 +617,7 @@ impl Controller {
                             egui::pos2(wheel.left() + 6. * scale.x, y),
                             egui::pos2(wheel.right() - 6. * scale.x, y),
                         ],
-                        Stroke::new(1., t::MUTED),
+                        Stroke::new(1.0_f32, t::MUTED),
                     );
                 }
                 text(ui, at(582., 22.), "UP", 9., t::TEXT);

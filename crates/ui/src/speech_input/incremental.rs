@@ -187,6 +187,9 @@ mod tests {
                 .collect();
             Tensor::from_vec(values, shape, device)?.to_dtype(dtype)
         }
+        fn get_unchecked(&self, name: &str, _: DType, _: &Device) -> Result<Tensor> {
+            candle_core::bail!("Fixture tensor {name} requires an explicit shape")
+        }
         fn contains_tensor(&self, _: &str) -> bool {
             true
         }

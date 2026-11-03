@@ -5,6 +5,8 @@ desktop and the browser, and an MCP server. Design: `docs/SPEC.md`. Order of wor
 Human rules: `CONTRIBUTING.md`; they apply to you too.
 
 ## Hard rules
+- Toolchain: Rust 1.98.0, with rustfmt, clippy, and `wasm32-unknown-unknown`;
+  golden trajectory CI also checks `wasm32-wasip1` on the same toolchain.
 - Original work only. Never copy another simulator's code, data, aircraft, or text; never drive or
   take data from a commercial simulator. Do not read GPL, LGPL, or AGPL code (FlightGear, JSBSim).
 - Licences: `cargo deny check licenses`. New assets get a row in ATTRIBUTION.md.

@@ -129,7 +129,7 @@ impl Lever {
                     .min((rect.width() * 0.5 - 38.).max(20.))
                     .min(track.height() * 0.32);
                 p.circle_filled(c, radius, theme::DIAL);
-                p.circle_stroke(c, radius, Stroke::new(3., theme::MUTED));
+                p.circle_stroke(c, radius, Stroke::new(3.0_f32, theme::MUTED));
                 for (v, label) in [(0., "OFF"), (0.33, "LEFT"), (0.6, "RIGHT"), (1., "BOTH")] {
                     let a = fuel_angle(v);
                     let q = c + egui::vec2(a.cos(), a.sin()) * (radius + 14.);
@@ -143,7 +143,7 @@ impl Lever {
                 }
                 let angle = fuel_angle(value);
                 let end = c + egui::vec2(angle.cos(), angle.sin()) * radius * 0.8;
-                p.line_segment([c, end], Stroke::new(16., theme::ACCENT));
+                p.line_segment([c, end], Stroke::new(16.0_f32, theme::ACCENT));
                 p.circle_filled(c, 12., theme::BORDER);
             }
             Style::TrimWheel => {
@@ -152,7 +152,7 @@ impl Lever {
                 p.rect_stroke(
                     wheel,
                     22.,
-                    Stroke::new(2., theme::MUTED),
+                    Stroke::new(2.0_f32, theme::MUTED),
                     egui::StrokeKind::Inside,
                 );
                 for i in 0..18 {
@@ -162,7 +162,7 @@ impl Lever {
                             egui::pos2(wheel.left() + 4., y),
                             egui::pos2(wheel.right() - 4., y),
                         ],
-                        Stroke::new(2., theme::MUTED),
+                        Stroke::new(2.0_f32, theme::MUTED),
                     );
                 }
                 p.text(
@@ -185,7 +185,7 @@ impl Lever {
                         egui::pos2(track.right() - 6., y),
                         egui::pos2(track.right() + 8., y),
                     ],
-                    Stroke::new(4., theme::ACCENT),
+                    Stroke::new(4.0_f32, theme::ACCENT),
                 );
             }
             Style::FlapLever | Style::Quadrant => {
@@ -194,7 +194,10 @@ impl Lever {
                     6.,
                     theme::DIAL,
                 );
-                p.line_segment([track.center_bottom(), center], Stroke::new(10., theme::MUTED));
+                p.line_segment(
+                    [track.center_bottom(), center],
+                    Stroke::new(10.0_f32, theme::MUTED),
+                );
                 p.rect_filled(
                     Rect::from_center_size(center, egui::vec2(56., 48.)),
                     8.,
@@ -203,23 +206,26 @@ impl Lever {
                 p.rect_stroke(
                     Rect::from_center_size(center, egui::vec2(56., 48.)),
                     8.,
-                    Stroke::new(2., theme::TEXT),
+                    Stroke::new(2.0_f32, theme::TEXT),
                     egui::StrokeKind::Inside,
                 );
             }
             _ => {
-                p.line_segment([track.center_bottom(), center], Stroke::new(10., theme::MUTED));
+                p.line_segment(
+                    [track.center_bottom(), center],
+                    Stroke::new(10.0_f32, theme::MUTED),
+                );
                 let color = if style == Style::RedLockPlunger {
                     theme::DANGER
                 } else {
                     theme::DIAL
                 };
                 p.circle_filled(center, 30., color);
-                p.circle_stroke(center, 30., Stroke::new(3., theme::MUTED));
+                p.circle_stroke(center, 30., Stroke::new(3.0_f32, theme::MUTED));
                 for y in [-16., -8., 0., 8., 16.] {
                     p.line_segment(
                         [center + egui::vec2(-23., y), center + egui::vec2(23., y)],
-                        Stroke::new(1., theme::BORDER),
+                        Stroke::new(1.0_f32, theme::BORDER),
                     );
                 }
                 if style == Style::RedLockPlunger {
@@ -563,17 +569,17 @@ impl Knob {
         let (rect, response) = ui.allocate_exact_size(egui::vec2(74., 74.), Sense::click_and_drag());
         ui.painter().circle_filled(rect.center(), 32., theme::DIAL);
         ui.painter()
-            .circle_stroke(rect.center(), 32., Stroke::new(2., theme::MUTED));
+            .circle_stroke(rect.center(), 32., Stroke::new(2.0_f32, theme::MUTED));
         if kind == ControlKind::Fms {
             ui.painter()
-                .circle_stroke(rect.center(), 19., Stroke::new(2., theme::MUTED));
+                .circle_stroke(rect.center(), 19., Stroke::new(2.0_f32, theme::MUTED));
         }
         for i in 0..16 {
             let a = i as f32 * std::f32::consts::TAU / 16.;
             let v = egui::vec2(a.cos(), a.sin());
             ui.painter().line_segment(
                 [rect.center() + v * 26., rect.center() + v * 30.],
-                Stroke::new(1., theme::MUTED),
+                Stroke::new(1.0_f32, theme::MUTED),
             );
         }
         ui.painter().text(

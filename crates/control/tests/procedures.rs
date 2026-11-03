@@ -120,7 +120,9 @@ fn kmmu_ils_captures_and_descends_on_the_published_localizer_and_glideslope() {
         let signal = &s.sim().radio_state()[0];
         let r = s.sim().readout();
         assert!(!r.crashed, "crash at {second}: {r:?}");
-        if second > 30 && signal.vertical_dots.is_some() {
+        if second > 30
+            && let Some(vertical_dots) = signal.vertical_dots
+        {
             if second > 60 {
                 assert!(
                     (r.heading_rad.to_degrees() - 229.1).abs() < 1.,
@@ -131,10 +133,7 @@ fn kmmu_ils_captures_and_descends_on_the_published_localizer_and_glideslope() {
                 signal.lateral_dots.unwrap().abs() < 0.5,
                 "LOC {second}: {signal:?}"
             );
-            assert!(
-                signal.vertical_dots.unwrap().abs() < 0.5,
-                "GS {second}: {signal:?}; {r:?}"
-            );
+            assert!(vertical_dots.abs() < 0.5, "GS {second}: {signal:?}; {r:?}");
             captured += 1;
         }
         // FAA ILS Y OR LOC Y RWY 23, cycle 2611: unstarred S-ILS DA is 436 ft MSL.

@@ -8,7 +8,7 @@ version = "0.1.0"
 publish = false
 edition = "2024"
 license = "Apache-2.0"
-rust-version = "1.90"
+rust-version = "1.98"
 authors = ["FlightCraft contributors"]
 repository = "https://github.com/flightcraft-sim/flightcraft"
 
@@ -58,9 +58,9 @@ js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Window", "Document", "SharedWorker", "WorkerOptions", "WorkerType", "MessagePort", "MessageEvent", "WebSocket", "BinaryType", "ErrorEvent", "BroadcastChannel", "HtmlCanvasElement", "Blob", "BlobPropertyBag", "HtmlAnchorElement", "HtmlElement", "Node", "Location", "UrlSearchParams", "Response", "ReadableStream", "ReadableStreamDefaultReader", "Url", "console", "Storage", "Navigator", "Geolocation", "Position", "Coordinates", "PositionError", "PositionOptions", "Request", "RequestInit", "Headers"] }
 cpal = { version = "0.16", default-features = false }
 # Offline CPU speech recognition; no CUDA, Metal, MKL, native tokenizer, or model download helpers.
-candle-core = { version = "=0.9.1", default-features = false }
-candle-nn = { version = "=0.9.1", default-features = false }
-candle-transformers = { version = "=0.9.1", default-features = false }
+candle-core = { version = "=0.11.1", default-features = false }
+candle-nn = { version = "=0.11.1", default-features = false }
+candle-transformers = { version = "=0.11.1", default-features = false }
 rayon = "1.12"
 tokenizers = { version = "0.21", default-features = false, features = ["fancy-regex"] }
 pollster = "0.4"

@@ -281,8 +281,12 @@ impl Canvas {
                 mask_circle(ui, rect);
             }
             if element.bezel {
-                ui.painter()
-                    .rect_stroke(rect, 3., Stroke::new(1., theme::BORDER), egui::StrokeKind::Inside);
+                ui.painter().rect_stroke(
+                    rect,
+                    3.,
+                    Stroke::new(1.0_f32, theme::BORDER),
+                    egui::StrokeKind::Inside,
+                );
             }
             if self.edit && control {
                 let response =
@@ -311,7 +315,7 @@ impl Canvas {
                     ui.painter().rect_stroke(
                         preview,
                         0.,
-                        Stroke::new(2., theme::ACCENT),
+                        Stroke::new(2.0_f32, theme::ACCENT),
                         egui::StrokeKind::Inside,
                     );
                     ui.painter().line_segment(
@@ -319,7 +323,7 @@ impl Canvas {
                             egui::pos2(preview.center().x, available.top()),
                             egui::pos2(preview.center().x, available.bottom()),
                         ],
-                        Stroke::new(1., theme::ACCENT),
+                        Stroke::new(1.0_f32, theme::ACCENT),
                     );
                 }
                 if response.drag_stopped() && !drag::completed(screen.id, &element.id, &self.transfer) {

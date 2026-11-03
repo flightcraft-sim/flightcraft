@@ -186,7 +186,7 @@ async fn render(options: flightcraft_ui::AppOptions) -> TestResult {
     state.device.poll(wgpu::PollType::wait_indefinitely())?;
     rx.recv()??;
     let bytes = buffer.slice(..).get_mapped_range();
-    let colors: std::collections::BTreeSet<_> = bytes.chunks_exact(4).map(|v| v.to_vec()).collect();
+    let colors: std::collections::BTreeSet<_> = bytes.as_chunks::<4>().0.iter().map(|v| v.to_vec()).collect();
     assert!(
         colors.len() > 100,
         "scene and instruments should contain varied pixels"

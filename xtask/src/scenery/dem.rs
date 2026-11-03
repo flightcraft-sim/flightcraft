@@ -121,10 +121,8 @@ impl Dem {
             return Err("DEM GeoKey length mismatch".into());
         }
         let mut values = std::collections::BTreeMap::new();
-        for entry in keys.get(4..).ok_or("DEM GeoKeys")?.chunks_exact(4) {
-            let [key, location, count, value] = entry else {
-                return Err("GeoKey size".into());
-            };
+        for entry in keys.get(4..).ok_or("DEM GeoKeys")?.as_chunks::<4>().0.iter() {
+            let [key, location, count, value] = entry;
             if *location == 0 && *count == 1 && values.insert(*key, *value).is_some() {
                 return Err("duplicate DEM GeoKey".into());
             }

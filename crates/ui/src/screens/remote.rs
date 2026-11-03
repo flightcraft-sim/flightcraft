@@ -276,6 +276,10 @@ fn serve(
         return static_file(&mut stream, root, request_path);
     }
     let expected = origin.to_owned();
+    #[allow(
+        clippy::result_large_err,
+        reason = "Tungstenite's callback requires an unboxed ErrorResponse."
+    )]
     let mut ws = tungstenite::accept_hdr_with_config(
         stream,
         move |request: &Request, response: Response| -> Result<Response, ErrorResponse> {

@@ -130,7 +130,7 @@ fn loopback_listener_moves_lines_to_executor_and_recovers_after_garbage() {
         b"garbage\n".to_vec(),
         vec![b' '; bridge::MAX_LINE_BYTES + 1]
             .into_iter()
-            .chain([b'\n'])
+            .chain(*b"\n")
             .collect(),
         b"\xff\n".to_vec(),
         b"{\"id\":4,\"command\":\"sim.set_controls\",\"input\":{\"throttle\":0.75}}\n".to_vec(),

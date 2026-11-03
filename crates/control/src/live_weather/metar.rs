@@ -289,7 +289,7 @@ pub fn parse(text: &str) -> Observation {
         if !phenomena.is_empty()
             && phenomena.len() <= 8
             && phenomena.len().is_multiple_of(2)
-            && phenomena.as_bytes().chunks_exact(2).all(|c| {
+            && phenomena.as_bytes().as_chunks::<2>().0.iter().all(|c| {
                 matches!(
                     c,
                     b"RA" | b"SN" | b"BR" | b"FG" | b"HZ" | b"TS" | b"SH" | b"DZ" | b"FZ" | b"VC" | b"UP"

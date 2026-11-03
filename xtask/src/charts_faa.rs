@@ -215,10 +215,8 @@ impl Lambert {
             return Err("invalid GeoKey directory".into());
         }
         let mut values = BTreeMap::new();
-        for entry in keys.get(4..).ok_or("GeoKeys")?.chunks_exact(4) {
-            let [key, location, count, offset] = entry else {
-                continue;
-            };
+        for entry in keys.get(4..).ok_or("GeoKeys")?.as_chunks::<4>().0.iter() {
+            let [key, location, count, offset] = entry;
             if *count != 1 {
                 continue;
             }

@@ -224,13 +224,13 @@ fn track(ui: &mut egui::Ui, d: &LessonDebrief, height: f32) {
         if let [a, b] = pair {
             p.line_segment(
                 [project(&a.position), project(&b.position)],
-                Stroke::new(2., if b.missed { theme::AMBER } else { theme::TEXT }),
+                Stroke::new(2.0_f32, if b.missed { theme::AMBER } else { theme::TEXT }),
             );
         }
     }
     for fix in &d.geometry {
         let at = project(&fix.position);
-        p.circle_stroke(at, 4., Stroke::new(1., theme::TEXT));
+        p.circle_stroke(at, 4., Stroke::new(1.0_f32, theme::TEXT));
         p.text(
             at + egui::vec2(6., -8.),
             egui::Align2::LEFT_BOTTOM,
@@ -245,7 +245,7 @@ fn track(ui: &mut egui::Ui, d: &LessonDebrief, height: f32) {
         .filter_map(|s| s.position.as_ref().map(project))
         .collect();
     if flown.len() > 1 {
-        p.add(egui::Shape::line(flown, Stroke::new(2., theme::GREEN)));
+        p.add(egui::Shape::line(flown, Stroke::new(2.0_f32, theme::GREEN)));
     }
 }
 fn bands(
@@ -265,7 +265,7 @@ fn bands(
     for y in [band.top(), band.bottom()] {
         p.line_segment(
             [egui::pos2(rect.left(), y), egui::pos2(rect.right(), y)],
-            Stroke::new(1., theme::GREEN),
+            Stroke::new(1.0_f32, theme::GREEN),
         );
     }
     let (Some(first), Some(last)) = (d.samples.first(), d.samples.last()) else {
@@ -283,6 +283,6 @@ fn bands(
         })
         .collect();
     if points.len() > 1 {
-        p.add(egui::Shape::line(points, Stroke::new(1.5, theme::TEXT)));
+        p.add(egui::Shape::line(points, Stroke::new(1.5_f32, theme::TEXT)));
     }
 }

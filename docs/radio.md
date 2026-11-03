@@ -358,9 +358,10 @@ from the desktop executable. `FLIGHTCRAFT_WHISPER_DIR=/path/to/whisper` can poin
 cache containing `tiny.en/` and `base.en/`; all pins are still verified before loading. Ordinary
 recognition stays offline. The downloader itself requires a network connection.
 
-Candle 0.9.1 and tokenizers 0.21 use CPU Rust kernels and `fancy-regex`, with no CUDA, Metal,
-MKL, or C++ tokenizer feature. `tools/check-speech-licenses.py` audits registry license fields from
-Cargo metadata against `deny.toml`; CI retains the complete cargo-deny license-text check.
+Candle 0.11.1 and tokenizers (0.21 in the adapter, 0.23 through Candle) use CPU Rust kernels and
+`fancy-regex`, with no CUDA, Metal, MKL, or C++ tokenizer feature. `tools/check-speech-licenses.py`
+audits registry license fields from Cargo metadata against `deny.toml`; CI retains the complete
+cargo-deny license-text check.
 The original Rust frontend uses a mixed-radix FFT with centered periodic-Hann windows,
 single-sided spectral power, and area-normalized Slaney mel bands. Inference uses a dedicated
 Rayon pool capped at the available logical CPUs minus two (at least one worker); the reservation
@@ -431,6 +432,15 @@ and worker-pool initialization, with a warm OS file cache. The app prepares the 
 while the student speaks. Per-call timing excludes model load, WAV disk I/O, UI frame scheduling,
 and user review. No quantized model is needed to meet the measured 1.5-second/3-second targets.
 These results describe this machine and recording, not a latency guarantee on other hardware.
+
+The Rust 1.98.0 / Candle 0.11.1 upgrade was rechecked on the same CPU in release mode with
+the cached greedy decoder, 14 workers, a 10-second minimum context, and the heard landing
+clearance in the live-state prompt. The 4.827-second latency clip took **743, 755, and 760 ms**
+with tiny.en (419 ms first load), and **1,268, 1,301, and 1,153 ms** with base.en (677 ms first
+load). These diagnostic times cover recognition; the desktop release-to-typed measurements
+above also include prompt construction and normalization. The gated real tiny.en pipeline
+again accepted all nine first attempts, used zero retries, and passed three readbacks, with
+one raw word error in 122 words. Wrong-runway and wrong-callsign audio checks passed too.
 
 Profiling the original desktop path with four threads on the former 4.930-second N1234B recording
 showed tiny.en spending **0.9 / 75.6 / 1,785 / 8,811 ms** in resampling, mel, encoder, and decoder,

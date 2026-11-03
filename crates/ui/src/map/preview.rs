@@ -88,7 +88,7 @@ fn capture(s: &mut Session, width: u32, height: u32) -> image::RgbaImage {
         let texture = textures.get(&mesh.texture_id).unwrap();
         let [tw, th] = texture.size;
         let clip = Rect::from_min_max(clipped.clip_rect.min * scale, clipped.clip_rect.max * scale);
-        for indices in mesh.indices.chunks_exact(3) {
+        for indices in mesh.indices.as_chunks::<3>().0.iter() {
             let [mut a, mut b, mut c] = [
                 mesh.vertices[indices[0] as usize],
                 mesh.vertices[indices[1] as usize],

@@ -48,10 +48,13 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
     paint_features(&p, &v, s, &state);
     rings(&p, &v, &state);
     let points = d.glide.boundary_m.iter().map(|p| v.local(*p)).collect();
-    p.add(egui::Shape::closed_line(points, Stroke::new(2., theme::ACCENT)));
+    p.add(egui::Shape::closed_line(
+        points,
+        Stroke::new(2.0_f32, theme::ACCENT),
+    ));
     let track: Vec<_> = d.track_m.iter().map(|[n, e, _]| v.local([*n, *e])).collect();
     if track.len() > 1 {
-        p.add(egui::Shape::line(track, Stroke::new(3., theme::GLASS_GPS)));
+        p.add(egui::Shape::line(track, Stroke::new(3.0_f32, theme::GLASS_GPS)));
     }
     let mut annotations = Vec::new();
     let mut field_annotations = Vec::new();
@@ -85,7 +88,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
             .collect();
         p.add(egui::Shape::closed_line(
             corners,
-            Stroke::new(if chosen { 3. } else { 1.5 }, color),
+            Stroke::new(if chosen { 3.0_f32 } else { 1.5_f32 }, color),
         ));
         let distance = libm::hypot(fnorth - n, feast - e) / 1852.;
         let bearing = flightcraft_control::scenario::compass(libm::atan2(feast - e, fnorth - n).to_degrees());
@@ -102,7 +105,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
         .and_then(|id| d.glide.fields.iter().find(|f| f.id == *id))
     {
         let at = v.local(field.position_m);
-        p.circle_stroke(at, 12., Stroke::new(3., theme::GLASS_GPS));
+        p.circle_stroke(at, 12., Stroke::new(3.0_f32, theme::GLASS_GPS));
         annotations.insert(
             0,
             (
@@ -155,7 +158,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
             .unwrap_or(at + preferred);
         let bounds = Rect::from_min_size(position, size).expand(3.);
         occupied.push(bounds.expand(3.));
-        p.line_segment([at, bounds.clamp(at)], Stroke::new(0.7, color));
+        p.line_segment([at, bounds.clamp(at)], Stroke::new(0.7_f32, color));
         p.rect_filled(bounds, 2., theme::BACKGROUND.gamma_multiply(0.9));
         p.galley(position, galley, color);
     }

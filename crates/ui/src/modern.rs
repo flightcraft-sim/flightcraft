@@ -57,7 +57,7 @@ fn button(
         rect,
         3.,
         if lit { t::BORDER } else { t::DIAL },
-        Stroke::new(1., if lit { t::ACCENT } else { t::BORDER }),
+        Stroke::new(1.0_f32, if lit { t::ACCENT } else { t::BORDER }),
         egui::StrokeKind::Inside,
     );
     text(ui, rect, label, font, if lit { t::ACCENT } else { t::TEXT });
@@ -131,7 +131,7 @@ fn uniform_button(
         rect,
         3.,
         if lit { t::BORDER } else { t::DIAL },
-        Stroke::new(1., if lit { t::ACCENT } else { t::BORDER }),
+        Stroke::new(1.0_f32, if lit { t::ACCENT } else { t::BORDER }),
         egui::StrokeKind::Inside,
     );
     uniform_text(ui, rect, label, font, if lit { t::ACCENT } else { t::TEXT });
@@ -213,7 +213,7 @@ impl PanelUi {
                     PanelColor::Raised => t::RAISED,
                     PanelColor::Dial => t::DIAL,
                 },
-                Stroke::new(1., t::BORDER),
+                Stroke::new(1.0_f32, t::BORDER),
                 egui::StrokeKind::Inside,
             );
         }
@@ -472,7 +472,7 @@ impl PanelUi {
                                 ui.painter().circle_stroke(
                                     knob.center(),
                                     knob.width() * 0.45,
-                                    Stroke::new(1.5, t::MUTED),
+                                    Stroke::new(1.5_f32, t::MUTED),
                                 );
                                 let response = ui.interact(
                                     knob,
@@ -746,7 +746,7 @@ impl PanelUi {
                         let radius = cell.width().min(cell.height()) * 0.30;
                         ui.painter().circle_filled(center, radius * 1.18, t::DIAL);
                         ui.painter()
-                            .circle_stroke(center, radius * 1.12, Stroke::new(1., t::BORDER));
+                            .circle_stroke(center, radius * 1.12, Stroke::new(1.0_f32, t::BORDER));
                         if lit {
                             ui.painter()
                                 .circle_filled(center, radius * 1.02, color.linear_multiply(0.35));
@@ -860,7 +860,7 @@ impl PanelUi {
                         );
                         ui.painter().circle_filled(pivot, radius, t::DIAL);
                         ui.painter()
-                            .circle_stroke(pivot, radius, Stroke::new(1., t::MUTED));
+                            .circle_stroke(pivot, radius, Stroke::new(1.0_f32, t::MUTED));
                         let open = modern
                             .and_then(|m| m.panel_guards.get(&e.id))
                             .copied()
@@ -1070,7 +1070,7 @@ impl PanelUi {
             cell,
             5.,
             bezel,
-            Stroke::new(1.5, t::BORDER),
+            Stroke::new(1.5_f32, t::BORDER),
             egui::StrokeKind::Inside,
         );
         if !n.powered {
@@ -1466,9 +1466,9 @@ impl PanelUi {
         let radius = knob.height().min(knob.width()) * 0.48;
         ui.painter().circle_filled(knob.center(), radius, t::RAISED);
         ui.painter()
-            .circle_stroke(knob.center(), radius, Stroke::new(1.5, t::MUTED));
+            .circle_stroke(knob.center(), radius, Stroke::new(1.5_f32, t::MUTED));
         ui.painter()
-            .circle_stroke(knob.center(), radius * 0.55, Stroke::new(1.5, t::ACCENT));
+            .circle_stroke(knob.center(), radius * 0.55, Stroke::new(1.5_f32, t::ACCENT));
         let response = ui
             .interact(knob, ui.id().with("dual_knob"), Sense::click_and_drag())
             .on_hover_text("Outer: MHz; inner: channel. Wheel or drag to tune standby.");

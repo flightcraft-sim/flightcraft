@@ -126,12 +126,11 @@ impl HeightTile {
                 .split_at_checked(width * width * 2)
                 .ok_or(TerrainError("compact sample bytes"))?;
             let samples = heights
-                .chunks_exact(2)
-                .map(|pair| {
-                    let value: [u8; 2] = pair.try_into().map_err(|_| TerrainError("compact sample"))?;
-                    Ok(offset + f32::from(i16::from_le_bytes(value)) * 0.25)
-                })
-                .collect::<Result<Vec<_>, TerrainError>>()?;
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|pair| offset + f32::from(i16::from_le_bytes(*pair)) * 0.25)
+                .collect();
             let surfaces = cells
                 .iter()
                 .map(|b| match b {

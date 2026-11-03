@@ -99,8 +99,10 @@ impl AudioClip {
             .chunks_exact(usize::from(channels) * 2)
             .map(|frame| {
                 frame
-                    .chunks_exact(2)
-                    .filter_map(|v| v.try_into().ok())
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .copied()
                     .map(i16::from_le_bytes)
                     .map(|v| f32::from(v) / 32768.)
                     .sum::<f32>()

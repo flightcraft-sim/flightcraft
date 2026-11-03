@@ -143,10 +143,8 @@ pub(crate) fn rasterize(
         if tw == 0 || th == 0 {
             continue;
         }
-        for triangle in mesh.indices.chunks_exact(3) {
-            let [ai, bi, ci] = triangle else {
-                continue;
-            };
+        for triangle in mesh.indices.as_chunks::<3>().0.iter() {
+            let [ai, bi, ci] = triangle;
             let (Some(a), Some(b), Some(c)) = (
                 mesh.vertices.get(*ai as usize),
                 mesh.vertices.get(*bi as usize),

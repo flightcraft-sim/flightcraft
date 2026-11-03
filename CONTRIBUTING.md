@@ -27,6 +27,9 @@ formats may change.
 
 ## Before you push
 
+Use the pinned Rust 1.98.0 toolchain, including rustfmt, clippy, and
+`wasm32-unknown-unknown`. Install `wasm32-wasip1` to check the WASI golden trajectory too.
+
 ```
 cargo fmt --all
 cargo xtask ci

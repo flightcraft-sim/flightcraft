@@ -166,7 +166,7 @@ fn fill(ui: &egui::Ui, points: Vec<Pos2>, color: egui::Color32) {
     }
     ui.painter().add(egui::Shape::mesh(mesh));
     ui.painter()
-        .add(egui::Shape::closed_line(points, Stroke::new(1., t::BORDER)));
+        .add(egui::Shape::closed_line(points, Stroke::new(1.0_f32, t::BORDER)));
 }
 pub(crate) fn shell(ui: &egui::Ui, rect: Rect, panel: &EquipmentPanel) {
     let Some(shell) = &panel.shell else {
@@ -208,7 +208,7 @@ pub(crate) fn shell(ui: &egui::Ui, rect: Rect, panel: &EquipmentPanel) {
         ui.painter().circle_filled(p, r, t::DIAL);
         ui.painter().line_segment(
             [p - egui::vec2(r * 0.6, 0.), p + egui::vec2(r * 0.6, 0.)],
-            Stroke::new(0.6, t::MUTED),
+            Stroke::new(0.6_f32, t::MUTED),
         );
     }
 }
@@ -288,10 +288,10 @@ pub(crate) fn primitive(
             for sign in [-1., 1.] {
                 let a = centre + egui::vec2(sign * width, 0.);
                 let b = egui::pos2(if sign < 0. { cell.left() } else { cell.right() }, centre.y);
-                ui.painter().line_segment([a, b], Stroke::new(0.8, t::TEXT));
+                ui.painter().line_segment([a, b], Stroke::new(0.8_f32, t::TEXT));
                 ui.painter().line_segment(
                     [b, b + egui::vec2(0., cell.height() * 0.4)],
-                    Stroke::new(0.8, t::TEXT),
+                    Stroke::new(0.8_f32, t::TEXT),
                 );
             }
         }
@@ -331,7 +331,7 @@ pub(crate) fn primitive(
                 ink(*color).linear_multiply(if on { 1. } else { 0.18 }),
             );
             ui.painter()
-                .circle_stroke(centre, radius * 0.75, Stroke::new(1., t::BORDER));
+                .circle_stroke(centre, radius * 0.75, Stroke::new(1.0_f32, t::BORDER));
             label(s);
         }
         PanelElement::Toggle {
@@ -461,7 +461,7 @@ pub(crate) fn primitive(
                         cell.shrink(cell.width() * 0.04),
                         1.,
                         t::DIAL,
-                        Stroke::new(1., t::MUTED),
+                        Stroke::new(1.0_f32, t::MUTED),
                         egui::StrokeKind::Inside,
                     );
                     for p in [
@@ -484,30 +484,30 @@ pub(crate) fn primitive(
                     let y = face.top() + face.height() * step as f32 / 5.;
                     ui.painter().line_segment(
                         [egui::pos2(face.left(), y), egui::pos2(face.right(), y)],
-                        Stroke::new(0.7, t::MUTED),
+                        Stroke::new(0.7_f32, t::MUTED),
                     );
                 }
             } else if matches!(element, PanelElement::PushPull { .. }) {
                 let cap = centre - egui::vec2(0., value * radius * 0.55);
                 ui.painter()
-                    .circle_stroke(centre, radius * 0.95, Stroke::new(1., t::BORDER));
+                    .circle_stroke(centre, radius * 0.95, Stroke::new(1.0_f32, t::BORDER));
                 ui.painter()
                     .line_segment([centre, cap], Stroke::new(radius * 0.45, t::TEXT));
                 ui.painter().circle_filled(cap, radius * 0.85, t::MUTED);
                 ui.painter()
-                    .circle_stroke(cap, radius * 0.85, Stroke::new(1., t::TEXT));
+                    .circle_stroke(cap, radius * 0.85, Stroke::new(1.0_f32, t::TEXT));
                 ui.painter().circle_filled(cap, radius * 0.45, t::RAISED);
             } else {
                 ui.painter()
                     .circle_filled(centre, radius, if on { t::MUTED } else { t::DIAL });
                 ui.painter()
-                    .circle_stroke(centre, radius, Stroke::new(1., t::TEXT));
+                    .circle_stroke(centre, radius, Stroke::new(1.0_f32, t::TEXT));
                 for i in 0..=10 {
                     let a = std::f32::consts::PI * (0.75 + i as f32 * 0.15);
                     let v = egui::vec2(a.cos(), a.sin());
                     ui.painter().line_segment(
                         [centre + v * radius * 1.15, centre + v * radius * 1.30],
-                        Stroke::new(0.7, t::MUTED),
+                        Stroke::new(0.7_f32, t::MUTED),
                     );
                 }
                 let a = std::f32::consts::PI * (0.75 + value * 1.5);

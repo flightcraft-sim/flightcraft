@@ -52,6 +52,9 @@ The plan is in
 
 ## Building
 
+Use Rust 1.98.0, pinned in `rust-toolchain.toml`, with rustfmt, clippy, and the
+`wasm32-unknown-unknown` target. The golden trajectory CI also uses `wasm32-wasip1`.
+
 ```
 cargo run -p flightcraft-desktop     # fly
 cargo xtask ci                       # the checks CI runs

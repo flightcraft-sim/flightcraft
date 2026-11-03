@@ -683,13 +683,13 @@ fn benchmark_real_whisper_latency() {
     let clip = AudioClip::from_wave(&std::fs::read(fixture_root().join("latency.wav")).unwrap()).unwrap();
     let duration = clip.samples.len() as f64 / f64::from(clip.rate);
     assert!((3.0..=5.0).contains(&duration));
-    let s = atc_session("KABE");
+    let s = kabe_landing_session();
     let mut models = Vec::new();
     for id in ["tiny.en", "base.en"] {
         let start = std::time::Instant::now();
         let mut model = super::whisper::Whisper::load(id).unwrap();
         let first_load_ms = start.elapsed().as_millis();
-        model.set_context(&kabe_context()).unwrap();
+        model.set_context(&recognition_context(&s, false)).unwrap();
         let mut calls = Vec::new();
         for _ in 0..3 {
             let result = constrain_recognition(model.recognize(&clip).unwrap(), &s, false);
@@ -840,7 +840,7 @@ fn speech_prompt_uses_callsign_atis_runway_and_only_heard_instructions() {
 }
 
 #[cfg(feature = "whisper")]
-fn check_real_prompt_negative_audio(model: &mut super::whisper::Whisper) {
+fn kabe_landing_session() -> Session {
     let mut s = atc_session("KABE");
     call(
         &mut s,
@@ -861,6 +861,12 @@ fn check_real_prompt_negative_audio(model: &mut super::whisper::Whisper) {
         json!({"radio":1,"channel_khz":tower["channel_khz"]}),
     );
     ai(&mut s, &tower, json!({"kind":"land","runway":"06"}));
+    s
+}
+
+#[cfg(feature = "whisper")]
+fn check_real_prompt_negative_audio(model: &mut super::whisper::Whisper) {
+    let mut s = kabe_landing_session();
     let rows: Vec<Value> =
         serde_json::from_slice(&std::fs::read(fixture_root().join("negative-manifest.json")).unwrap())
             .unwrap();

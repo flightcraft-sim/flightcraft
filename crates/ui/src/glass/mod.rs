@@ -263,13 +263,13 @@ fn touch_engine(
             let center = egui::pos2(row.center().x, row.top() + r + 1.);
             ui.painter().circle_filled(center, r, crate::theme::DIAL);
             ui.painter()
-                .circle_stroke(center, r, egui::Stroke::new(1., crate::theme::MUTED));
+                .circle_stroke(center, r, egui::Stroke::new(1.0_f32, crate::theme::MUTED));
             if let Some(v) = s.engine.iter().find(|v| v.label == name) {
                 let a = std::f32::consts::PI
                     * (0.75 + 1.5 * ((v.value - v.min) / (v.max - v.min)).clamp(0., 1.) as f32);
                 ui.painter().line_segment(
                     [center, center + egui::vec2(a.cos(), a.sin()) * r * 0.8],
-                    egui::Stroke::new(1.3, crate::theme::ACCENT),
+                    egui::Stroke::new(1.3_f32, crate::theme::ACCENT),
                 );
                 let (value, unit) = engine_display(v, input.options.engine);
                 let caption = egui::Rect::from_min_max(

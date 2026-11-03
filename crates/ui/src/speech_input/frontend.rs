@@ -49,7 +49,7 @@ impl Frontend {
                 .take(BINS)
                 .map(|v| v.re * v.re + v.im * v.im)
                 .collect();
-            for (band, filter) in self.filters.chunks_exact(BINS).enumerate() {
+            for (band, filter) in self.filters.as_chunks::<BINS>().0.iter().enumerate() {
                 let power: f32 = powers.iter().zip(filter).map(|(p, f)| p * f).sum();
                 if let Some(value) = mel.get_mut(band * frames + frame) {
                     *value = power.max(1e-10).log10();
@@ -110,7 +110,7 @@ mod tests {
             *first = 1.;
         }
         let mel = frontend.mel(&impulse, FRAMES);
-        for (band, filter) in frontend.filters.chunks_exact(BINS).enumerate() {
+        for (band, filter) in frontend.filters.as_chunks::<BINS>().0.iter().enumerate() {
             // A centered unit impulse sees Hann(200)=1 and power 1 in every bin.
             let expected = (filter.iter().sum::<f32>().max(1e-10).log10() + 4.) / 4.;
             let value = mel.get(band * FRAMES).copied().unwrap_or(f32::NAN);

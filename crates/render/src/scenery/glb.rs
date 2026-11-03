@@ -221,7 +221,7 @@ pub fn decode_glb(
                 {
                     return Err("scenery triangle budget exceeded".into());
                 }
-                for triangle in indices.chunks_exact(3) {
+                for triangle in indices.as_chunks::<3>().0.iter() {
                     let mut corners = Vec::with_capacity(3);
                     for index in triangle {
                         let p = positions

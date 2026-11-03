@@ -117,7 +117,7 @@ pub(super) fn paint(ui: &egui::Ui, s: &mut Session, rect: Rect) {
         let y = at(0., feet * 0.3048).y;
         p.line_segment(
             [egui::pos2(plot.left(), y), egui::pos2(plot.right(), y)],
-            Stroke::new(0.5, theme::BORDER),
+            Stroke::new(0.5_f32, theme::BORDER),
         );
         p.text(
             egui::pos2(plot.left() - 5., y),
@@ -174,7 +174,7 @@ pub(super) fn paint(ui: &egui::Ui, s: &mut Session, rect: Rect) {
             theme::AIRSPACE_BLUE
         };
         let bounds = Rect::from_two_pos(at(shelf.start_m, shelf.floor_m), at(shelf.end_m, shelf.ceiling_m));
-        p.rect_stroke(bounds, 0., Stroke::new(1., color), egui::StrokeKind::Inside);
+        p.rect_stroke(bounds, 0., Stroke::new(1.0_f32, color), egui::StrokeKind::Inside);
         let caption = format!(
             "{} {:.0}–{:.0} ft",
             class_name(Some(shelf.class)),
@@ -209,7 +209,7 @@ pub(super) fn paint(ui: &egui::Ui, s: &mut Session, rect: Rect) {
             let conflict = conflicts.iter().any(|c| c.leg == a.leg);
             p.line_segment(
                 [at(a.distance_m, a.altitude_m), at(b.distance_m, b.altitude_m)],
-                Stroke::new(2., if conflict { theme::DANGER } else { theme::GLASS_GPS }),
+                Stroke::new(2.0_f32, if conflict { theme::DANGER } else { theme::GLASS_GPS }),
             );
         }
     }
