@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FootprintReview",
+  "description": "Source semantics must be reviewed from the fetched metadata, never inferred from field names.",
+  "type": "object",
+  "properties": {
+    "evidence": {
+      "type": "string"
+    },
+    "ground_datum": {
+      "type": "string"
+    },
+    "height_unit": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HeightUnit"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metadata_sha256": {
+      "type": "string"
+    },
+    "presentation_height_offset_m": {
+      "description": "Source ground datum to the renderer's presentation MSL, not an invented geoid separation.",
+      "type": "number",
+      "format": "double"
+    },
+    "roof_reference": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RoofReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "runway_alignment_verified": {
+      "type": "boolean"
+    },
+    "vertical_datum_verified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "metadata_sha256",
+    "ground_datum",
+    "evidence",
+    "presentation_height_offset_m",
+    "vertical_datum_verified",
+    "runway_alignment_verified"
+  ],
+  "$defs": {
+    "HeightUnit": {
+      "type": "string",
+      "enum": [
+        "meters",
+        "feet",
+        "us-survey-feet"
+      ]
+    },
+    "RoofReference": {
+      "type": "string",
+      "enum": [
+        "above-ground",
+        "absolute"
+      ]
+    }
+  }
+}

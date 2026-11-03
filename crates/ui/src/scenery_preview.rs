@@ -219,3 +219,97 @@ fn scenery_1080p_frame_budget() {
         capture.validate().await;
     });
 }
+
+/// Real-data proof only: this test never substitutes an invented city for the TUM dataset.
+#[test]
+#[ignore = "requires fetched NYC city tiles, an installed New York region, and an offscreen GPU"]
+fn render_nyc_city_reference_shots() {
+    pollster::block_on(async {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let region_root = std::env::var_os("FLIGHTCRAFT_CITY_REGION")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join("assets/terrain/new-york"));
+        let world = flightcraft_control::read_region(&region_root).unwrap();
+        let region = world.region().unwrap();
+        let origin = [region.origin.latitude_deg, region.origin.longitude_deg];
+        let projection = flightcraft_world::geo::LocalProjection::new(origin[0], origin[1]).unwrap();
+        let path = std::env::var_os("FLIGHTCRAFT_CITY_TILESET")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                "/var/mnt/inland/builds/codex-jobs/scenery/new-york/nyc-lidar/built/tileset.json".into()
+            });
+        let provider = Provider {
+            location: Location::LocalPath(path),
+            enabled: true,
+            token_config_key: None,
+        };
+        let stream = Arc::new(Mutex::new(LocalProvider::open(&provider, origin).unwrap()));
+        let mut capture = Capture::new([1280, 720]).await;
+        let mut scene = Scene::default();
+        scene.set_world(&world);
+        scene.set_scenery(Some(stream.clone()));
+        scene.scenery_quality = Quality::Medium;
+        scene.airspace_visible = false;
+        let out = root.join("out/scenery/nyc");
+        std::fs::create_dir_all(&out).unwrap();
+        for (name, lat, lon, heading, pitch) in [
+            ("hudson-1000ft", 40.7100, -74.0350, 0_f64, 0_f64),
+            ("manhattan-skyline-1000ft", 40.6750, -74.0450, 10., 0.),
+            ("hudson-shoreline-1000ft", 40.7600, -74.0150, 180., -15.),
+        ] {
+            let [n, e] = projection.project(lat, lon).unwrap();
+            let height = 1000. * 0.3048;
+            let heading = heading.to_radians();
+            let pitch = pitch.to_radians();
+            let target = pose(
+                n + 1000. * heading.cos() * pitch.cos(),
+                e + 1000. * heading.sin() * pitch.cos(),
+                height + 1000. * pitch.sin(),
+                heading,
+            );
+            scene.reset_camera();
+            scene.camera = CameraMode::Cockpit;
+            scene.set_screen_view(Some(ScreenView {
+                heading_offset_rad: 0.,
+                pitch_rad: 0.,
+                fov_rad: 60_f32.to_radians(),
+                fixed_eye_ned_m: Some([n as f32, e as f32, -height as f32]),
+            }));
+            let start = std::time::Instant::now();
+            let mut loaded = false;
+            for frame in 0..6000 {
+                capture.draw(|ui| scene.show(ui, &target, 1. / 60., theme::scene()));
+                let stats = stream.lock().unwrap().stats();
+                assert_eq!(stats.failed_tiles, 0, "City content failed to decode");
+                if frame > 32 && stats.resident_tiles > 0 && stats.pending_tiles == 0 {
+                    loaded = true;
+                    break;
+                }
+                if start.elapsed() > std::time::Duration::from_secs(60) {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            assert!(loaded, "City coverage did not load");
+            for _ in 0..16 {
+                capture.draw(|ui| scene.show(ui, &target, 1. / 60., theme::scene()));
+            }
+            let image = capture.image();
+            scene.set_scenery(None);
+            capture.draw(|ui| scene.show(ui, &target, 1. / 60., theme::scene()));
+            let base = capture.image();
+            assert!(
+                image
+                    .pixels()
+                    .zip(base.pixels())
+                    .filter(|(a, b)| a.0.iter().zip(b.0).take(3).any(|(a, b)| a.abs_diff(b) > 12))
+                    .count()
+                    > 1000,
+                "City geometry must contribute visible pixels"
+            );
+            image.save(out.join(format!("{name}.png"))).unwrap();
+            scene.set_scenery(Some(stream.clone()));
+        }
+        capture.validate().await;
+    });
+}

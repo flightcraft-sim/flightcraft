@@ -1,7 +1,22 @@
 //! One scenery content path: OGC 3D Tiles 1.1, glTF 2.0 GLB, and geometric-error LOD.
+#[cfg(target_arch = "wasm32")]
+mod browser;
+#[cfg(not(target_arch = "wasm32"))]
+mod esri;
+#[cfg(target_arch = "wasm32")]
+pub use browser::BrowserProvider;
 mod glb;
+mod surface;
+#[cfg(not(target_arch = "wasm32"))]
+pub use esri::EsriProvider;
+pub use surface::{pack_glb, surface_glb};
 pub(crate) mod gpu;
+mod nyc;
 mod provider;
+pub use nyc::{
+    FlyNycArea, NYC_ATTRIBUTION, NYC_BOUNDS, NYC_BUILDING_BUDGET, NYC_EPT, NycLidarReceipt, NycLidarSource,
+    WEB_BUDGET, fly_nyc_area, nyc_lidar_source, validate_redistribution, validate_static_scenery,
+};
 mod stream;
 pub use glb::{DecodedTile, decode_glb};
 pub use provider::{CachePolicy, Content, LocalProvider, TileProvider};
@@ -9,7 +24,9 @@ use serde::{Deserialize, Serialize};
 pub use stream::{ContentRequest, Selection, Stream, StreamStats};
 
 /// Persist in the user's preferences, never in region data. Token values are deliberately
-/// absent from this descriptor: future online adapters resolve this config key privately.
+/// absent from this descriptor: online adapters resolve this config key privately.
+/// Fly NYC reconstruction uses this descriptor plus OGC tileset extras conforming to
+/// schema/scenery-nyc-lidar.json. NYC portal footprints and TUM remain local-only.
 #[derive(Clone, Debug, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Provider {
@@ -64,4 +81,22 @@ pub(crate) struct Vertex {
     pub normal: [f32; 3],
     pub uv: [f32; 2],
     pub color: [f32; 4],
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(u128::from(u64::MAX)) as u64)
+        .unwrap_or(u64::MAX)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn unix_ms() -> u64 {
+    let time = js_sys::Date::now();
+    if time.is_finite() && time >= 0. {
+        time as u64
+    } else {
+        u64::MAX
+    }
 }

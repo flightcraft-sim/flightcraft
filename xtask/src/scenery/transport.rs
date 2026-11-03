@@ -10,6 +10,18 @@ use std::{
 };
 
 pub(super) const MAX_OBJECT: u64 = 2_000_000_000;
+pub(super) const MAX_CITY_ARCHIVE: u64 = 8_000_000_000;
+pub(super) const TUM_PREFIX: &str = "http://www.3dcitydb.net/3dcitydb/fileadmin/public/datasets/NYC/";
+pub(super) fn tum_url(url: &str, allow_http: bool) -> bool {
+    allow_http
+        && url.strip_prefix(TUM_PREFIX).is_some_and(|path| {
+            !path.is_empty()
+                && path
+                    .split('/')
+                    .all(|part| !part.is_empty() && part != "." && part != "..")
+        })
+        && !url.contains(['@', '\\', '\r', '\n', '?', '#', '%'])
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Partial {
@@ -23,27 +35,73 @@ pub(super) struct Response {
     pub reader: Box<dyn Read>,
 }
 pub(super) trait Remote {
+    fn max_object(&self) -> u64 {
+        MAX_OBJECT
+    }
+    fn allows(&self, url: &str) -> bool {
+        allowed_url(url)
+    }
     fn open(&mut self, url: &str, offset: u64, validator: Option<&str>) -> Result<Response, String>;
 }
 pub(super) struct Http {
     agent: ureq::Agent,
     last: Option<Instant>,
+    approved_host: Option<String>,
+    allow_http: bool,
 }
 impl Default for Http {
     fn default() -> Self {
         Self {
             agent: ureq::Agent::config_builder()
                 .timeout_global(Some(Duration::from_secs(900)))
+                .max_redirects(0)
                 .build()
                 .into(),
             last: None,
+            approved_host: None,
+            allow_http: false,
+        }
+    }
+}
+impl Http {
+    pub(super) fn for_tum(allow_http: bool) -> Self {
+        Self {
+            agent: ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_secs(3600)))
+                .https_only(!allow_http)
+                .max_redirects(0)
+                .build()
+                .into(),
+            allow_http,
+            ..Self::default()
+        }
+    }
+    pub(super) fn for_host(host: &str) -> Self {
+        Self {
+            approved_host: Some(host.into()),
+            ..Self::default()
         }
     }
 }
 impl Remote for Http {
+    fn max_object(&self) -> u64 {
+        if self.allow_http {
+            MAX_CITY_ARCHIVE
+        } else {
+            MAX_OBJECT
+        }
+    }
+    fn allows(&self, url: &str) -> bool {
+        if self.allow_http {
+            return tum_url(url, true);
+        }
+        self.approved_host
+            .as_ref()
+            .map_or_else(|| allowed_url(url), |host| exact_host(url, host))
+    }
     fn open(&mut self, url: &str, offset: u64, validator: Option<&str>) -> Result<Response, String> {
-        if !allowed_url(url) {
-            return Err("scenery source must be an approved USGS HTTPS endpoint".into());
+        if !self.allows(url) {
+            return Err("scenery source is outside its approved URL policy".into());
         }
         if let Some(last) = self.last {
             std::thread::sleep(Duration::from_secs(1).saturating_sub(last.elapsed()));
@@ -52,10 +110,7 @@ impl Remote for Http {
         let mut request = self
             .agent
             .get(url)
-            .header(
-                "User-Agent",
-                "FlightCraft-scenery/1 (public-domain regional cache)",
-            )
+            .header("User-Agent", "FlightCraft-scenery/1 (reviewed regional sources)")
             .header("Accept-Encoding", "identity");
         if offset > 0 {
             request = request
@@ -84,6 +139,16 @@ impl Remote for Http {
         })
     }
 }
+pub(super) fn exact_host(url: &str, host: &str) -> bool {
+    !host.is_empty()
+        && host.contains('.')
+        && !host.ends_with(".invalid")
+        && host
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-')
+        && url.starts_with(&format!("https://{host}/"))
+        && !url.contains(['\r', '\n', '@', '\\', '#'])
+}
 pub(super) fn allowed_url(url: &str) -> bool {
     [
         "https://imagery.nationalmap.gov/",
@@ -96,8 +161,11 @@ pub(super) fn allowed_url(url: &str) -> bool {
         && !url.contains(['\r', '\n', '@', '\\'])
 }
 pub(super) fn digest(path: &Path) -> Result<(u64, String), String> {
+    digest_limit(path, MAX_OBJECT)
+}
+fn digest_limit(path: &Path, limit: u64) -> Result<(u64, String), String> {
     let metadata = std::fs::symlink_metadata(path).map_err(|e| e.to_string())?;
-    if !metadata.is_file() || metadata.len() > MAX_OBJECT {
+    if !metadata.is_file() || metadata.len() > limit {
         return Err("scenery source must be a bounded regular file".into());
     }
     let mut file = File::open(path).map_err(|e| e.to_string())?;
@@ -110,8 +178,8 @@ pub(super) fn digest(path: &Path) -> Result<(u64, String), String> {
             break;
         }
         size += n as u64;
-        if size > MAX_OBJECT {
-            return Err("source exceeds 2 GB".into());
+        if size > limit {
+            return Err("source exceeds its approved size limit".into());
         }
         hasher.update(buffer.get(..n).ok_or("read length")?);
     }
@@ -124,7 +192,7 @@ pub(super) fn fetch(
     directory: &Path,
     limit: u64,
 ) -> Result<(std::path::PathBuf, Source), String> {
-    if !allowed_url(url) || limit == 0 || limit > MAX_OBJECT {
+    if !remote.allows(url) || limit == 0 || limit > remote.max_object() {
         return Err("invalid source URL or limit".into());
     }
     std::fs::create_dir_all(directory).map_err(|e| e.to_string())?;
@@ -133,7 +201,7 @@ pub(super) fn fetch(
     let receipt = directory.join(format!("{key}.json"));
     if receipt.exists() {
         let source: Source = download::json(&receipt)?;
-        let (bytes, sha256) = digest(&path)?;
+        let (bytes, sha256) = digest_limit(&path, limit)?;
         if source.url != url || source.bytes != bytes || source.sha256 != sha256 || bytes > limit {
             return Err("corrupt scenery cache receipt or payload".into());
         }
@@ -222,7 +290,7 @@ pub(super) fn fetch(
     if total == 0 || expected.is_some_and(|n| n != total) {
         return Err("incomplete scenery response".into());
     }
-    let (bytes, sha256) = digest(&part)?;
+    let (bytes, sha256) = digest_limit(&part, limit)?;
     let source = Source {
         url: url.into(),
         edition: None,
@@ -293,5 +361,38 @@ mod tests {
         assert!(!allowed_url(
             "https://prd-tnm.s3.amazonaws.com.attacker.invalid/x"
         ));
+    }
+}
+
+#[cfg(test)]
+mod city_policy_tests {
+    use super::*;
+    #[test]
+    fn explicit_http_permission_is_scoped_to_the_exact_tum_prefix() {
+        let url = format!("{TUM_PREFIX}NYC_buildings_CityGML_LoD2/NYC_Buildings_LoD2_CityGML.zip");
+        let allowed = Http::for_tum(true);
+        let denied = Http::for_tum(false);
+        assert!(allowed.allows(&url));
+        assert_eq!(allowed.max_object(), 8_000_000_000);
+        assert!(!denied.allows(&url));
+        assert!(!tum_url(&url, false));
+        for url in [
+            "http://www.3dcitydb.net.attacker.invalid/3dcitydb/fileadmin/public/datasets/NYC/x.zip",
+            "http://www.3dcitydb.net/mydata/Cesium_NYC_Demo/CityGML/old.zip",
+            "https://prd-tnm.s3.amazonaws.com/product.tif",
+            "http://www.3dcitydb.net:80/3dcitydb/fileadmin/public/datasets/NYC/x.zip",
+        ] {
+            assert!(!allowed.allows(url));
+        }
+        for path in [
+            "../x.zip",
+            "%2e%2e/x.zip",
+            "x.zip?redirect=evil",
+            "x//y.zip",
+            "x.zip#anchor",
+        ] {
+            assert!(!allowed.allows(&format!("{TUM_PREFIX}{path}")));
+        }
+        assert_eq!(Http::default().max_object(), 2_000_000_000);
     }
 }

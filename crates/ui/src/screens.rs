@@ -36,12 +36,20 @@ pub struct SceneryPreferences {
     pub quality: flightcraft_render::scenery::Quality,
     pub enabled: bool,
     pub local_tileset: String,
+    #[serde(default)]
+    pub streaming_imagery: bool,
+    /// Serialized only by eframe's user-preference store. Never part of a command or recording.
+    #[serde(default)]
+    pub esri_key: String,
 }
 #[derive(Default)]
 pub struct Canvas {
     pub scenery_preferences: SceneryPreferences,
-    scenery_attempt: Option<(String, [f64; 2])>,
+    scenery_attempt: Option<u64>,
+    #[cfg(target_arch = "wasm32")]
+    browser_pending: Option<std::sync::mpsc::Receiver<Result<flightcraft_render::scenery::Stream, String>>>,
     scenery: Option<std::sync::Arc<std::sync::Mutex<flightcraft_render::scenery::Stream>>>,
+    imagery: Option<std::sync::Arc<std::sync::Mutex<flightcraft_render::scenery::Stream>>>,
     pages: BTreeMap<String, PageUi>,
     drag: Option<Element>,
     drag_delta: egui::Vec2,
@@ -58,6 +66,10 @@ fn execute(s: &mut Session, name: &str, input: serde_json::Value, error: &mut Op
 impl Canvas {
     pub fn reload_scenery(&mut self) {
         self.scenery_attempt = None;
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.browser_pending = None;
+        }
     }
     /// Release push-to-hold equipment before a planning map hides the panel.
     pub(crate) fn cancel_equipment_holds(&mut self, session: &mut Session) {
@@ -84,34 +96,124 @@ impl Canvas {
         }
         if !self.scenery_preferences.enabled {
             self.scenery = None;
+        }
+        if !self.scenery_preferences.streaming_imagery {
+            self.imagery = None;
+        }
+        if !self.scenery_preferences.enabled && !self.scenery_preferences.streaming_imagery {
+            self.scenery = None;
+            self.imagery = None;
             self.scenery_attempt = None;
         } else if let Some(region) = s.sim().world().region() {
             let origin = [region.origin.latitude_deg, region.origin.longitude_deg];
-            let attempt = (self.scenery_preferences.local_tileset.clone(), origin);
-            if self
-                .scenery_attempt
-                .as_ref()
-                .is_none_or(|(_, loaded_origin)| *loaded_origin != origin)
-            {
-                self.scenery_attempt = Some(attempt);
-                let provider = flightcraft_render::scenery::Provider {
-                    location: flightcraft_render::scenery::Location::LocalPath(
-                        self.scenery_preferences.local_tileset.clone().into(),
-                    ),
-                    token_config_key: None,
-                    enabled: true,
-                };
-                match flightcraft_render::scenery::LocalProvider::open(&provider, origin) {
-                    Ok(stream) => self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream))),
-                    Err(error) => {
-                        self.scenery = None;
-                        self.error = Some(format!("Scenery: {error}"));
+            let fingerprint = s.sim().world().fingerprint();
+            if self.scenery_attempt != Some(fingerprint) {
+                self.scenery_attempt = Some(fingerprint);
+                #[cfg(target_arch = "wasm32")]
+                {
+                    self.browser_pending = None;
+                }
+                self.scenery = None;
+                self.imagery = None;
+                if self.scenery_preferences.enabled {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let provider = flightcraft_render::scenery::Provider {
+                            location: flightcraft_render::scenery::Location::LocalPath(
+                                self.scenery_preferences.local_tileset.clone().into(),
+                            ),
+                            token_config_key: None,
+                            enabled: true,
+                        };
+                        match flightcraft_render::scenery::LocalProvider::open(&provider, origin) {
+                            Ok(stream) => {
+                                self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream)))
+                            }
+                            Err(error) => self.error = Some(format!("Scenery: {error}")),
+                        }
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let path =
+                            if self.scenery_preferences.local_tileset.is_empty() && region.id == "new-york" {
+                                "terrain/new-york/scenery/nyc-lidar/tileset.json".to_owned()
+                            } else {
+                                self.scenery_preferences.local_tileset.clone()
+                            };
+                        let provider = flightcraft_render::scenery::Provider {
+                            location: flightcraft_render::scenery::Location::Url(path),
+                            token_config_key: None,
+                            enabled: true,
+                        };
+                        let (sender, receiver) = std::sync::mpsc::channel();
+                        self.browser_pending = Some(receiver);
+                        let context = ui.ctx().clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let result = flightcraft_render::scenery::BrowserProvider::open(
+                                &provider,
+                                origin,
+                                context.clone(),
+                            )
+                            .await;
+                            let _ = sender.send(result);
+                            context.request_repaint();
+                        });
+                    }
+                }
+                if self.scenery_preferences.streaming_imagery {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let provider = flightcraft_render::scenery::Provider {
+                            location: flightcraft_render::scenery::Location::Url(
+                                flightcraft_render::scenery::EsriProvider::endpoint().into(),
+                            ),
+                            token_config_key: Some("esri-imagery".into()),
+                            enabled: true,
+                        };
+                        match flightcraft_render::scenery::EsriProvider::open(
+                            &provider,
+                            self.scenery_preferences.esri_key.clone(),
+                            s.sim().world().clone(),
+                        ) {
+                            Ok(stream) => {
+                                self.imagery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream)))
+                            }
+                            Err(error) => self.error = Some(format!("Scenery: {error}")),
+                        }
+                    }
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        self.error =
+                            Some("Streaming imagery is currently available in the desktop app".into());
                     }
                 }
             }
         } else {
             self.scenery = None;
+            self.imagery = None;
             self.scenery_attempt = None;
+            #[cfg(target_arch = "wasm32")]
+            {
+                self.browser_pending = None;
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            if !self.scenery_preferences.enabled {
+                self.browser_pending = None;
+            }
+            let result = self
+                .browser_pending
+                .as_ref()
+                .and_then(|receiver| receiver.try_recv().ok());
+            if let Some(result) = result {
+                self.browser_pending = None;
+                match result {
+                    Ok(stream) => self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream))),
+                    Err(error) => self.error = Some(format!("Scenery: {error}")),
+                }
+            }
         }
 
         let available = ui.max_rect();
@@ -157,6 +259,7 @@ impl Canvas {
                 ..Default::default()
             });
             page.scene.set_scenery(self.scenery.clone());
+            page.scene.set_imagery(self.imagery.clone());
             page.scene.scenery_quality = self.scenery_preferences.quality;
             ui.scope_builder(egui::UiBuilder::new().id_salt(&element.id).max_rect(rect), |ui| {
                 ui.set_clip_rect(rect.intersect(available));

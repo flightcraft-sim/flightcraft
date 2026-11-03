@@ -45,6 +45,37 @@ pub struct Selection {
     pub(crate) fallback: Option<(usize, Arc<DecodedTile>)>,
     pub attribution: String,
     pub stats: StreamStats,
+    pub message: Option<String>,
+    pub(crate) live_tiles: Vec<(usize, Arc<DecodedTile>)>,
+}
+impl Selection {
+    /// Both layers still use the same renderer. Namespaces prevent provider-local ID collisions.
+    pub(crate) fn overlay(&mut self, mut layer: Self) {
+        let offset = tiles3d::MAX_TILESET_TILES;
+        for (id, _) in layer.tiles.iter_mut().chain(layer.live_tiles.iter_mut()) {
+            *id += offset;
+        }
+        if let Some((id, _)) = &mut layer.fallback {
+            *id += offset;
+        }
+        self.tiles.extend(layer.tiles);
+        self.live_tiles.extend(layer.live_tiles);
+        if self.fallback.is_none() {
+            self.fallback = layer.fallback;
+        }
+        if !layer.attribution.is_empty() {
+            if !self.attribution.is_empty() {
+                self.attribution.push_str(" · ");
+            }
+            self.attribution.push_str(&layer.attribution);
+        }
+        self.message = layer.message.or(self.message.take());
+        self.stats.resident_bytes += layer.stats.resident_bytes;
+        self.stats.resident_tiles += layer.stats.resident_tiles;
+        self.stats.pending_tiles += layer.stats.pending_tiles;
+        self.stats.failed_tiles += layer.stats.failed_tiles;
+        self.stats.selected_tiles += layer.stats.selected_tiles;
+    }
 }
 #[derive(Clone, Copy, Debug, Default)]
 pub struct StreamStats {
@@ -66,7 +97,12 @@ pub struct Stream {
     pending: BTreeSet<usize>,
     failed: BTreeSet<usize>,
     worker: Option<Worker>,
+    #[cfg(target_arch = "wasm32")]
+    pub(super) browser: Option<super::browser::Worker>,
     last_selected: usize,
+    last_error: Option<String>,
+    last_used: BTreeMap<usize, u64>,
+    tick: u64,
 }
 impl Stream {
     #[cfg(not(target_arch = "wasm32"))]
@@ -83,16 +119,20 @@ impl Stream {
                     let result = (|| {
                         let request = content_request(&nodes, id).ok_or("unknown or empty scenery tile")?;
                         let content = provider.content(&request.uri)?;
-                        // The initial stream implements only redistributable local data. The next
-                        // lane must implement expiry/attribution propagation before accepting
-                        // MemoryOnly content; ignoring those terms here would be incorrect.
-                        if content.cache_policy != CachePolicy::LocalData
-                            || content.expires_at_unix_ms.is_some()
-                            || !content.attribution.is_empty()
-                        {
-                            return Err("streaming policy requires a provider-aware cache adapter".into());
+                        if content.cache_policy == CachePolicy::MemoryOnly && content.attribution.is_empty() {
+                            return Err("Streaming scenery is missing attribution".into());
                         }
-                        decode_glb(&content.bytes, request.transform, origin)
+                        if content
+                            .expires_at_unix_ms
+                            .is_some_and(|expiry| super::unix_ms() >= expiry)
+                        {
+                            return Err("Streaming scenery expired before decoding".into());
+                        }
+                        let mut tile = decode_glb(&content.bytes, request.transform, origin)?;
+                        let payload = Arc::get_mut(&mut tile).ok_or("shared scenery payload")?;
+                        payload.expires_at_unix_ms = content.expires_at_unix_ms;
+                        payload.attribution = content.attribution;
+                        Ok(tile)
                     })();
                     if result_tx.send((id, result)).is_err() {
                         break;
@@ -126,7 +166,12 @@ impl Stream {
             pending: BTreeSet::new(),
             failed: BTreeSet::new(),
             worker: None,
+            #[cfg(target_arch = "wasm32")]
+            browser: None,
             last_selected: 0,
+            last_error: None,
+            last_used: BTreeMap::new(),
+            tick: 0,
         })
     }
     pub fn content_request(&self, id: usize) -> Option<ContentRequest> {
@@ -179,10 +224,21 @@ impl Stream {
             self.resident
                 .retain(|id, tile| *id == 0 && tile.byte_size <= quality.resident_bytes() / 2);
         }
+        self.resident.retain(|_, tile| !tile.expired());
+        self.tick = self.tick.saturating_add(1);
         let mut results = Vec::new();
         if let Some(worker) = &self.worker {
             for _ in 0..quality.uploads_per_frame() {
                 match worker.results.try_recv() {
+                    Ok(result) => results.push(result),
+                    Err(_) => break,
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(browser) = &self.browser {
+            for _ in 0..quality.uploads_per_frame() {
+                match browser.results.try_recv() {
                     Ok(result) => results.push(result),
                     Err(_) => break,
                 }
@@ -198,7 +254,8 @@ impl Stream {
                         let _ = self.insert(id, tile, quality);
                     }
                 }
-                Err(_) => {
+                Err(error) => {
+                    self.last_error = Some(error);
                     self.failed.insert(id);
                 }
             }
@@ -235,8 +292,8 @@ impl Stream {
             }
             target_error *= 1.5;
         }
-        // Keep the selected coverage and every ancestor. Evict the farthest unused content
-        // first; root fallback is never dropped while children arrive.
+        // Keep the selected coverage and every ancestor. Evict least recently selected
+        // unused content first; root fallback stays while children arrive.
         let mut used: BTreeSet<_> = selected.iter().copied().collect();
         used.extend(desired.iter().copied());
         let mut bytes: usize = self.resident.values().map(|t| t.byte_size).sum();
@@ -246,7 +303,7 @@ impl Stream {
             .filter(|id| !used.contains(id) && **id != 0)
             .filter_map(|id| self.nodes.get(*id).map(|n| (*id, distance(n, eye_ned))))
             .collect();
-        eviction.sort_by(|a, b| b.1.total_cmp(&a.1));
+        eviction.sort_by_key(|(id, _)| self.last_used.get(id).copied().unwrap_or(0));
         for (id, _) in eviction {
             if bytes.saturating_add(quality.resident_bytes() / 8) <= quality.resident_bytes() {
                 break;
@@ -294,11 +351,20 @@ impl Stream {
                 }
             }
         }
+        for id in &selected {
+            self.last_used.insert(*id, self.tick);
+        }
+        self.last_used.retain(|id, _| self.resident.contains_key(id));
         let tiles: Vec<_> = selected
             .into_iter()
             .filter_map(|id| self.resident.get(&id).map(|tile| (id, tile.clone())))
             .collect();
         self.last_selected = tiles.len();
+        #[cfg(target_arch = "wasm32")]
+        if let Some(browser) = &self.browser {
+            browser.dispatch(&external_requests);
+            external_requests.clear();
+        }
         let stats = StreamStats {
             resident_bytes: bytes,
             resident_tiles: self.resident.len(),
@@ -306,11 +372,24 @@ impl Stream {
             failed_tiles: self.failed.len(),
             selected_tiles: tiles.len(),
         };
+        let mut credits = BTreeSet::new();
+        if !self.attribution.is_empty() {
+            credits.insert(self.attribution.clone());
+        }
+        for tile in self.resident.values() {
+            credits.extend(tile.attribution.iter().cloned());
+        }
         Selection {
+            message: self.last_error.clone(),
+            live_tiles: self
+                .resident
+                .iter()
+                .map(|(id, tile)| (*id, tile.clone()))
+                .collect(),
             requests: external_requests,
             fallback: self.resident.get(&0).map(|tile| (0, tile.clone())),
             tiles,
-            attribution: self.attribution.clone(),
+            attribution: credits.into_iter().collect::<Vec<_>>().join(" · "),
             stats,
         }
     }
@@ -483,6 +562,8 @@ mod tests {
             mips: vec![image::RgbaImage::new(1, 1)],
             byte_size: 4,
             terrain_bounds: None,
+            expires_at_unix_ms: None,
+            attribution: Vec::new(),
         })
     }
     #[test]
@@ -513,7 +594,9 @@ mod tests {
                         vertices: Vec::new(),
                         mips: Vec::new(),
                         byte_size: Quality::Low.resident_bytes(),
-                        terrain_bounds: None
+                        terrain_bounds: None,
+                        expires_at_unix_ms: None,
+                        attribution: Vec::new(),
                     }),
                     Quality::Low
                 )
@@ -526,6 +609,47 @@ mod tests {
                 .tiles
                 .is_empty()
         );
+    }
+    #[test]
+    fn local_city_and_imagery_layers_keep_content_ids_and_credits_separate() {
+        let mut city = Stream::new(&set(), [41., -75.]).unwrap();
+        let mut imagery = Stream::new(&set(), [41., -75.]).unwrap();
+        city.insert(0, tile(), Quality::Low).unwrap();
+        imagery.insert(0, tile(), Quality::Low).unwrap();
+        let mut selected = city.select([0., 0., -100.], 1080., 1., Quality::Low);
+        let mut layer = imagery.select([0., 0., -100.], 1080., 1., Quality::Low);
+        layer.attribution = "Imagery fixture credit".into();
+        selected.overlay(layer);
+        assert_eq!(
+            selected.tiles.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+            vec![0, tiles3d::MAX_TILESET_TILES]
+        );
+        assert_eq!(selected.live_tiles.len(), 2);
+        assert!(selected.attribution.contains("Original fixture"));
+        assert!(selected.attribution.contains("Imagery fixture credit"));
+    }
+    #[test]
+    fn expiry_purges_cpu_and_gpu_eligibility_and_preserves_valid_parent_coverage() {
+        let mut stream = Stream::new(&set(), [41., -75.]).unwrap();
+        stream.insert(0, tile(), Quality::Low).unwrap();
+        for id in 1..=4 {
+            stream.insert(id, tile(), Quality::Low).unwrap();
+        }
+        let selected = stream.select([0., 0., -100.], 1080., 1., Quality::Low);
+        assert_eq!(selected.tiles.len(), 4);
+        let mut expired = tile();
+        let payload = Arc::get_mut(&mut expired).unwrap();
+        payload.expires_at_unix_ms = Some(0);
+        payload.attribution = vec!["Expired credit".into()];
+        stream.insert(1, expired, Quality::Low).unwrap();
+        let selection = stream.select([0., 0., -100.], 1080., 1., Quality::Low);
+        assert_eq!(
+            selection.tiles.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+            vec![0]
+        );
+        assert!(selection.live_tiles.iter().all(|(id, _)| *id != 1));
+        assert!(!selection.attribution.contains("Expired credit"));
+        assert!(selection.requests.iter().any(|request| request.id == 1));
     }
     #[test]
     fn event_loop_requests_are_bounded_and_keep_the_inherited_transform() {

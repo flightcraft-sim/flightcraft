@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FlyNycArea",
+  "description": "Geographic order is west, south, east, north, in degrees. Source cube order is\nxmin, ymin, zmin, xmax, ymax, zmax, in the EPT source frame; padding is not ground elevation.",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string"
+    },
+    "bounds": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 4,
+      "minItems": 4
+    },
+    "buildingBudgetBytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "classification": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "ept": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "sourceCrs": {
+      "type": "string"
+    },
+    "sourceCubeBounds": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 6,
+      "minItems": 6
+    },
+    "sourcePoints": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "totalWebBudgetBytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "region",
+    "area",
+    "bounds",
+    "buildingBudgetBytes",
+    "totalWebBudgetBytes",
+    "ept",
+    "sourceCrs",
+    "sourceCubeBounds",
+    "sourcePoints",
+    "classification"
+  ]
+}

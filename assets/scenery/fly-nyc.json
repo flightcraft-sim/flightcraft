@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "region": "new-york",
+  "area": "nyc-lidar",
+  "bounds": [-74.04, 40.66, -73.90, 40.84],
+  "buildingBudgetBytes": 250000000,
+  "totalWebBudgetBytes": 1000000000,
+  "ept": "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept.json",
+  "sourceCrs": "EPSG:3857",
+  "sourceCubeBounds": [-8267099, 4937860, -31153, -8204119, 5000840, 31827],
+  "sourcePoints": 4755025996,
+  "classification": 6
+}

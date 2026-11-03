@@ -68,6 +68,7 @@ pub enum CameraMode {
 
 pub struct Scene {
     scenery: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>,
+    imagery: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>,
     pub scenery_quality: scenery::Quality,
     gpu_view: std::sync::Arc<std::sync::Mutex<Option<gpu::ViewGpu>>>,
     world: flightcraft_world::World,
@@ -99,6 +100,7 @@ impl Default for Scene {
     fn default() -> Self {
         Self {
             scenery: None,
+            imagery: None,
             scenery_quality: Default::default(),
             gpu_view: Default::default(),
             world: flightcraft_world::World::default(),
@@ -142,6 +144,10 @@ pub struct ScreenView {
 impl Scene {
     pub fn set_scenery(&mut self, stream: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>) {
         self.scenery = stream;
+    }
+
+    pub fn set_imagery(&mut self, stream: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>) {
+        self.imagery = stream;
     }
 
     pub fn set_screen_view(&mut self, view: Option<ScreenView>) {
@@ -450,23 +456,31 @@ impl Scene {
             eye: Vec4::new(eye.x, eye.y, eye.z, self.propeller_power).to_array(),
         };
         weather::apply(&mut uniform, &self.conditions, palette);
-        let scenery = self
-            .scenery
-            .as_ref()
-            .and_then(|stream| stream.try_lock().ok())
-            .map(|mut stream| {
-                stream.select(
-                    [-f64::from(eye.z), f64::from(eye.x), -f64::from(eye.y)],
-                    f64::from(rect.height()),
-                    f64::from(self.screen_view.map_or(vertical_fov, |s| {
-                        s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
-                    })),
-                    self.scenery_quality,
-                )
-            })
-            .unwrap_or_default();
+        let mut scenery = scenery::Selection::default();
+        for (index, source) in [&self.scenery, &self.imagery].into_iter().enumerate() {
+            let selection = source
+                .as_ref()
+                .and_then(|stream| stream.try_lock().ok())
+                .map(|mut stream| {
+                    stream.select(
+                        [-f64::from(eye.z), f64::from(eye.x), -f64::from(eye.y)],
+                        f64::from(rect.height()),
+                        f64::from(self.screen_view.map_or(vertical_fov, |s| {
+                            s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
+                        })),
+                        self.scenery_quality,
+                    )
+                })
+                .unwrap_or_default();
+            if index == 0 {
+                scenery = selection;
+            } else {
+                scenery.overlay(selection);
+            }
+        }
         let scenery_attribution = scenery.attribution.clone();
         let scenery_unavailable = scenery.stats.failed_tiles > 0;
+        let scenery_message = scenery.message.clone();
         if scenery.stats.pending_tiles > 0 {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_millis(16));
@@ -507,24 +521,28 @@ impl Scene {
             },
         ));
         if !scenery_attribution.is_empty() {
-            ui.painter().text(
-                rect.left_bottom() + egui::vec2(8., -8.),
-                egui::Align2::LEFT_BOTTOM,
-                &scenery_attribution,
-                egui::FontId::proportional(10.),
-                egui::Color32::from_rgba_unmultiplied(
-                    (palette.marking.first().copied().unwrap_or(1.) * 255.) as u8,
-                    (palette.marking.get(1).copied().unwrap_or(1.) * 255.) as u8,
-                    (palette.marking.get(2).copied().unwrap_or(1.) * 255.) as u8,
-                    220,
-                ),
+            let color = egui::Color32::from_rgba_unmultiplied(
+                (palette.marking.first().copied().unwrap_or(1.) * 255.) as u8,
+                (palette.marking.get(1).copied().unwrap_or(1.) * 255.) as u8,
+                (palette.marking.get(2).copied().unwrap_or(1.) * 255.) as u8,
+                220,
             );
+            let galley = ui.painter().layout(
+                scenery_attribution,
+                egui::FontId::proportional(10.),
+                color,
+                (rect.width() - 16.).max(1.),
+            );
+            let position = rect.left_bottom() + egui::vec2(8., -8. - galley.size().y);
+            ui.painter().galley(position, galley, color);
         }
         if scenery_unavailable {
             ui.painter().text(
                 rect.left_top() + egui::vec2(8., 8.),
                 egui::Align2::LEFT_TOP,
-                "Some scenery is unavailable",
+                scenery_message
+                    .as_deref()
+                    .unwrap_or("Some scenery is unavailable"),
                 egui::FontId::proportional(12.),
                 egui::Color32::from_rgba_unmultiplied(
                     (palette.marking.first().copied().unwrap_or(1.) * 255.) as u8,

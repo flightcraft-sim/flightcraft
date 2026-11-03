@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FootprintReport",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string"
+    },
+    "bounds": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 4,
+      "minItems": 4
+    },
+    "building_budget_bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "buildings": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "flat_roof_buildings": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "lidar_roof_buildings": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "manifest": {
+      "type": "string"
+    },
+    "missing_height_rows": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "package_bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "preview_only": {
+      "type": "boolean"
+    },
+    "redistribution_allowed": {
+      "type": "boolean"
+    },
+    "region": {
+      "type": "string"
+    },
+    "release_ready": {
+      "type": "boolean"
+    },
+    "runway_alignment_verified": {
+      "type": "boolean"
+    },
+    "tiles": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "total_web_budget_bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "vertical_datum_verified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "region",
+    "area",
+    "manifest",
+    "bounds",
+    "buildings",
+    "flat_roof_buildings",
+    "lidar_roof_buildings",
+    "missing_height_rows",
+    "tiles",
+    "package_bytes",
+    "building_budget_bytes",
+    "total_web_budget_bytes",
+    "local_only",
+    "redistribution_allowed",
+    "preview_only",
+    "vertical_datum_verified",
+    "runway_alignment_verified",
+    "release_ready"
+  ]
+}

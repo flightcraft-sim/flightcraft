@@ -3,6 +3,11 @@
   "title": "Request",
   "type": "object",
   "properties": {
+    "allow_http": {
+      "description": "Explicit consent to the exact reviewed TUM HTTP prefix; never permits other HTTP URLs.",
+      "type": "boolean",
+      "default": false
+    },
     "area": {
       "type": "string"
     },

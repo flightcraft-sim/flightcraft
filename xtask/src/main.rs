@@ -71,6 +71,7 @@ const LAYERS: &[(&str, &[&str])] = &[
     (
         "xtask",
         &[
+            "flightcraft-render",
             "flightcraft-control",
             "flightcraft-aero",
             "flightcraft-world",
@@ -178,6 +179,48 @@ fn schemas(check: bool) -> Result<(), String> {
         (
             "scenery-provider.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_ui::SceneryProviderSchema)),
+        ),
+        (
+            "scenery-city-source.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::CitySourceReview)),
+        ),
+        (
+            "scenery-city-receipts.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(Vec<download::Source>)),
+        ),
+        (
+            "scenery-citygml-sources.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::CityGmlSources)),
+        ),
+        (
+            "scenery-citygml-report.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::CityGmlReport)),
+        ),
+        (
+            "scenery-footprint-sources.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::FootprintSources)),
+        ),
+        (
+            "scenery-footprint-review.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::FootprintReview)),
+        ),
+        (
+            "scenery-footprint-report.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::FootprintReport)),
+        ),
+        (
+            "scenery-nyc-area.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_render::scenery::FlyNycArea)),
+        ),
+        (
+            "scenery-nyc-lidar.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(
+                flightcraft_render::scenery::NycLidarSource
+            )),
+        ),
+        (
+            "scenery-nyc-lidar-report.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::NycLidarReport)),
         ),
         (
             "scenery-request.json",

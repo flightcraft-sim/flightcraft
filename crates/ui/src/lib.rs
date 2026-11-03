@@ -516,12 +516,19 @@ impl FlightCraftApp {
                 ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::Medium, "Medium");
                 if !cfg!(target_arch = "wasm32") { ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::High, "High"); }
             });
+            ui.checkbox(&mut preferences.enabled, "Show 3D scenery");
             if !cfg!(target_arch = "wasm32") {
-                ui.checkbox(&mut preferences.enabled, "Use local 3D scenery");
                 ui.label("Tileset file");
                 ui.text_edit_singleline(&mut preferences.local_tileset);
-                if ui.button("Apply scenery").clicked() { self.screens.main.reload_scenery(); }
+                ui.separator();
+                ui.checkbox(&mut preferences.streaming_imagery, "Streaming imagery (your own key)");
+                ui.label("ArcGIS API key");
+                ui.add(egui::TextEdit::singleline(&mut preferences.esri_key).password(true));
+                ui.label("Stored only in your user preferences. Streaming uses your ArcGIS allowance.");
+                ui.label("Memory cache only. Disable pay-as-you-go in your account to avoid charges.");
+                ui.hyperlink_to("Esri attribution and terms", "https://www.esri.com/en-us/legal/terms/full-master-agreement");
             }
+            if ui.button("Apply scenery").clicked() { self.screens.main.reload_scenery(); }
             ui.separator();
             ui.label(RichText::new("SOUND").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.audio.preferences.muted,"Mute sound");

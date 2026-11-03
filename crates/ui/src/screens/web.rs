@@ -286,11 +286,20 @@ impl ScreenApp {
         session
             .apply_screen_snapshot(session.screen_snapshot())
             .map_err(std::io::Error::other)?;
-        let main = crate::FlightCraftApp::from_presentation(session, cc.storage, renderer, chart_root)
+        let mut main = crate::FlightCraftApp::from_presentation(session, cc.storage, renderer, chart_root)
             .map_err(std::io::Error::other)?;
+        if query.get("scenery").as_deref() == Some("nyc") {
+            main.screens.main.scenery_preferences.enabled = true;
+            main.screens.main.scenery_preferences.local_tileset =
+                "terrain/new-york/scenery/nyc-lidar/tileset.json".into();
+        }
+        let canvas = Canvas {
+            scenery_preferences: main.screens.main.scenery_preferences.clone(),
+            ..Default::default()
+        };
         Ok(Self {
             main,
-            canvas: Canvas::default(),
+            canvas,
             link,
             remote,
             main_window: !remote && screen == 0 && page.is_none(),

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review",
+  "description": "Filled from authoritative TUM documentation on the networked machine. No guessed defaults.",
+  "type": "object",
+  "properties": {
+    "approved_host": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string"
+    },
+    "documentation_url": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string"
+    },
+    "licence_evidence": {
+      "type": "string"
+    },
+    "models": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Model"
+      }
+    },
+    "redistribution_allowed": {
+      "type": "boolean"
+    },
+    "source_crs": {
+      "description": "Exact source CRS, axis order, units, and vertical datum from the workflow documentation.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "documentation_url",
+    "approved_host",
+    "licence",
+    "licence_evidence",
+    "attribution",
+    "redistribution_allowed",
+    "source_crs",
+    "models"
+  ],
+  "$defs": {
+    "Model": {
+      "type": "object",
+      "properties": {
+        "gltf_to_ecef": {
+          "description": "Source glTF Y-up positions to WGS84 ECEF, in double precision, column-major.\nMust include any workflow offset and source vertical-datum correction.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 16,
+          "minItems": 16
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "gltf_to_ecef"
+      ]
+    }
+  }
+}

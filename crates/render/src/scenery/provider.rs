@@ -1,4 +1,4 @@
-//! Provider boundary for the follow-up source adapters. The renderer receives GLB bytes,
+//! Provider boundary for local and opt-in streaming sources. The renderer receives GLB bytes,
 //! attribution, and cache policy; it never sees account keys or provider-specific endpoints.
 #[cfg(not(target_arch = "wasm32"))]
 use super::Location;
@@ -25,7 +25,7 @@ pub trait TileProvider: Send {
     fn tileset(&mut self) -> Result<Vec<u8>, String>;
     fn content(&mut self, uri: &str) -> Result<Content, String>;
 }
-/// Only this provider is built in this lane. No HTTP client or persistent network cache.
+/// Local user-fetched or redistributable data. No HTTP or persistent network cache.
 pub struct LocalProvider {
     root: PathBuf,
     tileset: PathBuf,

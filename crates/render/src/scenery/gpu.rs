@@ -104,12 +104,13 @@ impl Pipeline {
         // Retain previous coverage until every replacement is uploaded. CPU readiness alone
         // cannot retire a parent when GPU uploads are spread over several frames.
         cache.tiles.retain(|id, tile| {
-            selection
-                .tiles
-                .iter()
-                .find(|(new_id, _)| new_id == id)
-                .is_none_or(|(_, payload)| Arc::ptr_eq(payload, &tile.payload))
+            !tile.payload.expired()
+                && selection
+                    .live_tiles
+                    .iter()
+                    .any(|(live_id, payload)| live_id == id && Arc::ptr_eq(payload, &tile.payload))
         });
+        cache.selected.retain(|id| cache.tiles.contains_key(id));
         let mut uploaded = 0;
         let mut candidates = Vec::new();
         if cache.selected.is_empty()
@@ -119,7 +120,7 @@ impl Pipeline {
         }
         candidates.extend(selection.tiles.iter().cloned());
         for (id, payload) in &candidates {
-            if cache.tiles.contains_key(id) || uploaded >= uploads {
+            if payload.expired() || cache.tiles.contains_key(id) || uploaded >= uploads {
                 continue;
             }
             let Some(base) = payload.mips.first() else {
@@ -212,7 +213,7 @@ impl Pipeline {
     pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass<'_>, cache: &Cache) {
         pass.set_pipeline(&self.pipeline);
         for id in &cache.selected {
-            if let Some(tile) = cache.tiles.get(id) {
+            if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {
                 pass.set_bind_group(1, &tile.bind, &[]);
                 pass.set_vertex_buffer(0, tile.vertices.slice(..));
                 pass.draw(0..tile.count, 0..1);

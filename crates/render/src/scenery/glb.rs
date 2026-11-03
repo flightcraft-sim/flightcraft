@@ -9,9 +9,15 @@ pub struct DecodedTile {
     pub(crate) vertices: Vec<Vertex>,
     pub(crate) mips: Vec<image::RgbaImage>,
     pub(crate) byte_size: usize,
+    pub(crate) expires_at_unix_ms: Option<u64>,
+    pub(crate) attribution: Vec<String>,
     pub(crate) terrain_bounds: Option<[f32; 4]>,
 }
 impl DecodedTile {
+    pub(crate) fn expired(&self) -> bool {
+        self.expires_at_unix_ms
+            .is_some_and(|expiry| super::unix_ms() >= expiry)
+    }
     pub fn byte_size(&self) -> usize {
         self.byte_size
     }
@@ -286,6 +292,8 @@ pub fn decode_glb(
         mips,
         byte_size,
         terrain_bounds,
+        expires_at_unix_ms: None,
+        attribution: Vec::new(),
     }))
 }
 

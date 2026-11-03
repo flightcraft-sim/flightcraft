@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Provider",
-  "description": "Persist in the user's preferences, never in region data. Token values are deliberately\nabsent from this descriptor: future online adapters resolve this config key privately.",
+  "description": "Persist in the user's preferences, never in region data. Token values are deliberately\nabsent from this descriptor: online adapters resolve this config key privately.\nFly NYC reconstruction uses this descriptor plus OGC tileset extras conforming to\nschema/scenery-nyc-lidar.json. NYC portal footprints and TUM remain local-only.",
   "type": "object",
   "properties": {
     "enabled": {

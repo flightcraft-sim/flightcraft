@@ -1,4 +1,14 @@
 //! Scenery acquisition is deliberately separate from the offline, reproducible build.
+mod city;
+mod city_crs;
+mod city_mesh;
+mod citygml;
+mod footprints;
+mod nyc;
+pub use city::Review as CitySourceReview;
+pub use citygml::{CityReport as CityGmlReport, CitySources as CityGmlSources};
+pub use footprints::{FootprintReport, FootprintReview, FootprintSources};
+pub use nyc::LidarReport as NycLidarReport;
 mod dem;
 mod grid;
 mod tiles;
@@ -25,6 +35,9 @@ pub struct Request {
     pub out: PathBuf,
     /// Offline reference image, only for the documented 1N7 NAIP sample bbox.
     pub sample: Option<PathBuf>,
+    /// Explicit consent to the exact reviewed TUM HTTP prefix; never permits other HTTP URLs.
+    #[serde(default)]
+    pub allow_http: bool,
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -125,6 +138,12 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
     let operation=match args.next().as_deref() {Some("fetch")=>Operation::Fetch,Some("build")=>Operation::Build,_=>return Err("usage: cargo xtask scenery fetch|build --region <id> --area <name> [--cache <directory>] [--out <new-directory>] [--sample <jpg>]".into())};
     let mut values = BTreeMap::new();
     while let Some(key) = args.next() {
+        if key == "--allow-http" {
+            if values.insert(key, "true".into()).is_some() {
+                return Err("duplicate scenery option".into());
+            }
+            continue;
+        }
         if !["--region", "--area", "--cache", "--out", "--sample"].contains(&key.as_str()) {
             return Err(format!("unknown scenery option {key}"));
         }
@@ -137,7 +156,14 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
     let area = values
         .remove("--area")
         .ok_or("missing --area (start with 1n7-test)")?;
-    plan(&region, &area)?;
+    if !matches!(
+        area.as_str(),
+        "nyc-lod2" | "nyc-footprints" | "nyc-reviewed-glb" | "nyc-lidar"
+    ) {
+        plan(&region, &area)?;
+    } else if region != "new-york" {
+        return Err("NYC scenery requires the New York region".into());
+    }
     let base = PathBuf::from("/var/mnt/inland/builds/codex-jobs/scenery")
         .join(&region)
         .join(&area);
@@ -154,7 +180,18 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
             .map(PathBuf::from)
             .unwrap_or_else(|| base.join("built")),
         sample: values.remove("--sample").map(PathBuf::from),
+        allow_http: values.remove("--allow-http").is_some(),
     };
+    if request.allow_http && !(request.area == "nyc-lod2" && matches!(request.operation, Operation::Fetch)) {
+        return Err("--allow-http applies only to the reviewed TUM CityGML fetch".into());
+    }
+    match request.area.as_str() {
+        "nyc-lod2" => return citygml::run(&request),
+        "nyc-footprints" => return footprints::run(&request),
+        "nyc-lidar" => return nyc::run(&request),
+        "nyc-reviewed-glb" => return city::run(&request),
+        _ => (),
+    }
     match request.operation {
         Operation::Fetch => {
             if request.sample.is_some() {
@@ -727,6 +764,7 @@ mod fetch_tests {
             cache: root.join("cache"),
             out: root.join("out"),
             sample: None,
+            allow_http: false,
         };
         let mut jpeg = Vec::new();
         image::codecs::jpeg::JpegEncoder::new(&mut jpeg)
@@ -772,4 +810,13 @@ mod fetch_tests {
         assert!(!root.join("out.building").exists());
         std::fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[cfg(test)]
+pub(crate) fn nyc_test_flags() -> serde_json::Value {
+    let receipts:Vec<_>=[
+        flightcraft_render::scenery::NYC_EPT.to_owned(),
+        "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept-data/0-0-0-0.laz".into(),
+    ].into_iter().map(|url|serde_json::json!({"url":url,"edition":"Original synthetic fixture, not a real source acquisition","downloaded_at":"2026-11-03T00:00:00Z","bytes":1,"sha256":"0".repeat(64)})).collect();
+    serde_json::json!({"region":"new-york","area":"nyc-lidar","sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","localOnly":false,"redistributionAllowed":true,"previewOnly":false,"verticalDatumVerified":true,"runwayAlignmentVerified":true,"lidarBuilt":true,"nycLidar":{"selection":flightcraft_render::scenery::fly_nyc_area(),"reconstructionBuildings":1,"reconstructionLeavesAreBuildings":true,"usesExternalFootprints":false,"receipts":receipts}})
 }

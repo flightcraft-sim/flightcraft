@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CityReport",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string"
+    },
+    "buildings": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "manifest": {
+      "type": "string"
+    },
+    "package_bytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "preview_only": {
+      "type": "boolean"
+    },
+    "redistribution_allowed": {
+      "type": "boolean"
+    },
+    "region": {
+      "type": "string"
+    },
+    "release_ready": {
+      "type": "boolean"
+    },
+    "runway_alignment_verified": {
+      "type": "boolean"
+    },
+    "source_crs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tiles": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "triangles": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "vertical_datum_verified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "region",
+    "area",
+    "manifest",
+    "buildings",
+    "triangles",
+    "tiles",
+    "package_bytes",
+    "source_crs",
+    "local_only",
+    "redistribution_allowed",
+    "preview_only",
+    "vertical_datum_verified",
+    "runway_alignment_verified",
+    "release_ready"
+  ]
+}

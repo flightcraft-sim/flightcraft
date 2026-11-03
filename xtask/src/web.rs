@@ -26,6 +26,7 @@ pub fn build() -> Result<(), String> {
         for id in ["new-york", "eastern-pa"] {
             let source = root.join("assets/terrain").join(id);
             flightcraft_control::read_region(&source)?;
+            validate_showcase_scenery(&source, id)?;
             copy_tree(&source, &stage.join("terrain").join(id))?;
             for kind in ["sectional", "tac"] {
                 let path = source.join("charts").join(kind).join("index.json");
@@ -139,6 +140,13 @@ pub fn build() -> Result<(), String> {
         let region_source = root.join("assets/terrain").join(id);
         let region_target = dist.join("terrain").join(id);
         std::fs::create_dir_all(&region_target).map_err(|e| e.to_string())?;
+        validate_showcase_scenery(&region_source, id)?;
+        // Both imagery and city content use scenery/; include them in the complete-site budget.
+        let scenery_target = region_target.join("scenery");
+        if scenery_target.exists() {
+            std::fs::remove_dir_all(&scenery_target).map_err(|e| e.to_string())?;
+        }
+        copy_tree(&region_source.join("scenery"), &scenery_target)?;
         copy_tree(&region_source.join("charts"), &region_target.join("charts"))?;
         for entry in std::fs::read_dir(region_source).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
@@ -162,6 +170,55 @@ pub fn build() -> Result<(), String> {
         return Err("showcase site reaches the 1 GB Pages budget".into());
     }
     eprintln!("xtask: static web build ready in dist/ ({bytes} bytes)");
+    Ok(())
+}
+
+fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), String> {
+    let scenery = region.join("scenery");
+    let mut nyc = false;
+    let files = super::data::files(&scenery)?;
+    let mut roots = Vec::new();
+    for path in &files {
+        if path.file_name().is_some_and(|n| n == "tileset.json") {
+            let bytes = super::download::read(path, flightcraft_world::tiles3d::MAX_TILESET_BYTES)?;
+            flightcraft_world::tiles3d::Tileset::from_json(&bytes).map_err(|e| e.to_string())?;
+            let set: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+            super::data::validate_scenery_release(&set)?;
+            roots.push(
+                path.parent()
+                    .ok_or("Scenery manifest has no directory")?
+                    .to_path_buf(),
+            );
+            if *path == scenery.join("nyc-lidar/tileset.json") {
+                flightcraft_render::scenery::nyc_lidar_source(
+                    set.pointer("/extras/flightcraft")
+                        .ok_or("Fly NYC provenance missing")?,
+                )?;
+                nyc = true;
+            }
+        }
+    }
+    if files
+        .iter()
+        .any(|path| !roots.iter().any(|root| path.starts_with(root)))
+    {
+        return Err("Website scenery contains files outside an accepted tileset directory".into());
+    }
+    if id == "new-york" {
+        if !nyc {
+            return Err("Fly NYC needs accepted NYC buildings at new-york/scenery/nyc-lidar; consume fc-scenery reconstruction with scenery build --area nyc-lidar first (docs/scenery.md)".into());
+        }
+        let bytes = super::data::files(&scenery.join("nyc-lidar"))?
+            .iter()
+            .try_fold(0_u64, |total, p| {
+                std::fs::metadata(p)
+                    .map(|m| total + m.len())
+                    .map_err(|e| e.to_string())
+            })?;
+        if bytes > flightcraft_render::scenery::NYC_BUILDING_BUDGET {
+            return Err("Fly NYC buildings exceed their 250 MB share of the 1 GB website budget".into());
+        }
+    }
     Ok(())
 }
 
@@ -288,5 +345,65 @@ mod tests {
         assert_eq!(bindgen_version(lock).unwrap(), "0.2.130");
         assert!(bindgen_version("[[package]]\nname = \"wasm-bindgen-cli\"\nversion = \"0.2.130\"").is_err());
         assert!(bindgen_version("[[package]]\nname = \"wasm-bindgen\"").is_err());
+    }
+}
+
+#[cfg(test)]
+mod scenery_package_tests {
+    use super::*;
+    fn area_path(root: &std::path::Path) -> std::path::PathBuf {
+        root.join("scenery/nyc-lidar/tileset.json")
+    }
+    #[test]
+    fn scenery_packaging_requires_lidar_counts_bytes_and_rejects_portal_and_tum() {
+        let root = std::env::temp_dir().join(format!("fc-web-scenery-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        assert!(
+            validate_showcase_scenery(&root, "new-york")
+                .unwrap_err()
+                .contains("Fly NYC")
+        );
+        let area = root.join("scenery/nyc-lidar");
+        std::fs::create_dir_all(area.join("tiles")).unwrap();
+        let mut set = serde_json::json!({"asset":{"version":"1.1","copyright":"Original fixture"},"geometricError":0,"root":{"boundingVolume":{"region":[-1.3,0.7,-1.2,0.8,0,100]},"geometricError":0,"content":{"uri":"tiles/test.glb"}},"extras":{"flightcraft":crate::scenery::nyc_test_flags()}});
+        super::super::download::write_json(&area.join("tileset.json"), &set).unwrap();
+        std::fs::write(
+            area.join("tiles/test.glb"),
+            b"package accounting fixture, not render proof",
+        )
+        .unwrap();
+        assert!(validate_showcase_scenery(&root, "new-york").is_ok());
+        let target = root.join("staged");
+        copy_tree(&root.join("scenery"), &target).unwrap();
+        assert!(target.join("nyc-lidar/tiles/test.glb").exists());
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(area.join("tiles/test.glb"))
+            .unwrap();
+        file.set_len(250_000_001).unwrap();
+        assert!(
+            validate_showcase_scenery(&root, "new-york")
+                .unwrap_err()
+                .contains("250 MB")
+        );
+        file.set_len(1).unwrap();
+        drop(file);
+        for area in ["nyc-footprints", "nyc-lod2"] {
+            set["extras"]["flightcraft"]["area"] = serde_json::json!(area);
+            super::super::download::write_json(&area_path(&root), &set).unwrap();
+            assert!(
+                validate_showcase_scenery(&root, "new-york")
+                    .unwrap_err()
+                    .contains("Local-only")
+            );
+        }
+        set["extras"]["flightcraft"]["localOnly"] = serde_json::json!(true);
+        super::super::download::write_json(&area.join("tileset.json"), &set).unwrap();
+        assert!(
+            validate_showcase_scenery(&root, "new-york")
+                .unwrap_err()
+                .contains("Local")
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

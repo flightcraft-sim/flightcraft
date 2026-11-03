@@ -30,7 +30,10 @@ tiff = { version = "0.11.3", default-features = false, features = ["lzw", "defla
 roxmltree = "0.21"
 regex = "1"
 url = "2"
+quick-xml = "0.41"
 ureq = { version = "3.5", default-features = false, features = ["rustls"] }
+# ureq-proto trace output includes raw HTTP bytes, which can contain user API keys.
+log = { version = "0.4", features = ["max_level_debug"] }
 zbus = "5.19"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }

@@ -45,6 +45,25 @@ pub fn safe_path(name: &str) -> bool {
             .components()
             .all(|c| matches!(c, Component::Normal(_)))
 }
+
+/// Shared by release publication and website packaging. Source restrictions are permanent:
+/// accepting geometry never grants redistribution rights for portal footprints or TUM.
+pub(crate) fn validate_scenery_release(set: &serde_json::Value) -> Result<(), String> {
+    let flags = set
+        .pointer("/extras/flightcraft")
+        .ok_or("Scenery release metadata missing")?;
+    flightcraft_render::scenery::validate_redistribution(flags)?;
+    for gate in ["verticalDatumVerified", "runwayAlignmentVerified", "lidarBuilt"] {
+        if flags.get(gate).and_then(|v| v.as_bool()) != Some(true) {
+            return Err(format!("Scenery cannot ship before {gate} passes"));
+        }
+    }
+    if flags.get("previewOnly").and_then(|v| v.as_bool()) != Some(false) {
+        return Err("Preview scenery cannot be published".into());
+    }
+    Ok(())
+}
+
 pub fn files(root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut result = Vec::new();
     if !root.exists() {
@@ -331,25 +350,7 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
                     let bytes = read(path, flightcraft_world::tiles3d::MAX_TILESET_BYTES)?;
                     flightcraft_world::tiles3d::Tileset::from_json(&bytes).map_err(|e| e.to_string())?;
                     let set: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-                    for gate in ["verticalDatumVerified", "runwayAlignmentVerified", "lidarBuilt"] {
-                        if set
-                            .pointer(&format!("/extras/flightcraft/{gate}"))
-                            .and_then(|v| v.as_bool())
-                            != Some(true)
-                        {
-                            return Err(format!(
-                                "scenery cannot ship before {gate} passes: {}",
-                                path.display()
-                            ));
-                        }
-                    }
-                    if set
-                        .pointer("/extras/flightcraft/previewOnly")
-                        .and_then(|v| v.as_bool())
-                        != Some(false)
-                    {
-                        return Err("preview scenery cannot be published".into());
-                    }
+                    validate_scenery_release(&set)?;
                 }
             }
             // 128 MiB raw tile ranges leave room for ZIP headers and the manifest beneath
@@ -651,5 +652,17 @@ mod tests {
         assert!(!safe_path("/absolute"));
         assert!(!safe_path("a\\b"));
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod scenery_release_tests {
+    use super::*;
+    #[test]
+    fn scenery_release_rejects_portal_and_tum_even_with_stale_accepted_flags() {
+        for area in ["nyc-footprints", "nyc-lod2", "nyc-reviewed-glb"] {
+            let set = serde_json::json!({"extras":{"flightcraft":{"area":area,"localOnly":false,"redistributionAllowed":true,"previewOnly":false,"verticalDatumVerified":true,"runwayAlignmentVerified":true,"lidarBuilt":true}}});
+            assert!(validate_scenery_release(&set).unwrap_err().contains("Local-only"));
+        }
     }
 }

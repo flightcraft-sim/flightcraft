@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FootprintSources",
+  "type": "object",
+  "properties": {
+    "attribution": {
+      "type": "string"
+    },
+    "bounds": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 4,
+      "minItems": 4
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "final_metadata": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "geometry_field": {
+      "type": "string"
+    },
+    "ground_field": {
+      "type": "string"
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Source"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Source"
+      }
+    },
+    "redistribution_allowed": {
+      "type": "boolean"
+    },
+    "revision": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "roof_field": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "terms_url": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "dataset",
+    "bounds",
+    "metadata",
+    "revision",
+    "terms_url",
+    "attribution",
+    "geometry_field",
+    "roof_field",
+    "ground_field",
+    "pages",
+    "rows",
+    "complete",
+    "local_only",
+    "redistribution_allowed"
+  ],
+  "$defs": {
+    "Source": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "downloaded_at": {
+          "type": "string"
+        },
+        "edition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "downloaded_at",
+        "bytes",
+        "sha256"
+      ]
+    }
+  }
+}

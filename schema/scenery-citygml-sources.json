@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CitySources",
+  "type": "object",
+  "properties": {
+    "documentation_url": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string"
+    },
+    "local_only": {
+      "type": "boolean"
+    },
+    "redistribution_allowed": {
+      "type": "boolean"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "source",
+    "documentation_url",
+    "licence",
+    "local_only",
+    "redistribution_allowed"
+  ],
+  "$defs": {
+    "Source": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "downloaded_at": {
+          "type": "string"
+        },
+        "edition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "downloaded_at",
+        "bytes",
+        "sha256"
+      ]
+    }
+  }
+}

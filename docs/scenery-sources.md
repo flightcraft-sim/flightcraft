@@ -1,9 +1,12 @@
 # Real-world scenery: sources and plan
 
-Status: plan, with option 2 in progress. This page covers where FlightCraft gets photorealistic
-scenery (ground imagery, 3D buildings, trees, and terrain), what each source costs, and what we
-may do with it. The project rule is **no card and no spend**: nothing the project ships or runs may
-need a payment method, and every shipped dataset must be one we are allowed to redistribute.
+Status: **Fly NYC ships lidar-derived buildings only**, from public-domain USGS 3DEP. The
+40.66–40.84° N, 74.04–73.90° W envelope and 250 MB building allocation sit inside the website's
+shared 1 GB limit. fc-scenery owns EPT acquisition, LAZ decoding, clustering, and roof reconstruction;
+this lane owns the area/LOD/budget consumer and the native/browser provider. Reconstruction output
+and real-data visual/datum acceptance are still pending. **NYC Open Data portal footprints and TUM
+are local, user-fetched only, never shipped or included in data releases.** The earlier NYC reuse
+claim was incorrect. Option 4 remains an opt-in native user-key adapter awaiting live acceptance.
 
 ## One renderer path: OGC 3D Tiles
 
@@ -62,26 +65,76 @@ imagery lines up with FAA runway data within 2 m, and publish them as region dat
 Golden area 1 is 1N7 ±5 km; area 2 is the Delaware Water Gap corridor; area 3 is the surrounding
 40 km.
 
-### 3. Open city models (next)
+### 3. Fly NYC: public-domain 3DEP buildings; portal/TUM local-only
 
-- **New York City LoD2** from the Technical University of Munich: over a million buildings with
-  roof shapes, as open data including glTF
-  ([project](https://www.gis.bgu.tum.de/projekte/new-york-city-3d)).
-- **Geopipe New York City:** all five boroughs, under a Creative Commons Attribution licence that
-  permits commercial use
-  ([article](https://www.cgchannel.com/2023/02/download-the-entire-city-of-new-york-in-3d-for-free)).
+**Shipped source:** USGS 3DEP [NY_NewYorkCity EPT](https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept.json),
+public domain (US government data), free to read. Flight lead supplied: 4,755,025,996 points,
+EPSG:3857, a Classification dimension, and cube bounds
+`[-8267099, 4937860, -31153, -8204119, 5000840, 31827]`. Cube padding is not ground elevation or
+vertical-datum evidence. Attribution: USGS 3DEP, NY_NewYorkCity classified lidar; buildings
+reconstructed by FlightCraft, with original procedural materials.
 
-**Use:** converted to 3D Tiles and published for the New York region (the Hudson corridor and the
-Class B), with attribution in ATTRIBUTION.md. The licence of each file is checked before it ships.
+fc-scenery reconstructs buildings directly from classified points: LAZ decode, clustering-derived
+footprints, and roof-plane fitting. This lane consumes the reconstructed 3D Tiles/GLBs through the
+existing [provider contract](../schema/scenery-provider.json) and
+[lidar provenance schema](../schema/scenery-nyc-lidar.json), without duplicating reconstruction.
+The [machine-readable Fly NYC area](../assets/scenery/fly-nyc.json) fixes the geographic envelope,
+classification 6, source metadata, 250 MB building budget, and shared 1 GB web budget. The consumer
+selects whole measured buildings, emits area tiles and multiple LODs, retains fine roof geometry,
+and reports complete package bytes. Same-origin browser loading uses the same renderer and budgets.
+Both the consumer and static-provider/release gates reject portal footprints, TUM, external
+footprint dependencies, and provenance outside this exact USGS EPT project. No guessed-height or
+portal-extruded fallback can ship. Real source reconstruction, vertical/FAA acceptance, actual byte
+size, and corridor/skyline images remain to be checked by flight lead. See
+[the handoff and commands](scenery.md#fly-nyc-lidar-only-shipped-building-provider).
 
-### 4. Esri ArcGIS Location Platform free tier (next, for users)
+**NYC portal footprints local only:** the [portal terms](https://www.nyc.gov/html/data/terms.html)
+bind users to NYC.gov's terms plus supplying-agency terms. Flight lead corrected the earlier reuse
+claim: these are not a clean open license. Historically, the City reserved a right to stop "any and
+all display, distribution or other use" for any reason; OpenStreetMap rejected NYC data on those
+grounds in November 2011. We have no approved redistribution license for dataset `nqwf-w8eh`.
+The Socrata fetch and height-extrusion converter remain optional local/user-fetched tools, with
+receipts and height review, but all output is permanently local-only and preview-only. Geometry
+acceptance cannot authorize publication. Static browser loading, data releases, and website
+packaging reject even stale portal builds carrying the earlier accepted flags. **Do not fetch
+Socrata for the shipped Fly NYC workflow.** No portal footprints or heights feed its lidar meshes.
 
-- A monthly free tier (about 2 million basemap tiles, including World Imagery). Service stops at
-  the cap unless pay-as-you-go is enabled ([FAQ](https://location.arcgis.com/faq/)).
-- Not verified: whether sign-up needs a card, and whether 3D and elevation services are in the
-  free tier. Terms limit offline caching.
+**TUM local only:** flight lead verified the [TUM project page](https://www.asg.ed.tum.de/gis/projekte/new-york-city-3d/)
+and [workflow repository](https://github.com/tum-gis/3d-model-new-york-city). It describes Open Data,
+derived from NYC Open Data, but states no explicit license. TUM remains a **local, user-fetched
+provider only**, never website data or a data release. NYC's terms do not license the TUM derivative.
+[ATTRIBUTION.md](../ATTRIBUTION.md) records these three distinct source policies.
 
-**Use:** like option 1: a user's own key, streamed imagery, off by default, never shipped.
+The documented TUM buildings archive is about 2.4 GB zipped:
+`http://www.3dcitydb.net/3dcitydb/fileadmin/public/datasets/NYC/NYC_buildings_CityGML_LoD2/NYC_Buildings_LoD2_CityGML.zip`.
+Its optional fetch requires `--allow-http`, the exact documented HTTP prefix, no redirects/path
+escapes, and an 8 GB streamed cap; USGS limits remain unchanged. Build streams bounded CityGML
+fragments, validates `srsName`, preserves inline LoD2 roofs, and emits local-only 3D Tiles/GLBs.
+No source compatibility or real-world alignment proof is fabricated. Separate street-space and
+older `/mydata/` archives are not fetched. Geopipe is skipped because it needs an account and credits.
+
+### 4. Esri ArcGIS Location Platform (native adapter; live acceptance pending)
+
+Settings → Scenery → **Streaming imagery (your own key)** is off by default. The user supplies an
+ArcGIS key in a masked field. Only the user's eframe preferences persist the key; provider descriptors
+contain a config-key name. Keys are absent from request URLs, receipts, recordings, and screenshot
+metadata. Authorization headers are sensitive, redirects are refused, and error bodies are never shown.
+
+The native adapter requests World Imagery only for selected regional tiles, drapes it over read-only
+terrain samples, and returns ordinary embedded-image GLBs through `TileProvider`. It has no bulk
+fetch, disk cache, offline export, or release path. CPU residency is a bounded memory LRU; GPU
+residency follows valid CPU content, with a conservative five-minute maximum lifetime. Current
+service copyright text accompanies the on-screen Esri credit. HTTP 402/429 and ArcGIS JSON quota
+errors stop further requests with a clear allowance message; rejected keys and other service errors
+also stop the session. Apply scenery again to retry after correcting account settings.
+
+This implements a conservative session cache, **not a claim that current Esri terms have been
+verified offline**. Review [the current terms](https://www.esri.com/en-us/legal/terms/full-master-agreement)
+and [account FAQ](https://location.arcgis.com/faq/) before using the service. Free allowances,
+sign-up requirements, and enforcement can change; no two-million-tile or zero-spend guarantee is
+encoded. Disable pay-as-you-go in the user's account. No account, key, imagery, or billable service
+is bundled with FlightCraft. Browser transport remains pending; all application crates still build
+for wasm. Tests use an in-process local fake HTTP server without sockets or DNS, never Esri.
 
 ## Web showcase: "Fly NYC"
 
@@ -98,8 +151,8 @@ dataset repository). Both need a free account, which is the owner's decision.
 
 ## Order
 
-1. Option 2 for 1N7, then the Water Gap corridor, then the wider region.
-2. Option 3 for New York City, and option 4 as a streaming provider for users with their own key.
+1. **Website critical path: 3DEP lidar-derived buildings for Fly NYC**, within the shared 1 GB budget, alongside fc-scenery imagery and terrain.
+2. Option 2 for 1N7, then the Water Gap corridor and wider region. TUM is secondary and local-only; option 4 remains user-key opt-in.
 3. Option 1 as an opt-in streaming provider, once the provider interface has proven itself on
    option 4.
 4. User add-ons: a local's drone photogrammetry of their own field, contributed as a tileset.
