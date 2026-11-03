@@ -89,6 +89,12 @@
         "lod1": {
           "type": "string"
         },
+        "lod2": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "model": {
           "type": "string"
         },
@@ -267,6 +273,17 @@
         "node": {
           "type": "string"
         },
+        "surface": {
+          "description": "Body-space patch for replacing registration baked into the base-color atlas.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RegistrationSurface"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "text": {
           "type": "string",
           "maxLength": 16,
@@ -278,6 +295,63 @@
       "required": [
         "node",
         "text"
+      ]
+    },
+    "RegistrationSurface": {
+      "type": "object",
+      "properties": {
+        "background": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "color": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "height_m": {
+          "type": "number",
+          "format": "float"
+        },
+        "node": {
+          "type": "string"
+        },
+        "x_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "z_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "float"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "x_m",
+        "z_m",
+        "height_m",
+        "background",
+        "color"
       ]
     }
   }
