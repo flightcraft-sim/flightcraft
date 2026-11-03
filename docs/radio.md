@@ -8,7 +8,9 @@ hash. The same commands serve the desktop, browser, scripts, hardware adapters, 
 
 Open **Radios** from the toolbar. The configurable default shortcuts are **V** for the radio panel,
 **T** for selected-COM PTT and typed entry, **Y** for intercom entry, and **K** for the kneeboard.
-A press opens the one-line typed entry; Enter transmits it. The microphone bindings are named
+When speech input is disabled, a press opens the one-line typed entry; Enter transmits it.
+With speech input enabled in Preferences, hold the action to record and release to recognize;
+review the caption before transmitting. **Type a call** remains available in the radio window. The microphone bindings are named
 `ComPtt` and `IntercomPtt` in keyboard and gamepad maps. `comms.audio_panel` also accepts `ptt` and
 `intercom_ptt` booleans for external hardware. The typed transmission is the duration-bearing
 carrier; holding an empty PTT entry does not transmit speech.
@@ -296,3 +298,220 @@ Scenario transmissions and `comms.atc` use the shared [phraseology renderer](phr
 [Tower and approach training](atc.md) now builds on this radio service: ATIS information letters,
 clearance delivery, ground/tower/radar instructions, readbacks, compliance grades, controlled
 circuit traffic, and lost-communications light guns share the same reception checks and flight record.
+
+## Speech in
+
+The first keyboard/yoke PTT gesture offers speech setup; the radio window also has **Set up speech
+input**. This offer does not enable capture or start a download. Speech input is opt-in under
+**Preferences → Microphone**. Select the native input device,
+choose tiny.en (default) or base.en, and download its weights explicitly. The microphone level
+meter runs during PTT; enabling intercom VOX explicitly keeps it open for intercom commands.
+Keyboard and yoke bindings use the existing `ComPtt` and `IntercomPtt` actions. The radio window
+also has hold-to-talk COM and intercom buttons. COM1/COM2 MIC selection determines transmit
+routing. Release PTT to stop capture and recognize; losing window focus discards captured audio.
+Calls are limited to 30 seconds. Selecting a microphone does not itself open it.
+
+The caption shows **You said** before anything is graded, and an ungraded recognition event is
+already in the transcript. Choose **Transmit recognized call** after checking it, or retry by
+holding PTT. The post-pass uses the shared bounded grammar, pack callsign/full abbreviation,
+region NASR facility names, and the current ATC readback vocabulary. It accepts exact digit
+representations (`371`, `3, 7, 1`, or spoken words) and exact name/phrase spacing variants. Fuzzy matching only repairs
+unique proper-name tokens, words from a heard pending readback, or position-report words after an
+accepted closed-traffic clearance one edit away. Accepted closed traffic is included in `atc.state`
+and screen snapshots, so browser copies use the same expected call set as the owner. Missing words are
+never inserted, and numeric words are excluded from fuzzy matching. It never replaces a number,
+runway, squawk, negation, or instruction with an expected answer. Valid but incorrect readbacks remain incorrect. Unknown
+phrasing or confidence below 0.65 asks the student to **Say again**, with no grading. This is a
+recognizer score threshold, not a calibrated probability of a correct call.
+
+The command path is `comms.recognize` (printable text, confidence, intercom selection, and an optional
+client correlation ID for browser transports; each UI window uses a distinct seed within JavaScript’s
+exact integer range), then
+`comms.confirm_speech` with its draft ID (`comms.discard_speech` discards a retry), then the existing typed `comms.transmit`. Programmatic
+calls never ask for microphone permission or open dialogs. A changed COM selection/frequency
+invalidates confirmation. Recognition previews do not trigger scenarios or enter the heard-radio
+queue. Raw audio is held in memory and is not saved to the flight record or uploaded on desktop.
+
+Intercom recognizes **your controls**, **my controls**, **I have the controls**, and **go around**.
+The existing positive handover still requires the other participant's acknowledgment; one voice
+utterance cannot impersonate both participants. Go-around uses the existing validated crew intent.
+VOX pauses capture while a draft awaits review; confirm it or choose Retry to rearm.
+These crew actions never come from COM. An MCP instructor uses `crew.say` for an AI-tagged,
+spoken intercom cue; it does not change ownership or supply a clearance. Typing remains available with **Type a call**.
+
+### Model delivery and verification
+
+The native adapter is CPU-only Candle Whisper (`candle-core`, `candle-nn`, and
+`candle-transformers`, Apache-2.0/MIT) behind the `whisper` feature, with a Rust tokenizer. Weights
+are separate OpenAI Whisper MIT assets. `assets/speech/models.json` is the only download authority;
+`tools/pin-speech-models.py` resolves immutable Hugging Face revisions and hashes artifacts for
+maintainer review. The app stores verified artifacts under the user data directory's `speech/`
+folder. Downloads run on a bounded worker, resume `.partial` files with HTTP Range, check the
+response's range and total size, and verify SHA-256 before an atomic rename. Offline/interrupted
+requests retain progress and report a retryable error. No model is fetched in ordinary tests.
+
+The checked-in manifest pins OpenAI's tiny.en revision
+`87c7102498dcde7456f24cfd30239ca606ed9063` and base.en revision
+`911407f4214e0e1d82085af863093ec0b66f9cd6`. The complete downloads are **153.5 MB** and
+**292.8 MB**, respectively (float32 weights, tokenizer, and configuration). These are separate
+from the desktop executable. `FLIGHTCRAFT_WHISPER_DIR=/path/to/whisper` can point to a read-only
+cache containing `tiny.en/` and `base.en/`; all pins are still verified before loading. Ordinary
+recognition stays offline. The downloader itself requires a network connection.
+
+Candle 0.9.1 and tokenizers 0.21 use CPU Rust kernels and `fancy-regex`, with no CUDA, Metal,
+MKL, or C++ tokenizer feature. `tools/check-speech-licenses.py` audits registry license fields from
+Cargo metadata against `deny.toml`; CI retains the complete cargo-deny license-text check.
+The original Rust frontend uses a mixed-radix FFT with centered periodic-Hann windows,
+single-sided spectral power, and area-normalized Slaney mel bands. Inference uses a dedicated
+Rayon pool capped at the available logical CPUs minus two (at least one worker); the reservation
+leaves capacity for the simulation and UI. `RAYON_NUM_THREADS` can request a lower cap. The model
+starts loading on PTT press, while the student is speaking, and stays cached for later calls.
+Release builds compile Candle, GEMM, and tokenizers at opt-level 3. The development dependency
+override is opt-level 2 and does not apply to the reported release measurements.
+
+Greedy decoding uses self-attention KV caches, cached cross-attention projections, no temperature
+fallback, and a 64-token limit with end-of-text stopping. Unterminated calls ask the student to
+say again. The encoder processes a shortened audio context and slices its sinusoidal positional
+embedding to match. The desktop diagnostic can compare actual duration (rounded up to a whole
+second), a 10-second minimum, and the original 30-second padding.
+
+Previous-context prompt tokens come from live state: the callsign and its spoken form, tuned
+NASR facility names, ATIS letter, runway, and instructions actually heard and awaiting readback.
+This is decoder bias; reference WAV text never enters recognition. The constrained post-pass
+continues to preserve numeric mistakes and never inserts expected clearance values. Results
+below 0.65 confidence or outside the grammar ask the student to say again before any grading.
+
+For the browser, this implementation chooses **browser speech recognition**, avoiding a model
+payload and main-thread CPU inference. Preferences explicitly warns that the browser provider may
+receive audio and require a network connection. It requests `getUserMedia` only after a user
+gesture and uses the browser's selected default microphone; device selection is in browser site
+settings. PTT release stops recognition and microphone tracks. Unsupported browsers and denied
+permissions report errors and retain typed input. VOX is intercom only. Browser latency is shown
+for each final recognition result; it has **not been measured in this sandbox**, which has no
+interactive browser microphone. No claim is made that browser recognition works offline or that
+Candle wasm fits a measured size/time budget.
+
+### Speech tests, measurements, and previews
+
+There are 84 normalizer table cases, including malformed slots and unrelated speech, plus stateful
+checks for spelling across pattern-word boundaries. A repair requires an expected leg and preserves
+the spoken direction, numeric slots, and negation. Sixteen original WAVs in `tests/fixtures/speech/`
+use installed Linux platform TTS: ten eSpeak NG radio calls, three Flite RMS retries, a separate
+4.827-second eSpeak latency call, and two negative clips. The calls now use **N371FC**, “Sling Three
+Seven One Foxtrot Charlie”; the abbreviation is “Sling One Foxtrot Charlie.” All clips were regenerated
+for this registration, with SHA-256 receipts. No third-party recordings or speech-engine assets are bundled.
+
+The default deterministic test uses a labeled fixture recognizer over decoded PCM, then the actual
+grammar, review commands, MCP boundary, FAA facility validation, readback monitor, and transcript.
+It does not measure Whisper accuracy and never downloads a model. With `whisper` enabled,
+`real_whisper_wav_pipeline_and_latency` runs real tiny.en only when `FLIGHTCRAFT_WHISPER_DIR` is set.
+It feeds every pilot attempt through recognition, review, and MCP `tools/call`, and checks that a
+wrong runway survives the prompt and a wrong callsign asks the student to retry. CI can cache tiny.en
+and run this single gated pipeline. Both-model diagnostics remain explicitly ignored/manual.
+
+On an AMD Ryzen 7 3700X (eight physical cores, 16 logical CPUs), the **actual desktop release
+executable**, float32 weights, greedy cached decoder, 14 inference workers, and a 10-second minimum
+context produced these release-to-typed-call measurements on the **4.827-second N371FC recording**:
+
+| Model | First load | Release to typed call, three runs |
+|---|---:|---|
+| tiny.en | 818 ms | 774 ms, 759 ms, 1,082 ms |
+| base.en | 1,444 ms | 1,720 ms, 1,409 ms, 1,511 ms |
+
+Mean stage times over those three runs:
+
+| Model | Resample | Mel FFT | Encoder | Decoder | Normalize/draft | Total |
+|---|---:|---:|---:|---:|---:|---:|
+| tiny.en | 0.8 ms | 30.8 ms | 340.5 ms | 487.9 ms | 7.9 ms | 871.8 ms |
+| base.en | 0.9 ms | 28.3 ms | 634.2 ms | 876.6 ms | 4.5 ms | 1,546.7 ms |
+
+Total also includes prompt construction/tokenization, pool dispatch, and small bookkeeping costs.
+First load includes pin/hash verification, configuration, tokenizer, weights, decoder, frontend,
+and worker-pool initialization, with a warm OS file cache. The app prepares the model on PTT press,
+while the student speaks. Per-call timing excludes model load, WAV disk I/O, UI frame scheduling,
+and user review. No quantized model is needed to meet the measured 1.5-second/3-second targets.
+These results describe this machine and recording, not a latency guarantee on other hardware.
+
+Profiling the original desktop path with four threads on the former 4.930-second N1234B recording
+showed tiny.en spending **0.9 / 75.6 / 1,785 / 8,811 ms** in resampling, mel, encoder, and decoder,
+respectively (**10,675 ms total**); base.en spent **0.7 / 66.8 / 3,234 / 16,977 ms** (**20,282 ms total**).
+Using 14 threads without algorithm changes still took **10,471 / 19,035 ms**. Release compilation was
+already opt-level 3. The major gains came from incremental greedy decoding and reduced encoder work.
+
+Prompt comparison on the **same nine new N371FC WAVs**, with the same optimized decoder and
+10-second minimum context; only the prompt changes:
+
+| Model | Old names-only hint: correct typed calls / raw WER | Live-state prompt: correct typed calls / raw WER |
+|---|---|---|
+| tiny.en | 0/9 · 43.44% | **9/9 · 0.82%** |
+| base.en | 1/9 · 46.72% | **9/9 · 2.46%** |
+
+Digit-canonical WER for the names-only hint was 18.85% / 15.57%; for the live-state prompt it was
+0.82% / 2.46%. This additional measure expands digit spellings without repairing any wrong value,
+facility, or phrase. Raw WER is measured before the constrained post-pass. The previous report's
+6/9 result used N1234B recordings and is historical, not the matched baseline for this new set.
+The real tiny.en MCP rehearsal also completed **nine first attempts, zero retries, and three readbacks**.
+
+Context comparison with the live-state prompt: actual duration rounded up yielded **8/9 tiny.en**
+and **9/9 base.en** typed calls; the 10-second minimum and full 30-second context both yielded
+**9/9 for each model**. Full-context raw WER was 1.64% / 0.82%, compared with 0.82% / 2.46% at
+10 seconds. The 10-second minimum retains every typed call while meeting the latency targets;
+full context is slower. This small synthetic sample does not establish student-microphone accuracy.
+
+On the same current-main Linux x86_64 source, the audio-only release executable is **51.08 MB**;
+with Whisper and its headless profiler it is **62.30 MB (+11.22 MB)**. Stripped sizes are
+**40.56 MB and 49.42 MB (+8.85 MB)**. These measurements isolate the `whisper` feature against
+`--no-default-features --features audio`; model weights are external and excluded. Exact byte
+counts are in `out/speech/binary-size.json`.
+
+Receipts and real-model previews are in `out/speech/`: `latency.json`, `real-pipeline.json`,
+`dependency-licenses.json`, `preferences-microphone.png`, `ptt-recognized.png`,
+`kabe-transcript.png`, `kabe-transcript.md`, and `kabe-record.json`. The KABE transcript includes
+raw ungraded recognition, rejected attempts, reviewed transmissions, and heard Simulated ATC.
+This is a complete radio pattern rehearsal on original flat test terrain, not a physically flown
+circuit. The normal CI stub remains separate from the gated real-recognition test.
+
+`render_speech_previews` writes the microphone page (explicitly a sample meter) and a **stub**
+caption/transcript for CI. Run it before the real test. Set `FLIGHTCRAFT_SPEECH_PREVIEW=1` on the
+real test to replace the caption with a real recognized call, then run the ignored
+`render_real_speech_transcript` test to render the saved real flight record. GPU capture is optional
+for the CPU recognition test; normal CI requires neither a microphone nor model weights.
+
+Flight lead should capture these real-window shots on kwin_wayland:
+
+1. First PTT speech-setup offer, selected tiny.en, and the opt-in download progress bar.
+2. Preferences → Microphone, selected headset, installed tiny.en, and a live PTT level meter.
+3. Cockpit caption immediately after releasing PTT on “Allentown Tower, Sling Three Seven One Foxtrot
+   Charlie, left downwind runway zero six,” before transmitting the recognized call.
+4. KABE kneeboard with real-Whisper WAV pilot lines, heard Simulated ATC responses, and readback grades.
+5. Browser microphone permission/provider notice and a recognized caption, with its observed latency.
+
+See the [AI ATC skill](../skills/ai-atc/SKILL.md) for live MCP controller operation.
+
+To reproduce the desktop profiling measurements without a window or microphone:
+
+```sh
+CARGO_TARGET_DIR=$HOME/builds/cargo-target/flightcraft/fc-speech CARGO_BUILD_JOBS=4 \
+PKG_CONFIG_PATH=$HOME/builds/pkgconfig-shim FLIGHTCRAFT_SPEECH_EXPORT=/tmp/fc-speech-cases \
+cargo test --offline --release -j 4 -p flightcraft-ui --features whisper --lib \
+recorded_wavs_through_recognizer_normalizer_review_and_mcp_kabe_pattern
+
+CARGO_TARGET_DIR=$HOME/builds/cargo-target/flightcraft/fc-speech CARGO_BUILD_JOBS=4 \
+PKG_CONFIG_PATH=$HOME/builds/pkgconfig-shim cargo build --offline --release -j 4 -p flightcraft-desktop
+
+FLIGHTCRAFT_WHISPER_DIR=$HOME/builds/whisper python3 tools/profile-speech.py \
+--executable $HOME/builds/cargo-target/flightcraft/fc-speech/release/flightcraft \
+--cases /tmp/fc-speech-cases --context-seconds 10 --prompt-mode state \
+--output out/speech/profile-state-10.json
+```
+
+The exporter runs the deterministic MCP rehearsal and captures the session immediately before
+each call. The profiler passes WAV PCM and those live snapshots to the actual release executable.
+Expected text and typed answers stay in the Python scoring process, outside recognition.
+`--context-seconds 0` uses the rounded actual duration; `30` restores full padding.
+`--prompt-mode legacy` reproduces the old names-only hint; `none` removes the prompt.
+`--threads` overrides the inference budget independently of Cargo's four build jobs.
+The executable's `--speech-benchmark <request.json>` entry point writes per-stage JSON and never
+opens a window, accesses the microphone, or downloads a model. Its release-to-typed timer includes
+prompt construction/tokenization, resampling, inference, normalization, and draft creation;
+WAV disk I/O, model load (reported separately), user review, and UI frame scheduling are excluded.

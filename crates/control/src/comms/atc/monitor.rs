@@ -325,6 +325,9 @@ impl Session {
             self.auto_light_gun();
             return;
         }
+        if self.comms.atc.external_controller {
+            return;
+        }
         let Some(airport) = self.comms.atc.airport.clone() else {
             return;
         };

@@ -16,7 +16,9 @@ pub use presentation::*;
 mod atc;
 pub use atc::*;
 pub mod phraseology;
+mod speech;
 pub(crate) mod weather;
+pub use speech::*;
 pub use weather::ReportedLayer;
 mod record;
 mod traffic;
@@ -104,6 +106,7 @@ struct TrafficCall {
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Comms {
+    speech_draft: Option<SpeechDraft>,
     pub(crate) atc: atc::Atc,
     callsign_overrides: CallsignPreferences,
     saved_callsigns: CallsignPreferences,
@@ -127,6 +130,7 @@ pub(crate) struct Comms {
 impl Default for Comms {
     fn default() -> Self {
         Self {
+            speech_draft: None,
             atc: Default::default(),
             callsign_overrides: Default::default(),
             saved_callsigns: Default::default(),

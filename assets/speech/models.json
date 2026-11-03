@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "license": "MIT",
+  "source": "https://huggingface.co/openai/whisper-tiny.en",
+  "models": [
+    {
+      "id": "tiny.en",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/openai/whisper-tiny.en/resolve/87c7102498dcde7456f24cfd30239ca606ed9063/config.json",
+          "sha256": "b5366317df280f79e6cc366f259f379674f81a8721d458acf2e00680ccb10b1d",
+          "bytes": 1937
+        },
+        {
+          "name": "tokenizer.json",
+          "url": "https://huggingface.co/openai/whisper-tiny.en/resolve/87c7102498dcde7456f24cfd30239ca606ed9063/tokenizer.json",
+          "sha256": "5eb60cec1e77aeeb6869a2bb5a8e01a84c3fe5d072d75369343021fe6f5310d0",
+          "bytes": 2405679
+        },
+        {
+          "name": "model.safetensors",
+          "url": "https://huggingface.co/openai/whisper-tiny.en/resolve/87c7102498dcde7456f24cfd30239ca606ed9063/model.safetensors",
+          "sha256": "db59695928ded6043adaef491a53ef4e12da9611184d77c53baa691a60b958ad",
+          "bytes": 151060136
+        }
+      ]
+    },
+    {
+      "id": "base.en",
+      "files": [
+        {
+          "name": "config.json",
+          "url": "https://huggingface.co/openai/whisper-base.en/resolve/911407f4214e0e1d82085af863093ec0b66f9cd6/config.json",
+          "sha256": "160c1df40a60d4ef5a6014d536fd845c33aabfd1f318458ac7f87cfe91ebbe76",
+          "bytes": 1937
+        },
+        {
+          "name": "tokenizer.json",
+          "url": "https://huggingface.co/openai/whisper-base.en/resolve/911407f4214e0e1d82085af863093ec0b66f9cd6/tokenizer.json",
+          "sha256": "5eb60cec1e77aeeb6869a2bb5a8e01a84c3fe5d072d75369343021fe6f5310d0",
+          "bytes": 2405679
+        },
+        {
+          "name": "model.safetensors",
+          "url": "https://huggingface.co/openai/whisper-base.en/resolve/911407f4214e0e1d82085af863093ec0b66f9cd6/model.safetensors",
+          "sha256": "d4dd5542fd6a1d35639e21384238f3bfe6c557c849d392b5905d33ee29e71db5",
+          "bytes": 290401888
+        }
+      ]
+    }
+  ]
+}

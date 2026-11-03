@@ -69,6 +69,7 @@ impl Crew {
     }
     fn begin_contact(&mut self, s: &mut Session, airport: &str, departure: bool) -> Result<(), CommandError> {
         ConfigureAtc {
+            external_controller: None,
             airport: airport.into(),
             destination: None,
         }

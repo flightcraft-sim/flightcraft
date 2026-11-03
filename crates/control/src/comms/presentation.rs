@@ -24,11 +24,15 @@ impl Transmission {
         if !self.is_spoken() {
             return None;
         }
-        let reception = match self.reception {
-            Reception::Heard => "heard",
-            Reception::Pending => "pending",
-            Reception::Blocked => "blocked",
-            Reception::NotReceived => "not received",
+        let reception = if matches!(self.meaning, Meaning::Recognition { .. }) {
+            "ungraded recognition preview"
+        } else {
+            match self.reception {
+                Reception::Heard => "heard",
+                Reception::Pending => "pending",
+                Reception::Blocked => "blocked",
+                Reception::NotReceived => "not received",
+            }
         };
         let source = match self.source {
             EventSource::Rules => "rules",

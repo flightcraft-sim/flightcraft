@@ -19,6 +19,15 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            #[cfg(feature = "whisper")]
+            "--speech-benchmark" => {
+                let request = args
+                    .next()
+                    .ok_or("--speech-benchmark needs a request JSON path")?;
+                let report = flightcraft_ui::speech_input::benchmark::run(std::path::Path::new(&request))?;
+                println!("{report}");
+                return Ok(());
+            }
             "--screens" => {
                 screen_set = Some(PathBuf::from(
                     args.next().ok_or("--screens needs a window-set JSON path")?,

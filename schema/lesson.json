@@ -71,6 +71,488 @@
         "cdi_scale"
       ]
     },
+    "ApproachIntercept": {
+      "description": "A heading and altitude restriction remain in force until the final course is established.",
+      "type": "object",
+      "properties": {
+        "altitude_ft": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "heading_deg": {
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "turn_left": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "heading_deg",
+        "altitude_ft",
+        "turn_left"
+      ]
+    },
+    "AtcInstruction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "efc_utc": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "fix": {
+              "type": "string"
+            },
+            "inbound_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "hold"
+            },
+            "leg_distance_nm": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "leg_time_s": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "right_turns": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "fix",
+            "inbound_deg",
+            "right_turns",
+            "altitude_ft",
+            "efc_utc"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "missed_approach"
+            },
+            "procedure": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "procedure"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "parking"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "hold_short": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "taxi"
+            },
+            "route": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "route",
+            "hold_short"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "closed_traffic": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "takeoff"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "closed_traffic"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "land"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entry": {
+              "$ref": "#/$defs/PatternEntry"
+            },
+            "follow": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "pattern"
+            },
+            "number": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "entry",
+            "number"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "extend_downwind"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "go_around"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "heading_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "vector"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "heading_deg",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "altitude"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "squawk"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "code"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "channel_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "handoff"
+            },
+            "station_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "station_id",
+            "channel_khz"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "cleared": {
+              "type": "boolean"
+            },
+            "heading_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "bravo"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "cleared",
+            "heading_deg",
+            "altitude_ft"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "intercept": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ApproachIntercept"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "const": "approach"
+            },
+            "name": {
+              "type": "string"
+            },
+            "procedure": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "procedure",
+            "name",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "code": {
+              "type": "string"
+            },
+            "departure_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "destination": {
+              "type": "string"
+            },
+            "destination_name": {
+              "type": "string"
+            },
+            "expect_minutes": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "expected_altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "ifr_clearance"
+            },
+            "route": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "destination",
+            "destination_name",
+            "expected_altitude_ft",
+            "expect_minutes",
+            "route",
+            "altitude_ft",
+            "departure_khz",
+            "code"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ground_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "exit_runway"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway",
+            "ground_khz"
+          ]
+        }
+      ]
+    },
     "CloudLayer": {
       "type": "object",
       "properties": {
@@ -468,6 +950,23 @@
         {
           "type": "object",
           "properties": {
+            "instruction": {
+              "$ref": "#/$defs/AtcInstruction"
+            },
+            "kind": {
+              "type": "string",
+              "const": "controller"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "instruction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "airport": {
               "type": "string"
             },
@@ -733,6 +1232,16 @@
         "mist",
         "fog",
         "haze"
+      ]
+    },
+    "PatternEntry": {
+      "type": "string",
+      "enum": [
+        "straight_in",
+        "left_downwind",
+        "right_downwind",
+        "left_base",
+        "right_base"
       ]
     },
     "Precipitation": {

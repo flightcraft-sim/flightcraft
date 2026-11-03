@@ -20,7 +20,7 @@ impl Session {
             })
             .unwrap_or_else(|| "the destination".into())
     }
-    pub(super) fn instruction_phrase(&self, i: &AtcInstruction) -> String {
+    pub(crate) fn instruction_phrase(&self, i: &AtcInstruction) -> String {
         let altitude = |ft| p::altitude_assignment(ft, -self.sim.state().position_m[2] / 0.3048);
         match i {
             AtcInstruction::Hold {

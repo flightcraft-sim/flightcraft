@@ -13,8 +13,9 @@ repository.workspace = true
 workspace = true
 
 [features]
-default = ["audio"]
+default = ["audio", "whisper"]
 audio = ["flightcraft-ui/desktop-audio"]
+whisper = ["flightcraft-ui/whisper"]
 
 [dependencies]
 flightcraft-ui.workspace = true

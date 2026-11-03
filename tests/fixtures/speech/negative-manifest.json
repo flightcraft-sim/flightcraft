@@ -1,0 +1,12 @@
+[
+  {
+    "file": "wrong-runway.wav",
+    "text": "Runway two four, cleared to land, Sling three seven one foxtrot charlie.",
+    "sha256": "6d24dbd290c8450c6cbed05f09ec89a83e0ccbb5e606996cc0f4f9f8f9d2ddc8"
+  },
+  {
+    "file": "wrong-callsign.wav",
+    "text": "Allentown tower, Sling three seven niner foxtrot charlie, left downwind runway zero six.",
+    "sha256": "b267f306eff3668d7ea1499ee96f7d6781acf8219204362faa4cfbc105e4b896"
+  }
+]

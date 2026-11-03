@@ -427,3 +427,41 @@ impl Command for GetCrewState {
         Ok(s.crew_state())
     }
 }
+
+/// Instructor speech is local intercom presentation; it never supplies an ATC clearance.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CrewSay {
+    #[schemars(length(min = 1, max = 1024))]
+    pub text: String,
+    #[serde(default)]
+    pub critical: bool,
+}
+impl Command for CrewSay {
+    const NAME: &'static str = "crew.say";
+    const DESCRIPTION: &'static str = "Speak and caption an AI instructor cue on intercom, without changing control ownership or ATC authority.";
+    type Output = crate::Transmission;
+    fn run(self, s: &mut Session) -> Result<Self::Output, CommandError> {
+        if self.text.trim().is_empty() || self.text.len() > 1024 || self.text.chars().any(char::is_control) {
+            return Err(invalid(Self::NAME, "text requires 1..1024 printable bytes"));
+        }
+        if s.flight_record().events.len() >= crate::comms::MAX_EVENTS {
+            return Err(invalid(Self::NAME, "flight event record is full"));
+        }
+        let id = s.start_local(
+            crate::Channel::Intercom,
+            crate::Speaker::Instructor,
+            self.text,
+            crate::Meaning::Crew {
+                critical: self.critical,
+            },
+            crate::EventSource::Ai,
+        );
+        s.flight_record()
+            .events
+            .iter()
+            .find(|e| e.id == id)
+            .cloned()
+            .ok_or_else(|| invalid(Self::NAME, "cue was not recorded"))
+    }
+}

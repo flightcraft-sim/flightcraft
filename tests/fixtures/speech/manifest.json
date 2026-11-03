@@ -1,0 +1,79 @@
+[
+  {
+    "file": "ready.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, with information alpha, ready for departure runway zero six, request closed traffic.",
+    "sha256": "a35d15cd785283e3eefb8da1beb23baf2b763a458cdb6f0b988db54c4474c7fa"
+  },
+  {
+    "file": "takeoff.wav",
+    "text": "Runway zero six, cleared for takeoff, left closed traffic, Sling three seven one foxtrot charlie.",
+    "sha256": "5f988f6e57f99dc3b94e115a6ee5f5be189c1ce2fc241bc6fd0bb0dc13909f51"
+  },
+  {
+    "file": "crosswind.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, left crosswind runway zero six.",
+    "sha256": "d268cdb9a361d5734dae505b06b85f5031ec6ee2b0cb4ab108a7161a891da6f1"
+  },
+  {
+    "file": "downwind.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, left downwind runway zero six.",
+    "sha256": "f7b2872b6a64bbd763f3fed5c5852dc9ebb2cc8890ef0639fae970813030fb1d"
+  },
+  {
+    "file": "pattern.wav",
+    "text": "Enter left downwind runway zero six, Sling three seven one foxtrot charlie.",
+    "sha256": "24ffbaee12f9cacaa9c375fb42e3b57a9741ccc7a531422293c7ab6f6e461e4a"
+  },
+  {
+    "file": "base.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, left base runway zero six.",
+    "sha256": "39e522271f55cc4b978d0cbb48651716afd8ad2185cc66a95cf3f86dee1e7d5a"
+  },
+  {
+    "file": "land.wav",
+    "text": "Runway zero six, cleared to land, Sling three seven one foxtrot charlie.",
+    "sha256": "185f6000c17595a82a4601caa398f488aa5d6d63947c99009ad6776f8daf15ed"
+  },
+  {
+    "file": "final.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, final runway zero six.",
+    "sha256": "c50fbe9ef0925d01e6f064b88a5395e558a1f89f9d1526b9fc6737e26c332da0"
+  },
+  {
+    "file": "around.wav",
+    "text": "Going around runway zero six, Sling three seven one foxtrot charlie.",
+    "sha256": "5e5770999e62a31049fba274a04ddab3e653a77c190346ff2b9b3d30a94a7ca4"
+  },
+  {
+    "file": "clear.wav",
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, clear of the runway.",
+    "sha256": "17f1ddc496cca29f30285db8f4a9605eebf1d4c0b83052614aaad0fd2bd2d095"
+  },
+  {
+    "file": "ready-retry.wav",
+    "text": "Allentown tower. Sling three seven one foxtrot charlie. With information alpha. Ready for departure runway zero six. Request closed traffic.",
+    "sha256": "eea107a44a26544e4c8b3c382d83d3e367243ff0f67d7542d444b8d6f5716da3",
+    "retry_of": "ready.wav",
+    "generator": "Flite rms (installed platform TTS)"
+  },
+  {
+    "file": "pattern-retry.wav",
+    "text": "Sling three seven one foxtrot charlie. Enter left downwind runway zero six.",
+    "sha256": "9f3eaa8c79f2a0a8f5d76f8edf1a7866584c2f827313122edfa177c56b659a49",
+    "retry_of": "pattern.wav",
+    "generator": "Flite rms (installed platform TTS)"
+  },
+  {
+    "file": "clear-retry.wav",
+    "text": "Allentown tower. Sling three seven one foxtrot charlie. Clear of runway zero six.",
+    "sha256": "68bbced306767261c04aa1ecad2ef2344dc445d502817679f162352b7cae4ad7",
+    "retry_of": "clear.wav",
+    "generator": "Flite rms (installed platform TTS)"
+  },
+  {
+    "file": "latency.wav",
+    "text": "Runway zero six, cleared to land, Sling three seven one foxtrot charlie.",
+    "sha256": "37f24a49eb23f6eb5cd0ab18e1c2e517f95b9c304d9d1f731d8a5f0af0113df7",
+    "benchmark_only": true
+  }
+]

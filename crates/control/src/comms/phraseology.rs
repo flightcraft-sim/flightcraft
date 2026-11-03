@@ -262,9 +262,11 @@ pub fn scripted_transmission(
     pilot: &super::PilotCallsign,
     instruction: &crate::scenario::Instruction,
     wind: flightcraft_sim::Weather,
+    session: &crate::Session,
 ) -> String {
     use crate::scenario::Instruction;
     let body = match instruction {
+        Instruction::Controller { instruction } => session.instruction_phrase(instruction),
         Instruction::Land { runway, .. } => format!(
             "runway {}, cleared to land, {}",
             self::runway(runway),
@@ -285,7 +287,12 @@ pub fn scripted_transmission(
             text.trim_end_matches(['.', ' ']).to_owned()
         }
     };
-    format!("{}, {}, {}.", pilot.current, facility(station), body)
+    format!(
+        "{}, {}, {}.",
+        pilot.current,
+        facility(station),
+        body.trim_end_matches(['.', ' '])
+    )
 }
 
 #[cfg(test)]
@@ -320,13 +327,13 @@ mod scenario_tests {
         };
         let mut wind = flightcraft_sim::Weather::default();
         assert_eq!(
-            scripted_transmission(station, &pilot, &instruction, wind),
+            scripted_transmission(station, &pilot, &instruction, wind, &s),
             "Sling Three Four Bravo, Allentown Tower, runway two four, cleared to land, wind calm."
         );
         wind.wind_from_deg = 230.;
         wind.wind_speed_mps = 8. * 0.514444;
         assert!(
-            scripted_transmission(station, &pilot, &instruction, wind)
+            scripted_transmission(station, &pilot, &instruction, wind, &s)
                 .ends_with("wind two three zero at eight.")
         );
     }

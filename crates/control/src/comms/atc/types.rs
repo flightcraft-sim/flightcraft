@@ -176,6 +176,11 @@ pub struct LightGunState {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AtcState {
+    #[serde(default)]
+    pub external_controller: bool,
+    /// Closed traffic has been accepted by a completed, heard pilot readback.
+    #[serde(default)]
+    pub closed_traffic: bool,
     pub airport: Option<String>,
     pub current_facility: Option<ComStation>,
     pub expected_next_call: String,
@@ -193,6 +198,7 @@ pub struct AtcState {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Atc {
     pub vector_approach: Option<AtcInstruction>,
+    pub external_controller: bool,
     pub airport: Option<String>,
     pub destination: Option<String>,
     pub reported: Option<(String, String)>,

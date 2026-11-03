@@ -169,6 +169,7 @@ pub enum ScenarioAction {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Instruction {
+    Controller { instruction: crate::AtcInstruction },
     Land { airport: String, runway: String },
     GoAround { airport: String, runway: String },
     Altitude { altitude_msl_m: f64, at: String },

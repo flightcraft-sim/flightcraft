@@ -14,6 +14,7 @@ workspace = true
 
 [features]
 default = []
+whisper = ["desktop-audio", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers", "dep:rayon"]
 desktop-audio = ["dep:cpal"]
 
 [dependencies]
@@ -34,9 +35,16 @@ tungstenite.workspace = true
 getrandom.workspace = true
 cpal = { workspace = true, optional = true }
 base64.workspace = true
+sha2.workspace = true
+ureq.workspace = true
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+rayon = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { workspace = true, features = ["AudioContext", "AudioBuffer", "AudioBufferSourceNode", "AudioScheduledSourceNode", "AudioNode", "AudioDestinationNode", "GainNode", "AudioParam", "SpeechSynthesis", "SpeechSynthesisUtterance", "SpeechSynthesisVoice"] }
+web-sys = { workspace = true, features = ["AudioContext", "AudioBuffer", "AudioBufferSourceNode", "AudioScheduledSourceNode", "AudioNode", "AudioDestinationNode", "GainNode", "AudioParam", "SpeechSynthesis", "SpeechSynthesisUtterance", "SpeechSynthesisVoice", "MediaDevices", "MediaStream", "MediaStreamTrack", "MediaStreamConstraints", "MediaStreamAudioSourceNode", "AnalyserNode"] }
 wasm-bindgen-futures.workspace = true
 wasm-bindgen.workspace = true
 js-sys.workspace = true

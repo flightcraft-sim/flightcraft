@@ -304,3 +304,25 @@ impl Session {
         }
     }
 }
+
+/// Exact hybrid form produced by recognizers: “1234 Bravo” retains each registration value.
+pub fn spoken_registration_groups(registration: &str) -> String {
+    let mut result = String::new();
+    let mut was_digit = false;
+    for c in registration.chars() {
+        if c.is_ascii_digit() {
+            if !result.is_empty() && !was_digit {
+                result.push(' ');
+            }
+            result.push(c);
+            was_digit = true;
+        } else {
+            if !result.is_empty() {
+                result.push(' ');
+            }
+            result.push_str(&spoken_registration(&c.to_string()));
+            was_digit = false;
+        }
+    }
+    result
+}

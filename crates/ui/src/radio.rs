@@ -11,6 +11,8 @@ use flightcraft_control::{
 
 #[derive(Default)]
 pub struct RadioUi {
+    pub input: crate::speech_input::SpeechInput,
+    pub touch_ptt: [bool; 2],
     open: bool,
     history: bool,
     generation: Option<u64>,
@@ -32,15 +34,21 @@ pub struct RadioUi {
     speech: crate::radio_speech::Speech,
 }
 impl RadioUi {
+    pub fn with_speech_preferences(preferences: crate::speech_input::Preferences) -> Self {
+        Self {
+            input: crate::speech_input::SpeechInput::with_preferences(preferences),
+            ..Default::default()
+        }
+    }
     pub fn shortcut(&mut self, action: Action) {
         match action {
             Action::RadioTransmit => self.submit = true,
             Action::ComPtt => {
-                self.talk = true;
+                self.talk = !self.input.offer_first_use() && !self.input.preferences.enabled;
                 self.intercom = false;
             }
             Action::IntercomPtt => {
-                self.talk = true;
+                self.talk = !self.input.offer_first_use() && !self.input.preferences.enabled;
                 self.intercom = true;
             }
             Action::RadioPanel => self.open = !self.open,
@@ -67,8 +75,10 @@ impl RadioUi {
             self.last_save = Some(wall);
         }
         let state = s.comms_state();
+        self.input.setup_ui(ctx);
         self.speech.observe(s, master_gain);
         let submitted = std::mem::take(&mut self.submit);
+        self.touch_ptt = [false; 2];
         if self.open {
             egui::Window::new("Audio panel and radios")
                 .constrain_to(crate::theme::window_bounds(ctx))
@@ -108,8 +118,14 @@ impl RadioUi {
                         }
                     });
                     ui.horizontal(|ui| {
+                        if self.input.preferences.enabled {
+                            self.touch_ptt[0] = ui.add(egui::Button::new("Hold to talk · COM").sense(egui::Sense::click_and_drag())).is_pointer_button_down_on();
+                            self.touch_ptt[1] = ui.add(egui::Button::new("Hold to talk · intercom").sense(egui::Sense::click_and_drag())).is_pointer_button_down_on();
+                        } else if ui.button("Set up speech input").clicked() {
+                            self.input.open_setup();
+                        }
                         if ui
-                            .button(format!("Talk [{}]", keymap.label(Action::ComPtt)))
+                            .button("Type a call")
                             .clicked()
                         {
                             self.talk = true;
@@ -129,6 +145,12 @@ impl RadioUi {
                         ui.colored_label(theme::AMBER, error);
                     }
                 });
+        }
+        self.input.observe(ctx, s);
+        if self.input.preferences.enabled {
+            egui::TopBottomPanel::bottom("speech-input-caption").show(ctx, |ui| {
+                self.input.caption(ui, s);
+            });
         }
         if self.talk {
             let mut send = submitted;
@@ -644,7 +666,7 @@ pub fn transcript(ui: &mut egui::Ui, s: &Session) {
     }
     record_transcript(ui, s, s.flight_record());
 }
-fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_control::FlightRecord) {
+pub(crate) fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_control::FlightRecord) {
     let stations = s.comms_state().stations;
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)
@@ -683,6 +705,9 @@ fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_contro
                     );
                     if event.is_simulated_atc() {
                         ui.colored_label(theme::AMBER, "Simulated ATC");
+                    }
+                    if matches!(event.meaning, flightcraft_control::Meaning::Recognition { .. }) {
+                        ui.colored_label(theme::MUTED, "Recognized · ungraded");
                     }
                     ui.colored_label(color, &event.text);
                 });

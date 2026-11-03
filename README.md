@@ -26,6 +26,9 @@ to watch a scripted takeoff).
 - A cockpit view from the left seat, with glances left, right, and up.
 - Aircraft are files: the Corvid is composed from `aircraft/corvid/`, in a versioned format
   ([docs/aircraft-format.md](docs/aircraft-format.md)) checked field by field on load.
+- [Radio speech input](docs/radio.md#speech-in): PTT microphone capture, constrained phraseology,
+  caption review before grading, and a typed [AI ATC MCP workflow](skills/ai-atc/SKILL.md).
+  Desktop uses offline Candle Whisper with cached decoding, live-state prompts, and opt-in, pinned model downloads; the browser uses its speech API.
 - The trajectory is deterministic: a scripted flight gives the same hash every run.
 
 - Two aircraft, the Corvid trainer and the Larrow aerobatic taildragger, picked in the header.

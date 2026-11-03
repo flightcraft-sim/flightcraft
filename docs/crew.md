@@ -52,13 +52,13 @@ cockpit:
 
 1. **The intercom.** The main channel.
    - Push-to-talk (a key, a mouse button, or a yoke button through the hardware bindings) to speak.
-     Speech recognition comes from the platform: the browser's speech API, or the operating
-     system's. Typing works too, in a one-line field that appears only while push-to-talk is held
-     or after pressing the talk key.
+     Desktop speech recognition uses local Candle Whisper; the browser uses its speech API with
+     an explicit provider/network notice. Release PTT to review the recognized caption before
+     transmitting. **Type a call** remains available.
    - The crew answers in speech (platform text-to-speech, with voice choice) and in captions: a
      thin strip across the top of the view, like radio subtitles. Captions fade after a few
      seconds. Speech and captions can each be turned off.
-   - The intercom is not ATC. A future radio channel with simulated ATC stays separate, so "what
+   - The intercom is not ATC. The COM radio channel with simulated ATC stays separate, so "what
      the instructor says" and "what the controller says" never mix.
 2. **The kneeboard.** The memory of the conversation.
    - A clipboard on your knee in the cockpit view, or a slide-out panel in other views. It holds
@@ -173,7 +173,8 @@ bundled regions), and an agent skill so an MCP client knows how to be a good cre
 
 The [radio implementation](radio.md) supplies a shared caption strip, an intercom channel, typed
 PTT entry, and a kneeboard transcript. Its role and event models are ready for crew messages;
-virtual-pilot watching mode and handover now use those channels. Speech recognition and instructor lesson rules remain separate work.
+virtual-pilot watching mode and handover now use those channels. Speech capture, caption review, and constrained voice commands now use [speech input](radio.md#speech-in);
+desktop model verification and instructor lesson rules remain incomplete.
 
 [Emergency debriefs](emergencies.md) provide aircraft checklist timings, recognition delay, speed
 tolerance totals, radio checks, outcomes, and frozen glide footprints through `scenario.state`.

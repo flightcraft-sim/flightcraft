@@ -9,7 +9,8 @@ Radio failure shares the simulator failure state used by scenarios and emergency
 
 Use **Radios → Tower and approach training** to select a towered airport. The same panel shows
 current facility, information letter, pending readback, latest grade, and lost-communications
-indication. Use the existing configurable COM PTT action to enter a typed call. Every facility
+indication. With speech input enabled, hold the configurable COM PTT action to speak; typed entry remains
+available in Radios. See [speech input](radio.md#speech-in) for model verification status. Every facility
 and channel comes from the active region's NASR records. There are no built-in replacement
 frequencies. Missing data produces an explicit refusal or no reachable facility.
 
@@ -241,7 +242,7 @@ source of operational clearances, frequencies, routing, or obstacle clearance.
 There is no taxiway graph, surveyed hold-short or tower geometry, controller staffing/hours model,
 full airport surface simulation, certified separation/wake model, radar sensor/identification model,
 minimum-vectoring-altitude database, IFR route validation, clearance amendment workflow, AVEF/MEA
-lost-communications routing, or speech input. Pattern and runway occupancy use the existing light
+lost-communications routing, or certified speech recognition. The speech-input implementation and remaining model-verification work are documented in [radios](radio.md#speech-in). Pattern and runway occupancy use the existing light
 circuit traffic phases. Radio failure retains previously received clearance/contact evidence;
 it does not itself revoke a clearance. Squawk codes are deterministic local training assignments, not coordinated
 with a national code allocation system. CRAFT `as filed` and vector altitude assignments are training
@@ -257,3 +258,18 @@ See [training](training.md), [weather](weather.md), [procedures](procedures.md),
 
 [IFR training](ifr-training.md) adds validated final intercepts, published missed instructions,
 hold clearances with EFC, and instrument approach tower handoffs through the same readback queue.
+
+
+## Live MCP controller
+
+Set `atc.configure.external_controller:true` to let an MCP client supply typed instructions through
+`comms.atc.instruction:{"kind":"controller","instruction":{...}}`. The inner type is
+`AtcInstruction`. Built-in clearance issuance and handoffs pause; ATIS, readback correction, and
+compliance monitoring continue. Source `ai` remains visible as Simulated ATC, and heard calls use
+the existing facility voice and native radio DSP. A published station ID, role, and channel must
+match, runway assignments must belong to that airport, and a prior instruction must be read back
+first. Ground uses the runway/hold-short fallback with no named taxiways. Radar supports squawks,
+headings, altitudes, and published handoffs; live Bravo, approach, IFR, hold, and missed-approach instructions are refused
+until their authority validators are shared. Ownship terrain clearance is a minimum check, not
+a minimum vectoring altitude or route/separation guarantee. Restore `external_controller:false`
+to return to rules mode; omitting this field preserves the selected controller mode. See [AI ATC](../skills/ai-atc/SKILL.md).

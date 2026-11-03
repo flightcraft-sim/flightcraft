@@ -62,15 +62,28 @@ fn number(tokens: &[&str]) -> Option<(String, usize)> {
     let mut group = 0u32;
     let mut digits = String::new();
     let mut scaled = false;
+    let mut tens = false;
+    let mut cardinal = false;
     let mut consumed = 0;
     for t in tokens.iter().take(12) {
         if let Some(d) = digit(t) {
-            group = group.checked_mul(10)?.checked_add(d)?;
+            group = if tens {
+                group.checked_add(d)?
+            } else {
+                group.checked_mul(10)?.checked_add(d)?
+            };
+            tens = false;
             digits.push(char::from_digit(d, 10)?);
         } else if t.bytes().all(|b| b.is_ascii_digit()) && !t.is_empty() {
-            group = group
-                .checked_mul(10u32.checked_pow(t.len() as u32)?)?
-                .checked_add(t.parse::<u32>().ok()?)?;
+            let literal = t.parse::<u32>().ok()?;
+            group = if tens && t.len() == 1 {
+                group.checked_add(literal)?
+            } else {
+                group
+                    .checked_mul(10u32.checked_pow(t.len() as u32)?)?
+                    .checked_add(literal)?
+            };
+            tens = false;
             digits.push_str(t);
         } else if matches!(
             *t,
@@ -88,6 +101,10 @@ fn number(tokens: &[&str]) -> Option<(String, usize)> {
                 | "thirty"
                 | "forty"
                 | "fifty"
+                | "sixty"
+                | "seventy"
+                | "eighty"
+                | "ninety"
         ) {
             let n = match *t {
                 "ten" => 10,
@@ -103,17 +120,25 @@ fn number(tokens: &[&str]) -> Option<(String, usize)> {
                 "twenty" => 20,
                 "thirty" => 30,
                 "forty" => 40,
-                _ => 50,
+                "fifty" => 50,
+                "sixty" => 60,
+                "seventy" => 70,
+                "eighty" => 80,
+                _ => 90,
             };
             group = group.checked_add(n)?;
+            cardinal = true;
+            tens = n >= 20 && n % 10 == 0;
             digits.push_str(&n.to_string());
         } else if *t == "hundred" {
             group = group.checked_mul(100)?;
             scaled = true;
+            tens = false;
         } else if *t == "thousand" {
             value = value.checked_add(group.checked_mul(1000)?)?;
             group = 0;
             scaled = true;
+            tens = false;
         } else {
             break;
         }
@@ -123,7 +148,7 @@ fn number(tokens: &[&str]) -> Option<(String, usize)> {
         None
     } else {
         Some((
-            if scaled {
+            if scaled || cardinal {
                 value.checked_add(group)?.to_string()
             } else {
                 digits
@@ -136,6 +161,28 @@ fn after(tokens: &[&str], key: &str) -> Option<(String, usize, usize)> {
     let i = tokens.iter().position(|t| *t == key)? + 1;
     let (v, n) = number(tokens.get(i..)?)?;
     Some((v, n, i))
+}
+// ASR may print each spoken digit separately, in a group, or as words. Compare
+// exact digit sequences for identity only; never repair a wrong callsign digit.
+fn identity_digits(text: &str) -> String {
+    words(text)
+        .split_whitespace()
+        .map(|word| {
+            if let Some(value) = digit(word) {
+                value.to_string()
+            } else if word.bytes().all(|b| b.is_ascii_digit()) {
+                word.chars().map(|c| c.to_string()).collect::<Vec<_>>().join(" ")
+            } else {
+                match word {
+                    "juliett" => "juliet",
+                    "alfa" => "alpha",
+                    other => other,
+                }
+                .to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
     let mut radio_text = String::new();
@@ -160,11 +207,36 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
         .join(" ");
     let t: Vec<_> = normalized.split_whitespace().collect();
     let contains = |phrase: &str| format!(" {normalized} ").contains(&format!(" {phrase} "));
+    let identity_text = format!(" {} ", identity_digits(&normalized));
     let callsign_present = [
         words(&callsign.full),
         words(&callsign.current),
         words(&callsign.abbreviated),
         words(&callsign.registration),
+        words(&format!(
+            "{} {}",
+            callsign.spoken_type,
+            spoken_registration_groups(callsign.registration.trim_start_matches('N'))
+        )),
+        words(&format!(
+            "{} {}",
+            callsign.spoken_type,
+            spoken_registration_groups(
+                &callsign
+                    .registration
+                    .chars()
+                    .rev()
+                    .take(3)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .collect::<String>()
+            )
+        )),
+        words(&format!(
+            "November {}",
+            spoken_registration_groups(callsign.registration.trim_start_matches('N'))
+        )),
         words(&format!(
             "{} {}",
             callsign.spoken_type,
@@ -176,7 +248,7 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
         )),
     ]
     .iter()
-    .any(|c| !c.is_empty() && format!(" {normalized} ").contains(&format!(" {c} ")));
+    .any(|c| !c.is_empty() && identity_text.contains(&format!(" {} ", identity_digits(c))));
     let runway = after(&t, "runway")
         .and_then(|(v, n, i)| {
             let num = v.parse::<u8>().ok()?;

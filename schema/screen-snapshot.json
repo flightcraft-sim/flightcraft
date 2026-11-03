@@ -994,6 +994,11 @@
         "bravo_clearance": {
           "type": "boolean"
         },
+        "closed_traffic": {
+          "description": "Closed traffic has been accepted by a completed, heard pilot readback.",
+          "type": "boolean",
+          "default": false
+        },
         "compliance": {
           "type": "array",
           "items": {
@@ -1012,6 +1017,10 @@
         },
         "expected_next_call": {
           "type": "string"
+        },
+        "external_controller": {
+          "type": "boolean",
+          "default": false
         },
         "ifr_clearance": {
           "type": "boolean"
@@ -5008,6 +5017,23 @@
         {
           "type": "object",
           "properties": {
+            "instruction": {
+              "$ref": "#/$defs/AtcInstruction"
+            },
+            "kind": {
+              "type": "string",
+              "const": "controller"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "instruction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "airport": {
               "type": "string"
             },
@@ -6019,6 +6045,28 @@
           "required": [
             "type",
             "event"
+          ]
+        },
+        {
+          "description": "Local recognition evidence, shown before the student approves a transmission. Never graded.",
+          "type": "object",
+          "properties": {
+            "normalized": {
+              "type": "string"
+            },
+            "retry": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "recognition"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "normalized",
+            "retry"
           ]
         },
         {

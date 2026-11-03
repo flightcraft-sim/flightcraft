@@ -29,6 +29,7 @@ mod runtime;
 mod scenario;
 pub mod screens;
 pub mod script;
+pub mod speech_input;
 pub mod theme;
 mod weather;
 mod weather_live;
@@ -410,7 +411,12 @@ impl FlightCraftApp {
             planning_map: map::PlanningMap::with_root(chart_root.clone()),
             navigation: navigation::SearchPanel::default(),
             glance_origin: None,
-            radio: radio::RadioUi::default(),
+            radio: radio::RadioUi::with_speech_preferences(
+                storage
+                    .and_then(|s| s.get_string("flightcraft.speech.v1"))
+                    .and_then(|json| serde_json::from_str(&json).ok())
+                    .unwrap_or_default(),
+            ),
             live_weather: weather_live::LiveUi::default(),
             scenarios: scenario::ScenarioUi::default(),
             radio_ptt_held: [false; 2],
@@ -520,6 +526,7 @@ impl FlightCraftApp {
             ui.label(RichText::new("SOUND").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.audio.preferences.muted,"Mute sound");
             ui.add(egui::Slider::new(&mut self.audio.preferences.volume,0.0..=1.0).text("Master volume"));
+            self.radio.input.preferences_ui(ui);
             if let Some(error)=&self.audio.error {ui.colored_label(theme::AMBER,error);}
             ui.separator();
             ui.label(RichText::new("KEYBOARD").color(theme::ACCENT).size(11.0));
@@ -802,6 +809,7 @@ impl FlightCraftApp {
                     .any(|event| matches!(event, egui::Event::Key { pressed: true, .. }))
         }) {
             self.audio.user_gesture();
+            self.radio.input.user_gesture();
         }
         self.paused = self.session.paused();
         if let Some(camera) = self.session.camera() {
@@ -829,7 +837,10 @@ impl FlightCraftApp {
         if frame.pressed(Action::CrewHandover) {
             crew::exchange(&mut self.session, &mut self.error);
         }
-        let held = [frame.held(Action::ComPtt), frame.held(Action::IntercomPtt)];
+        let held = [
+            frame.held(Action::ComPtt) || self.radio.touch_ptt[0],
+            frame.held(Action::IntercomPtt) || self.radio.touch_ptt[1],
+        ];
         if held != self.radio_ptt_held {
             let setting = flightcraft_control::CommsAudioPanel {
                 ptt: (held[0] != self.radio_ptt_held[0]).then_some(held[0]),
@@ -1254,6 +1265,9 @@ impl eframe::App for FlightCraftApp {
         }
         if let Ok(json) = serde_json::to_string(&self.screens.main.scenery_preferences) {
             storage.set_string("flightcraft.scenery.v1", json);
+        }
+        if let Ok(json) = serde_json::to_string(&self.radio.input.preferences) {
+            storage.set_string("flightcraft.speech.v1", json);
         }
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
         if let Ok(json) = serde_json::to_string(&self.instrument_panel.options) {

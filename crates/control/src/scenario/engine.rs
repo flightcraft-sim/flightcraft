@@ -51,6 +51,7 @@ impl Session {
                 e.id > rt.event_cursor
                     && e.time_s >= rt.previous_s
                     && e.speaker == Speaker::Pilot
+                    && !matches!(e.meaning, Meaning::Recognition { .. })
                     && e.channel == Channel::Com
                     && e.time_s + e.duration_s <= r.time_s
                     && !matches!(e.reception, Reception::Blocked | Reception::NotReceived)
@@ -379,11 +380,15 @@ impl Session {
         if let Instruction::AirspaceClearance { id } = &instruction {
             self.scenario.granted_clearances.insert(id.clone());
         }
+        if let Instruction::Controller { instruction } = instruction {
+            return self.controller_transmission(&station, instruction, source);
+        }
         let text = crate::comms::phraseology::scripted_transmission(
             &station,
             &self.pilot_callsign(),
             &instruction,
             self.pilot_weather(),
+            self,
         );
         let id = self.start_com(
             khz,

@@ -36,6 +36,11 @@ pub enum Meaning {
     Instrument {
         event: crate::InstrumentEvent,
     },
+    /// Local recognition evidence, shown before the student approves a transmission. Never graded.
+    Recognition {
+        normalized: String,
+        retry: bool,
+    },
     Crew {
         critical: bool,
     },

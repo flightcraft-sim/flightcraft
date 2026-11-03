@@ -361,6 +361,9 @@ pub(super) fn validate_transmission(
         errors.push("facility, role, and frequency must match an FAA station".into());
     }
     match i {
+        Instruction::Controller { instruction } => {
+            errors.extend(s.validate_controller(facility, khz, role, instruction));
+        }
         Instruction::Land { airport, runway: end } | Instruction::GoAround { airport, runway: end } => {
             if runway(s, airport, end).is_none()
                 || role != FacilityKind::Tower
@@ -417,12 +420,18 @@ pub(super) fn validate_transmission(
             if !text_ok(text) {
                 errors.push("invalid transmission text".into());
             }
-            if matches!(i, Instruction::Advisory { .. }) {
+            if matches!(
+                i,
+                Instruction::Advisory { .. } | Instruction::RequestReadback { .. }
+            ) {
                 let words = text.to_lowercase();
                 if words.split(|c: char| !c.is_alphanumeric()).any(|w| {
                     matches!(
                         w,
                         "cleared"
+                            | "contact"
+                            | "frequency"
+                            | "squawk"
                             | "descend"
                             | "climb"
                             | "maintain"
@@ -435,7 +444,7 @@ pub(super) fn validate_transmission(
                     )
                 }) {
                     errors
-                        .push("advisory text cannot carry control instructions; use a typed meaning".into());
+                        .push("free-form text cannot carry control instructions; use a typed meaning".into());
                 }
             }
         }

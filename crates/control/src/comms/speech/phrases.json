@@ -1,0 +1,511 @@
+[
+  {
+    "text": "Sling three seven one foxtrot charlie, contact ground one two one point niner five",
+    "valid": true,
+    "slots": {
+      "channel_khz": 121950
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, contact tower one two three point niner five",
+    "valid": true,
+    "slots": {
+      "channel_khz": 123950
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, contact approach one two four decimal four five",
+    "valid": true,
+    "slots": {
+      "channel_khz": 124450
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, contact ground 121.9",
+    "valid": true,
+    "slots": {
+      "channel_khz": 121900
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, contact tower 118200",
+    "valid": true,
+    "slots": {
+      "channel_khz": 118200
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, contact approach one one niner point two",
+    "valid": true,
+    "slots": {
+      "channel_khz": 119200
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, maintain four thousand five hundred",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 4500
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, climb and maintain two thousand two hundred",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 2200
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, descending three thousand",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 3000
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, leaving one thousand five hundred",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 1500
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, maintain 4500",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 4500
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, maintain five thousand",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 5000
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, heading two seven zero",
+    "valid": true,
+    "slots": {
+      "heading_deg": 270
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, fly heading zero six zero",
+    "valid": true,
+    "slots": {
+      "heading_deg": 60
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, heading tree six zero",
+    "valid": true,
+    "slots": {
+      "heading_deg": 360
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, heading zero niner zero",
+    "valid": true,
+    "slots": {
+      "heading_deg": 90
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, squawk zero four five six",
+    "valid": true,
+    "slots": {
+      "squawk": "0456"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, squawking one two zero zero",
+    "valid": true,
+    "slots": {
+      "squawk": "1200"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, squawk seven seven zero zero",
+    "valid": true,
+    "slots": {
+      "squawk": "7700"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, squawk four zero zero tree",
+    "valid": true,
+    "slots": {
+      "squawk": "4003"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, squawk 0456",
+    "valid": true,
+    "slots": {
+      "squawk": "0456"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, hold short of runway zero six",
+    "valid": true,
+    "slots": {
+      "runway": "06"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, runway zero four left cleared to land",
+    "valid": true,
+    "slots": {
+      "runway": "04L"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, runway two four cleared for takeoff",
+    "valid": true,
+    "slots": {
+      "runway": "24"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, runway 04R cleared to land",
+    "valid": true,
+    "slots": {
+      "runway": "04R"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, runway three six center cleared to land",
+    "valid": true,
+    "slots": {
+      "runway": "36C"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, Allentown tower with information alpha request closed traffic",
+    "valid": true,
+    "slots": {
+      "information": "alpha"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, Allentown ground with information B request taxi",
+    "valid": true,
+    "slots": {
+      "information": "bravo"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, Allentown approach with information niner request flight following",
+    "valid": false,
+    "slots": {
+      "information": null
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie, Allentown tower with information zulu inbound",
+    "valid": true,
+    "slots": {
+      "information": "zulu"
+    }
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, request taxi",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, ready for departure runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, request closed traffic",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, inbound left downwind runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, left base runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, final runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, clear of the runway",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, request flight following",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, request bravo transition",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, request ILS runway zero six approach",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, airport in sight request visual approach runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, going around runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, extending downwind",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower, Sling three seven one foxtrot charlie, taxi to parking",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "Allentown tower Sling one foxtrot charlie ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower N371FC ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower November three seven one foxtrot charlie ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower Sling 371FC ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentowm tower Sling three seven one foxtrot charlie ready runway zero six",
+    "valid": true,
+    "slots": {}
+  },
+  {
+    "text": "",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "thank you for watching",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "subscribe to my channel",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Tower runway zero six",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie runway zero zero",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie runway thirty seven",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie heading nine nine nine",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie squawk eight eight eight eight",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie squawk one two",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie maintain seventy thousand",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie contact tower one two three point nine nine nine",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie contact tower one two three point",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie with information banana request taxi",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Moonbase tower Sling three seven one foxtrot charlie ready runway zero six",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie pineapple runway zero six",
+    "valid": false,
+    "slots": {}
+  },
+  {
+    "text": "your controls",
+    "valid": true,
+    "intercom": true
+  },
+  {
+    "text": "my controls",
+    "valid": true,
+    "intercom": true
+  },
+  {
+    "text": "I have the controls",
+    "valid": true,
+    "intercom": true
+  },
+  {
+    "text": "go around",
+    "valid": true,
+    "intercom": true
+  },
+  {
+    "text": "go round",
+    "valid": false,
+    "intercom": true
+  },
+  {
+    "text": "you have control",
+    "valid": false,
+    "intercom": true
+  },
+  {
+    "text": "your controls please",
+    "valid": false,
+    "intercom": true
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie runway twenty four cleared to land",
+    "valid": true,
+    "slots": {
+      "runway": "24"
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie heading two hundred seventy five",
+    "valid": true,
+    "slots": {
+      "heading_deg": 275
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie maintain four thousand five hundred fifty",
+    "valid": true,
+    "slots": {
+      "altitude_ft": 4550
+    }
+  },
+  {
+    "text": "Sling three seven one foxtrot charlie heading seventy nine",
+    "valid": true,
+    "slots": {
+      "heading_deg": 79
+    }
+  },
+  {
+    "text": "Allentown tower Sling 371 Foxtrot Charlie ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower Sling 1 Foxtrot Charlie ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower November 371 Foxtrot Charlie ready runway zero six",
+    "valid": true,
+    "slots": {
+      "callsign_present": true
+    }
+  },
+  {
+    "text": "Allentown tower, Sling 3, 7, 1 Foxtrot Charlie, left cross wind runway 0-6.",
+    "valid": true,
+    "slots": {
+      "callsign_present": true,
+      "runway": "06"
+    }
+  },
+  {
+    "text": "Allen Town Tower, Sling 371 Foxtrot Charlie, left down wind runway 06.",
+    "valid": true,
+    "slots": {
+      "callsign_present": true,
+      "addressed_facility": "allentown",
+      "runway": "06"
+    }
+  },
+  {
+    "text": "Allentown tower, Sling 3, 7, 9 Foxtrot Charlie, left crosswind runway 06.",
+    "valid": false
+  },
+  {
+    "text": "Runway nearly six, cleared to land, Sling three seven one foxtrot charlie.",
+    "valid": false
+  },
+  {
+    "text": "Runway 06, cleared to land, Sling 3 7 won Foxtrot Charlie.",
+    "valid": false
+  },
+  {
+    "text": "Runway 06, cleared for take off, Sling 3 7 1 Foxtrot Charlie.",
+    "valid": true,
+    "slots": {
+      "callsign_present": true,
+      "runway": "06"
+    }
+  }
+]

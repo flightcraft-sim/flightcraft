@@ -2,6 +2,7 @@
 use super::*;
 mod ifr;
 pub use ifr::*;
+mod external;
 mod monitor;
 mod parser;
 mod phrase;
@@ -30,6 +31,9 @@ pub struct ConfigureAtc {
     pub airport: String,
     #[serde(default)]
     pub destination: Option<String>,
+    /// An MCP controller supplies clearances; readback and compliance monitors still run.
+    #[serde(default)]
+    pub external_controller: Option<bool>,
 }
 impl Command for ConfigureAtc {
     const NAME: &'static str = "atc.configure";
@@ -58,6 +62,9 @@ impl Command for ConfigureAtc {
         }
         s.comms.atc.airport = Some(id);
         s.comms.atc.destination = self.destination;
+        if let Some(external) = self.external_controller {
+            s.comms.atc.external_controller = external;
+        }
         s.refresh_atis();
         if s.sim.failures().radio_failure && s.comms.atc.light_gun.is_none() {
             s.set_light_gun(&self.airport, LightGunSignal::FlashingGreen)?;
@@ -91,6 +98,8 @@ impl Session {
         }
         let a = &self.comms.atc;
         AtcState {
+            external_controller: a.external_controller,
+            closed_traffic: a.closed_traffic,
             airport: a.airport.clone(),
             current_facility: a.current.clone(),
             expected_next_call: if self.sim.failures().radio_failure {

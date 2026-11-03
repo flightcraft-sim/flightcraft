@@ -13,8 +13,9 @@ FlightCraft is built to do what flight students actually need between lessons. I
 3. **Instrument flying:** view-limiting device time ("foggles") and real instrument meteorological
    conditions (IMC) with clouds, fog, ceilings, and breaking out at minimums.
 
-Everything here works offline and without an AI service. An AI, through the MCP server or the
-in-app link in `docs/crew.md`, makes it conversational and lets it invent scenarios, but the rules
+The deterministic training rules and desktop recognition work offline and without an AI service
+after the chosen Whisper model is installed. Browser recognition may require its provider's network
+service. An AI, through the MCP server or the in-app link in `docs/crew.md`, makes it conversational and lets it invent scenarios, but the rules
 decide clearances and grades.
 
 ## 1. The audio panel and the radios
@@ -39,10 +40,9 @@ decide clearances and grades.
     the instructor.
 - **Speech in:**
   - desktop uses local Whisper (offline and private);
-  - the browser uses its speech API, with a notice when the browser sends audio to a server, or a
-    small local Whisper model;
-  - recognition is limited to radio phraseology (callsigns, facilities, numbers, and requests),
-    which is far more accurate than open dictation;
+  - the browser uses its speech API, with a notice that the browser may send audio to a server;
+  - a constrained post-pass validates radio phraseology (callsigns, facilities, numbers, and
+    requests); uncertain recognition asks the student to say again;
   - typing is always available instead of speaking.
 - **Speech out:** the platform's built-in voices by default, plus an optional local neural voice on
   desktop.
@@ -195,8 +195,11 @@ Each command has input and output schemas from the start.
    emergency checklists as aircraft data, and emergency grading with the glide-footprint debrief.
 4. **Towered airports:** ATIS, ground, tower, approach and departure, readback checking, Class B
    clearances, and lost-communication procedures.
-5. **Speech in, AI as ATC, and IFR tasks:** Whisper with a radio-phraseology grammar, `comms.atc`
-   from an AI, and graded instrument approaches, holds, and partial panel ([implemented IFR scope](ifr-training.md)).
+5. **Speech in, AI as ATC, and IFR tasks:** PTT capture, constrained normalization,
+   ungraded recognition review, local Candle Whisper with pinned model delivery, and typed MCP
+   controller instructions are implemented. See [speech verification and measurements](radio.md#speech-in).
+   Graded instrument approaches, holds, and partial-panel tasks are covered by the
+   [implemented IFR scope](ifr-training.md).
 
 Phase 2 implementation and current coverage are described in [radios](radio.md): electrical audio
 panel, typed calls and records, reception, deterministic CTAF traffic, captions, transcript, and

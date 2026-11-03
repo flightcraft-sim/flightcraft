@@ -108,6 +108,9 @@ impl Session {
                 self.comms.atc.reported = Some((airport, info.clone()));
             }
         }
+        if self.comms.atc.external_controller {
+            return;
+        }
         let request = m.request;
         let airport = self
             .comms
@@ -855,7 +858,9 @@ pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
         } => {
             m.runway.as_ref() == Some(runway)
                 && t.contains(entry_phrase(*entry))
-                && (*number == 1 || t.contains("number two") || t.contains("number 2"))
+                && (*number == 1
+                    || t.contains(&format!("number {}", phraseology::digits(u32::from(*number), 1)))
+                    || t.contains(&format!("number {number}")))
         }
         AtcInstruction::ExtendDownwind => t.contains("extend downwind") || t.contains("extending downwind"),
         AtcInstruction::GoAround { runway } => {
