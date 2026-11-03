@@ -813,6 +813,9 @@ impl Command for SaveLayout {
 
 /// Read-only queries admitted by the panel transport. No prefix matching or mutating queries.
 pub fn read_only(command: &str) -> bool {
+    if matches!(command, "lesson.list" | "lesson.debrief") {
+        return true;
+    }
     matches!(
         command,
         "crew.state"

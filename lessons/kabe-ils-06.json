@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "id": "kabe-ils-06",
+  "title": "KABE ILS runway 06",
+  "briefing": "Continue the filed IFR flight to KABE, assigned 4,300 feet MSL and squawk 4201, handed off to Allentown Approach southwest of the airport. Fly vectors to ILS runway 06. Brief the navigation source, minimums (594 feet MSL), and published missed approach. Maintain assigned headings and altitudes until established. At minimums, look up on the instructor cue and continue only with visual reference and landing clearance; otherwise fly the published missed approach. This is simulated practice.",
+  "setup": {
+    "region": "eastern-pa",
+    "aircraft": "corvid-glass",
+    "airport": "KABE",
+    "procedure": "I06",
+    "mode": "ils",
+    "minimum_ft": 594,
+    "start_distance_nm": 14,
+    "airspeed_kt": 80,
+    "hood": true,
+    "look_up": true,
+    "conditions": {
+      "layers": [
+        {
+          "coverage": "OVC",
+          "base_ft_msl": 594,
+          "top_ft_msl": 6000
+        }
+      ],
+      "visibility_sm": 2,
+      "obscuration": "mist",
+      "precipitation": "none",
+      "time_of_day": "day"
+    },
+    "failures": [],
+    "wind": {
+      "wind_from_deg": 0.0,
+      "wind_speed_mps": 0.0,
+      "shear": false,
+      "turbulence": "off",
+      "seed": 0
+    },
+    "cross_track_nm": 0.8,
+    "start_altitude_ft": 4300
+  },
+  "scenario": {
+    "version": 1,
+    "id": "kabe-ils-06",
+    "title": "KABE ILS runway 06",
+    "seed": 3407,
+    "route": [
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      },
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      }
+    ],
+    "procedures": [
+      "KABE:I06"
+    ],
+    "steps": [
+      {
+        "id": "briefed",
+        "when": [],
+        "actions": [
+          {
+            "kind": "emit_event",
+            "name": "ifr-lesson-started"
+          }
+        ]
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "title": "Precision",
+      "kind": "precision",
+      "acs": "IR.VI.B",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    },
+    {
+      "title": "Look Up",
+      "kind": "look_up",
+      "acs": "IR.VI.E",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    }
+  ]
+}

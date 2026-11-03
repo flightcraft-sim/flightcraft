@@ -60,6 +60,10 @@ impl Ahrs {
             initial_seed: seed,
         }
     }
+    /// Follow an explicit instructor pose change without repairing or aligning a source.
+    pub(crate) fn reposition(&mut self, state: State) {
+        self.q = state.attitude;
+    }
     /// Seed a ready-for-departure source without advancing the simulation clock.
     pub(crate) fn align(&mut self, state: State) {
         self.q = state.attitude;

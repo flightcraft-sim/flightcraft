@@ -22,6 +22,8 @@ pub struct Snapshot {
     pub pins: crate::PinsFile,
     pub date: flightcraft_world::geomag::SimulationDate,
     pub scenario: ScenarioState,
+    #[serde(default)]
+    pub lesson: crate::LessonDebrief,
     pub comms: CommsSnapshot,
     pub atc: crate::comms::AtcState,
     pub record: crate::comms::FlightRecord,
@@ -33,6 +35,7 @@ impl Session {
     pub fn screen_snapshot(&self) -> Snapshot {
         let mut record = self.flight_record().clone();
         record.inputs.clear();
+        record.lesson = None;
         if record.events.len() > 200 {
             record.events.drain(..record.events.len() - 200);
         }
@@ -55,6 +58,7 @@ impl Session {
             pins: self.navigation.pins.clone(),
             date: self.navigation.date,
             scenario: self.scenario.state.clone(),
+            lesson: self.lesson.debrief.clone(),
             comms: self.comms_state(),
             atc: self.atc_state(),
             record,
@@ -67,6 +71,7 @@ impl Session {
             return Err("unsupported or invalid screen snapshot".into());
         }
         snapshot.screens.validate()?;
+        snapshot.lesson.validate().map_err(|e| e.to_string())?;
         let identity = snapshot
             .configuration
             .as_ref()
@@ -120,6 +125,7 @@ impl Session {
         self.navigation.pins = snapshot.pins;
         self.navigation.date = snapshot.date;
         self.scenario.state = snapshot.scenario;
+        self.lesson.debrief = snapshot.lesson;
         self.comms.record = snapshot.record;
         self.screens = snapshot.screens;
         self.crew.state = snapshot.crew;

@@ -357,3 +357,92 @@ pub fn pilot_inbound(
         pilot_request(station, pilot, &body, information)
     }
 }
+
+/// Published instrument clearance wording shared by instructor commands and controller rules.
+pub fn approach_clearance(family: &str, runway_id: &str) -> String {
+    format!("Cleared {family} runway {} approach.", runway(runway_id))
+}
+pub fn published_missed() -> String {
+    "Execute the published missed approach.".into()
+}
+pub fn hold_clearance(
+    fix: &str,
+    inbound_deg: u16,
+    right_turns: bool,
+    leg_time_s: Option<u16>,
+    leg_distance_nm: Option<f64>,
+    altitude_ft: u32,
+    efc_utc: u16,
+) -> String {
+    let sector = ((f64::from(inbound_deg) + 180.).rem_euclid(360.) / 45. + 0.5).floor() as usize % 8;
+    let direction = [
+        "north",
+        "northeast",
+        "east",
+        "southeast",
+        "south",
+        "southwest",
+        "west",
+        "northwest",
+    ]
+    .get(sector)
+    .copied()
+    .unwrap_or("north");
+    let legs = hold_legs(leg_time_s, leg_distance_nm);
+    format!(
+        "Hold {direction} of {fix} on the {} inbound course, {} turns, {legs}. Maintain {}. Expect further clearance at {}.",
+        heading(inbound_deg),
+        if right_turns { "right" } else { "left" },
+        altitude(altitude_ft),
+        digits(u32::from(efc_utc), 4)
+    )
+}
+
+pub fn hold_legs(leg_time_s: Option<u16>, leg_distance_nm: Option<f64>) -> String {
+    leg_distance_nm.map_or_else(
+        || {
+            format!(
+                "{} minute legs",
+                digits(u32::from(leg_time_s.unwrap_or(60)) / 60, 1)
+            )
+        },
+        |nm| format!("{} mile legs", digits(nm.round() as u32, 1)),
+    )
+}
+
+/// AIM 5-4-3: aircraft identity, present altitude, and the received ATIS on approach contact.
+pub fn pilot_ifr_checkin(
+    station: &ComStation,
+    pilot: &super::PilotCallsign,
+    altitude_ft: u32,
+    information: Option<&str>,
+) -> String {
+    format!(
+        "{}, {}, {}{}.",
+        facility(station),
+        pilot.full,
+        altitude(altitude_ft),
+        information.map_or(String::new(), |letter| format!(", information {letter}"))
+    )
+}
+/// JO 7110.65 4-8-1: final heading, altitude restriction, then the approach clearance.
+pub fn approach_intercept(
+    family: &str,
+    runway_id: &str,
+    heading_deg: u16,
+    altitude_ft: u32,
+    turn_left: bool,
+) -> String {
+    let course = if family == "ILS" || family == "LOC" {
+        "the localizer"
+    } else {
+        "the final approach course"
+    };
+    format!(
+        "Turn {} heading {}, maintain {} until established on {course}, {}",
+        if turn_left { "left" } else { "right" },
+        heading(heading_deg),
+        altitude(altitude_ft),
+        approach_clearance(family, runway_id).replacen("Cleared", "cleared", 1)
+    )
+}

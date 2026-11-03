@@ -23,6 +23,24 @@ impl Session {
     pub(super) fn instruction_phrase(&self, i: &AtcInstruction) -> String {
         let altitude = |ft| p::altitude_assignment(ft, -self.sim.state().position_m[2] / 0.3048);
         match i {
+            AtcInstruction::Hold {
+                fix,
+                inbound_deg,
+                right_turns,
+                leg_time_s,
+                leg_distance_nm,
+                altitude_ft,
+                efc_utc,
+            } => p::hold_clearance(
+                fix,
+                *inbound_deg,
+                *right_turns,
+                *leg_time_s,
+                *leg_distance_nm,
+                *altitude_ft,
+                *efc_utc,
+            ),
+            AtcInstruction::MissedApproach { .. } => p::published_missed(),
             AtcInstruction::Parking => "Taxi to parking. Use pilot discretion on the apron.".into(),
             AtcInstruction::Taxi {
                 runway, hold_short, ..
@@ -129,16 +147,21 @@ impl Session {
                 name,
                 runway,
                 procedure,
+                intercept,
                 ..
             } => {
-                if procedure == "visual" {
+                if let Some(v) = intercept {
+                    p::approach_intercept(
+                        name.split_whitespace().next().unwrap_or("published"),
+                        runway,
+                        v.heading_deg,
+                        v.altitude_ft,
+                        v.turn_left,
+                    )
+                } else if procedure == "visual" {
                     format!("Cleared visual approach runway {}.", p::runway(runway))
                 } else {
-                    format!(
-                        "Cleared {} runway {} approach.",
-                        name.split_whitespace().next().unwrap_or("published"),
-                        p::runway(runway)
-                    )
+                    p::approach_clearance(name.split_whitespace().next().unwrap_or("published"), runway)
                 }
             }
             AtcInstruction::IfrClearance {

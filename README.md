@@ -35,7 +35,9 @@ to watch a scripted takeoff).
   [New York area](https://flightcraft-sim.github.io/flightcraft/?region=terrain/new-york/region.json) and
   [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json).
 
-Not yet: clouds. The plan is in
+Instrument practice includes weather, IMC, the hood, and [IFR lessons with ACS grading](docs/ifr-training.md).
+
+The plan is in
 [ROADMAP.md](ROADMAP.md) and the design in [docs/SPEC.md](docs/SPEC.md).
 
 ## Building

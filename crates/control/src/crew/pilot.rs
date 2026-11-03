@@ -39,7 +39,10 @@ impl Crew {
                 | PilotPhase::Rollout
                 | PilotPhase::GoAround
         );
-        if self.phase_since - self.last_speech >= 12. || critical {
+        if (self.phase_since - self.last_speech >= 12. || critical)
+            && !(phase == PilotPhase::Final
+                && matches!(self.state.intent, Some(PilotIntent::Approach { .. })))
+        {
             let text = match phase {
                 PilotPhase::Takeoff => "Taking off.".to_owned(),
                 PilotPhase::Flare => "Eyes down the runway.".to_owned(),
@@ -254,6 +257,8 @@ impl Crew {
             phase = self.state.phase;
         }
         if matches!(phase, PilotPhase::Climb | PilotPhase::GoAround)
+            && !(matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
+                && s.sim.procedure_receiver().missed_approach)
             && dep_height
                 > plan
                     .departure
@@ -309,6 +314,7 @@ impl Crew {
         }
         if matches!(phase, PilotPhase::Final | PilotPhase::Flare)
             && along > -1200.
+            && !matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
             && !self.landing_authorized(s)
         {
             self.change(
@@ -425,7 +431,11 @@ impl Crew {
                 }
                 desired_speed = approach;
                 // A missed stabilisation gate calls a real go-around, never a position reset.
-                if phase == PilotPhase::Final && along > -900. && height > 80. {
+                if phase == PilotPhase::Final
+                    && along > -900.
+                    && height > 80.
+                    && !matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
+                {
                     self.change(
                         s,
                         PilotPhase::GoAround,
@@ -562,6 +572,12 @@ impl Crew {
             }
             _ => {}
         }
+        let instrument = self.instrument_guidance(s, phase);
+        if let Some((track, altitude, speed)) = instrument {
+            desired_heading = track;
+            desired_altitude = altitude;
+            desired_speed = speed;
+        }
         let (assigned_heading, assigned_altitude) = self.radio_guidance(s);
         if let Some(heading) = assigned_heading {
             desired_heading = heading;
@@ -578,15 +594,19 @@ impl Crew {
         let [wn, we, _] = r.wind_ned_mps;
         let wind_cross = -wn * sin + we * cos;
         let crab = libm::asin((-wind_cross / desired_speed.max(15.)).clamp(-0.5, 0.5));
-        if !r.on_ground && phase != PilotPhase::Hold && self.radio.heading.is_none() {
+        if !r.on_ground
+            && (phase != PilotPhase::Hold || matches!(self.state.intent, Some(PilotIntent::HoldAtFix { .. })))
+            && self.radio.heading.is_none()
+        {
             desired_heading += crab;
         }
         let path_descent = if phase == PilotPhase::Final {
-            0.055 * r.ground_speed_mps
+            self.instrument_angle(s).unwrap_or(0.055) * r.ground_speed_mps
         } else {
             0.0
         };
-        let desired_climb = ((desired_altitude - r.altitude_msl_m) * 0.10 - path_descent).clamp(-3., 3.5);
+        let desired_climb = ((desired_altitude - r.altitude_msl_m) * 0.10 - path_descent)
+            .clamp(if instrument.is_some() { -4.5 } else { -3. }, 3.5);
         let desired_climb = if phase == PilotPhase::Flare {
             let [n, e, _] = position;
             let [gn, ge, gd] = s.sim.world().ground(n, e).normal_ned;
@@ -634,10 +654,14 @@ impl Crew {
             self.throttle_trim =
                 (self.throttle_trim + (desired_speed - r.true_airspeed_mps) * 0.02 * dt).clamp(-0.6, 0.4);
         }
+        self.instrument_coupling(s, phase);
         let mut elevator = self.pitch_trim + 2.2 * pitch_error - 0.8 * q;
         let mut throttle =
             (0.6 + self.throttle_trim + 0.08 * (desired_speed - r.true_airspeed_mps)).clamp(0., 1.);
-        if matches!(phase, PilotPhase::Takeoff | PilotPhase::GoAround) {
+        if phase == PilotPhase::Takeoff
+            || phase == PilotPhase::GoAround
+                && !(instrument.is_some() && s.sim.procedure_receiver().missed_approach)
+        {
             throttle = 1.;
         }
         if phase == PilotPhase::Flare && r.height_agl_m < 4. {

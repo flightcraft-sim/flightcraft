@@ -1,5 +1,7 @@
 //! Deterministic tower and radar rules, driven only by completed, received pilot calls and flight time.
 use super::*;
+mod ifr;
+pub use ifr::*;
 mod monitor;
 mod parser;
 mod phrase;
@@ -325,6 +327,7 @@ impl Session {
             self.comms.atc.next_check = now + 1.;
             self.refresh_atis();
             self.monitor_atc();
+            self.complete_final_intercept();
             self.flush_atc_feedback();
         }
         if self.sim.failures().radio_failure {

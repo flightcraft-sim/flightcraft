@@ -199,3 +199,9 @@ geographic coordinate is rotated into the magnetic frame.
 [Approach control](atc.md) can issue a typed clearance for the matching approach already loaded
 in this GPS. It validates the airport, procedure identity, approach family, and runway; activation
 and flight guidance continue through the existing avionics commands.
+
+[IFR lessons](ifr-training.md) select the approach service explicitly. `avionics.set` with
+`{"setting":{"kind":"approach_service","lnav_only":true}}` retains LNAV lateral guidance
+and suppresses vertical guidance and LPV upgrading for that loaded approach. The receiver anchors
+published glidepaths to the final runway endpoint, including approaches with an intermediate
+vertical-angle fix.

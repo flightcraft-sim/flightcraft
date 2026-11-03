@@ -1,0 +1,1453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lesson",
+  "type": "object",
+  "properties": {
+    "briefing": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "scenario": {
+      "$ref": "#/$defs/Scenario"
+    },
+    "setup": {
+      "$ref": "#/$defs/LessonSetup"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InstrumentTask"
+      }
+    },
+    "title": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "title",
+    "briefing",
+    "setup",
+    "scenario",
+    "tasks"
+  ],
+  "$defs": {
+    "AcsTolerances": {
+      "description": "FAA-S-ACS-8 task tolerances. Timing/leg margins are instructor criteria, not ACS quotations.",
+      "type": "object",
+      "properties": {
+        "airspeed_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "altitude_ft": {
+          "type": "number",
+          "format": "double"
+        },
+        "cdi_scale": {
+          "type": "number",
+          "format": "double"
+        },
+        "heading_deg": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "altitude_ft",
+        "heading_deg",
+        "airspeed_kt",
+        "cdi_scale"
+      ]
+    },
+    "CloudLayer": {
+      "type": "object",
+      "properties": {
+        "base_ft_msl": {
+          "type": "number",
+          "format": "double",
+          "maximum": 60000,
+          "minimum": -1500
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "top_ft_msl": {
+          "type": "number",
+          "format": "double",
+          "maximum": 60000,
+          "minimum": -1500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "base_ft_msl",
+        "top_ft_msl",
+        "coverage"
+      ]
+    },
+    "Conditions": {
+      "type": "object",
+      "properties": {
+        "dewpoint_c": {
+          "type": "number",
+          "format": "double",
+          "default": 5.0
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CloudLayer"
+          },
+          "maxItems": 3
+        },
+        "obscuration": {
+          "$ref": "#/$defs/Obscuration"
+        },
+        "precipitation": {
+          "$ref": "#/$defs/Precipitation"
+        },
+        "sea_level_pressure_pa": {
+          "type": "number",
+          "format": "double",
+          "default": 101325.0
+        },
+        "temperature_c": {
+          "description": "Sea-level reference observations; station temperature uses a standard lapse rate.",
+          "type": "number",
+          "format": "double",
+          "default": 15.0
+        },
+        "time_of_day": {
+          "$ref": "#/$defs/TimeOfDay"
+        },
+        "visibility_sm": {
+          "type": "number",
+          "format": "double",
+          "maximum": 100,
+          "minimum": 0.125
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "layers",
+        "visibility_sm",
+        "obscuration",
+        "precipitation",
+        "time_of_day"
+      ]
+    },
+    "ControlSurface": {
+      "type": "string",
+      "enum": [
+        "elevator",
+        "aileron",
+        "rudder",
+        "flaps"
+      ]
+    },
+    "Coverage": {
+      "type": "string",
+      "enum": [
+        "FEW",
+        "SCT",
+        "BKN",
+        "OVC"
+      ]
+    },
+    "FacilityKind": {
+      "type": "string",
+      "enum": [
+        "ctaf",
+        "unicom",
+        "awos",
+        "asos",
+        "atis",
+        "tower",
+        "ground",
+        "approach",
+        "departure",
+        "clearance"
+      ]
+    },
+    "Failure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "engine_fire"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "electrical_fire"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "cabin_smoke"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "door_open"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "carb_icing"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "airframe_icing"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "flap_asymmetry"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "trim_runaway"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "trim_stuck"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "radio_failure"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "engine"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "vacuum_pump"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "alternator"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pitot_blocked"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "static_blocked"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fraction": {
+              "type": "number",
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "partial_power"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "fraction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "jam"
+            },
+            "position": {
+              "description": "Fixed normalised deflection; flaps require 0..=1.",
+              "type": "number",
+              "format": "double",
+              "maximum": 1,
+              "minimum": -1
+            },
+            "surface": {
+              "$ref": "#/$defs/ControlSurface"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "surface",
+            "position"
+          ]
+        }
+      ]
+    },
+    "FailureTarget": {
+      "type": "string",
+      "enum": [
+        "engine_fire",
+        "electrical_fire",
+        "cabin_smoke",
+        "door_open",
+        "carb_icing",
+        "airframe_icing",
+        "flap_asymmetry",
+        "trim_runaway",
+        "trim_stuck",
+        "radio_failure",
+        "all",
+        "vacuum_pump",
+        "alternator",
+        "pitot_blocked",
+        "static_blocked",
+        "engine",
+        "elevator",
+        "aileron",
+        "rudder",
+        "flaps"
+      ]
+    },
+    "FlightPhase": {
+      "type": "string",
+      "enum": [
+        "taxi",
+        "takeoff",
+        "climb",
+        "cruise",
+        "descent",
+        "approach",
+        "landed"
+      ]
+    },
+    "Instruction": {
+      "description": "Typed meaning shared by scripted and live facility transmissions. No automatic ATC rules.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "land"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "go_around"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "runway"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_msl_m": {
+              "type": "number",
+              "format": "double"
+            },
+            "at": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "altitude"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "altitude_msl_m",
+            "at"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "airspace_clearance"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "request_readback"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "advisory"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        }
+      ]
+    },
+    "InstrumentApproach": {
+      "type": "string",
+      "enum": [
+        "ils",
+        "lpv",
+        "lnav",
+        "localizer"
+      ]
+    },
+    "InstrumentFailure": {
+      "type": "string",
+      "enum": [
+        "vacuum",
+        "ahrs",
+        "display"
+      ]
+    },
+    "InstrumentTask": {
+      "type": "object",
+      "properties": {
+        "acs": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentTaskKind"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tolerances": {
+          "$ref": "#/$defs/AcsTolerances"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "kind",
+        "acs",
+        "tolerances"
+      ]
+    },
+    "InstrumentTaskKind": {
+      "type": "string",
+      "enum": [
+        "precision",
+        "nonprecision",
+        "holding",
+        "missed",
+        "partial_panel",
+        "unusual_attitude",
+        "look_up"
+      ]
+    },
+    "LessonSetup": {
+      "type": "object",
+      "properties": {
+        "aircraft": {
+          "type": "string"
+        },
+        "airport": {
+          "type": "string"
+        },
+        "airspeed_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "cross_track_nm": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "failures": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/InstrumentFailure"
+          }
+        },
+        "hold_fix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "look_up": {
+          "type": "boolean"
+        },
+        "minimum_ft": {
+          "description": "Explicit, instructor-selected training minimum; CIFP does not encode plate minima.",
+          "type": "number",
+          "format": "double"
+        },
+        "mode": {
+          "$ref": "#/$defs/InstrumentApproach"
+        },
+        "procedure": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "start_altitude_ft": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "start_distance_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "wind": {
+          "$ref": "#/$defs/Weather",
+          "default": {
+            "seed": 0,
+            "shear": false,
+            "turbulence": "off",
+            "wind_from_deg": 0.0,
+            "wind_speed_mps": 0.0
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "region",
+        "aircraft",
+        "airport",
+        "procedure",
+        "mode",
+        "minimum_ft",
+        "start_distance_nm",
+        "airspeed_kt",
+        "hood",
+        "look_up",
+        "conditions"
+      ]
+    },
+    "Obscuration": {
+      "type": "string",
+      "enum": [
+        "none",
+        "mist",
+        "fog",
+        "haze"
+      ]
+    },
+    "Precipitation": {
+      "type": "string",
+      "enum": [
+        "none",
+        "rain",
+        "snow"
+      ]
+    },
+    "ReadbackResult": {
+      "type": "string",
+      "enum": [
+        "correct",
+        "incorrect",
+        "missing"
+      ]
+    },
+    "RoutePoint": {
+      "type": "object",
+      "properties": {
+        "altitude_msl_m": {
+          "type": "number",
+          "format": "double"
+        },
+        "clearances": {
+          "description": "Airspace ids for which this planned flight has clearance.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "reference": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reference",
+        "altitude_msl_m"
+      ]
+    },
+    "Scenario": {
+      "type": "object",
+      "properties": {
+        "ai_written": {
+          "type": "boolean",
+          "default": false
+        },
+        "id": {
+          "type": "string"
+        },
+        "procedures": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "route": {
+          "description": "Route samples carry explicit MSL altitude and clearance assumptions.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoutePoint"
+          }
+        },
+        "seed": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioStep"
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "id",
+        "title",
+        "seed",
+        "route",
+        "steps"
+      ]
+    },
+    "ScenarioAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "channel_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "facility": {
+              "type": "string"
+            },
+            "instruction": {
+              "$ref": "#/$defs/Instruction"
+            },
+            "kind": {
+              "type": "string",
+              "const": "transmission"
+            },
+            "role": {
+              "$ref": "#/$defs/FacilityKind"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "facility",
+            "channel_khz",
+            "role",
+            "instruction"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "failure": {
+              "$ref": "#/$defs/Failure"
+            },
+            "kind": {
+              "type": "string",
+              "const": "failure_set"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "failure"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "failure_clear"
+            },
+            "target": {
+              "$ref": "#/$defs/FailureTarget"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "target"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conditions": {
+              "$ref": "#/$defs/Conditions"
+            },
+            "kind": {
+              "type": "string",
+              "const": "weather"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "conditions"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "traffic_spawn"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "runway",
+            "count"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "cue"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        },
+        {
+          "description": "A wait installs a condition on advancement to the next step.",
+          "type": "object",
+          "properties": {
+            "condition": {
+              "$ref": "#/$defs/Trigger"
+            },
+            "kind": {
+              "type": "string",
+              "const": "wait"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "condition"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "condition": {
+              "$ref": "#/$defs/Trigger"
+            },
+            "else_step": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "branch"
+            },
+            "then_step": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "condition",
+            "then_step",
+            "else_step"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "emit_event"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ]
+        }
+      ]
+    },
+    "ScenarioStep": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioAction"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "when": {
+          "description": "All conditions must hold. Steps execute in file order unless a branch jumps forward.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Trigger"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "when",
+        "actions"
+      ]
+    },
+    "TimeOfDay": {
+      "type": "string",
+      "enum": [
+        "day",
+        "dusk",
+        "night",
+        "dawn"
+      ]
+    },
+    "Trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "distance"
+            },
+            "reference": {
+              "type": "string"
+            },
+            "within_nm": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "reference",
+            "within_nm"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "departing_runway"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "within_nm": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "runway",
+            "within_nm"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "on_final"
+            },
+            "runway": {
+              "type": "string"
+            },
+            "within_nm": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "runway",
+            "within_nm"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "crossing_radial"
+            },
+            "radial_deg": {
+              "type": "number",
+              "format": "double"
+            },
+            "reference": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "reference",
+            "radial_deg"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "entering_airspace"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "height_agl"
+            },
+            "max_m": {
+              "type": "number",
+              "format": "double"
+            },
+            "min_m": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "min_m",
+            "max_m"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "airspeed"
+            },
+            "max_mps": {
+              "type": "number",
+              "format": "double"
+            },
+            "min_mps": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "min_mps",
+            "max_mps"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "phase"
+            },
+            "phase": {
+              "$ref": "#/$defs/FlightPhase"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "phase"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "configuration"
+            },
+            "max_flaps": {
+              "type": "number",
+              "format": "double"
+            },
+            "min_flaps": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "min_flaps",
+            "max_flaps"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "channel_khz": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "tuned_frequency"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "channel_khz"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contains": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "pilot_call"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "contains"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contains": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "readback"
+            },
+            "result": {
+              "$ref": "#/$defs/ReadbackResult"
+            },
+            "timeout_s": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "contains",
+            "result",
+            "timeout_s"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "checklist"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "item"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "time"
+            },
+            "seconds": {
+              "type": "number",
+              "format": "double"
+            },
+            "since_previous": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "seconds"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "earliest_s": {
+              "type": "number",
+              "format": "double"
+            },
+            "kind": {
+              "type": "string",
+              "const": "random_window"
+            },
+            "latest_s": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "earliest_s",
+            "latest_s"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "event"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ]
+        }
+      ]
+    },
+    "TurbulenceLevel": {
+      "description": "Original scenario presets: RMS gust velocity on each NED axis, m/s.",
+      "type": "string",
+      "enum": [
+        "off",
+        "light",
+        "moderate",
+        "severe"
+      ]
+    },
+    "Weather": {
+      "description": "Wind speed is specified at 10 m AGL. Direction is meteorological (blows FROM).",
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "shear": {
+          "type": "boolean"
+        },
+        "turbulence": {
+          "$ref": "#/$defs/TurbulenceLevel"
+        },
+        "wind_from_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 360,
+          "minimum": 0
+        },
+        "wind_speed_mps": {
+          "type": "number",
+          "format": "double",
+          "maximum": 75,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "wind_from_deg",
+        "wind_speed_mps",
+        "shear",
+        "turbulence",
+        "seed"
+      ]
+    }
+  }
+}

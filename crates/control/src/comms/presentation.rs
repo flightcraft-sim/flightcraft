@@ -10,7 +10,7 @@ impl Transmission {
     pub fn is_spoken(&self) -> bool {
         !matches!(
             self.meaning,
-            Meaning::ScenarioAction { .. } | Meaning::Compliance { .. }
+            Meaning::ScenarioAction { .. } | Meaning::Instrument { .. } | Meaning::Compliance { .. }
         )
     }
     pub fn is_simulated_atc(&self) -> bool {

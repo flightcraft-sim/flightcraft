@@ -2,7 +2,8 @@
 
 Status: weather, IMC visuals, the hood, the [radio foundation](radio.md), a bounded subset of
 [tower and approach training](atc.md), [scenarios](scenarios.md), and [emergencies](emergencies.md)
-are implemented. The broader lesson grading features below remain specifications.
+are implemented, alongside [IFR lesson files and instrument task grading](ifr-training.md).
+Broader conversational instruction features below remain specifications.
 
 FlightCraft is built to do what flight students actually need between lessons. In priority order:
 
@@ -142,6 +143,8 @@ before the flight. The app runs it locally, so nothing waits on a model during t
 
 ## 6. Instrument flying
 
+[IFR lesson files, ACS grading, instructor controls, crew demonstrations, and debriefs](ifr-training.md).
+
 Phase-one controls, presets, simulated practice totals, lighting fallbacks, and previews are
 documented in [weather and simulated instrument practice](weather.md).
 
@@ -193,7 +196,7 @@ Each command has input and output schemas from the start.
 4. **Towered airports:** ATIS, ground, tower, approach and departure, readback checking, Class B
    clearances, and lost-communication procedures.
 5. **Speech in, AI as ATC, and IFR tasks:** Whisper with a radio-phraseology grammar, `comms.atc`
-   from an AI, and graded instrument approaches, holds, and partial panel.
+   from an AI, and graded instrument approaches, holds, and partial panel ([implemented IFR scope](ifr-training.md)).
 
 Phase 2 implementation and current coverage are described in [radios](radio.md): electrical audio
 panel, typed calls and records, reception, deterministic CTAF traffic, captions, transcript, and
@@ -204,4 +207,4 @@ filtering and macOS distinct voices remain incomplete.
 Scenario scripts, emergency effects, aircraft procedure data, and the emergency debrief are implemented;
 see [scenarios](scenarios.md) and [emergencies](emergencies.md) for commands, validation, and limits.
 Towered radio rules from section 2 are implemented as a bounded offline training subset; see
-[tower and approach coverage, commands, previews, and limitations](atc.md). General lesson grading remains separate work.
+[tower and approach coverage, commands, previews, and limitations](atc.md). Instrument lesson coverage is documented in [IFR training](ifr-training.md).

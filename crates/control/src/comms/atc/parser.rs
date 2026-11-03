@@ -308,7 +308,7 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
                 && !prefix.contains(&callsign.registration.to_lowercase()))
             .then_some(prefix)
         });
-    let request = if contains("go around") || contains("going around") {
+    let request = if contains("go around") || contains("going around") || contains("missed approach") {
         Some(PilotRequest::GoAround)
     } else if contains("clear of runway") || contains("clear of the runway") {
         Some(PilotRequest::ClearRunway)
@@ -347,6 +347,7 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
         || contains("level")
         || contains("climbing")
         || contains("descending")
+        || (facility == Some(FacilityKind::Approach) && information.is_some() && t.contains(&"thousand"))
     {
         Some(PilotRequest::Position)
     } else {

@@ -117,6 +117,12 @@ impl Session {
     }
     pub(crate) fn save_flight(&mut self) -> Result<ArchiveStatus, CommandError> {
         self.comms.record.emergency = self.scenario.state.emergency.clone();
+        self.comms.record.lesson = self
+            .lesson
+            .debrief
+            .title
+            .as_ref()
+            .map(|_| self.lesson.debrief.clone());
         let generation = self.flight_generation();
         let (id, created) = match &self.flight_archive.current {
             Some((g, id, created)) if *g == generation => (id.clone(), *created),
@@ -263,10 +269,11 @@ impl Command for FlightExport {
                 .ok_or_else(|| invalid(Self::NAME, "load this saved flight first and poll until complete"))?;
             (format!("{id}.json"), serde_json::to_string_pretty(&saved))
         } else {
-            (
-                "current-flight.json".into(),
-                serde_json::to_string_pretty(s.flight_record()),
-            )
+            ("current-flight.json".into(), {
+                let mut record = s.flight_record().clone();
+                record.lesson = s.lesson.debrief.title.as_ref().map(|_| s.lesson.debrief.clone());
+                serde_json::to_string_pretty(&record)
+            })
         };
         Ok(FlightJson {
             filename,

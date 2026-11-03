@@ -30,6 +30,7 @@ pub(super) struct CrewRadio {
     pub extend_downwind: bool,
     pub heading: Option<f64>,
     pub altitude_m: Option<f64>,
+    pub approach_level_m: Option<f64>,
     pub blocked: bool,
     hold_point: Option<[f64; 2]>,
     inbound_announced: bool,
@@ -175,10 +176,22 @@ impl Crew {
                 self.radio.altitude_m = None;
                 self.radio.extend_downwind = false;
             }
-            AtcInstruction::Approach { airport, runway, .. } => {
-                self.assign_arrival(s, airport, runway, PatternEntry::StraightIn)?;
-                self.radio.heading = None;
-                self.radio.altitude_m = None;
+            AtcInstruction::Approach {
+                airport,
+                runway,
+                intercept,
+                ..
+            } => {
+                if !matches!(self.state.intent, Some(PilotIntent::Approach { .. })) {
+                    self.assign_arrival(s, airport, runway, PatternEntry::StraightIn)?;
+                }
+                self.radio.heading = intercept.as_ref().map(|v| {
+                    s.sim
+                        .heading_reference()
+                        .magnetic_to_grid(f64::from(v.heading_deg).to_radians())
+                });
+                self.radio.altitude_m = intercept.as_ref().map(|v| f64::from(v.altitude_ft) * 0.3048);
+                self.radio.approach_level_m = self.radio.altitude_m;
             }
             AtcInstruction::Land { runway } => {
                 self.radio.heading = None;
@@ -226,6 +239,15 @@ impl Crew {
                     self.radio.stage = Stage::Ground;
                     self.radio.request_sent = false;
                 }
+            }
+            AtcInstruction::MissedApproach { .. } => {
+                if !s.sim.procedure_receiver().missed_approach {
+                    s.execute(
+                        "avionics.set",
+                        serde_json::json!({"setting":{"kind":"missed_approach"}}),
+                    )?;
+                }
+                self.change(s, PilotPhase::GoAround, "Flying the published missed approach.");
             }
             AtcInstruction::ExtendDownwind => self.radio.extend_downwind = true,
             AtcInstruction::GoAround { runway } => {
@@ -382,6 +404,18 @@ impl Crew {
                 return;
             }
         }
+        if phase == PilotPhase::GoAround
+            && matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
+            && s.sim.procedure_receiver().missed_approach
+        {
+            self.radio_queue.push_back(p::pilot_request(
+                &st,
+                &s.pilot_callsign(),
+                "missed approach",
+                None,
+            ));
+            return;
+        }
         let right = self.pattern_side < 0.;
         let report = match phase {
             PilotPhase::Takeoff if ctaf.is_some() => Some("departing"),
@@ -528,7 +562,7 @@ impl Crew {
                         .zip(p.arrival.as_ref())
                         .is_some_and(|(d, a)| d.airport == a.airport)
                 });
-                if !local && !on_ground {
+                if !local && !on_ground && !matches!(self.state.intent, Some(PilotIntent::Approach { .. })) {
                     let airport = report.airport;
                     self.assign_arrival(s, &airport, &report.runway, PatternEntry::LeftDownwind)?;
                 }
@@ -550,13 +584,48 @@ impl Crew {
                 }),
                 Stage::Radar | Stage::Tower => {
                     let arr = plan.as_ref().and_then(|p| p.arrival.as_ref());
-                    if self.radio.stage == Stage::Radar && !self.radio.code_received {
+                    if self.radio.stage == Stage::Radar
+                        && s.atc_state().ifr_clearance
+                        && matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
+                    {
+                        Some(p::pilot_ifr_checkin(
+                            &st,
+                            &s.pilot_callsign(),
+                            (s.sim.readout().altitude_msl_m / 0.3048 / 100.).round().max(0.) as u32 * 100,
+                            self.radio.information.as_deref(),
+                        ))
+                    } else if self.radio.stage == Stage::Radar && !self.radio.code_received {
                         Some(p::pilot_request(
                             &st,
                             &s.pilot_callsign(),
                             "request flight following",
                             self.radio.information.as_deref(),
                         ))
+                    } else if self.radio.stage == Stage::Radar
+                        && matches!(self.state.intent, Some(PilotIntent::Approach { .. }))
+                    {
+                        arr.map(|arr| {
+                            p::pilot_request(
+                                &st,
+                                &s.pilot_callsign(),
+                                &format!(
+                                    "request {} approach runway {}",
+                                    match &self.state.intent {
+                                        Some(PilotIntent::Approach {
+                                            mode: InstrumentApproach::Ils,
+                                            ..
+                                        }) => "ILS",
+                                        Some(PilotIntent::Approach {
+                                            mode: InstrumentApproach::Localizer,
+                                            ..
+                                        }) => "localizer",
+                                        _ => "RNAV",
+                                    },
+                                    p::runway(&arr.runway)
+                                ),
+                                self.radio.information.as_deref(),
+                            )
+                        })
                     } else {
                         arr.map(|arr| {
                             let (miles, direction) = position_from(s, arr);

@@ -449,8 +449,20 @@ fn approach_clearance_is_bound_to_loaded_cifp_identity() {
         matches!(instruction(&s).instruction,AtcInstruction::Approach {ref procedure,..} if procedure=="I06")
     );
     readback(&mut s);
-    say(&mut s, "request ILS runway two four approach");
-    assert!(s.comms.atc.pending.is_empty());
+    // Instrument approach acceptance can now queue the tower handoff. Exercise the
+    // clearance identity check directly without treating that handoff as a new readback.
+    let pending = s.comms.atc.pending.clone();
+    let station = s.next_station("KABE", FacilityKind::Approach).unwrap();
+    let message = parse_pilot("request ILS runway two four approach", &s.pilot_callsign());
+    s.clear_approach(&station, &message, "KABE", "24");
+    assert_eq!(s.comms.atc.pending, pending);
+    assert!(
+        s.comms
+            .atc
+            .replies
+            .back()
+            .is_some_and(|r| r.text.contains("load the requested published approach"))
+    );
 }
 #[test]
 fn visual_approach_needs_airport_in_sight_and_hands_to_tower() {
@@ -1037,4 +1049,79 @@ fn ground_decimal_readback_and_atis_spacing_use_shared_phraseology() {
     );
     assert_eq!(parse_pilot("point niner", &s.pilot_callsign()).channel_khz, None);
     assert!(!s.atis_report("KABE").unwrap().text.contains("  "));
+}
+
+#[test]
+fn hold_readback_requires_the_fix_course_turn_legs_altitude_and_efc() {
+    let s = atc_session("KABE");
+    let instruction = AtcInstruction::Hold {
+        fix: "JISTO".into(),
+        inbound_deg: 63,
+        right_turns: true,
+        leg_time_s: Some(60),
+        leg_distance_nm: None,
+        altitude_ft: 3000,
+        efc_utc: 1530,
+    };
+    let readback = s.atc_readback(&instruction);
+    assert!(rules::readback_matches(
+        &instruction,
+        &parse_pilot(&readback, &s.pilot_callsign())
+    ));
+    for (correct, wrong) in [
+        ("JISTO", "MUDRE"),
+        ("zero six three", "zero six four"),
+        ("right turns", "left turns"),
+        ("one minute legs", "two minute legs"),
+        ("three thousand", "four thousand"),
+        ("one five three zero", "one six three zero"),
+    ] {
+        let bad = readback.replace(correct, wrong);
+        assert_ne!(bad, readback);
+        assert!(
+            !rules::readback_matches(&instruction, &parse_pilot(&bad, &s.pilot_callsign())),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn ifr_intercept_readback_requires_heading_restriction_and_approach() {
+    let s = atc_session("KABE");
+    let instruction = AtcInstruction::Approach {
+        airport: "KABE".into(),
+        procedure: "I06".into(),
+        name: "ILS runway 06".into(),
+        runway: "06".into(),
+        intercept: Some(ApproachIntercept {
+            heading_deg: 40,
+            altitude_ft: 2300,
+            turn_left: true,
+        }),
+    };
+    let good = s.atc_readback(&instruction);
+    assert!(rules::readback_matches(
+        &instruction,
+        &parse_pilot(&good, &s.pilot_callsign())
+    ));
+    for bad in [
+        good.replace("heading zero four zero, ", ""),
+        good.replace("two thousand three hundred", "three thousand"),
+        good.replace("until established on the localizer, ", ""),
+        good.replace("cleared ILS runway zero six approach", "ILS runway zero six"),
+        good.replace("zero four zero", "zero five zero"),
+        good.replace("localizer", "final approach course"),
+    ] {
+        assert!(
+            !rules::readback_matches(&instruction, &parse_pilot(&bad, &s.pilot_callsign())),
+            "{bad}"
+        );
+    }
+    let station = s.next_station("KABE", FacilityKind::Approach).unwrap();
+    let call = phraseology::pilot_ifr_checkin(&station, &s.pilot_callsign(), 4300, Some("alpha"));
+    assert_eq!(
+        parse_pilot(&call, &s.pilot_callsign()).request,
+        Some(PilotRequest::Position)
+    );
+    assert!(!call.to_lowercase().contains("flight following"));
 }

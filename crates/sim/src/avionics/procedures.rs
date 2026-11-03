@@ -40,13 +40,13 @@ pub enum HoldEntry {
     Teardrop,
 }
 pub fn hold_entry(inbound_deg: f64, arrival_track_deg: f64, turn: Turn) -> HoldEntry {
-    let relative = wrap(arrival_track_deg - inbound_deg) * if turn == Turn::R { 1. } else { -1. };
-    if (-110. ..=70.).contains(&relative) {
+    let relative = wrap((arrival_track_deg - inbound_deg) * if turn == Turn::R { 1. } else { -1. });
+    if (-70. ..=110.).contains(&relative) {
         HoldEntry::Direct
-    } else if relative > 70. {
-        HoldEntry::Parallel
-    } else {
+    } else if relative > 110. {
         HoldEntry::Teardrop
+    } else {
+        HoldEntry::Parallel
     }
 }
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
@@ -72,6 +72,8 @@ pub struct FlightLeg {
 }
 #[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct ProcedureReceiver {
+    #[serde(default)]
+    pub lnav_only: bool,
     pub loaded: Vec<LoadedProcedure>,
     pub legs: Vec<FlightLeg>,
     pub active_leg: usize,
@@ -652,6 +654,7 @@ impl ProcedureReceiver {
             };
             // Published final angle is anchored to the runway/MAP altitude, never the current aircraft.
             if self.approach_active
+                && !self.lnav_only
                 && self.loaded.iter().any(|p| {
                     p.kind == ProcedureKind::Approach
                         && (p.capabilities.contains(&ApproachCapability::LPV)
@@ -661,6 +664,7 @@ impl ProcedureReceiver {
                 && let Some(final_leg) = self
                     .legs
                     .iter()
+                    .rev()
                     .find(|l| !l.leg.missed && l.leg.vertical_angle_deg.is_some())
                 && let (Some(angle), Some(end), Some(elevation)) = (
                     final_leg.leg.vertical_angle_deg,

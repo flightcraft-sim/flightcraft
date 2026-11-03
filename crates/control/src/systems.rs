@@ -205,6 +205,9 @@ impl Command for SetHood {
             camera.mode = crate::CameraMode::Cockpit;
         }
         session.sim_mut().set_hood(self.enabled);
+        session.record_lesson_event(crate::InstrumentEvent::Hood {
+            enabled: self.enabled,
+        });
         Ok(current(session))
     }
 }

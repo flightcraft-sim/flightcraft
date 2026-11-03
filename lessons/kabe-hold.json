@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "id": "kabe-hold",
+  "title": "KABE JISTO · published hold",
+  "briefing": "Fly to JISTO at 3,000 feet MSL. Enter the published right-turn hold on the 063.3-degree inbound course with one-minute legs. Determine the entry from your arrival track, correct for wind, and complete a circuit. Timing within 10 seconds and leg length within 0.5 NM are instructor criteria.",
+  "setup": {
+    "region": "eastern-pa",
+    "aircraft": "corvid-glass",
+    "airport": "KABE",
+    "procedure": "I06",
+    "mode": "ils",
+    "minimum_ft": 594,
+    "start_distance_nm": 10,
+    "airspeed_kt": 80,
+    "hood": true,
+    "look_up": false,
+    "conditions": {
+      "layers": [
+        {
+          "coverage": "OVC",
+          "base_ft_msl": 594,
+          "top_ft_msl": 6000
+        }
+      ],
+      "visibility_sm": 2,
+      "obscuration": "mist",
+      "precipitation": "none",
+      "time_of_day": "day"
+    },
+    "failures": [],
+    "hold_fix": "JISTO",
+    "wind": {
+      "wind_from_deg": 0.0,
+      "wind_speed_mps": 0.0,
+      "shear": false,
+      "turbulence": "off",
+      "seed": 0
+    }
+  },
+  "scenario": {
+    "version": 1,
+    "id": "kabe-hold",
+    "title": "KABE JISTO · published hold",
+    "seed": 3407,
+    "route": [
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      },
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      }
+    ],
+    "procedures": [
+      "KABE:I06"
+    ],
+    "steps": [
+      {
+        "id": "briefed",
+        "when": [],
+        "actions": [
+          {
+            "kind": "emit_event",
+            "name": "ifr-lesson-started"
+          }
+        ]
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "title": "Holding",
+      "kind": "holding",
+      "acs": "IR.III.B",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    }
+  ]
+}

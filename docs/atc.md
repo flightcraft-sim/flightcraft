@@ -254,3 +254,6 @@ procedures. Saved flight records retain the typed evidence; resuming ATC's runti
 record is not implemented.
 
 See [training](training.md), [weather](weather.md), [procedures](procedures.md), and [crew](crew.md).
+
+[IFR training](ifr-training.md) adds validated final intercepts, published missed instructions,
+hold clearances with EFC, and instrument approach tower handoffs through the same readback queue.

@@ -33,6 +33,9 @@ pub enum EventSource {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Meaning {
+    Instrument {
+        event: crate::InstrumentEvent,
+    },
     Crew {
         critical: bool,
     },
@@ -152,6 +155,8 @@ pub struct RecordedInput {
 #[serde(deny_unknown_fields)]
 pub struct FlightRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lesson: Option<crate::LessonDebrief>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub emergency: Option<crate::scenario::EmergencyDebrief>,
     #[schemars(range(min = 1, max = 1))]
     pub version: u8,
@@ -164,6 +169,7 @@ impl Default for FlightRecord {
     fn default() -> Self {
         Self {
             emergency: None,
+            lesson: None,
             version: 1,
             events: Vec::new(),
             inputs: Vec::new(),
@@ -181,6 +187,9 @@ impl FlightRecord {
         let record: Self = serde_json::from_str(text).map_err(|e| invalid("flight.events", e.to_string()))?;
         if record.version != 1 || record.events.len() > MAX_EVENTS || record.inputs.len() > MAX_INPUTS {
             return Err(invalid("flight.events", "record count exceeds bounds"));
+        }
+        if let Some(debrief) = &record.lesson {
+            debrief.validate()?;
         }
         if let Some(debrief) = &record.emergency {
             debrief.validate()?;

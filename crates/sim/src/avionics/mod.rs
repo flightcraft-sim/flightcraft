@@ -30,6 +30,9 @@ pub enum AvionicsSetting {
         #[serde(default)]
         vectors_to_final: bool,
     },
+    ApproachService {
+        lnav_only: bool,
+    },
     ActivateApproach {},
     VectorsToFinal {},
     MissedApproach {},
@@ -157,7 +160,8 @@ impl AvionicsState {
         let a = &mut self.electronic_attitude;
         let h = &mut self.electronic_hsi;
         match setting {
-            AvionicsSetting::LoadProcedure { .. }
+            AvionicsSetting::ApproachService { .. }
+            | AvionicsSetting::LoadProcedure { .. }
             | AvionicsSetting::ActivateApproach {}
             | AvionicsSetting::VectorsToFinal {}
             | AvionicsSetting::MissedApproach {}

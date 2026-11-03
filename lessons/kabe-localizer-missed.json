@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "id": "kabe-localizer-missed",
+  "title": "KABE LOC runway 06 · missed at MDA",
+  "briefing": "Fly the KABE localizer approach to 920 feet MSL. With no visual reference at MDA, begin the missed climb, maintain the final approach course through the missed approach point, and fly the published missed route to MUDRE at 3,000 feet MSL. This is simulated practice.",
+  "setup": {
+    "region": "eastern-pa",
+    "aircraft": "corvid-glass",
+    "airport": "KABE",
+    "procedure": "I06",
+    "mode": "localizer",
+    "minimum_ft": 920,
+    "start_distance_nm": 12,
+    "airspeed_kt": 80,
+    "hood": true,
+    "look_up": false,
+    "conditions": {
+      "layers": [
+        {
+          "coverage": "OVC",
+          "base_ft_msl": 400,
+          "top_ft_msl": 6000
+        }
+      ],
+      "visibility_sm": 2,
+      "obscuration": "mist",
+      "precipitation": "none",
+      "time_of_day": "day"
+    },
+    "failures": [],
+    "wind": {
+      "wind_from_deg": 0.0,
+      "wind_speed_mps": 0.0,
+      "shear": false,
+      "turbulence": "off",
+      "seed": 0
+    }
+  },
+  "scenario": {
+    "version": 1,
+    "id": "kabe-localizer-missed",
+    "title": "KABE LOC runway 06 · missed at MDA",
+    "seed": 3407,
+    "route": [
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      },
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      }
+    ],
+    "procedures": [
+      "KABE:I06"
+    ],
+    "steps": [
+      {
+        "id": "briefed",
+        "when": [],
+        "actions": [
+          {
+            "kind": "emit_event",
+            "name": "ifr-lesson-started"
+          }
+        ]
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "title": "Nonprecision",
+      "kind": "nonprecision",
+      "acs": "IR.VI.A",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    },
+    {
+      "title": "Missed at MDA",
+      "kind": "missed",
+      "acs": "IR.VI.C",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    }
+  ]
+}

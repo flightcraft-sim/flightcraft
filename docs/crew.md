@@ -177,7 +177,7 @@ virtual-pilot watching mode and handover now use those channels. Speech recognit
 
 [Emergency debriefs](emergencies.md) provide aircraft checklist timings, recognition delay, speed
 tolerance totals, radio checks, outcomes, and frozen glide footprints through `scenario.state`.
-These are inputs for future lesson grading; there is no general lesson engine yet.
+The [IFR lesson engine](ifr-training.md) adds instrument grading alongside these emergency records.
 
 
 ## Implemented watching mode
@@ -275,9 +275,9 @@ remaining acceptance failures from this worktree.
 
 The Hudson corridor preset explicitly refuses flight until a verified Class B exclusion route
 and its special flight rules are available. The other presets are authored route points and
-still pass the shared terrain/airspace checks. Taxi exits and short parking moves are terrain-checked estimates; there is no published taxiway graph or stand assignment. The Sling exterior is an original simplified silhouette. Traffic-pattern direction metadata, installed-autopilot coupling, validation of arbitrary aircraft beyond the three tested packs, instructional lessons, speech recognition,
+still pass the shared terrain/airspace checks. Taxi exits and short parking moves are terrain-checked estimates; there is no published taxiway graph or stand assignment. The Sling exterior is an original simplified silhouette. Traffic-pattern direction metadata, validation of arbitrary aircraft beyond the three tested packs, speech recognition,
 pointing, `crew.say`/`crew.listen`, and model integration are not implemented here. Demonstrating
-and instructing select presentation modes; they do not supply a lesson engine or safety takeover.
+and instructing select presentation modes. [IFR lessons](ifr-training.md) now add instrument task grading, approach coupling, and published holds; a general safety takeover remains open.
 
 [Tower and approach training](atc.md) supplies deterministic ATC instructions, required readbacks,
 and compliance events for later instructor/debrief integration. These rules do not implement the

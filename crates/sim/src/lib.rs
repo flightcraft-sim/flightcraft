@@ -632,6 +632,7 @@ impl Sim {
                 self.navigation = None;
                 self.nav_guidance = None;
             }
+            avionics::AvionicsSetting::ApproachService { lnav_only } => self.procedures.lnav_only = lnav_only,
             avionics::AvionicsSetting::ActivateApproach {} => self.procedures.activate(false)?,
             avionics::AvionicsSetting::VectorsToFinal {} => self.procedures.activate(true)?,
             avionics::AvionicsSetting::MissedApproach {} => self.procedures.missed()?,
@@ -821,6 +822,39 @@ impl Sim {
             )?;
         }
         self.conditions = conditions;
+        Ok(())
+    }
+    /// Instructor-only attitude setup. Preserve position, velocity, systems, and fixed-step time.
+    pub fn set_training_attitude(&mut self, pitch_rad: f64, bank_rad: f64) -> Result<(), SimError> {
+        if !pitch_rad.is_finite()
+            || !bank_rad.is_finite()
+            || pitch_rad.abs() > 25_f64.to_radians()
+            || bank_rad.abs() > 60_f64.to_radians()
+        {
+            return Err(SimError::InvalidStart("training attitude outside limits".into()));
+        }
+        let [_, _, heading] = math::euler(self.state.attitude);
+        let (s, c) = libm::sincos(bank_rad * 0.5);
+        self.state.attitude = math::mul(math::attitude(pitch_rad, heading), [c, s, 0., 0.]);
+        self.state.angular_rate_rps = [0.; 3];
+        self.glass.primary.sensor.reposition(self.state);
+        self.glass.standby.sensor.reposition(self.state);
+        self.systems
+            .avionics
+            .electronic_attitude
+            .computer
+            .sensor
+            .reposition(self.state);
+        self.systems
+            .avionics
+            .electronic_hsi
+            .reversion_attitude
+            .computer
+            .sensor
+            .reposition(self.state);
+        self.refresh_glass_computers();
+        self.refresh_avionics(false);
+        self.set_autopilot(Default::default())?;
         Ok(())
     }
     pub fn hood(&self) -> bool {

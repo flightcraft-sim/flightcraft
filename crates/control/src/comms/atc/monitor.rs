@@ -422,7 +422,9 @@ impl Session {
                 && self.comms.atc.inbound
                 && let Ok(a) = crate::regions::airport(self.sim.world(), &airport)
                 && let Some([an, ae]) = self.radio_project(a.latitude_deg, a.longitude_deg)
-                && libm::hypot(n - an, e - ae) <= 10. * 1852.
+                && self
+                    .at_instrument_faf()
+                    .unwrap_or(libm::hypot(n - an, e - ae) <= 10. * 1852.)
                 && let Some(tower) = self.next_station(&airport, FacilityKind::Tower)
             {
                 self.comms.atc.inbound = false;
@@ -487,14 +489,29 @@ impl Session {
     }
     pub(crate) fn provider_contact_for(&self, name: &str) -> bool {
         let name = words(name);
-        self.stations().iter().any(|st| {
-            self.comms.atc.two_way.contains(&provider(st))
-                && st.metadata.as_ref().is_some_and(|m| {
-                    words(&m.callsign)
-                        .split_whitespace()
-                        .any(|w| w.len() > 3 && name.contains(w))
+        let stations = self.stations();
+        let names_volume = |st: &ComStation| {
+            st.metadata.as_ref().is_some_and(|m| {
+                words(&m.callsign)
+                    .split_whitespace()
+                    .any(|w| w.len() > 3 && name.contains(w))
+            })
+        };
+        stations
+            .iter()
+            .any(|st| self.comms.atc.two_way.contains(&provider(st)) && names_volume(st))
+            || stations
+                .iter()
+                .filter(|st| st.kind == FacilityKind::Tower && names_volume(st))
+                .any(|tower| {
+                    // Imported approach/departure records explicitly associate a radar provider
+                    // with this airport, even when its radio call differs from the tower's name.
+                    stations.iter().any(|st| {
+                        st.airport == tower.airport
+                            && matches!(st.kind, FacilityKind::Approach | FacilityKind::Departure)
+                            && self.comms.atc.two_way.contains(&provider(st))
+                    })
                 })
-        })
     }
     pub(super) fn on_atc_runway(&self, airport: &str, runway: &str) -> bool {
         let Ok(a) = crate::regions::airport(self.sim.world(), airport) else {

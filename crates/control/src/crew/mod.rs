@@ -1,4 +1,5 @@
 //! Deterministic passenger pilot. Guidance emits ordinary control commands at fixed intervals.
+mod instrument;
 mod narration;
 mod pilot;
 mod planning;
@@ -27,6 +28,19 @@ pub enum ControlOwner {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PilotIntent {
+    Approach {
+        airport: String,
+        procedure: String,
+        mode: InstrumentApproach,
+        minimum_ft: f64,
+        #[serde(default)]
+        coupled: bool,
+    },
+    HoldAtFix {
+        airport: String,
+        procedure: String,
+        fix: String,
+    },
     TakeOff {
         airport: String,
         runway: String,
@@ -208,6 +222,9 @@ pub(crate) struct Crew {
     taxi_exit: Option<(f64, [f64; 3])>,
     radio_queue: std::collections::VecDeque<String>,
     last_radio_error: Option<String>,
+    instrument_calls: u8,
+    hold_path: Vec<[f64; 3]>,
+    hold_loop_start: usize,
 }
 impl Session {
     pub fn crew_state(&self) -> CrewState {
@@ -360,6 +377,15 @@ impl Command for CrewIntent {
                 });
             }
         };
+        if let PilotIntent::Approach {
+            airport,
+            procedure,
+            mode,
+            ..
+        } = &self.intent
+        {
+            s.prepare_instrument_receiver(airport, procedure, *mode)?;
+        }
         let text = plan.briefing.clone();
         let mut runtime = Crew {
             state: CrewState {

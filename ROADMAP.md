@@ -104,6 +104,6 @@ Radio foundations and untowered training are implemented with explicit data, wea
 
 Scenario scripts and phase-three emergency training are implemented with bounded validation, aircraft
 procedures, deterministic failures, and saved glide debriefs; see [scenarios](docs/scenarios.md) and
-[emergencies](docs/emergencies.md). General lesson grading remains separate.
+[emergencies](docs/emergencies.md). Instrument lessons and task grading are implemented; see [IFR training](docs/ifr-training.md).
 Tower and approach training now adds deterministic ATIS, CRAFT, ground/tower/radar instructions,
 readbacks, compliance events, and lost-communications light guns; see [ATC coverage and limits](docs/atc.md).

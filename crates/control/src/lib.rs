@@ -4,6 +4,8 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+pub mod lesson;
+pub use lesson::*;
 pub mod scenario;
 pub use scenario::*;
 pub mod comms;
@@ -107,6 +109,7 @@ pub struct Session {
     presentation_efb: Option<EfbStatus>,
     crew: crew::Crew,
     scenario: scenario::ScenarioRuntime,
+    lesson: lesson::LessonRuntime,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
     sim: Sim,
@@ -149,6 +152,7 @@ impl Session {
             presentation_efb: None,
             crew: Default::default(),
             scenario: Default::default(),
+            lesson: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
             selected_configuration: Some(configuration.clone()),
@@ -587,6 +591,7 @@ impl Command for Reset {
             session.save_flight()?;
         }
         session.crew = crew::Crew::default();
+        session.lesson = lesson::LessonRuntime::default();
         session.sim = replacement;
         session.active_configuration = session.selected_configuration.clone();
         session.flight_generation = session.flight_generation.wrapping_add(1);
@@ -847,6 +852,12 @@ registry!(
     screens::UndoLayout,
     screens::RedoLayout,
     screens::SaveLayout,
+    LessonList,
+    LessonStart,
+    GetLessonDebrief,
+    LessonFinish,
+    InstructorInstrumentFailure,
+    InstructorAttitude,
     SetCrewMode,
     CrewHandover,
     CrewIntent,
@@ -859,6 +870,7 @@ registry!(
     CommsAtc,
     EmergencyRecord,
     InstructorFailure,
+    IssueIfr,
     GetAtcState,
     ConfigureAtc,
     SetLightGun,

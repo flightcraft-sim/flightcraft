@@ -148,8 +148,10 @@ impl Session {
         // A position report continues the assigned runway. A wind-preferred runway does not
         // silently amend an already accepted pattern or approach clearance.
         let runway = if st.kind == FacilityKind::Tower
-            && matches!(request, Some(R::Position | R::GoAround | R::ClearRunway))
-        {
+            && matches!(
+                request,
+                Some(R::Position | R::Inbound | R::GoAround | R::ClearRunway)
+            ) {
             self.comms
                 .atc
                 .active
@@ -234,7 +236,22 @@ impl Session {
                     );
                 }
             }
-            (FacilityKind::Tower, Some(R::Inbound)) if self.comms.atc.active.iter().any(|p|matches!(&p.instruction,AtcInstruction::Approach{procedure,..} if procedure=="visual")) && !self.runway_traffic(&airport) => self.issue(&st,AtcInstruction::Land{runway:runway.clone()}),
+            (FacilityKind::Tower, Some(R::Inbound))
+                if self
+                    .comms
+                    .atc
+                    .active
+                    .iter()
+                    .any(|p| matches!(&p.instruction, AtcInstruction::Approach { .. }))
+                    && !self.runway_traffic(&airport) =>
+            {
+                self.issue(
+                    &st,
+                    AtcInstruction::Land {
+                        runway: runway.clone(),
+                    },
+                )
+            }
             (FacilityKind::Tower, Some(R::Inbound)) => self.pattern_entry(&st, &m, &airport, &runway),
             (FacilityKind::Tower, Some(R::Position)) => {
                 if self.comms.atc.landing && self.comms.atc.active.iter().any(|p| p.readback && p.airport == airport && matches!(&p.instruction, AtcInstruction::Land {runway: cleared} if *cleared == runway)) {
@@ -242,8 +259,16 @@ impl Session {
                 }
                 if m.normalized.contains("downwind") && self.runway_traffic(&airport) {
                     self.issue(&st, AtcInstruction::ExtendDownwind);
-                } else if m.normalized.contains("final") || m.normalized.contains("base")
-                    || m.normalized.contains("downwind") && self.comms.atc.active.iter().any(|p|matches!(p.instruction,AtcInstruction::Pattern{..})) {
+                } else if m.normalized.contains("final")
+                    || m.normalized.contains("base")
+                    || m.normalized.contains("downwind")
+                        && self
+                            .comms
+                            .atc
+                            .active
+                            .iter()
+                            .any(|p| matches!(p.instruction, AtcInstruction::Pattern { .. }))
+                {
                     if self.runway_traffic(&airport) {
                         self.issue(
                             &st,
@@ -261,6 +286,25 @@ impl Session {
                     }
                 } else {
                     self.pattern_entry(&st, &m, &airport, &runway);
+                }
+            }
+            (FacilityKind::Tower | FacilityKind::Approach, Some(R::GoAround))
+                if m.normalized.contains("missed approach") =>
+            {
+                if let Some(loaded) = self
+                    .sim
+                    .procedure_receiver()
+                    .loaded
+                    .iter()
+                    .find(|p| p.kind == flightcraft_world::procedures::ProcedureKind::Approach)
+                {
+                    self.issue(
+                        &st,
+                        AtcInstruction::MissedApproach {
+                            airport: loaded.airport.clone(),
+                            procedure: loaded.ident.clone(),
+                        },
+                    );
                 }
             }
             (FacilityKind::Tower, Some(R::GoAround)) => {
@@ -325,6 +369,12 @@ impl Session {
                         },
                     );
                 }
+                if st.kind == FacilityKind::Approach
+                    && self.comms.atc.ifr_clearance
+                    && self.issue_lesson_intercept(&st)
+                {
+                    return;
+                }
                 self.traffic_advisory(&st);
                 if request == Some(R::Inbound) {
                     self.comms.atc.inbound = true;
@@ -346,7 +396,11 @@ impl Session {
                 {
                     self.handoff(&st, &next);
                 } else if self.comms.atc.ifr_clearance {
-                    let assigned=if st.kind==FacilityKind::Approach {self.training_altitude(&airport)}else{5000};
+                    let assigned = if st.kind == FacilityKind::Approach {
+                        self.training_altitude(&airport)
+                    } else {
+                        5000
+                    };
                     if !self.comms.atc.active.iter().any(|p|matches!(p.instruction,AtcInstruction::Altitude{altitude_ft} if altitude_ft==assigned)) {
                         self.issue(&st,AtcInstruction::Altitude{altitude_ft:assigned});
                     }
@@ -395,10 +449,8 @@ impl Session {
                 self.comms.atc.closed_traffic = *closed_traffic;
             }
             AtcInstruction::Land { .. } => self.comms.atc.landing = true,
-            AtcInstruction::Approach { procedure, .. } if procedure == "visual" => {
-                self.comms.atc.inbound = true
-            }
-            AtcInstruction::GoAround { .. } => {
+            AtcInstruction::Approach { .. } => self.comms.atc.inbound = true,
+            AtcInstruction::GoAround { .. } | AtcInstruction::MissedApproach { .. } => {
                 self.comms.atc.landing = false;
                 self.comms.atc.takeoff = false;
             }
@@ -585,7 +637,7 @@ impl Session {
                 )
             })
     }
-    fn clear_approach(&mut self, st: &ComStation, m: &PilotMessage, airport: &str, runway: &str) {
+    pub(super) fn clear_approach(&mut self, st: &ComStation, m: &PilotMessage, airport: &str, runway: &str) {
         let desired = m.runway.as_deref().unwrap_or(runway);
         if m.normalized.contains("visual") {
             let visible = crate::regions::airport(self.sim.world(), airport)
@@ -611,6 +663,7 @@ impl Session {
                 st,
                 AtcInstruction::Approach {
                     airport: airport.into(),
+                    intercept: None,
                     procedure: "visual".into(),
                     name: format!("visual runway {desired}"),
                     runway: desired.into(),
@@ -637,7 +690,11 @@ impl Session {
             return;
         };
         let kind = if p.ident.starts_with('I') {
-            "ILS"
+            if m.normalized.contains("localizer") || m.normalized.split_whitespace().any(|w| w == "loc") {
+                "LOC"
+            } else {
+                "ILS"
+            }
         } else if p.ident.starts_with('V') {
             "VOR"
         } else if p.ident.starts_with('L') {
@@ -668,11 +725,32 @@ impl Session {
             );
             return;
         }
+        let path = crate::lesson::engine::ApproachPath::find(self, airport, &p.ident);
+        if let Ok(path) = path {
+            let r = self.sim.readout();
+            if let (Some(latitude_deg), Some(longitude_deg)) = (r.latitude_deg, r.longitude_deg) {
+                let remaining = path.remaining(flightcraft_world::GeoPoint {
+                    latitude_deg,
+                    longitude_deg,
+                });
+                let angle = crate::lesson::wrap_deg(r.heading_true_rad.to_degrees() - path.course_deg).abs();
+                if angle > 30. || r.altitude_msl_m > path.altitude(remaining) + 30.48 {
+                    self.atc_reply(
+                        st,
+                        "Unable approach clearance, establish a final intercept at or below the glidepath."
+                            .into(),
+                        Meaning::Text,
+                    );
+                    return;
+                }
+            }
+        }
         let name = format!("{kind} runway {desired}");
         self.issue(
             st,
             AtcInstruction::Approach {
                 airport: airport.into(),
+                intercept: None,
                 procedure: p.ident.clone(),
                 name: name.clone(),
                 runway: desired.into(),
@@ -736,6 +814,23 @@ pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
         return false;
     }
     match i {
+        AtcInstruction::Hold {
+            fix,
+            inbound_deg,
+            altitude_ft,
+            efc_utc,
+            right_turns,
+            leg_time_s,
+            leg_distance_nm,
+        } => {
+            t.contains(&words(&phraseology::hold_legs(*leg_time_s, *leg_distance_nm)))
+                && t.contains(&words(fix))
+                && m.altitude_ft == Some(*altitude_ft)
+                && t.contains(&words(&phraseology::heading(*inbound_deg)))
+                && t.contains(if *right_turns { "right turns" } else { "left turns" })
+                && t.contains(&words(&phraseology::digits(u32::from(*efc_utc), 4)))
+        }
+        AtcInstruction::MissedApproach { .. } => t.contains("published missed approach"),
         AtcInstruction::Parking => t.contains("taxi to parking"),
         AtcInstruction::Taxi {
             runway, hold_short, ..
@@ -789,8 +884,22 @@ pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
                 t.contains("remain outside") || t.contains("remaining outside")
             }
         }
-        AtcInstruction::Approach { name, runway, .. } => {
-            m.runway.as_ref() == Some(runway)
+        AtcInstruction::Approach {
+            name,
+            runway,
+            intercept,
+            ..
+        } => {
+            intercept.as_ref().is_none_or(|v| {
+                m.heading_deg.is_some_and(|h| h % 360 == v.heading_deg % 360)
+                    && m.altitude_ft == Some(v.altitude_ft)
+                    && t.contains("until established")
+                    && t.contains(if name.starts_with("ILS") || name.starts_with("LOC") {
+                        "localizer"
+                    } else {
+                        "final approach course"
+                    })
+            }) && m.runway.as_ref() == Some(runway)
                 && t.contains("cleared")
                 && t.contains("approach")
                 && name

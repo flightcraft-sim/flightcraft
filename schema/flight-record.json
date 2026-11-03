@@ -35,6 +35,16 @@
         "$ref": "#/$defs/RecordedInput"
       }
     },
+    "lesson": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LessonDebrief"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "version": {
       "type": "integer",
       "format": "uint8",
@@ -51,8 +61,141 @@
     "dropped_inputs"
   ],
   "$defs": {
+    "AcsTolerances": {
+      "description": "FAA-S-ACS-8 task tolerances. Timing/leg margins are instructor criteria, not ACS quotations.",
+      "type": "object",
+      "properties": {
+        "airspeed_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "altitude_ft": {
+          "type": "number",
+          "format": "double"
+        },
+        "cdi_scale": {
+          "type": "number",
+          "format": "double"
+        },
+        "heading_deg": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "altitude_ft",
+        "heading_deg",
+        "airspeed_kt",
+        "cdi_scale"
+      ]
+    },
+    "ApproachIntercept": {
+      "description": "A heading and altitude restriction remain in force until the final course is established.",
+      "type": "object",
+      "properties": {
+        "altitude_ft": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "heading_deg": {
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "turn_left": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "heading_deg",
+        "altitude_ft",
+        "turn_left"
+      ]
+    },
     "AtcInstruction": {
       "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "altitude_ft": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "efc_utc": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "fix": {
+              "type": "string"
+            },
+            "inbound_deg": {
+              "type": "integer",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "hold"
+            },
+            "leg_distance_nm": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "leg_time_s": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            },
+            "right_turns": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "fix",
+            "inbound_deg",
+            "right_turns",
+            "altitude_ft",
+            "efc_utc"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "missed_approach"
+            },
+            "procedure": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "procedure"
+          ]
+        },
         {
           "type": "object",
           "properties": {
@@ -316,6 +459,16 @@
           "properties": {
             "airport": {
               "type": "string"
+            },
+            "intercept": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ApproachIntercept"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "kind": {
               "type": "string",
@@ -1194,6 +1347,28 @@
         "landed"
       ]
     },
+    "GeoPoint": {
+      "type": "object",
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 90,
+          "minimum": -90
+        },
+        "longitude_deg": {
+          "type": "number",
+          "format": "double",
+          "maximum": 180,
+          "minimum": -180
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg"
+      ]
+    },
     "GlideField": {
       "type": "object",
       "properties": {
@@ -1307,6 +1482,76 @@
         "best_glide_mps",
         "fields",
         "terrain_coverage_limited"
+      ]
+    },
+    "HoldEntry": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "parallel",
+        "teardrop"
+      ]
+    },
+    "HoldObservation": {
+      "type": "object",
+      "properties": {
+        "actual_entry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldEntry"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_entry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldEntry"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inbound_cross_track_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "inbound_time_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "laps": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "outbound_distance_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wind_correction_deg": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "outbound_distance_nm",
+        "inbound_cross_track_nm",
+        "wind_correction_deg",
+        "laps",
+        "reasons"
       ]
     },
     "Instruction": {
@@ -1429,6 +1674,239 @@
         }
       ]
     },
+    "InstrumentEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "failure": {
+              "$ref": "#/$defs/InstrumentFailure"
+            },
+            "kind": {
+              "type": "string",
+              "const": "failure"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "failure"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "bank_deg": {
+              "type": "number",
+              "format": "double"
+            },
+            "kind": {
+              "type": "string",
+              "const": "attitude"
+            },
+            "pitch_deg": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "pitch_deg",
+            "bank_deg"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "hood"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "enabled"
+          ]
+        }
+      ]
+    },
+    "InstrumentFailure": {
+      "type": "string",
+      "enum": [
+        "vacuum",
+        "ahrs",
+        "display"
+      ]
+    },
+    "InstrumentSample": {
+      "type": "object",
+      "properties": {
+        "airspeed_error_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "altitude_error_ft": {
+          "type": "number",
+          "format": "double"
+        },
+        "altitude_ft": {
+          "type": "number",
+          "format": "double"
+        },
+        "at_minimum": {
+          "type": "boolean"
+        },
+        "cdi_scale": {
+          "description": "Signed fraction of full-scale indication; independent of receiver dot count.",
+          "type": "number",
+          "format": "double"
+        },
+        "grading": {
+          "type": "boolean"
+        },
+        "heading_error_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "hood": {
+          "type": "boolean"
+        },
+        "interval_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "level_segment": {
+          "type": "boolean"
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GeoPoint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "signal_valid": {
+          "type": "boolean"
+        },
+        "time_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "vertical_scale": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "visual": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "time_s",
+        "interval_s",
+        "altitude_ft",
+        "altitude_error_ft",
+        "airspeed_error_kt",
+        "heading_error_deg",
+        "cdi_scale",
+        "signal_valid",
+        "grading",
+        "level_segment",
+        "at_minimum",
+        "visual",
+        "missed",
+        "hood"
+      ]
+    },
+    "InstrumentTaskKind": {
+      "type": "string",
+      "enum": [
+        "precision",
+        "nonprecision",
+        "holding",
+        "missed",
+        "partial_panel",
+        "unusual_attitude",
+        "look_up"
+      ]
+    },
+    "LessonDebrief": {
+      "type": "object",
+      "properties": {
+        "briefing": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "geometry": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProcedureGeometry"
+          }
+        },
+        "hold": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HoldObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstrumentSample"
+          }
+        },
+        "started_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskGrade"
+          }
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "briefing",
+        "complete",
+        "started_s",
+        "tasks",
+        "samples",
+        "geometry",
+        "notes"
+      ]
+    },
     "LightGunSignal": {
       "type": "string",
       "enum": [
@@ -1480,6 +1958,23 @@
     },
     "Meaning": {
       "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "event": {
+              "$ref": "#/$defs/InstrumentEvent"
+            },
+            "type": {
+              "type": "string",
+              "const": "instrument"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "event"
+          ]
+        },
         {
           "type": "object",
           "properties": {
@@ -2000,6 +2495,25 @@
         "snow"
       ]
     },
+    "ProcedureGeometry": {
+      "type": "object",
+      "properties": {
+        "missed": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/GeoPoint"
+        }
+      },
+      "required": [
+        "name",
+        "missed",
+        "position"
+      ]
+    },
     "ReadbackResult": {
       "type": "string",
       "enum": [
@@ -2338,6 +2852,57 @@
             "ident"
           ]
         }
+      ]
+    },
+    "TaskGrade": {
+      "type": "object",
+      "properties": {
+        "acs": {
+          "type": "string"
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/InstrumentTaskKind"
+        },
+        "observed_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "result": {
+          "$ref": "#/$defs/TaskResult"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tolerances": {
+          "$ref": "#/$defs/AcsTolerances"
+        }
+      },
+      "required": [
+        "title",
+        "kind",
+        "acs",
+        "tolerances",
+        "result",
+        "reasons",
+        "observed_s",
+        "completed"
+      ]
+    },
+    "TaskResult": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "pass",
+        "fail"
       ]
     },
     "TimeOfDay": {

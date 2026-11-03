@@ -22,6 +22,7 @@ pub struct PageUi {
     panel: instruments::InstrumentPanel,
     map: map::PlanningMap,
     instructor: scenario::ScenarioUi,
+    instrument: crate::ifr::InstrumentUi,
     navigation: navigation::SearchPanel,
     levers: BTreeMap<String, touch::Lever>,
     knobs: BTreeMap<String, touch::Knob>,
@@ -816,6 +817,8 @@ impl PageUi {
                             if ui.button("Reposition to runway").clicked() {
                                 let _ = crate::actions::reset(s);
                             }
+                            self.instrument.show(ui, s);
+                            ui.separator();
                             if let Err(e) = self.instructor.panel(ui, s) {
                                 ui.colored_label(theme::AMBER, e.to_string());
                             }
@@ -856,13 +859,21 @@ impl PageUi {
             PageKind::Debrief => {
                 let mut error = None;
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading("Debrief");
+                    crate::ifr::debrief(ui, s.lesson_debrief());
+                    if s.lesson_debrief().title.is_none() {
+                        ui.heading("Debrief");
+                    }
                     if let Some(d) = s.scenario_state().emergency.clone() {
                         let _ = scenario::debrief(ui, s, &d);
-                    } else {
+                    } else if s.lesson_debrief().title.is_none() {
                         ui.label("No emergency debrief yet.");
                     }
                     let archive = s.flight_archive_status();
+                    if let Some(saved) = &archive.loaded
+                        && let Some(lesson) = &saved.record.lesson
+                    {
+                        crate::ifr::debrief(ui, lesson);
+                    }
                     ui.label(format!("{} saved flights", archive.flights.len()));
                     radio::atc_panel(ui, s, &mut self.airport, &mut error);
                     radio::transcript(ui, s);
@@ -1472,6 +1483,33 @@ mod interaction_tests {
         }
         use flightcraft_aero::panel_fidelity::SrgbHex;
         let hex = |c: egui::Color32| SrgbHex(format!("#{:02x}{:02x}{:02x}", c.r(), c.g(), c.b()));
+        // Exercise populated IFR content too: empty pages cannot catch unstyled headings/notes.
+        ctx.set_visuals(egui::Visuals::light());
+        let out = ctx.run(Default::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                crate::ifr::debrief(
+                    ui,
+                    &flightcraft_control::LessonDebrief {
+                        title: Some("Instrument approach debrief".into()),
+                        ..Default::default()
+                    },
+                );
+                assert_eq!(ui.visuals().panel_fill, theme::PANEL);
+                assert_eq!(ui.visuals().override_text_color, Some(theme::TEXT));
+            });
+        });
+        assert!(
+            out.shapes
+                .iter()
+                .any(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.fill == theme::PANEL))
+        );
+        for shape in &out.shapes {
+            if let egui::Shape::Text(text) = &shape.shape {
+                for section in &text.galley.job.sections {
+                    assert!(hex(section.format.color).contrast(&hex(theme::PANEL)).unwrap() >= 4.5);
+                }
+            }
+        }
         for background in [theme::PANEL, theme::RAISED, theme::DIAL] {
             for foreground in [
                 theme::TEXT,

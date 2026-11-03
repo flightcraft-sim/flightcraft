@@ -3,6 +3,19 @@ use super::*;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AtcInstruction {
+    Hold {
+        fix: String,
+        inbound_deg: u16,
+        right_turns: bool,
+        leg_time_s: Option<u16>,
+        leg_distance_nm: Option<f64>,
+        altitude_ft: u32,
+        efc_utc: u16,
+    },
+    MissedApproach {
+        airport: String,
+        procedure: String,
+    },
     Parking,
     Taxi {
         runway: String,
@@ -50,6 +63,8 @@ pub enum AtcInstruction {
         procedure: String,
         name: String,
         runway: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        intercept: Option<ApproachIntercept>,
     },
     IfrClearance {
         destination: String,
@@ -65,6 +80,14 @@ pub enum AtcInstruction {
         runway: String,
         ground_khz: u32,
     },
+}
+/// A heading and altitude restriction remain in force until the final course is established.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ApproachIntercept {
+    pub heading_deg: u16,
+    pub altitude_ft: u32,
+    pub turn_left: bool,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -169,6 +192,7 @@ pub struct AtcState {
 }
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Atc {
+    pub vector_approach: Option<AtcInstruction>,
     pub airport: Option<String>,
     pub destination: Option<String>,
     pub reported: Option<(String, String)>,

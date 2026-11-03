@@ -9,6 +9,9 @@ pub mod crew;
 #[cfg(test)]
 mod crew_preview;
 pub mod glass;
+mod ifr;
+#[cfg(test)]
+mod ifr_preview;
 mod input;
 pub mod instruments;
 pub mod keymap;

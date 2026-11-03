@@ -433,11 +433,21 @@ impl Command for CommsFacilities {
     }
 }
 impl Session {
+    pub(crate) fn record_lesson_event(&mut self, event: crate::InstrumentEvent) {
+        self.record_state_change(
+            Meaning::Instrument { event },
+            EventSource::Rules,
+            "Instrument training state event",
+        );
+    }
     pub(crate) fn record_scenario_action(
         &mut self,
         action: crate::scenario::ScenarioAction,
         source: EventSource,
     ) {
+        self.record_state_change(Meaning::ScenarioAction { action }, source, "Scenario state event");
+    }
+    fn record_state_change(&mut self, meaning: Meaning, source: EventSource, label: &str) {
         if self.comms.record.events.len() >= MAX_EVENTS {
             self.comms.record.dropped_events += 1;
             return;
@@ -452,8 +462,8 @@ impl Session {
             speaker: Speaker::Instructor,
             speaker_name: "Instructor".into(),
             frequency_hz: None,
-            text: "Scenario state event".into(),
-            meaning: Meaning::ScenarioAction { action },
+            text: label.into(),
+            meaning,
             source,
             reception: Reception::NotReceived,
             reason: Some("Recorded state change; not a spoken transmission".into()),
@@ -562,8 +572,12 @@ impl Session {
         }
         Ok(())
     }
+    pub(crate) fn sync_comms_generation(&mut self) {
+        self.comms.generation = self.flight_generation;
+    }
     pub(crate) fn sequence_comms(&mut self) {
         if self.comms.generation != self.flight_generation {
+            self.lesson = crate::lesson::LessonRuntime::default();
             self.scenario = crate::scenario::ScenarioRuntime {
                 generation: self.flight_generation,
                 ..Default::default()
@@ -596,6 +610,7 @@ impl Session {
             let now = self.sim.state().time_s;
             self.finish_transmissions();
             self.sequence_scenario();
+            self.sequence_lesson();
             if now - self.comms.last_tick >= 0.25 - 1e-8 {
                 let dt = now - self.comms.last_tick;
                 self.comms.last_tick = now;

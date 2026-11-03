@@ -12,6 +12,10 @@ pub struct CrewUi {
     runway: String,
     altitude_ft: f64,
     choice: usize,
+    procedure: String,
+    fix: String,
+    minimum_ft: f64,
+    approach_mode: InstrumentApproach,
     director: bool,
     error: Option<String>,
     map: crate::map::PlanningMap,
@@ -24,6 +28,10 @@ impl Default for CrewUi {
             runway: "24".into(),
             altitude_ft: 4500.,
             choice: 0,
+            procedure: "I06".into(),
+            fix: "JISTO".into(),
+            minimum_ft: 594.,
+            approach_mode: InstrumentApproach::Ils,
             director: true,
             error: None,
             map: Default::default(),
@@ -75,6 +83,29 @@ impl CrewUi {
                 self.runway = runway.clone();
             }
             Some(PilotIntent::FlightPlan {}) => self.choice = 4,
+            Some(PilotIntent::Approach {
+                airport,
+                procedure,
+                minimum_ft,
+                coupled,
+                mode,
+            }) => {
+                self.choice = if *coupled { 6 } else { 5 };
+                self.destination = airport.clone();
+                self.procedure = procedure.clone();
+                self.minimum_ft = *minimum_ft;
+                self.approach_mode = *mode;
+            }
+            Some(PilotIntent::HoldAtFix {
+                airport,
+                procedure,
+                fix,
+            }) => {
+                self.choice = 7;
+                self.destination = airport.clone();
+                self.procedure = procedure.clone();
+                self.fix = fix.clone();
+            }
             _ => {}
         }
     }
@@ -89,6 +120,9 @@ impl CrewUi {
                 1 => "Delaware Water Gap and back",
                 2 => "Pocono plateau and back",
                 3 => "Hudson River corridor",
+                5 => "Instrument approach · hand flown",
+                6 => "Instrument approach · coupled",
+                7 => "Published hold at fix",
                 _ => "Current flight plan",
             })
             .show_ui(ui, |ui| {
@@ -98,6 +132,9 @@ impl CrewUi {
                     "Pocono plateau and back",
                     "Hudson River corridor",
                     "Current flight plan",
+                    "Instrument approach · hand flown",
+                    "Instrument approach · coupled",
+                    "Published hold at fix",
                 ]
                 .iter()
                 .enumerate()
@@ -110,7 +147,7 @@ impl CrewUi {
             self.runway = "07".into();
         }
         ui.horizontal(|ui| {
-            ui.label(if self.choice == 0 {
+            ui.label(if self.choice == 0 || self.choice >= 5 {
                 "Destination"
             } else {
                 "Return airport"
@@ -167,7 +204,70 @@ impl CrewUi {
                 ui.text_edit_singleline(&mut self.runway);
             });
         }
-        if self.choice == 0 {
+        if self.choice >= 5 {
+            if let Some(data) = s.sim().world().procedures() {
+                let procedures: Vec<_> = data
+                    .procedures
+                    .iter()
+                    .filter(|p| {
+                        p.airport == self.destination
+                            && p.kind == flightcraft_world::procedures::ProcedureKind::Approach
+                    })
+                    .collect();
+                egui::ComboBox::from_id_salt("crew.instrument.procedure")
+                    .selected_text(
+                        procedures
+                            .iter()
+                            .find(|p| p.ident == self.procedure)
+                            .and_then(|p| p.plate.as_ref())
+                            .map_or("Choose instrument procedure", |p| p.name.as_str()),
+                    )
+                    .show_ui(ui, |ui| {
+                        for procedure in procedures {
+                            if let Some(plate) = &procedure.plate {
+                                ui.selectable_value(
+                                    &mut self.procedure,
+                                    procedure.ident.clone(),
+                                    &plate.name,
+                                );
+                            }
+                        }
+                    });
+            }
+            if self.choice != 7 {
+                let label = |mode| match mode {
+                    InstrumentApproach::Ils => "ILS",
+                    InstrumentApproach::Lpv => "RNAV (GPS) LPV",
+                    InstrumentApproach::Lnav => "RNAV (GPS) LNAV",
+                    InstrumentApproach::Localizer => "Localizer",
+                };
+                egui::ComboBox::from_id_salt("crew.instrument.mode")
+                    .selected_text(label(self.approach_mode))
+                    .show_ui(ui, |ui| {
+                        for mode in [
+                            InstrumentApproach::Ils,
+                            InstrumentApproach::Lpv,
+                            InstrumentApproach::Lnav,
+                            InstrumentApproach::Localizer,
+                        ] {
+                            ui.selectable_value(&mut self.approach_mode, mode, label(mode));
+                        }
+                    });
+            }
+            if self.choice == 7 {
+                ui.horizontal(|ui| {
+                    ui.label("Holding fix");
+                    ui.text_edit_singleline(&mut self.fix);
+                });
+            } else {
+                ui.add(
+                    egui::DragValue::new(&mut self.minimum_ft)
+                        .range(0. ..=18000.)
+                        .suffix(" feet MSL minimum"),
+                );
+            }
+            ui.label("Start an IFR lesson in the instructor station for a prepared approach setup.");
+        } else if self.choice == 0 {
             ui.add(
                 egui::Slider::new(&mut self.altitude_ft, 1500. ..=9500.)
                     .step_by(100.)
@@ -185,6 +285,12 @@ impl CrewUi {
                     json!({"kind":"fly_to_airport","airport":self.destination,"runway":self.runway,"altitude_m":self.altitude_ft*0.3048})
                 }
                 4 => json!({"kind":"flight_plan"}),
+                5 | 6 => {
+                    json!({"kind":"approach","airport":self.destination,"procedure":self.procedure,"mode":self.approach_mode,"minimum_ft":self.minimum_ft,"coupled":self.choice==6})
+                }
+                7 => {
+                    json!({"kind":"hold_at_fix","airport":self.destination,"procedure":self.procedure,"fix":self.fix})
+                }
                 n => {
                     json!({"kind":"scenic","preset":match n {1=>"delaware_water_gap",2=>"pocono_plateau",_=>"hudson_corridor"},"airport":self.destination,"runway":self.runway})
                 }

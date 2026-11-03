@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "id": "kabe-lnav-06",
+  "title": "KABE RNAV runway 06 · LNAV",
+  "briefing": "Fly KABE RNAV runway 06 · LNAV. Brief the navigation source, minimums (840 feet MSL), and the published missed approach before taking controls. Maintain the assigned airspeed. At minimums, look up only on the instructor cue; continue only with the required visual reference. Otherwise fly the published missed approach. This is simulated practice.",
+  "setup": {
+    "region": "eastern-pa",
+    "aircraft": "corvid-glass",
+    "airport": "KABE",
+    "procedure": "R06",
+    "mode": "lnav",
+    "minimum_ft": 840,
+    "start_distance_nm": 12,
+    "airspeed_kt": 80,
+    "hood": true,
+    "look_up": true,
+    "conditions": {
+      "layers": [
+        {
+          "coverage": "OVC",
+          "base_ft_msl": 890,
+          "top_ft_msl": 6000
+        }
+      ],
+      "visibility_sm": 2,
+      "obscuration": "mist",
+      "precipitation": "none",
+      "time_of_day": "day"
+    },
+    "failures": [],
+    "wind": {
+      "wind_from_deg": 0.0,
+      "wind_speed_mps": 0.0,
+      "shear": false,
+      "turbulence": "off",
+      "seed": 0
+    }
+  },
+  "scenario": {
+    "version": 1,
+    "id": "kabe-lnav-06",
+    "title": "KABE RNAV runway 06 · LNAV",
+    "seed": 3407,
+    "route": [
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      },
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      }
+    ],
+    "procedures": [
+      "KABE:R06"
+    ],
+    "steps": [
+      {
+        "id": "briefed",
+        "when": [],
+        "actions": [
+          {
+            "kind": "emit_event",
+            "name": "ifr-lesson-started"
+          }
+        ]
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "title": "Nonprecision",
+      "kind": "nonprecision",
+      "acs": "IR.VI.A",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    },
+    {
+      "title": "Look Up",
+      "kind": "look_up",
+      "acs": "IR.VI.E",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    }
+  ]
+}

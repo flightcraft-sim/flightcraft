@@ -18,7 +18,7 @@ pub(super) fn geographic(s: &Session, [n, e, _]: [f64; 3]) -> Option<GeoPoint> {
         longitude_deg,
     })
 }
-fn local(s: &Session, point: GeoPoint, altitude: f64) -> Result<[f64; 3], CommandError> {
+pub(super) fn local(s: &Session, point: GeoPoint, altitude: f64) -> Result<[f64; 3], CommandError> {
     crate::navigation::valid_point(point)?;
     let [n, e] = projection(s)?
         .project(point.latitude_deg, point.longitude_deg)
@@ -246,6 +246,9 @@ pub(super) fn plan(s: &mut Session, intent: &PilotIntent) -> Result<(CrewPlan, P
         PilotPhase::Cruise
     };
     match intent {
+        PilotIntent::Approach { .. } | PilotIntent::HoldAtFix { .. } => {
+            return super::instrument::plan(s, intent);
+        }
         PilotIntent::Hold {
             altitude_m,
             heading_rad,
@@ -547,6 +550,7 @@ pub(super) fn plan(s: &mut Session, intent: &PilotIntent) -> Result<(CrewPlan, P
         }
         PilotIntent::Hold { .. } => "I'll hold your selected altitude and heading.".into(),
         PilotIntent::Orbit { .. } => "We'll make a gentle orbit around your selected point.".into(),
+        PilotIntent::Approach { .. } | PilotIntent::HoldAtFix { .. } => String::new(),
         PilotIntent::GoAround {} => "Going around. Full power, then a new pattern.".into(),
     };
     p.briefing = format!(
