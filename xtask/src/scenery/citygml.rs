@@ -137,7 +137,9 @@ fn coordinates(
         return Err("CityGML needs complete 3D position triples".into());
     }
     values
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| crs.local([p[0], p[1], p[2]], units.as_deref(), axes.as_deref(), inverse))
         .collect()
 }

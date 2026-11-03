@@ -204,7 +204,7 @@ pub(super) fn triangles(bytes: &[u8], model: &Model, inverse: DMat4) -> Result<V
                 {
                     return Err("City triangle budget exceeded; split upstream GLB".into());
                 }
-                for triangle in indices.chunks_exact(3) {
+                for triangle in indices.as_chunks::<3>().0 {
                     let mut corners = Vec::new();
                     for index in triangle {
                         let p = positions

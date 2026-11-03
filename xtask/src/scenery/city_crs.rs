@@ -23,10 +23,8 @@ fn epsg(text: &str) -> Option<u32> {
         s
     } else if let Some(s) = text.strip_prefix("https://www.opengis.net/def/crs/EPSG/0/") {
         s
-    } else if let Some(s) = text.strip_prefix("http://www.opengis.net/gml/srs/epsg.xml#") {
-        s
     } else {
-        return None;
+        text.strip_prefix("http://www.opengis.net/gml/srs/epsg.xml#")?
     };
     if code.is_empty() || !code.bytes().all(|b| b.is_ascii_digit()) {
         return None;

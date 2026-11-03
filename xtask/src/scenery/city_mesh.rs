@@ -155,7 +155,7 @@ pub(super) fn triangulate(rings: &[Vec<DVec3>]) -> Result<Vec<Triangle>, String>
         if edges.len() % 2 != 0 {
             return Err("Polygon has unmatched boundaries".into());
         }
-        for pair in edges.chunks_exact(2) {
+        for pair in edges.as_chunks::<2>().0 {
             let point = |edge: &(f64, DVec3, DVec3, f64, f64), y: f64| {
                 edge.1 + (edge.2 - edge.1) * ((y - edge.3) / (edge.4 - edge.3))
             };
