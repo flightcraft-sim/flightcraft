@@ -77,6 +77,9 @@ pub enum Meaning {
         runway: String,
         leg: PatternLeg,
     },
+    LiveWeather {
+        observation: Box<crate::LiveObservation>,
+    },
     Weather {
         airport: String,
         wind_from_deg: f64,
@@ -160,6 +163,9 @@ pub struct FlightRecord {
     pub emergency: Option<crate::scenario::EmergencyDebrief>,
     #[schemars(range(min = 1, max = 1))]
     pub version: u8,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(length(max = 2000))]
+    pub live_weather: Vec<crate::RecordedLiveWeather>,
     pub events: Vec<Transmission>,
     pub inputs: Vec<RecordedInput>,
     pub dropped_events: u64,
@@ -171,6 +177,7 @@ impl Default for FlightRecord {
             emergency: None,
             lesson: None,
             version: 1,
+            live_weather: Vec::new(),
             events: Vec::new(),
             inputs: Vec::new(),
             dropped_events: 0,
@@ -191,6 +198,20 @@ impl FlightRecord {
         if let Some(debrief) = &record.lesson {
             debrief.validate()?;
         }
+        if record.live_weather.len() > 2000 {
+            return Err(invalid("flight.events", "too many recorded weather applications"));
+        }
+        let mut previous_time = 0.;
+        for weather in &record.live_weather {
+            weather.validate().map_err(CommandError::Failed)?;
+            if weather.time_s < previous_time {
+                return Err(invalid(
+                    "flight.events",
+                    "weather applications are not in time order",
+                ));
+            }
+            previous_time = weather.time_s;
+        }
         if let Some(debrief) = &record.emergency {
             debrief.validate()?;
         }
@@ -202,7 +223,14 @@ impl FlightRecord {
                 || previous.is_some_and(|id| event.id <= id)
                 || !event.duration_s.is_finite()
                 || !(0.0..=120.0).contains(&event.duration_s)
-                || !text_ok(&event.text, 1024)
+                || !text_ok(
+                    &event.text,
+                    if matches!(event.meaning, Meaning::LiveWeather { .. }) {
+                        8192
+                    } else {
+                        1024
+                    },
+                )
                 || (!event.speaker_name.is_empty() && !text_ok(&event.speaker_name, 128))
                 || event
                     .frequency_hz
@@ -212,6 +240,9 @@ impl FlightRecord {
                     "flight.events",
                     "invalid event ordering, time, text, or frequency",
                 ));
+            }
+            if let Meaning::LiveWeather { observation } = &event.meaning {
+                observation.validate().map_err(CommandError::Failed)?;
             }
             // Meaning contains numeric observations; serde_json rejects nonfinite numbers.
             previous = Some(event.id);

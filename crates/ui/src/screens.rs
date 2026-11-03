@@ -1052,9 +1052,18 @@ pub struct ScreensUi {
 }
 impl ScreensUi {
     pub fn with_chart_root(root: Option<String>) -> Self {
-        Self {
-            main: Canvas::with_chart_root(root),
-            ..Default::default()
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self {
+                main: Canvas::with_chart_root(root),
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Self {
+                main: Canvas::with_chart_root(root),
+                ..Default::default()
+            }
         }
     }
     pub fn menu(&mut self, ui: &mut egui::Ui, s: &mut Session) {
@@ -1067,10 +1076,9 @@ impl ScreensUi {
                             #[cfg(target_arch = "wasm32")]
                             if let Some(id) = screen.get("id").and_then(serde_json::Value::as_u64)
                                 && let Some(window) = web_sys::window()
+                                && let Err(error) = window.open_with_url(&format!("?screen={id}"))
                             {
-                                if let Err(error) = window.open_with_url(&format!("?screen={id}")) {
-                                    self.main.error = Some(format!("Could not open screen: {error:?}"));
-                                }
+                                self.main.error = Some(format!("Could not open screen: {error:?}"));
                             }
                             #[cfg(not(target_arch = "wasm32"))]
                             let _ = screen;

@@ -222,6 +222,10 @@ fn schemas(check: bool) -> Result<(), String> {
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::scenario::Scenario)),
         ),
         (
+            "weather-source.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::WeatherSource)),
+        ),
+        (
             "weather.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::Conditions)),
         ),

@@ -822,6 +822,8 @@ pub fn read_only(command: &str) -> bool {
             | "atc.state"
             | "sim.state"
             | "weather.state"
+            | "weather.sources"
+            | "weather.phone"
             | "avionics.state"
             | "scenario.state"
             | "map.state"

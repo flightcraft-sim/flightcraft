@@ -729,15 +729,20 @@ fn full_ifr_report_layers_station_agl_temperature_dewpoint_and_qnh() {
     };
     let (text, meaning) = weather::weather_report(
         &station,
+        "Blairstown",
         &c,
         flightcraft_sim::Weather {
-            wind_from_deg: 250.,
+            wind_from_deg: 224.9,
             wind_speed_mps: 5.14444,
             ..Default::default()
         },
         0.,
     );
-    assert!(text.contains("Wind two five zero at one zero knots"), "{text}");
+    assert!(
+        text.starts_with("Blairstown automated weather observation."),
+        "{text}"
+    );
+    assert!(text.contains("Wind two two zero at one zero knots"), "{text}");
     assert!(text.contains("Visibility one half statute miles"), "{text}");
     assert!(text.contains("Ceiling overcast six hundred"), "{text}");
     assert!(text.contains("Temperature minus"));
@@ -750,8 +755,10 @@ fn full_ifr_report_layers_station_agl_temperature_dewpoint_and_qnh() {
             dewpoint_c,
             layers,
             altimeter_pa,
+            wind_from_deg,
             ..
         } => {
+            assert_eq!(wind_from_deg, 224.9);
             assert!((ceiling_agl_m.unwrap() - 182.88).abs() < 0.001);
             assert_eq!(visibility_m, Some(804.672));
             assert!(dewpoint_c <= temperature_c);
@@ -760,7 +767,14 @@ fn full_ifr_report_layers_station_agl_temperature_dewpoint_and_qnh() {
         }
         _ => panic!("expected weather"),
     }
-    let clear = weather::weather_report(&station, &Conditions::default(), Default::default(), 0.).0;
+    let clear = weather::weather_report(
+        &station,
+        "Blairstown",
+        &Conditions::default(),
+        Default::default(),
+        0.,
+    )
+    .0;
     assert!(clear.contains("Wind calm") && clear.contains("Sky clear") && clear.contains("one zero or more"));
 }
 

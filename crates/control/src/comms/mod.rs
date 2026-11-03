@@ -16,7 +16,7 @@ pub use presentation::*;
 mod atc;
 pub use atc::*;
 pub mod phraseology;
-mod weather;
+pub(crate) mod weather;
 pub use weather::ReportedLayer;
 mod record;
 mod traffic;
@@ -611,6 +611,7 @@ impl Session {
                 ..Default::default()
             };
         }
+        self.poll_live_weather();
         self.comms
             .record
             .input(self.sim.state().time_s, self.sim.controls());
@@ -624,6 +625,7 @@ impl Session {
             self.comms
                 .record
                 .input(self.sim.state().time_s, self.sim.controls());
+            self.tick_live_transition();
             self.sim.step(1);
             let now = self.sim.state().time_s;
             self.finish_transmissions();
@@ -1032,7 +1034,6 @@ impl Session {
             {
                 continue;
             }
-            let wind = self.pilot_weather();
             // ATIS and ASOS may share a carrier; the controlled information broadcast takes priority.
             if station.kind != FacilityKind::Atis
                 && self
@@ -1046,10 +1047,10 @@ impl Session {
                 if let Some(report) = self.atis_report(&station.airport) {
                     (report.text.clone(), Meaning::Atis { report })
                 } else {
-                    weather::weather_report(&station, self.sim.conditions(), wind, now)
+                    self.station_weather_report(&station)
                 }
             } else {
-                weather::weather_report(&station, self.sim.conditions(), wind, now)
+                self.station_weather_report(&station)
             };
             self.start_com(
                 station.channel_khz,

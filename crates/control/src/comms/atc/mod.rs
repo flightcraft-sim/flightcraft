@@ -150,16 +150,11 @@ impl Session {
             self.comms.atc.info_epochs.get(airport).map_or(0, |(_, n)| *n)
                 + (self.sim.state().time_s / 1800.).floor() as u64,
         );
-        let (wx, _) = weather::weather_report(
-            &station,
-            self.sim.conditions(),
-            self.pilot_weather(),
-            self.sim.state().time_s,
-        );
+        let (wx, _) = self.station_weather_report(&station);
         let wx = wx
             .strip_prefix(&format!(
                 "{} automated weather observation. ",
-                phraseology::facility(&station)
+                self.weather_observation_name(&station.airport, Some(&station))
             ))
             .unwrap_or(&wx);
         let remarks = vec!["Read back all runway hold-short instructions".into()];

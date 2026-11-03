@@ -47,6 +47,8 @@ pub use app::*;
 pub use crew::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod bridge;
+pub mod live_weather;
+pub use live_weather::*;
 mod systems;
 pub use systems::*;
 pub mod mcp;
@@ -98,6 +100,7 @@ pub enum CommandError {
 /// One flight session: the simulation and the settings commands change.
 #[derive(Debug)]
 pub struct Session {
+    live_weather: live_weather::runtime::Runtime,
     pub(crate) screens: screens::ScreenSet,
     presentation_glass: Option<GlassState>,
     presentation_comms: Option<CommsSnapshot>,
@@ -141,6 +144,7 @@ impl Session {
             .resolve_aircraft("corvid")
             .map_err(SimError::from)?;
         Ok(Self {
+            live_weather: Default::default(),
             screens: Default::default(),
             presentation_glass: None,
             presentation_comms: None,
@@ -927,6 +931,12 @@ registry!(
     AutopilotOff,
     RunUntil,
     GetState,
+    WeatherNearby,
+    WeatherSources,
+    WeatherSourceTest,
+    WeatherSourceSave,
+    WeatherLive,
+    WeatherPhone,
     SetWeather,
     GetWeather,
     SetHood,

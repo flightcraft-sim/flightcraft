@@ -23,8 +23,9 @@ pub(crate) fn height(value: f64) -> String {
         phraseology::altitude(hundreds * 100)
     }
 }
-pub(super) fn weather_report(
+pub(crate) fn weather_report(
     station: &ComStation,
+    name: &str,
     c: &Conditions,
     wind: flightcraft_sim::Weather,
     _time_s: f64,
@@ -44,7 +45,7 @@ pub(super) fn weather_report(
         .map(|l| l.base_agl_m)
         .min_by(f64::total_cmp);
     let wind_words = phraseology::wind(
-        wind.wind_from_deg.round() as u16,
+        phraseology::wind_direction(wind.wind_from_deg),
         (wind.wind_speed_mps / 0.514444).round() as u16,
     );
     let wind_text = format!(
@@ -122,7 +123,7 @@ pub(super) fn weather_report(
     // Do not announce an invented wall-clock/Zulu observation timestamp.
     let text = format!(
         "{} automated weather observation. {wind_text} Visibility {visibility} statute miles. {phenomena} {sky} Temperature {} Celsius. Dew point {} Celsius. Altimeter {}.",
-        phraseology::facility(station),
+        name,
         temperature(temp),
         temperature(dew),
         phraseology::altimeter(alt)

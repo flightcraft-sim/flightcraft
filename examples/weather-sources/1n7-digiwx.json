@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "id": "1n7-digiwx",
+  "name": "Blairstown DigiWx Advisor",
+  "airport": "1N7",
+  "url": "http://www.digiwx-1n7.com/Default.aspx",
+  "allow_http": true,
+  "refresh_seconds": 60,
+  "timeout_seconds": 15,
+  "advisory_only": true,
+  "disclaimer": "Advisory only. Not for flight planning.",
+  "cors": false,
+  "extraction": { "kind": "digiwx" }
+}

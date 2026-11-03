@@ -49,6 +49,7 @@ impl Session {
     /// Commands on an attached copy are routed to its owner and return an updated copy.
     pub fn presentation_copy(&self) -> Self {
         Self {
+            live_weather: self.live_weather.clone(),
             host: None,
             presentation_commands: None,
             presentation_glass: self.presentation_glass.clone(),

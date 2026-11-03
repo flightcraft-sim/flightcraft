@@ -98,11 +98,20 @@ pub fn radar_contact(miles: u32, direction: &str, fix: &str) -> String {
 pub fn altimeter(hundredths_inhg: u32) -> String {
     digits(hundredths_inhg, 4)
 }
+/// Spoken surface wind is magnetic, rounded to the nearest ten degrees (AIM 7-1-12).
+/// Keep the observation's precise direction separate from this presentation value.
+pub fn wind_direction(degrees: f64) -> u16 {
+    ((degrees.rem_euclid(360.) / 10.).round() as u16) * 10
+}
 pub fn wind(from_deg: u16, knots: u16) -> String {
     if knots == 0 {
         "wind calm".into()
     } else {
-        format!("wind {} at {}", heading(from_deg), digits(u32::from(knots), 1))
+        format!(
+            "wind {} at {}",
+            heading(wind_direction(f64::from(from_deg))),
+            digits(u32::from(knots), 1)
+        )
     }
 }
 /// A clearance to change altitude, or to hold an altitude already reached (100 ft tolerance).
@@ -169,6 +178,22 @@ pub fn facility(station: &ComStation) -> String {
         format!("{call} {role}")
     }
 }
+/// Automated weather identifies its location before “automated weather observation,”
+/// rather than appending a radio facility role to that introduction.
+pub fn weather_station_name(station: &ComStation) -> String {
+    let call = station
+        .metadata
+        .as_ref()
+        .map(|m| m.callsign.as_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(&station.name);
+    let call = normal_case(call);
+    [" AWOS", " ASOS", " ATIS"]
+        .iter()
+        .find_map(|suffix| call.strip_suffix(suffix))
+        .unwrap_or(&call)
+        .into()
+}
 pub fn speaker(speaker: &Speaker, stations: &[ComStation]) -> String {
     match speaker {
         Speaker::Pilot => "Pilot".into(),
@@ -206,6 +231,19 @@ mod tests {
         assert_eq!(altimeter(2992), "two niner niner two");
         assert_eq!(wind(60, 8), "wind zero six zero at eight");
         assert_eq!(wind(0, 0), "wind calm");
+        for (precise, rounded) in [
+            (222., 220),
+            (224.9, 220),
+            (225., 230),
+            (354.9, 350),
+            (355., 360),
+            (4.9, 0),
+            (5., 10),
+        ] {
+            assert_eq!(wind_direction(precise), rounded);
+        }
+        assert_eq!(wind(222, 5), "wind two two zero at five");
+        assert_eq!(wind(359, 5), "wind three six zero at five");
         assert_eq!(
             altitude_assignment(2200, 400.),
             "climb and maintain two thousand two hundred"
@@ -519,4 +557,161 @@ pub fn callsign_forms(registration: &str, kind: &str) -> (String, String) {
         format!("{kind} {}", spoken_registration(&short))
     };
     (identity, abbreviated)
+}
+
+/// Live AWOS/ASOS and weather-by-phone share this renderer. Unknown fields are never invented.
+pub fn live_weather(
+    live: &crate::LiveObservation,
+    facility: &str,
+    declination_deg: Option<f64>,
+    now: i64,
+) -> String {
+    let o = &live.extracted.observation;
+    let mut words = vec![format!("{facility} automated weather observation.")];
+    if let Some(at) = live
+        .observed_at
+        .and_then(|v| time::OffsetDateTime::from_unix_timestamp(v).ok())
+    {
+        words.push(format!(
+            "{} {} Zulu.",
+            digits(u32::from(at.hour()), 2),
+            digits(u32::from(at.minute()), 2)
+        ));
+    } else {
+        words.push("Observation time unavailable.".into());
+    }
+    if let Some(w) = &o.wind {
+        let speed = digits(w.speed_kt.round() as u32, 1);
+        let direction = if w.variable {
+            "variable".into()
+        } else if let Some(v) = w
+            .from_true_deg
+            .zip(declination_deg)
+            .map(|(v, d)| (v - d).rem_euclid(360.))
+        {
+            heading(wind_direction(v))
+        } else {
+            "direction unavailable".into()
+        };
+        words.push(if w.speed_kt < 0.5 {
+            "Wind calm.".into()
+        } else {
+            format!(
+                "Wind {direction} at {speed}{} knots.",
+                w.gust_kt
+                    .map(|g| format!(", gusts {}", digits(g.round() as u32, 1)))
+                    .unwrap_or_default()
+            )
+        });
+        if let Some([a, b]) = w
+            .variable_sector_deg
+            .zip(declination_deg)
+            .map(|([a, b], d)| [(a - d).rem_euclid(360.), (b - d).rem_euclid(360.)])
+        {
+            words.push(format!(
+                "Wind varying between {} and {}.",
+                heading(wind_direction(a)),
+                heading(wind_direction(b))
+            ));
+        }
+    } else {
+        words.push("Wind unavailable.".into());
+    }
+    if let Some(v) = o.visibility_sm {
+        let whole = v.floor() as u32;
+        let fraction = ((v.fract() * 8.).round() as u32).min(7);
+        let fraction = match fraction {
+            1 => "one eighth",
+            2 => "one quarter",
+            3 => "three eighths",
+            4 => "one half",
+            5 => "five eighths",
+            6 => "three quarters",
+            7 => "seven eighths",
+            _ => "",
+        };
+        let v = if v >= 10. {
+            "one zero or more".into()
+        } else if fraction.is_empty() {
+            digits(whole, 1)
+        } else if whole == 0 {
+            fraction.into()
+        } else {
+            format!("{} and {fraction}", digits(whole, 1))
+        };
+        words.push(format!("Visibility {v} statute miles."));
+    }
+    if let Some(phenomena) = &o.present_weather {
+        for p in phenomena {
+            for (code, phrase) in [
+                ("RA", "Rain."),
+                ("SN", "Snow."),
+                ("BR", "Mist."),
+                ("FG", "Fog."),
+                ("HZ", "Haze."),
+            ] {
+                if p.contains(code) {
+                    let intensity = if matches!(code, "RA" | "SN") && p.starts_with('-') {
+                        "Light "
+                    } else if matches!(code, "RA" | "SN") && p.starts_with('+') {
+                        "Heavy "
+                    } else {
+                        ""
+                    };
+                    words.push(if intensity.is_empty() {
+                        phrase.into()
+                    } else {
+                        format!("{intensity}{}", phrase.to_ascii_lowercase())
+                    });
+                }
+            }
+        }
+    }
+    if let Some(layers) = &o.layers {
+        if layers.is_empty() {
+            words.push("Sky clear.".into());
+        }
+        for l in layers {
+            let phrase = match l.coverage.as_str() {
+                "FEW" => "Few clouds at",
+                "SCT" => "Scattered clouds at",
+                "BKN" => "Ceiling broken",
+                "VV" => "Vertical visibility",
+                _ => "Ceiling overcast",
+            };
+            words.push(format!(
+                "{phrase} {}.",
+                l.base_agl_ft
+                    .map(|ft| super::weather::height(ft * 0.3048))
+                    .unwrap_or_else(|| "height unavailable".into())
+            ));
+        }
+    }
+    let temp = |v: f64| {
+        format!(
+            "{}{}",
+            if v < 0. { "minus " } else { "" },
+            digits(v.abs().round() as u32, 1)
+        )
+    };
+    if let Some(v) = o.temperature_c {
+        words.push(format!("Temperature {} Celsius.", temp(v)));
+    }
+    if let Some(v) = o.dewpoint_c {
+        words.push(format!("Dew point {} Celsius.", temp(v)));
+    }
+    if let Some(v) = o.altimeter_inhg {
+        words.push(format!("Altimeter {}.", altimeter((v * 100.).round() as u32)));
+    }
+    if let Some(v) = &o.runway_in_use {
+        words.push(format!("Indicated runway {}.", runway(v)));
+    }
+    if live.stale(now) {
+        words.push("Weather data stale. Last good observation.".into());
+    }
+    words.push(format!("Source {}.", live.source.name));
+    if live.source.advisory_only {
+        words.push(live.source.disclaimer.clone());
+    }
+    words.join(" ").split_whitespace().collect::<Vec<_>>().join(" ")
 }

@@ -85,6 +85,15 @@
         "title": null
       }
     },
+    "live_weather": {
+      "$ref": "#/$defs/Catalog",
+      "default": {
+        "following": null,
+        "nearby": {},
+        "saved_sources": [],
+        "sources": {}
+      }
+    },
     "map": {
       "$ref": "#/$defs/MapState"
     },
@@ -1513,6 +1522,40 @@
         "height_m",
         "look_yaw_rad",
         "look_pitch_rad"
+      ]
+    },
+    "Catalog": {
+      "type": "object",
+      "properties": {
+        "following": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearby": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/NearbyStatus"
+          }
+        },
+        "saved_sources": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WeatherSource"
+          }
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/SourceStatus"
+          }
+        }
+      },
+      "required": [
+        "sources",
+        "nearby"
       ]
     },
     "CdiSource": {
@@ -3446,6 +3489,119 @@
         "pilot"
       ]
     },
+    "Extracted": {
+      "type": "object",
+      "properties": {
+        "matches": {
+          "description": "Exact selected text, before field parsing, for the Test view.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "observation": {
+          "$ref": "#/$defs/Observation"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "matches",
+        "observation"
+      ]
+    },
+    "Extraction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "digiwx"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "metar_text"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "aviationweather"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/Fields",
+              "default": {
+                "altimeter": null,
+                "ceiling": null,
+                "date": null,
+                "dew_point": null,
+                "gust": null,
+                "layers": null,
+                "runway_in_use": null,
+                "temperature": null,
+                "time": null,
+                "visibility": null,
+                "wind": null
+              }
+            },
+            "kind": {
+              "type": "string",
+              "const": "metar"
+            },
+            "selector": {
+              "$ref": "#/$defs/Selector"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "selector"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "$ref": "#/$defs/Fields"
+            },
+            "kind": {
+              "type": "string",
+              "const": "fields"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "fields"
+          ]
+        }
+      ]
+    },
     "FacilityKind": {
       "type": "string",
       "enum": [
@@ -3838,6 +3994,133 @@
         "engine_power_fraction"
       ]
     },
+    "Fields": {
+      "type": "object",
+      "properties": {
+        "altimeter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ceiling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dew_point": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gust": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "layers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "runway_in_use": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "visibility": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "wind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Selector"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
     "FlapStage": {
       "type": "object",
       "properties": {
@@ -3958,6 +4241,13 @@
               "type": "null"
             }
           ]
+        },
+        "live_weather": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordedLiveWeather"
+          },
+          "maxItems": 2000
         },
         "version": {
           "type": "integer",
@@ -5095,6 +5385,26 @@
         "loc_bc"
       ]
     },
+    "Layer": {
+      "type": "object",
+      "properties": {
+        "base_agl_ft": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "coverage": {
+          "description": "FEW, SCT, BKN, OVC, or VV. Unknown heights remain None.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "coverage"
+      ]
+    },
     "Layout": {
       "type": "object",
       "properties": {
@@ -5261,6 +5571,35 @@
         "position_estimated",
         "since_s",
         "indication"
+      ]
+    },
+    "LiveObservation": {
+      "type": "object",
+      "properties": {
+        "extracted": {
+          "$ref": "#/$defs/Extracted"
+        },
+        "observed_at": {
+          "description": "Unix UTC seconds; None when the source provides no observation time.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "retrieved_at": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "source": {
+          "$ref": "#/$defs/WeatherSource"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "retrieved_at",
+        "extracted"
       ]
     },
     "Load": {
@@ -5915,6 +6254,23 @@
         {
           "type": "object",
           "properties": {
+            "observation": {
+              "$ref": "#/$defs/LiveObservation"
+            },
+            "type": {
+              "type": "string",
+              "const": "live_weather"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "observation"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "airport": {
               "type": "string"
             },
@@ -6371,6 +6727,65 @@
         "cdi_source"
       ]
     },
+    "NearbyStation": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "type": "string"
+        },
+        "distance_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "observation": {
+          "$ref": "#/$defs/LiveObservation"
+        },
+        "station": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "station",
+        "distance_nm",
+        "direction",
+        "observation"
+      ]
+    },
+    "NearbyStatus": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failures": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "fetching": {
+          "type": "boolean"
+        },
+        "next_attempt_at": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "stations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/NearbyStation"
+          }
+        }
+      },
+      "required": [
+        "stations",
+        "fetching",
+        "next_attempt_at",
+        "failures"
+      ]
+    },
     "Obscuration": {
       "type": "string",
       "enum": [
@@ -6379,6 +6794,100 @@
         "fog",
         "haze"
       ]
+    },
+    "Observation": {
+      "type": "object",
+      "properties": {
+        "altimeter_inhg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "automatic": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "corrected": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "dewpoint_c": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "layers": {
+          "description": "Some(empty) means explicitly clear; None means unreported.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Layer"
+          }
+        },
+        "present_weather": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "runway_in_use": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "station": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "temperature_c": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "time": {
+          "description": "DDHHMMZ, resolved against retrieval time by the source runtime.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visibility_sm": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "wind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Wind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "Outline": {
       "oneOf": [
@@ -8187,6 +8696,45 @@
         "controls"
       ]
     },
+    "RecordedLiveWeather": {
+      "type": "object",
+      "properties": {
+        "duration_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "initial_conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "initial_wind": {
+          "description": "Grid-referenced wind and MSL conditions, resolved when accepted, for exact replay.",
+          "$ref": "#/$defs/Weather"
+        },
+        "observation": {
+          "$ref": "#/$defs/LiveObservation"
+        },
+        "target_conditions": {
+          "$ref": "#/$defs/Conditions"
+        },
+        "target_wind": {
+          "$ref": "#/$defs/Weather"
+        },
+        "time_s": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "time_s",
+        "duration_s",
+        "observation",
+        "initial_wind",
+        "target_wind",
+        "initial_conditions",
+        "target_conditions"
+      ]
+    },
     "RecoveryPhase": {
       "type": "string",
       "enum": [
@@ -8681,6 +9229,92 @@
         "next_id"
       ]
     },
+    "Selector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "element_id": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "element_id"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "element_id"
+          ]
+        },
+        {
+          "title": "id, .class, #id.class, or .class.other; no combinators or executable expressions.",
+          "type": "object",
+          "properties": {
+            "css_like": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "css_like"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "css_like"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "regex"
+            },
+            "regex": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "regex"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "body"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "json_pointer": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "json_pointer"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "json_pointer"
+          ]
+        }
+      ]
+    },
     "SensedInstruments": {
       "type": "object",
       "properties": {
@@ -8772,6 +9406,59 @@
         "year",
         "month",
         "day"
+      ]
+    },
+    "SourceStatus": {
+      "type": "object",
+      "properties": {
+        "age_seconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "failures": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "fetching": {
+          "type": "boolean"
+        },
+        "last_good": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LiveObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_attempt_at": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "source": {
+          "$ref": "#/$defs/WeatherSource"
+        },
+        "stale": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source",
+        "fetching",
+        "next_attempt_at",
+        "failures",
+        "stale"
       ]
     },
     "Speaker": {
@@ -10618,6 +11305,151 @@
         "seed"
       ]
     },
+    "WeatherSource": {
+      "type": "object",
+      "properties": {
+        "advisory_only": {
+          "type": "boolean"
+        },
+        "airport": {
+          "type": "string",
+          "maxLength": 8,
+          "minLength": 3,
+          "pattern": "^[A-Z0-9]+$"
+        },
+        "allow_http": {
+          "type": "boolean"
+        },
+        "cors": {
+          "description": "Browser opt-in; the server must also send Access-Control-Allow-Origin.",
+          "type": "boolean",
+          "default": false
+        },
+        "disclaimer": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "extraction": {
+          "$ref": "#/$defs/Extraction"
+        },
+        "format_version": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 1,
+          "minimum": 1
+        },
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "refresh_seconds": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 86400,
+          "minimum": 60
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "format": "uint32",
+          "maximum": 120,
+          "minimum": 1
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^https?://"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "url": {
+                "pattern": "^http://"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          },
+          "then": {
+            "properties": {
+              "allow_http": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "advisory_only": {
+                "const": true
+              }
+            },
+            "required": [
+              "advisory_only"
+            ]
+          },
+          "then": {
+            "properties": {
+              "disclaimer": {
+                "minLength": 1,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "extraction": {
+                "properties": {
+                  "kind": {
+                    "const": "digiwx"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "extraction"
+            ]
+          },
+          "then": {
+            "properties": {
+              "advisory_only": {
+                "const": true
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "format_version",
+        "id",
+        "name",
+        "airport",
+        "url",
+        "allow_http",
+        "refresh_seconds",
+        "timeout_seconds",
+        "advisory_only",
+        "disclaimer",
+        "extraction"
+      ]
+    },
     "WeightBalance": {
       "type": "object",
       "properties": {
@@ -10676,6 +11508,50 @@
         "left_load",
         "right_load",
         "half_period_s"
+      ]
+    },
+    "Wind": {
+      "type": "object",
+      "properties": {
+        "from_true_deg": {
+          "description": "METAR direction is true, including the DigiWx preset's wind fields.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "gust_kt": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "speed_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "variable": {
+          "type": "boolean"
+        },
+        "variable_sector_deg": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "variable",
+        "speed_kt"
       ]
     },
     "Wing": {

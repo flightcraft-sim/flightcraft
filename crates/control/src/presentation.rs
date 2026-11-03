@@ -29,6 +29,8 @@ pub struct Snapshot {
     pub callsigns: crate::CallsignPreferences,
     pub atc: crate::comms::AtcState,
     pub record: crate::comms::FlightRecord,
+    #[serde(default)]
+    pub live_weather: crate::live_weather::runtime::Catalog,
     pub screens: ScreenSet,
     #[serde(default)]
     pub crew: crate::CrewState,
@@ -65,6 +67,12 @@ impl Session {
             callsigns: self.callsign_preferences().clone(),
             atc: self.atc_state(),
             record,
+            live_weather: crate::live_weather::runtime::Catalog {
+                saved_sources: self.live_weather.saved_sources.values().cloned().collect(),
+                sources: self.live_weather.entries.clone(),
+                nearby: self.live_weather.nearby.clone(),
+                following: self.live_weather.following.clone(),
+            },
             screens: self.screens.clone(),
             crew: self.crew_state(),
         }
@@ -75,6 +83,7 @@ impl Session {
         }
         snapshot.screens.validate()?;
         snapshot.lesson.validate().map_err(|e| e.to_string())?;
+        snapshot.live_weather.validate()?;
         let identity = snapshot
             .configuration
             .as_ref()
@@ -134,6 +143,16 @@ impl Session {
         self.scenario.state = snapshot.scenario;
         self.lesson.debrief = snapshot.lesson;
         self.comms.record = snapshot.record;
+        self.live_weather.saved_sources = snapshot
+            .live_weather
+            .saved_sources
+            .into_iter()
+            .map(|s| (s.id.clone(), s))
+            .collect();
+        self.live_weather.entries = snapshot.live_weather.sources;
+        self.live_weather.nearby = snapshot.live_weather.nearby;
+        self.live_weather.following = snapshot.live_weather.following;
+        self.live_weather.loaded = true;
         self.screens = snapshot.screens;
         self.crew.state = snapshot.crew;
         self.presentation_commands = Some(Vec::new());
@@ -217,6 +236,7 @@ impl RegionTransfer {
 pub struct WorkerSeed {
     #[serde(default)]
     pub callsigns: crate::CallsignPreferences,
+    pub weather_sources: Vec<crate::WeatherSource>,
     pub regions: Vec<RegionTransfer>,
     pub world: flightcraft_world::WorldChoice,
     pub configuration: Option<flightcraft_aero::ResolvedAircraft>,
@@ -226,6 +246,7 @@ impl Session {
     pub fn worker_seed(&self) -> WorkerSeed {
         WorkerSeed {
             callsigns: self.callsign_preferences().clone(),
+            weather_sources: crate::live_weather::user_sources_for_seed(self),
             regions: self
                 .regions
                 .values()
@@ -242,6 +263,18 @@ impl Session {
             return Err("too many regions".into());
         }
         let mut session = Session::new().map_err(|e| e.to_string())?;
+        session.load_weather_sources();
+        if seed.weather_sources.len() > 128 {
+            return Err("Too many saved weather sources".into());
+        }
+        for source in seed.weather_sources {
+            source.validate()?;
+            session
+                .live_weather
+                .saved_sources
+                .insert(source.id.clone(), source.clone());
+            session.live_weather.insert(source)?;
+        }
         for region in seed.regions {
             session
                 .install_region(region.into_world()?)

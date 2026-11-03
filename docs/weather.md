@@ -124,8 +124,9 @@ Approach fixtures follow an extrapolated threshold plane, so uneven approach ter
 them. PAPI/VASI geometry and nominal 3° settings are illustrative when metadata only names a type.
 Cloud structure is static, with coarse FEW/SCT/BKN coverage, and no icing, cloud shadows, lightning,
 or individual rain/snow particles. Time of day is an explicit illumination setting, not an
-astronomical clock. The full scenario validator, live METARs, logbook persistence, and graded
-instrument tasks remain future training phases. This is an offline simulator, not a certified
+astronomical clock. The full scenario validator, logbook persistence, and graded
+instrument tasks remain future training phases. Opt-in [live station weather](live-weather.md)
+adds configurable local sources, nearby official METAR comparisons, and recorded live updates. The core runs offline; live endpoints are explicit opt-ins. This is not a certified
 training device or a source for real-world weather, lighting, or navigation decisions.
 
 See [training](training.md#6-instrument-flying), [synthetic vision](glass.md#synthetic-vision),

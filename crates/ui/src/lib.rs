@@ -31,6 +31,7 @@ pub mod screens;
 pub mod script;
 pub mod theme;
 mod weather;
+mod weather_live;
 
 use eframe::egui::{self, RichText};
 use flightcraft_control::Session;
@@ -129,6 +130,7 @@ pub struct FlightCraftApp {
     glance_origin: Option<[f64; 2]>,
     audio: audio::Audio,
     radio: radio::RadioUi,
+    live_weather: weather_live::LiveUi,
     scenarios: scenario::ScenarioUi,
     radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
@@ -409,6 +411,7 @@ impl FlightCraftApp {
             navigation: navigation::SearchPanel::default(),
             glance_origin: None,
             radio: radio::RadioUi::default(),
+            live_weather: weather_live::LiveUi::default(),
             scenarios: scenario::ScenarioUi::default(),
             radio_ptt_held: [false; 2],
             audio: audio::Audio::with_preferences(
@@ -1021,6 +1024,7 @@ impl FlightCraftApp {
             self.audio.preferences.gain(),
         );
         self.scenarios.show(ctx, &mut self.session);
+        self.live_weather.show(ctx, &mut self.session);
         let f = self.session.sim().failures();
         if f.engine_fire
             || f.electrical_fire
@@ -1067,6 +1071,10 @@ impl FlightCraftApp {
                     }
                     self.navigation.show(ui, &mut self.session);
                     ui.menu_button("Weather", |ui| {
+                        if ui.button("Live…").clicked() {
+                            self.live_weather.open = true;
+                            ui.close();
+                        }
                         if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) {
                             self.error = Some(e.to_string());
                         }
@@ -1319,6 +1327,8 @@ mod layout_tests;
 mod panel_fidelity_tests;
 #[cfg(test)]
 mod test_capture;
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod weather_live_preview;
 #[cfg(test)]
 mod weather_preview;
 

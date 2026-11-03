@@ -136,6 +136,7 @@ mod worker {
         previous: f64,
         external_until: f64,
         last_save: f64,
+        last_weather_poll: f64,
     }
     thread_local! {static OWNER:RefCell<Option<Owner>>=const{RefCell::new(None)};}
     #[wasm_bindgen]
@@ -154,6 +155,7 @@ mod worker {
                     script,
                     previous: js_sys::Date::now(),
                     external_until: 0.,
+                    last_weather_poll: 0.,
                     last_save: 0.,
                 });
             }
@@ -169,6 +171,13 @@ mod worker {
             let now = js_sys::Date::now();
             let elapsed = (now - o.previous) / 1000.;
             o.previous = now;
+            // Background observations must finish and follow while physics is paused too.
+            if o.session.paused() && now - o.last_weather_poll >= 250. {
+                o.session
+                    .run(flightcraft_control::WeatherSources::default())
+                    .map_err(|e| JsValue::from_str(&e.to_string()))?;
+                o.last_weather_poll = now;
+            }
             if now - o.last_save >= 5000. {
                 o.session.autosave_flight();
                 o.last_save = now;

@@ -199,6 +199,7 @@ pub struct ScreenApp {
     page: Option<PageKind>,
     next_id: u64,
     last_poll: f64,
+    saved_weather_sources: Option<Vec<flightcraft_control::WeatherSource>>,
     error: Option<String>,
     renderer: &'static str,
     import: String,
@@ -242,12 +243,19 @@ impl ScreenApp {
             session.install_pack(&pack)?;
         }
         session.enable_app();
+        // Seed the worker and the persistence comparison from the same validated user settings.
+        // Merely opening a window must not replace unreadable or future-version local storage.
+        errors.extend(
+            session
+                .run(flightcraft_control::WeatherSources::default())?
+                .errors,
+        );
+        let saved_weather_sources = Some(session.saved_weather_sources());
         if let Some(saved) = cc.storage.and_then(|s| s.get_string("flightcraft.screens.v1"))
             && saved.len() <= 1024 * 1024
+            && let Ok(set) = serde_json::from_str(&saved)
         {
-            if let Ok(set) = serde_json::from_str(&saved) {
-                let _ = session.restore_screens(set);
-            }
+            let _ = session.restore_screens(set);
         }
         if let Some(world) = session.worker_seed().regions.first() {
             let choice = world.region.id.clone();
@@ -293,6 +301,7 @@ impl ScreenApp {
             page,
             next_id: 1,
             last_poll: 0.,
+            saved_weather_sources,
             error: (!errors.is_empty()).then(|| errors.join("\n")),
             renderer,
             import: String::new(),
@@ -336,10 +345,20 @@ impl eframe::App for ScreenApp {
             {
                 self.error = Some(e);
             }
-            if let Some(snapshot) = inbox.latest.take()
-                && let Err(e) = self.main.session.apply_screen_snapshot(snapshot)
-            {
-                self.error = Some(e);
+            if let Some(snapshot) = inbox.latest.take() {
+                let saved = snapshot.live_weather.saved_sources.clone();
+                match self.main.session.apply_screen_snapshot(snapshot) {
+                    Err(e) => self.error = Some(e),
+                    Ok(())
+                        if link.worker.is_some() && self.saved_weather_sources.as_ref() != Some(&saved) =>
+                    {
+                        if let Err(e) = flightcraft_control::persist_browser_weather_sources(&saved) {
+                            self.error = Some(e);
+                        }
+                        self.saved_weather_sources = Some(saved);
+                    }
+                    Ok(()) => {}
+                }
             }
             self.main.scripted = inbox.scripted;
             self.main.external = inbox.external;
@@ -479,7 +498,8 @@ impl eframe::App for ScreenApp {
                     }
                 }
                 if ui.button("Undo layout").clicked()&&control{let _=self.main.session.execute("layout.undo",json!({}));}
-                ui.menu_button("Import / export layout",|ui|{ui.label("Paste a layout JSON document");ui.add(egui::TextEdit::multiline(&mut self.import).desired_rows(4));if ui.add_enabled(control,egui::Button::new("Apply layout")).clicked(){match Layout::from_json(&self.import){Ok(layout)=>{if let Err(e)=self.main.session.execute("layout.set",json!({"id":self.screen,"layout":layout})){self.error=Some(e.to_string());}},Err(e)=>self.error=Some(e)}}if ui.button("Copy layout JSON").clicked()&&let Some(screen)=self.main.session.screens().windows.iter().find(|w|w.id==self.screen)&&let Ok(text)=serde_json::to_string_pretty(&screen.layout){ctx.copy_text(text);}});
+                ui.menu_button("Import / export layout",|ui|{ui.label("Paste a layout JSON document");ui.add(egui::TextEdit::multiline(&mut self.import).desired_rows(4));if ui.add_enabled(control,egui::Button::new("Apply layout")).clicked(){match Layout::from_json(&self.import){Ok(layout)=>{if let Err(e)=self.main.session.execute("layout.set",json!({"id":self.screen,"layout":layout})){self.error=Some(e.to_string());}},Err(e)=>self.error=Some(e)}}
+                if ui.button("Copy layout JSON").clicked()&&let Some(screen)=self.main.session.screens().windows.iter().find(|w|w.id==self.screen)&&let Ok(text)=serde_json::to_string_pretty(&screen.layout){ctx.copy_text(text);}});
             });
             if self.remote&&self.link.is_none(){ui.label("Enter the pairing token shown in the host's Screens menu. The host grants control separately.");ui.horizontal(|ui|{ui.label("Screen name");ui.text_edit_singleline(&mut self.name);ui.label("Token");ui.add(egui::TextEdit::singleline(&mut self.token).password(true));if ui.button("Pair").clicked(){match Link::remote(ctx,&self.token,&self.name){Ok(link)=>{self.link=Some(link);self.paired=false;},Err(e)=>self.error=Some(e)}}});}
             if self.remote&&ui.button("Disconnect / reconnect").clicked(){self.link=None;self.paired=false;}
