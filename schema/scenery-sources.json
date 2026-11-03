@@ -15,6 +15,16 @@
       "maxItems": 4,
       "minItems": 4
     },
+    "ept_selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SelectionSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "ground_sample_m": {
       "type": "number",
       "format": "double"
@@ -93,7 +103,44 @@
         "dem",
         "lidar-discovery",
         "lidar",
+        "ept-metadata",
+        "ept-hierarchy",
+        "ept-lidar",
+        "geoid-model",
+        "geoid-control",
         "reference-image"
+      ]
+    },
+    "SelectionSummary": {
+      "type": "object",
+      "properties": {
+        "depth": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "hierarchy_pages": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "node_count": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "selected_points_before_clipping": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "depth",
+        "node_count",
+        "hierarchy_pages",
+        "selected_points_before_clipping"
       ]
     },
     "Source": {

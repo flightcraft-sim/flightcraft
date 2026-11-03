@@ -140,7 +140,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
 }
 
 @fragment fn scene_fragment(i: Surface) -> @location(0) vec4<f32> {
-    if i.kind == 3.0 && u.vision.y < 0.5 && u.scenery_bounds.z > u.scenery_bounds.x && all(i.world.xz >= u.scenery_bounds.xy) && all(i.world.xz <= u.scenery_bounds.zw) { discard; }
+    if (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0 || i.kind == 5.0) && u.vision.y < 0.5 && u.scenery_bounds.z > u.scenery_bounds.x && all(i.world.xz >= u.scenery_bounds.xy) && all(i.world.xz <= u.scenery_bounds.zw) { discard; }
     let distance = length(i.world - u.eye.xyz);
     let normal = normalize(i.normal);
     let sun = normalize(SUN);

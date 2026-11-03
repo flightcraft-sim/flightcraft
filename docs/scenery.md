@@ -1,6 +1,6 @@
 # Public-data scenery and the local 3D Tiles provider
 
-This implements the first acquisition and rendering gate of
+This implements the public-data acquisition and reconstruction stages of
 [the source plan on main](https://github.com/flightcraft-sim/flightcraft/blob/377c5c026576d2c27f222c2dfaa4b5825992e423/docs/scenery-sources.md).
 It is **not yet the completed photoreal golden sample**. Generated imagery and terrain, imported
 city models, lidar-derived buildings, and streaming adapters all use OGC 3D Tiles 1.1 with glTF 2.0 content.
@@ -9,15 +9,17 @@ There is no second proprietary scenery tile format.
 Implemented: bounded/resumable acquisition; receipt-verified offline imagery pyramids; windowed
 float GeoTIFF/COG elevation sampling; explicit 3D Tiles quadtrees; embedded lossless WebP GLBs;
 worker decoding; geometric-error selection; CPU and GPU parent fallback; bounded uploads; local
-provider preferences; and offscreen reference previews. Existing simulation ground, synthetic
+provider preferences; receipt-backed 1N7 GEOID18/FAA vertical controls; measured CHM canopy;
+NAIP-textured roof reconstruction; GPU instancing and object LOD; and offscreen reference previews.
+Existing simulation ground, synthetic
 vision, planning maps, charts, and clouds retain their paths. Imagery is presentation data and does
 not change replay identity or collision elevations.
 
-Not accepted yet: independent painted-runway alignment, vertical-datum conversion, measured lidar
-trees and roofs, NHD water geometry, physical sun/sky, cascaded shadows, exposure/bloom, the Water
-Gap proof, automatic installed-region selection, or the 60 fps integrated-GPU acceptance run.
-Static browser 3D Tiles fetching is implemented; it still needs real NYC package acceptance.
-Publication requires datum and runway acceptance, and measured lidar reconstruction. Fly NYC additionally requires the reviewed 3DEP-only source.
+Not accepted yet: independent painted-runway alignment, real NYC reconstruction and full-area scaling,
+NHD water geometry, physical sun/sky, cascaded shadows, exposure/bloom, the Water Gap proof,
+automatic installed-region selection, or the 60 fps integrated-GPU acceptance run.
+Static browser 3D Tiles fetching is implemented; real NYC package acceptance remains open. Publication rejects
+scenery without the explicit vertical-datum, runway-alignment, and lidar acceptance flags.
 
 ## First fetch: 1N7 test area
 
@@ -49,16 +51,82 @@ Each HTTP request starts at least one second after the previous request started.
 streamed to disk, capped at 2 GB apiece; an oversized USGS product needs a smaller upstream selection,
 not an increased in-memory allocation.
 
-Fetch checks NAIP `maxImageWidth` and `maxImageHeight`, requests 64 separate 512×512 JPEGs, and uses
-fixed EPSG:3857 pixel-area bounds with `adjustAspectRatio=false`. TNM discovery is paginated and
-receipted, first for 1 m DEM GeoTIFFs, then classified LPC LAZ files. It downloads intersecting products,
-including overlapping editions; review the discovery receipts before expanding the area. A missing
+Fetch checks NAIP `maxImageWidth` and `maxImageHeight`, requests separate 512×512 JPEGs (64 for the 1N7 test and 16 for the Midtown test), and uses
+fixed EPSG:3857 pixel-area bounds with `adjustAspectRatio=false`. TNM DEM discovery is paginated and receipted. It downloads intersecting 1 m GeoTIFF products,
+including overlapping editions; review the discovery receipts before expanding the area. Classified
+lidar now uses the USGS open-data Entwine/EPT copy of `NJ_NW6Co_2017` by default. A missing
 1 m DEM is an error. Missing lidar remains visible in the receipts and cannot pass release acceptance.
 The initial importer reads geographic WGS84/NAD83 (including NAD83(2011)) or UTM zone 18 north, meter units, float32, north-up
 GeoTIFFs; unsupported CRS, sample types, compression, missing coverage, and nodata fail explicitly.
-NAD83 frame transformations still need the independent alignment gate. LAZ acquisition is implemented;
-LAZ decoding, EPT hierarchy selection, classification filtering, canopy/roof reconstruction, and geoid
-conversion remain next steps once these local inputs are available. No footprint fallback is included.
+NAD83 frame transformations still need the independent alignment gate. EPT hierarchy selection, bounded LAZ acquisition, and streaming LAS/LAZ decoding are implemented;
+CHM canopies and fitted roofs are implemented for bounded blocks. Inferred classification and horizontal registration still require acceptance. GEOID18 conversion passed the real-grid, NGS control, and FAA runway-height checks at 1N7. No footprint fallback is included.
+
+## Resume the test area with EPT lidar
+
+Stop the old Rockyweb fetch before starting this command. That older binary does not honor the new
+cache lock. In the current checkout, run:
+
+```sh
+CARGO_TARGET_DIR=/home/ray/builds/cargo-target/flightcraft/fc-scenery CARGO_BUILD_JOBS=4 PKG_CONFIG_PATH=$HOME/builds/pkgconfig-shim capped 8G -- cargo xtask scenery fetch --region eastern-pa --area 1n7-test --layer lidar
+```
+
+`--layer lidar` retains the existing imagery and DEM catalog. `--layer terrain` acquires imagery and
+DEMs, and the default `--layer all` also acquires the regional geoid inputs. Catalog writes are atomic, records are upserted by URL,
+and a process-held cache lock prevents two new fetch commands from sharing a cache concurrently.
+An interrupted EPT selection is left incomplete until all selected data objects are receipted.
+
+The EPT root is
+`https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NJ_NW6Co_2017/ept.json`.
+Requests use the exact public-bucket allowlist prefix. No AWS credentials or requester-pays headers
+are used. The selector reads JSON hierarchy pages, follows intersecting `-1` page references, and
+retains ancestor data because EPT point sets are additive. It chooses depth from the cube width,
+`span`, latitude, and a 0.5 m ground voxel-spacing target. That bounds voxel spacing, not guaranteed
+return density. The selector clips node bounds against the area and conforming dataset bounds,
+validates canonical octree keys and duplicate entries, and enforces page, node, and point budgets.
+Only intersecting `ept-data/<depth>-<x>-<y>-<z>.laz` objects are fetched. The planned total before
+point clipping and chosen depth are recorded in `sources.json` as `ept_selection` after completion.
+Request spacing remains at least one second, and completed receipts are reused.
+
+Rockyweb is an explicit fallback only: append `--lidar-source rockyweb`. One HTTP 429 stops that
+command immediately; it does not continue through the remaining Rockyweb products or retry them.
+EPT is a build input; generated scenery still uses the single 3D Tiles renderer path.
+
+## GEOID18 acquisition and height conventions
+
+The default fetch also acquires the public NGS CONUS GEOID18 binary and a separately requested
+NGS geoid-height control at the area's center. To add just these inputs to an existing cache:
+
+```sh
+CARGO_TARGET_DIR=/home/ray/builds/cargo-target/flightcraft/fc-scenery CARGO_BUILD_JOBS=4 PKG_CONFIG_PATH=$HOME/builds/pkgconfig-shim capped 8G -- cargo xtask scenery fetch --region eastern-pa --area 1n7-test --layer geoid
+```
+
+The NGS API request omits its numeric model identifier: `18` is not the service ID for GEOID18.
+The response must explicitly identify `geoidModel: GEOID18`, state meter units, and contain a valid
+height; HTTP 200 error bodies fail the fetch. Re-running `--layer geoid` reuses the large grid and
+requests the corrected control URL.
+
+Both sources use the same one-request-per-second transport and SHA-256 receipts. The official little-endian `Format_pc/g2018u0.bin` is requested (`u0` denotes CONUS). The binary reader
+accepts either byte order, checks dimensions, exact file length, and full-model CONUS bounds, and reads only the small regional
+window with a two-cell margin. Shipped subsets have one-arc-minute registration and the original
+model's SHA-256; the schema is `schema/geoid.json`. No invented geoid values ship with a real region.
+
+Simulation heights are orthometric MSL. USGS discovery metadata identifies these DEMs as NAVD88
+in meters. Standard ECEF/glTF content uses ellipsoidal height: **h = H + N**. When an authentic,
+receipted grid is present, the writer applies this correction to vertices and bounding volumes.
+The local tileset carries the bounded regional grid in `extras.flightcraft.geoid`; the renderer
+subtracts N for both decoded vertices and stream bounds. Browser/provider adapters must use
+`ContentRequest::decode(bytes, origin)` to preserve the regional datum context. Providers need no
+source-specific offsets or changes to the renderer. Sources without a regional grid retain the
+existing unaccepted preview behavior.
+
+`geoid_applied` reports conversion separately from acceptance. **The vertical-datum acceptance flag
+remains false** unless the real grid agrees with the separately fetched, meter-unit NGS response
+within its stated numeric uncertainty plus 0.005 m interpolation tolerance, receipt-backed USGS metadata establishes NAVD88 meter DEMs, and the highest paved
+runway sample agrees with FAA 1N7's supplied 371 ft field elevation within 1 m. `datum-audit.json`
+records these independent residuals and missing evidence. It does not compare only a self-canceling
+height round trip. Other areas require their own registered vertical controls. Synthetic sign, endian, interpolation, coverage, and
+renderer-height tests exercise the implementation; they are not a survey acceptance result. The
+cached FAA runway-end heights were sampled from older terrain and are not surveyed vertical controls.
 
 ## Offline build
 
@@ -81,13 +149,16 @@ adjustment lifts dark tones; it does not recover pixels hidden by baked shadows 
 Elevation is sampled from bounded TIFF chunks (at most four cached chunks per DEM, with a global cache reset above 64 MiB). Bilinear sampling
 honors pixel-area versus pixel-point registration and rejects nodata. Mesh decimation is independent
 of the 1 m source spacing. Current preview normals are reconstructed per triangle in the content loader.
-The existing simulation DEM stays unchanged. **Orthometric DEM heights are currently previewed as
-ellipsoidal heights in GLB; `verticalDatumVerified` remains false.** This keeps MSL height readable in
-the local preview but is not an accepted geodetic export. Resolve the NAVD88/WGS84 conversion before
-publishing or combining these tiles with external georeferenced content.
-The current footprint mask suppresses the procedural runway only. Real-DEM validation must also
-resolve fallback-terrain occlusion wherever the new surface lies below the coarse base mesh; the
-level reference preview does not exercise that case.
+The existing simulation DEM stays unchanged. With a receipted GEOID18 model, standard ellipsoidal
+GLB vertices and region bounds are converted back into the simulation's MSL frame by the renderer.
+Without that model, the older uncorrected height preview remains available; neither case clears
+`verticalDatumVerified` automatically. That gate still needs the independent checks described above.
+Generated terrain suppresses higher fallback ground and coarse water as well as the procedural
+runway within its rendered footprint. Parent fallback supplies full generated-area coverage during
+streaming; synthetic vision retains its own geometry. Only full-coverage generated terrain should
+set the GLB `extras.flightcraft.terrain` marker; city-only content must not suppress base terrain.
+The offscreen height-occlusion regression renders a deliberately higher, magenta fallback surface
+and checks that actual NAIP appears inside the scenery area while fallback ground remains outside.
 
 The larger presets exist for later acquisition: `1n7` (0.3 m), `water-gap` (0.6 m), and `surroundings`
 (1.2 m). Square power-of-two roots include padding: respectively about 19.66, 39.32, and 78.64 km
@@ -113,6 +184,11 @@ budgets. GPU residency follows valid CPU payload identities; switching providers
 and expiration purge obsolete GPU tiles. Valid parents cover children while replacements load;
 when all coverage expires, the base scene remains available. Expired credits leave with their
 content. No HTTP work runs inside the frame callback.
+
+Native adapters implement `TileProvider` on the decoding worker. Event-loop adapters construct
+`Stream::new`, drain the bounded `Selection.requests`, decode through `ContentRequest::decode`
+(inherited transform and regional geoid), and call `insert` or `reject`. The static browser adapter
+uses the same request method. Token values remain in per-user configuration and never in tile metadata.
 
 ### Fly NYC: lidar-only shipped building provider
 
@@ -153,7 +229,7 @@ The [area schema](../schema/scenery-nyc-area.json) describes the selection file.
 
 fc-scenery supplies a bounded local 3D Tiles tree with an explicit ENU-to-ECEF root transform.
 Each content leaf contains **one complete reconstructed building GLB**; grouping nodes have no
-content. This lane generates LODs. The source meshes must already include the reviewed source
+content. This lane generates LODs and preserves the regional geoid through repackaging. The source meshes must already include the reviewed source
 CRS, units, vertical correction, and reconstruction; raw EPSG:3857 point positions are not accepted
 as glTF coordinates. Roof geometry is preserved at the finest output LOD, and source materials
 are replaced by original PBR wall/roof colors.
@@ -367,7 +443,8 @@ contacting Esri. Run those with the focused checks below.
 
 Initial supported content profile: explicit 1.1 trees; region, box, or sphere volumes; inherited
 ADD/REPLACE refinement and affine transforms; embedded GLB 2.0 indexed triangle geometry; node
-transforms; one opaque material and one embedded PNG/JPEG/WebP base-color image per GLB; no sparse
+transforms and `EXT_mesh_gpu_instancing`; one opaque or alpha-mask material and one embedded
+PNG/JPEG/WebP base-color image per GLB; no sparse
 accessors, animation, skins, Draco, external image resources, b3dm, external nested tilesets, or
 implicit subtrees yet. Unsupported content fails with base terrain still available. Imported city
 and photogrammetry datasets need conversion to this profile or extensions to the same loader.
@@ -381,7 +458,7 @@ are 48/96/192 MiB per provider; at most two decode requests are pending, and one
 Replacement parents stay visible until children are decoded **and** uploaded. The browser clamps
 High to Medium and fetches the reduced, same-origin NYC showcase tileset. Quality
 budgets are resource limits, not measured guarantees of 60 fps. Local attribution is drawn over the
-view. Generated terrain suppresses the procedural runway overlay within its rendered footprint;
+view. Generated terrain replaces fallback ground, procedural runway overlays, and coarse water within its rendered footprint;
 synthetic vision keeps its independent runway geometry.
 
 ## Proof and handoff
@@ -411,8 +488,8 @@ writes adapter and p95 timing to `out/scenery/frame-budget.json`, and requires p
 on the target integrated GPU, with no competing GPU workloads. Software rendering is not evidence
 for the integrated-GPU requirement. Dense final lidar content requires another acceptance run.
 
-The current reference proof passed all three image comparisons and GPU validation. The warmed
-1080p Low preview measured **4.10 ms p95 on an NVIDIA GeForce GTX 1660 Ti**. This is a discrete GPU
+The initial level-surface reference proof passed all three image comparisons and GPU validation.
+That warmed 1080p Low preview measured **4.10 ms p95 on an NVIDIA GeForce GTX 1660 Ti**. This is a discrete GPU
 and a level, reference-only airport surface; it does **not** satisfy the integrated-GPU or final
 scenery acceptance criteria. Run GPU tests serially (`--test-threads=1`) to avoid timing interference.
 
@@ -437,16 +514,17 @@ Install accepted output under `assets/terrain/<region>/scenery/<area>/`, then us
 ranges into at most 128 MiB raw archives with individual manifests; archives remain below the existing
 256 MiB verified transport cap and GitHub's 2 GB limit. `data.lock` gets dataset `scenery` entries with
 per-file and per-archive SHA-256. No lock entry is invented for data that has not passed acceptance.
-Web packaging includes accepted scenery and enforces the shared 1 GB total-site limit; Lidar-derived Fly NYC
+Web packaging includes accepted scenery and enforces a 900 MB packaging budget below the shared 1 GB host ceiling; Lidar-derived Fly NYC
 buildings have a separate 250 MB cap. Never install local TUM content into a website data tree.
 
 Generated schemas: `tileset.json`, `scenery-request.json`, `scenery-sources.json`, `scenery-report.json`,
-`scenery-provider.json`, `scenery-footprint-{sources,review,report}.json`, and
+`scenery-provider.json`, `geoid.json`, `scenery-footprint-{sources,review,report}.json`, and
 `scenery-citygml-{sources,report}.json`, `scenery-nyc-area.json`, `scenery-nyc-lidar.json`, and
 `scenery-nyc-lidar-report.json`. Tests cover hostile tilesets/GLBs, bounded image decoding, resume-range
 validation, DEM registration/nodata, quadtree completeness, geometry registration, and parent coverage.
 Shader tests translate both scene shaders to WebGL 2 GLSL. Direct render dependencies on `image`,
-`gltf`, `serde`, and `schemars` reuse existing workspace versions; no new third-party package version is added.
+`gltf`, `serde`, and `schemars` reuse existing workspace versions. The offline LAS/LAZ builder adds
+`las` and `laz`; their checked licenses are recorded below.
 
 ## Cities lane checks and captures
 
@@ -487,3 +565,174 @@ In this offline lane, `cargo xtask web --check` can finish strict wasm compilati
 finish showcase packaging without the locked chart and terrain archives. If they are absent,
 flight lead must first run `cargo xtask data fetch` online using the same target, jobs, shim,
 and memory scope as above. Do not substitute fixture data or change `data.lock` to pass packaging.
+
+## Web showcase scope
+
+Desktop scenery remains 1N7, the Delaware Water Gap, and the surrounding region. After the 1N7
+acceptance stages, add `new-york/hudson-corridor` for the single **Fly NYC** website: departures at
+Teterboro (KTEB) or Linden (KLDJ), the Hudson River corridor, and Manhattan. Target about 0.6 m
+imagery within roughly 2 km of the river, with coarser imagery outward, lidar terrain, and our classified-lidar building reconstruction from
+`https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept.json`.
+The fc-cities lane consumes that output through the same documented provider schema. NYC Open Data
+footprints are excluded because their redistribution terms have not been established. This area is not fetched
+by the current 1N7 preset; its source selection and browser installation remain follow-up work.
+
+`cargo xtask web --check` checks the staged data against a **900,000,000-byte** budget. Full
+`cargo xtask web` applies that limit to the complete installed site, including Wasm, support files,
+all terrain and city tiles, imagery, mip levels, and charts. Splitting release assets does not exempt
+any installed file from the website limit. The present package still includes both legacy regions
+until the Hudson browser showcase replaces that selection; it must already meet the tighter budget.
+
+The EPT selector accepts either reviewed survey root (New Jersey or NYC) through the same bounded
+acquisition interface; the small `new-york/nyc-test` preset selects the NYC survey. NYC uses
+its own root, hierarchy, point counts, and receipts, with no silent New Jersey fallback. The future
+Hudson preset must select the NYC root explicitly and start with a small urban test window.
+
+Urban reconstruction acceptance requires tall buildings, flat and stepped roofs, and open
+courtyards, in addition to the airport's long, low gable and flat hangars. Use building-class return
+occupancy and roof planes; preserve footprint interior rings and roof height discontinuities.
+A convex hull or a single roof plane over a connected block cannot satisfy these cases. Keep
+separate roof levels, texture each roof from registered NAIP, and extend exterior and courtyard
+walls to the DEM. Return density, source units/datum, reconstruction uncertainty, and unsupported
+roof regions must stay explicit in the output audit. The bounded builder implements these cases with synthetic geometry tests; real NYC source
+validation and full-area scaling remain open.
+
+## LAS/LAZ decoding and source classification audits
+
+The native offline builder uses `las` 0.9.11 (MIT) and `laz` 0.12.2 (Apache-2.0), checked against their
+cached package license files. Both are Rust implementations. `laz` is also used directly to validate
+chunk tables before decoding; parallel decoding is disabled. The LAS facade adds permissively
+licensed chrono/time-zone dependencies for header date handling; none enters the simulation or
+renderer's dependency path.
+
+The importer checks point counts, metadata sizes/offsets, record layout, finite transforms and
+bounds, chunk-table counts, point/byte budgets per chunk, and layered compressed sizes. It streams
+one point at a time to bounded consumers and converts malformed-stream decoder panics to errors.
+`lidar-sources.jsonl` records each receipt-backed cloud's exact header, classification counts,
+withheld count, and WKT. `lidar-audit.json` summarizes the area; `lidar_points_decoded` is separate
+from `lidar_built`. Decoding raw source units does not establish a vertical or horizontal datum.
+
+The first real cached NJ legacy tile decoded 9,525,070 points: classes 1 (unclassified), 2 (ground),
+7 (low noise), 9 (water), 18 (high noise), and 20. It has no classes 3–6. This is a source property,
+not a decoder failure. Retain unclassified returns for height/shape-based canopy/roof candidates,
+explicitly audit that inferred classification, and exclude withheld/noise points. Prefer actual
+vegetation/building labels when a survey has them. Audit NYC independently rather than assuming
+the New Jersey class coverage. No reconstruction acceptance flag is cleared by these raw counts.
+
+The EPT audit clips source points to the area and samples classified ground in distributed 16 m
+cells against the receipt-backed 1 m NAVD88 DEM. `lidar-ground-audit.json` reports meter-orthometric,
+meter-ellipsoidal, and US-survey-foot hypotheses separately. Empirical agreement needs at least
+128 occupied cells, median absolute error at most 0.5 m, and 95th percentile at most 1 m. This
+checks EPT Z units independently of its horizontal-only EPSG:3857 metadata; it does not invent a
+source vertical CRS or clear reconstruction acceptance. Decoded node and point totals must match
+the completed EPT hierarchy selection.
+
+### Real 1N7 EPT check, November 3, 2026
+
+The completed `1n7-test` cache decoded 214 EPT nodes and 8,169,636 points, matching the hierarchy
+selection. Clipping to the area retained 6,040,302 points. Classified-ground controls in 5,555
+spatial cells agreed with the independent NAVD88 DEM to a median absolute error of 0.01583 m
+and a 95th percentile of 0.06790 m. Treating the same Z values as ellipsoidal meters produced a
+33.19 m median error; treating them as US survey feet produced 78.26 m. This establishes empirical
+agreement with orthometric meters; EPT metadata itself declares only the horizontal CRS.
+
+The highest sampled paved runway surface was 113.32837 m MSL, 0.24757 m from the supplied FAA
+371 ft reference. The authentic grid's center separation is approximately -33.19477 m. That value
+is computed from the grid, **not** an independent NGS control. The first NGS request (`model=18`)
+returned an HTTP 200 service error. The corrected receipted response identifies GEOID18, gives
+-33.197 m with 0.035 m stated uncertainty, and differs from the bilinear grid by 0.002229 m.
+The real 1N7 build therefore sets vertical acceptance true. The failed body and its original
+receipt remain untouched in the source cache. The local output embeds the bounded real grid and
+applies the ellipsoidal/MSL conversion, separately reporting `geoid_applied: true`.
+
+EPT class counts are 2,644,767 unclassified, 5,403,619 ground, 106,653 water, 8,126 low noise,
+1,846 high noise, 775 bridge deck, and 3,850 class 20. No vegetation or building labels are present.
+Canopy and roof inference from unclassified returns still needs separate geometric validation;
+the decoder does not relabel those returns or clear reconstruction acceptance.
+
+
+### Canopy reconstruction and GPU instancing
+
+Accepted EPT height blocks accumulate a bounded one-meter DSM from vegetation classes 3–5 or,
+explicitly marked as inferred, unclassified returns. Withheld, ground, noise, water, bridge,
+and reserved classes never enter this surface. Subtract the meter/NAVD88 DEM, apply a neighborhood
+median, detect local maxima with height-dependent suppression, reject flat surfaces and long
+ridges, and segment descending crowns. Every tree records its source position, ground MSL,
+measured height, crown dimensions, principal-axis orientation, and whether classification was
+inferred. Species selection is a crown-shape heuristic, not a claim of botanical identification.
+
+The same local 3D Tiles provider loads original branch-and-leaf deciduous and conifer GLB meshes
+through standard `EXT_mesh_gpu_instancing`. Per-tree translation, scale, and rotation remain GPU
+instance buffers; mesh geometry is shared. An explicit quadtree switches to alpha-mask crossed
+impostors at distance by geometric error. The decoder bounds total instances, shared geometry,
+and effective draw counts, checks attribute types/counts/quaternions/scales, and preserves the
+regional geoid conversion for each instance. Existing opaque terrain uses an identity instance
+in the same GPU pipeline. Trees do not claim terrain replacement coverage.
+
+The real first canopy pass identified 7,446 candidates in the test block, with median measured
+height about 15.76 m. No tree centers fall in the FAA runway corridor. These are conservative
+height/shape detections from the unclassified NJ returns; they are not a surveyed tree inventory.
+GPU captures can set `FLIGHTCRAFT_SCENERY_PROOF_OUT` to retain separate stage images and
+`FLIGHTCRAFT_SCENERY_MIN_INSTANCES` to require measured instances in selected coverage.
+
+
+### Roof reconstruction and the city-provider handoff
+
+The shared one-meter DSM block also fits local least-squares roof planes. Classified building
+returns take precedence. In the NJ survey, unclassified returns must pass planarity, height,
+area, and fitted-residual checks; their inferred classification is retained in the audit. The
+clustered footprint is the occupied raster, preserving concavities and courtyards. Only an
+isolated no-return cell surrounded by eight compatible measured roof cells may be interpolated;
+ground or water evidence vetoes interpolation. Counts distinguish measured and interpolated cells.
+Compatible global plane fits merge scan-strip fragments without merging height steps. Flat,
+low-pitch gable, hip, and stepped roofs retain measured planes. Unsupported roofs are excluded.
+
+Coplanar cells coalesce into rectangles rather than a triangle per DSM pixel. Well-supported
+rectangular gable/hip buildings can use the lower envelope of their measured planes; an interior
+hole disables rectangle fitting. Boundary walls reach the DEM, courtyard walls remain open, and
+step walls reach the adjacent measured roof. Roof UVs use the same geodetic NAIP registration as
+terrain; siding is original procedural material. No external footprint dataset is used.
+
+The normal build writes `reconstruction-provider.json`, pointing to `buildings/tileset.json`.
+Resolve its relative path against the descriptor directory. Handoff content is GLB, with an
+explicit ECEF root frame, the regional geoid, acquisition receipts, and one complete measured
+building per leaf. The handoff preserves acceptance flags from its parent. The runtime master
+uses grouped replacement LODs and coarser roof texture atlases through the same local provider;
+it does not introduce a separate building renderer.
+
+After merging the city lane, a `nyc-lidar` reconstruction reads the single shared
+`assets/scenery/fly-nyc.json` area definition and emits its `extras.flightcraft.nycLidar` contract:
+`selection`, `reconstructionBuildings`, `reconstructionLeavesAreBuildings`,
+`usesExternalFootprints`, and `receipts`. NYC output requires actual `NY_NewYorkCity` receipts
+and classified building returns. NJ inference cannot be relabeled as NYC. The city lane builds
+its own showcase LODs from these complete-building leaves. Real NYC source and full-area scaling
+remain separate acceptance work; the current dense-urban evidence is synthetic geometry tests
+covering tall and stepped roofs, courtyard preservation, and gable/hip fitting.
+
+For the next real urban data check, fetch the small Midtown test block first (about 1.23 km per
+side around Bryant Park, including the Empire State Building and Grand Central area):
+
+```sh
+CARGO_TARGET_DIR=/home/ray/builds/cargo-target/flightcraft/fc-scenery CARGO_BUILD_JOBS=4 RUSTUP_TOOLCHAIN=1.98.0 PKG_CONFIG_PATH=$HOME/builds/pkgconfig-shim capped 8G -- cargo xtask scenery fetch --region new-york --area nyc-test --layer all --cache "$HOME/builds/codex-jobs/scenery/new-york/nyc-test/cache"
+```
+
+This selects only intersecting nodes from `NY_NewYorkCity`, at the same one-request-per-second
+rate, and requests 0.6 m imagery, the 1 m DEM, and the independent geoid control. It is a test
+block, not the shipped Fly NYC inventory. Acquisition is implemented; live NYC decoding,
+vertical control, reconstruction, and provider-contract validation must follow the fetch.
+The full-area builder must split DSM work into blocks: it deliberately rejects more than
+4,194,304 cells per reconstruction block and more than 100 million selected points per fetch.
+Do not launch an unbounded whole-city fetch in place of this test.
+
+
+The completed 1N7 test build (approximately 41.5 MB) contains 7,445 canopy candidates after roof
+masking and 85 reconstructed buildings, including the airport's long, low gables. Captures at
+Runway 07, short final 25, and the hangar director pose passed offscreen GPU validation. The
+1080p Low frame test selected all 7,445 tree instances in 12 tiles with about 26 MB CPU-resident
+payloads and measured 3.68 ms p95 on a GTX 1660 Ti. This is a discrete-GPU baseline; the target
+integrated GPU, full-area scaling, and final visual appearance are not accepted by that result.
+The vertical gate is true; painted-runway alignment and overall release readiness remain false.
+
+GPU coverage regression checks include same-ID CPU payload replacement spread across the per-frame
+upload limit. Previously selected GPU payloads remain drawable until their replacement uploads
+complete; CPU readiness cannot expose coarse-ground holes between frames.

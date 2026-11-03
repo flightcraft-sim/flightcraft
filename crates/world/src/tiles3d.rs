@@ -99,6 +99,17 @@ pub fn local_uri(uri: &str) -> bool {
         && uri.split('/').all(|s| !s.is_empty() && s != "." && s != "..")
 }
 impl Tileset {
+    /// Optional regional height conversion, independent of the tile provider. Content uses
+    /// standard ellipsoidal ECEF heights; the simulation uses orthometric MSL heights.
+    pub fn geoid_grid(&self) -> Result<Option<crate::geoid::GeoidGrid>, TerrainError> {
+        let Some(value) = self.extras.as_ref().and_then(|v| v.pointer("/flightcraft/geoid")) else {
+            return Ok(None);
+        };
+        let grid: crate::geoid::GeoidGrid =
+            serde_json::from_value(value.clone()).map_err(|_| TerrainError("invalid regional geoid grid"))?;
+        grid.validate()?;
+        Ok(Some(grid))
+    }
     pub fn from_json(bytes: &[u8]) -> Result<Self, TerrainError> {
         if bytes.len() > MAX_TILESET_BYTES {
             return Err(TerrainError("3D Tiles tileset exceeds size limit"));

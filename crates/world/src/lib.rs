@@ -7,6 +7,7 @@ mod landmarks;
 pub use landmarks::*;
 mod airports;
 pub mod geo;
+pub mod geoid;
 pub use airports::*;
 mod region;
 pub use region::*;

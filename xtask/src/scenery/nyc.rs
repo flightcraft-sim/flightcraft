@@ -138,7 +138,12 @@ fn build(request: &Request, out: &Path) -> Result<LidarReport, String> {
     if leaves as u64 != provenance.reconstruction_buildings {
         return Err("Reconstructed building count differs from the lidar provenance".into());
     }
-    let extras = json!({"flightcraft":{"region":"new-york","area":"nyc-lidar","bounds":scenery::NYC_BOUNDS,"sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","localOnly":false,"redistributionAllowed":true,"previewOnly":!accepted,"verticalDatumVerified":vertical,"runwayAlignmentVerified":runway,"lidarBuilt":true,"buildingCount":buildings,"nycLidar":provenance}});
+    let mut extras = json!({"flightcraft":{"region":"new-york","area":"nyc-lidar","bounds":scenery::NYC_BOUNDS,"sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","localOnly":false,"redistributionAllowed":true,"previewOnly":!accepted,"verticalDatumVerified":vertical,"runwayAlignmentVerified":runway,"lidarBuilt":true,"buildingCount":buildings,"nycLidar":provenance}});
+    // Geometry remains in ellipsoidal ECEF. Preserve the input's regional MSL conversion
+    // through repackaging so native and browser decoders recover the same runway datum.
+    if let Some(grid) = set.geoid_grid().map_err(|e| e.to_string())? {
+        extras["flightcraft"]["geoid"] = serde_json::to_value(grid).map_err(|e| e.to_string())?;
+    }
     let (_, _, tiles) = writer.finish(scenery::NYC_ATTRIBUTION, extras)?;
     // Retain the independently reconstructable input provenance, not a user's local filesystem path.
     download::write_json(
@@ -227,6 +232,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         Request {
             operation: Operation::Build,
+            fetch_layer: super::super::FetchLayer::All,
+            lidar_source: super::super::LidarSource::Ept,
             region: "new-york".into(),
             area: "nyc-lidar".into(),
             cache: root.join("cache"),
@@ -296,7 +303,27 @@ mod tests {
     #[test]
     fn scenery_lidar_consumer_selects_showcase_preserves_roofs_and_emits_budgeted_lods() {
         let request = request("consume");
-        fixture(&request);
+        let mut input = fixture(&request);
+        let grid = flightcraft_world::geoid::GeoidGrid {
+            model: flightcraft_world::geoid::GeoidModel::NgsGeoid18,
+            source_sha256: "a".repeat(64),
+            south_deg: 40.,
+            west_deg: -75.,
+            step_deg: [1. / 60.; 2],
+            rows: 120,
+            cols: 120,
+            undulation_m: vec![-31.; 120 * 120],
+        };
+        input.extras.as_mut().unwrap()["flightcraft"]["geoid"] = serde_json::to_value(&grid).unwrap();
+        download::write_json(
+            &request
+                .cache
+                .parent()
+                .unwrap()
+                .join("reconstruction/tileset.json"),
+            &input,
+        )
+        .unwrap();
         run(&request).unwrap();
         let report: LidarReport = download::json(&request.out.join("build-report.json")).unwrap();
         assert_eq!(report.buildings, 1);
@@ -313,6 +340,18 @@ mod tests {
         assert!(!request.out.join("scratch").exists());
         let encoded = download::read(&request.out.join("tileset.json"), tiles3d::MAX_TILESET_BYTES).unwrap();
         let set = Tileset::from_json(&encoded).unwrap();
+        assert_eq!(
+            set.extras.as_ref().unwrap().pointer("/flightcraft/geoid"),
+            input.extras.as_ref().unwrap().pointer("/flightcraft/geoid")
+        );
+        assert_eq!(
+            set.geoid_grid()
+                .unwrap()
+                .unwrap()
+                .separation_m(40.75, -74.)
+                .unwrap(),
+            -31.
+        );
         scenery::validate_static_scenery(&set).unwrap();
         crate::data::validate_scenery_release(&serde_json::from_slice(&encoded).unwrap()).unwrap();
         let mut pending = vec![&set.root];

@@ -9,6 +9,9 @@
     "elevation_built": {
       "type": "boolean"
     },
+    "geoid_applied": {
+      "type": "boolean"
+    },
     "imagery_tiles": {
       "type": "integer",
       "format": "uint",
@@ -16,6 +19,11 @@
     },
     "lidar_built": {
       "type": "boolean"
+    },
+    "lidar_points_decoded": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
     },
     "manifest": {
       "type": "string"
@@ -50,9 +58,11 @@
     "source_files",
     "preview_only",
     "elevation_built",
+    "geoid_applied",
     "vertical_datum_verified",
     "runway_alignment_verified",
     "lidar_built",
+    "lidar_points_decoded",
     "release_ready"
   ]
 }

@@ -5,9 +5,14 @@ pub(crate) struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
 }
-struct Tile {
+struct Draw {
     vertices: wgpu::Buffer,
-    count: u32,
+    instances: wgpu::Buffer,
+    vertices_count: u32,
+    instances_count: u32,
+}
+struct Tile {
+    draws: Vec<Draw>,
     bind: wgpu::BindGroup,
     payload: Arc<DecodedTile>,
 }
@@ -49,6 +54,8 @@ impl Pipeline {
             push_constant_ranges: &[],
         });
         let attributes = wgpu::vertex_attr_array![0=>Float32x3,1=>Float32x3,2=>Float32x2,3=>Float32x4];
+        let instance_attributes =
+            wgpu::vertex_attr_array![4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4];
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("3D Tiles opaque glTF"),
             layout: Some(&pipeline_layout),
@@ -56,11 +63,18 @@ impl Pipeline {
                 module: &shader,
                 entry_point: Some("vertex"),
                 compilation_options: Default::default(),
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as u64,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &attributes,
-                }],
+                buffers: &[
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<Vertex>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &attributes,
+                    },
+                    wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<super::Instance>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &instance_attributes,
+                    },
+                ],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -102,13 +116,13 @@ impl Pipeline {
         uploads: usize,
     ) {
         // Retain previous coverage until every replacement is uploaded. CPU readiness alone
-        // cannot retire a parent when GPU uploads are spread over several frames.
+        // cannot retire a parent when GPU uploads are spread over several frames. Selected
+        // payloads also survive a same-ID CPU replacement until their new upload completes.
         cache.tiles.retain(|id, tile| {
             !tile.payload.expired()
-                && selection
-                    .live_tiles
-                    .iter()
-                    .any(|(live_id, payload)| live_id == id && Arc::ptr_eq(payload, &tile.payload))
+                && selection.live_tiles.iter().any(|(live_id, payload)| {
+                    live_id == id && (Arc::ptr_eq(payload, &tile.payload) || cache.selected.contains(id))
+                })
         });
         cache.selected.retain(|id| cache.tiles.contains_key(id));
         let mut uploaded = 0;
@@ -120,7 +134,13 @@ impl Pipeline {
         }
         candidates.extend(selection.tiles.iter().cloned());
         for (id, payload) in &candidates {
-            if payload.expired() || cache.tiles.contains_key(id) || uploaded >= uploads {
+            if payload.expired()
+                || cache
+                    .tiles
+                    .get(id)
+                    .is_some_and(|tile| Arc::ptr_eq(&tile.payload, payload))
+                || uploaded >= uploads
+            {
                 continue;
             }
             let Some(base) = payload.mips.first() else {
@@ -183,16 +203,36 @@ impl Pipeline {
                     },
                 ],
             });
-            let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("3D Tiles geometry"),
-                contents: bytemuck::cast_slice(&payload.vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+            let make_draw = |vertices: &[Vertex], instances: &[super::Instance]| Draw {
+                vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("3D Tiles shared mesh"),
+                    contents: bytemuck::cast_slice(vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                }),
+                instances: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("3D Tiles GPU instances"),
+                    contents: bytemuck::cast_slice(instances),
+                    usage: wgpu::BufferUsages::VERTEX,
+                }),
+                vertices_count: vertices.len() as u32,
+                instances_count: instances.len() as u32,
+            };
+            let mut draws = Vec::new();
+            if !payload.vertices.is_empty() {
+                draws.push(make_draw(
+                    &payload.vertices,
+                    &[super::Instance {
+                        matrix: glam::Mat4::IDENTITY.to_cols_array_2d(),
+                    }],
+                ));
+            }
+            for batch in &payload.instanced {
+                draws.push(make_draw(&batch.vertices, &batch.instances));
+            }
             cache.tiles.insert(
                 *id,
                 Tile {
-                    vertices,
-                    count: payload.vertices.len() as u32,
+                    draws,
                     bind,
                     payload: payload.clone(),
                 },
@@ -205,7 +245,12 @@ impl Pipeline {
         {
             cache.selected.push(*id);
         }
-        if selection.tiles.iter().all(|(id, _)| cache.tiles.contains_key(id)) {
+        if selection.tiles.iter().all(|(id, payload)| {
+            cache
+                .tiles
+                .get(id)
+                .is_some_and(|tile| Arc::ptr_eq(&tile.payload, payload))
+        }) {
             cache.selected = selection.tiles.iter().map(|(id, _)| *id).collect();
             cache.tiles.retain(|id, _| cache.selected.contains(id));
         }
@@ -215,8 +260,11 @@ impl Pipeline {
         for id in &cache.selected {
             if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {
                 pass.set_bind_group(1, &tile.bind, &[]);
-                pass.set_vertex_buffer(0, tile.vertices.slice(..));
-                pass.draw(0..tile.count, 0..1);
+                for draw in &tile.draws {
+                    pass.set_vertex_buffer(0, draw.vertices.slice(..));
+                    pass.set_vertex_buffer(1, draw.instances.slice(..));
+                    pass.draw(0..draw.vertices_count, 0..draw.instances_count);
+                }
             }
         }
     }

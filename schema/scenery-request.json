@@ -14,6 +14,14 @@
     "cache": {
       "type": "string"
     },
+    "fetch_layer": {
+      "$ref": "#/$defs/FetchLayer",
+      "default": "all"
+    },
+    "lidar_source": {
+      "$ref": "#/$defs/LidarSource",
+      "default": "ept"
+    },
     "operation": {
       "$ref": "#/$defs/Operation"
     },
@@ -40,6 +48,22 @@
     "out"
   ],
   "$defs": {
+    "FetchLayer": {
+      "type": "string",
+      "enum": [
+        "all",
+        "terrain",
+        "lidar",
+        "geoid"
+      ]
+    },
+    "LidarSource": {
+      "type": "string",
+      "enum": [
+        "ept",
+        "rockyweb"
+      ]
+    },
     "Operation": {
       "type": "string",
       "enum": [

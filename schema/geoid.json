@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeoidGrid",
+  "type": "object",
+  "properties": {
+    "cols": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "model": {
+      "$ref": "#/$defs/GeoidModel"
+    },
+    "rows": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "source_sha256": {
+      "type": "string"
+    },
+    "south_deg": {
+      "type": "number",
+      "format": "double"
+    },
+    "step_deg": {
+      "description": "South-to-north and west-to-east angular spacing, in degrees.",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 2,
+      "minItems": 2
+    },
+    "undulation_m": {
+      "description": "South row first; west column first. Separation N, with h = H + N.",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "float"
+      }
+    },
+    "west_deg": {
+      "type": "number",
+      "format": "double"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "model",
+    "source_sha256",
+    "south_deg",
+    "west_deg",
+    "step_deg",
+    "rows",
+    "cols",
+    "undulation_m"
+  ],
+  "$defs": {
+    "GeoidModel": {
+      "type": "string",
+      "enum": [
+        "ngs-geoid18"
+      ]
+    }
+  }
+}

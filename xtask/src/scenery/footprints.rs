@@ -664,6 +664,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         Request {
             operation: Operation::Build,
+            fetch_layer: super::super::FetchLayer::All,
+            lidar_source: super::super::LidarSource::Ept,
             region: "new-york".into(),
             area: "nyc-footprints".into(),
             cache: root.join("cache"),

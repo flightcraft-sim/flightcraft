@@ -497,9 +497,11 @@ fn build(request: &Request, review: &Review, out: &Path) -> Result<Report, Strin
         source_files: receipts.len(),
         preview_only: true,
         elevation_built: false,
+        geoid_applied: false,
         vertical_datum_verified: false,
         runway_alignment_verified: false,
         lidar_built: false,
+        lidar_points_decoded: 0,
         release_ready: false,
     };
     download::write_json(&out.join("build-report.json"), &report)?;
@@ -568,6 +570,8 @@ mod tests {
         };
         let request = Request {
             operation: Operation::Build,
+            fetch_layer: super::super::FetchLayer::All,
+            lidar_source: super::super::LidarSource::Ept,
             region: "new-york".into(),
             area: "nyc-lod2".into(),
             cache: root.join("cache"),

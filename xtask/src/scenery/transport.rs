@@ -155,10 +155,20 @@ pub(super) fn allowed_url(url: &str) -> bool {
         "https://tnmaccess.nationalmap.gov/",
         "https://prd-tnm.s3.amazonaws.com/",
         "https://rockyweb.usgs.gov/",
+        "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/",
+        "https://geodesy.noaa.gov/PC_PROD/GEOID18/Format_pc/",
+        "https://geodesy.noaa.gov/api/geoid/ght?",
     ]
     .iter()
     .any(|prefix| url.starts_with(prefix))
         && !url.contains(['\r', '\n', '@', '\\'])
+        && !url.split('?').next().is_some_and(|path| {
+            let lower = path.to_ascii_lowercase();
+            path.split('/').any(|part| matches!(part, "." | ".."))
+                || ["%2e", "%2f", "%5c", "%00"]
+                    .iter()
+                    .any(|code| lower.contains(code))
+        })
 }
 pub(super) fn digest(path: &Path) -> Result<(u64, String), String> {
     digest_limit(path, MAX_OBJECT)
@@ -249,7 +259,8 @@ pub(super) fn fetch(
             }
             (offset, Some(total))
         }
-        _ => return Err("unexpected scenery HTTP status".into()),
+        429 => return Err("scenery source returned HTTP 429; no retry was made".into()),
+        status => return Err(format!("scenery source returned HTTP {status}")),
     };
     if std::fs::symlink_metadata(&part).is_ok_and(|m| !m.is_file()) {
         return Err("partial scenery object must be a regular file".into());
@@ -394,5 +405,27 @@ mod city_policy_tests {
             assert!(!allowed.allows(&format!("{TUM_PREFIX}{path}")));
         }
         assert_eq!(Http::default().max_object(), 2_000_000_000);
+    }
+}
+
+#[cfg(test)]
+mod ept_allowlist_tests {
+    #[test]
+    fn ept_bucket_prefix_and_paths_are_exact() {
+        assert!(super::allowed_url(
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NJ_NW6Co_2017/ept.json"
+        ));
+        for url in [
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public.evil/ept.json",
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/../private/ept.json",
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/%2e%2e/private/ept.json",
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/%2Fother-bucket/ept.json",
+            "https://s3-us-west-2.amazonaws.com/usgs-lidar-public@evil/ept.json",
+        ] {
+            assert!(!super::allowed_url(url));
+        }
+        assert!(super::allowed_url(
+            "https://tnmaccess.nationalmap.gov/api/v1/products?datasets=Lidar%20Point%20Cloud"
+        ));
     }
 }

@@ -11,6 +11,7 @@ mod surface;
 pub use esri::EsriProvider;
 pub use surface::{pack_glb, surface_glb};
 pub(crate) mod gpu;
+mod instances;
 mod nyc;
 mod provider;
 pub use nyc::{
@@ -18,7 +19,7 @@ pub use nyc::{
     WEB_BUDGET, fly_nyc_area, nyc_lidar_source, validate_redistribution, validate_static_scenery,
 };
 mod stream;
-pub use glb::{DecodedTile, decode_glb};
+pub use glb::{DecodedTile, decode_glb, decode_glb_with_geoid};
 pub use provider::{CachePolicy, Content, LocalProvider, TileProvider};
 use serde::{Deserialize, Serialize};
 pub use stream::{ContentRequest, Selection, Stream, StreamStats};
@@ -99,4 +100,15 @@ fn unix_ms() -> u64 {
     } else {
         u64::MAX
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct Instance {
+    pub matrix: [[f32; 4]; 4],
+}
+#[derive(Clone)]
+pub(crate) struct InstanceBatch {
+    pub vertices: Vec<Vertex>,
+    pub instances: Vec<Instance>,
 }

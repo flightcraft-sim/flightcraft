@@ -173,6 +173,10 @@ fn root() -> Result<PathBuf, String> {
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
         (
+            "geoid.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::geoid::GeoidGrid)),
+        ),
+        (
             "tileset.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::tiles3d::Tileset)),
         ),

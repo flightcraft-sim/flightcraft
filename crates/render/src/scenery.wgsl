@@ -14,11 +14,13 @@ struct Surface {
     @builtin(position) position:vec4<f32>, @location(0) world:vec3<f32>,
     @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>,
 }
-@vertex fn vertex(@location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>)->Surface {
+@vertex fn vertex(@location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>, @location(4) c0:vec4<f32>, @location(5) c1:vec4<f32>, @location(6) c2:vec4<f32>, @location(7) c3:vec4<f32>)->Surface {
     var o:Surface;
-    o.world=position;
-    o.position=u.view_projection*vec4<f32>(position,1.0);
-    o.normal=normal;o.uv=uv;o.color=color;
+    let model=mat4x4<f32>(c0,c1,c2,c3);
+    o.world=(model*vec4<f32>(position,1.0)).xyz;
+    o.position=u.view_projection*vec4<f32>(o.world,1.0);
+    // Cofactor normal transform supports nonuniform measured crown/height scales.
+    o.normal=normalize(cross(c1.xyz,c2.xyz)*normal.x+cross(c2.xyz,c0.xyz)*normal.y+cross(c0.xyz,c1.xyz)*normal.z);o.uv=uv;o.color=color;
     return o;
 }
 // The same analytic cloud integration as the main scene, evaluated along this surface ray.
@@ -39,6 +41,7 @@ fn cloud_optical_depth(ray:vec3<f32>,distance:f32)->f32 {
 }
 @fragment fn fragment(i:Surface)->@location(0) vec4<f32> {
     let albedo_color=textureSample(albedo,texture_sampler,i.uv)*i.color;
+    if albedo_color.a<0.5 {discard;}
     if u.atmosphere.z>0.5 || u.atmosphere.w>0.5 {return u.fog_color;}
     let distance=length(i.world-u.eye.xyz);
     let sun=normalize(vec3<f32>(-0.58,0.70,-0.42));

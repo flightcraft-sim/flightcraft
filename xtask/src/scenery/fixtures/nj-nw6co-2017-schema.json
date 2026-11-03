@@ -1,0 +1,17 @@
+[
+  {"name":"X","type":"signed","size":4,"scale":0.001,"offset":-8309760},
+  {"name":"Y","type":"signed","size":4,"scale":0.001,"offset":4990314},
+  {"name":"Z","type":"signed","size":4,"scale":0.001,"offset":247},
+  {"name":"Intensity","type":"unsigned","size":2},
+  {"name":"ReturnNumber","type":"unsigned","size":1},
+  {"name":"NumberOfReturns","type":"unsigned","size":1},
+  {"name":"ScanDirectionFlag","type":"unsigned","size":1},
+  {"name":"EdgeOfFlightLine","type":"unsigned","size":1},
+  {"name":"Classification","type":"unsigned","size":1},
+  {"name":"ScanAngleRank","type":"float","size":4},
+  {"name":"UserData","type":"unsigned","size":1},
+  {"name":"PointSourceId","type":"unsigned","size":2},
+  {"name":"GpsTime","type":"float","size":8},
+  {"name":"ScanChannel","type":"unsigned","size":1},
+  {"name":"ClassFlags","type":"unsigned","size":1}
+]

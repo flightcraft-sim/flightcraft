@@ -38,15 +38,7 @@ pub fn build() -> Result<(), String> {
                 }
             }
         }
-        let bytes: u64 = super::data::files(&stage)?
-            .iter()
-            .map(|p| std::fs::metadata(p).map(|m| m.len()).map_err(|e| e.to_string()))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .sum();
-        if bytes >= 1_000_000_000 {
-            return Err("showcase data reaches the 1 GB Pages budget".into());
-        }
+        let bytes = check_package_budget(&stage)?;
         eprintln!(
             "xtask: web compile and showcase packaging check passed ({bytes} data bytes; full packaging also checks the complete site)"
         );
@@ -156,19 +148,7 @@ pub fn build() -> Result<(), String> {
             }
         }
     }
-    let bytes: u64 = super::data::files(&dist)?
-        .iter()
-        .map(|path| {
-            std::fs::metadata(path)
-                .map(|m| m.len())
-                .map_err(|e| e.to_string())
-        })
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .sum();
-    if bytes >= 1_000_000_000 {
-        return Err("showcase site reaches the 1 GB Pages budget".into());
-    }
+    let bytes = check_package_budget(&dist)?;
     eprintln!("xtask: static web build ready in dist/ ({bytes} bytes)");
     Ok(())
 }
@@ -225,6 +205,23 @@ fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), S
         }
     }
     Ok(())
+}
+
+/// Decimal MB, leaving room below the host's approximately 1 GB limit. Count the entire
+/// installed site, including all LODs, textures, city tiles, charts, Wasm, and support files.
+const SHOWCASE_MAX_BYTES: u64 = 900_000_000;
+fn check_package_budget(root: &std::path::Path) -> Result<u64, String> {
+    let bytes = super::data::files(root)?.iter().try_fold(0_u64, |sum, path| {
+        let size = std::fs::metadata(path).map_err(|e| e.to_string())?.len();
+        sum.checked_add(size)
+            .ok_or_else(|| "showcase package size overflow".to_string())
+    })?;
+    if bytes > SHOWCASE_MAX_BYTES {
+        return Err(format!(
+            "Fly NYC showcase is {bytes} bytes, exceeding its 900 MB site budget"
+        ));
+    }
+    Ok(bytes)
 }
 
 /// The same package set as CI, with warnings treated as build failures.
@@ -342,6 +339,24 @@ mod tests {
             command.get_envs().any(|(name, value)| name == "RUSTFLAGS"
                 && value.unwrap().to_str().unwrap().ends_with("-D warnings"))
         );
+    }
+
+    #[test]
+    fn showcase_budget_counts_nested_city_tiles_mips_and_the_application() {
+        let root = std::env::temp_dir().join(format!("fc-web-budget-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("terrain/new-york/scenery/hudson-corridor/tiles/3")).unwrap();
+        let tile =
+            std::fs::File::create(root.join("terrain/new-york/scenery/hudson-corridor/tiles/3/city.glb"))
+                .unwrap();
+        // Sparse files exercise real packaging metadata without allocating a 900 MB fixture.
+        tile.set_len(890_000_000).unwrap();
+        let wasm = std::fs::File::create(root.join("flightcraft_web_bg.wasm")).unwrap();
+        wasm.set_len(10_000_000).unwrap();
+        assert_eq!(check_package_budget(&root).unwrap(), 900_000_000);
+        std::fs::write(root.join("index.html"), b"x").unwrap();
+        assert!(check_package_budget(&root).unwrap_err().contains("900 MB"));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

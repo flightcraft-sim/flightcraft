@@ -37,3 +37,6 @@ time.workspace = true
 flightcraft-render.workspace = true
 gltf.workspace = true
 glam.workspace = true
+# Streaming LAS/LAZ source decoding; licenses checked locally: MIT / Apache-2.0.
+las = { version = "0.9.11", features = ["laz"] }
+laz = "0.12.2"

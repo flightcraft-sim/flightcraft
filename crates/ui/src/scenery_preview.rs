@@ -10,7 +10,11 @@ use flightcraft_world::{HeightTile, Region, Surface, World};
 use std::sync::{Arc, Mutex};
 
 fn reference_world() -> World {
-    let region=Region::from_json(r#"{"id":"scenery-preview","name":"Blairstown imagery preview","origin":{"latitude_deg":40.96905613156273,"longitude_deg":-75.00242278301268,"field_elevation_m":112,"runway_heading_deg":60.76659070034455,"runway_length_m":948.5376,"runway_width_m":21.336},"southwest_m":[-1000,-1000],"tiles_north":1,"tiles_east":1,"spacing_m":125,"tile_size":33,"runway_blend_m":200,"source":"Original level preview surface","licence":"Apache-2.0","attribution":"Original preview surface; elevation is not measured","tiles":["000.fcht"]}"#).unwrap();
+    reference_world_at(112.)
+}
+fn reference_world_at(height: f64) -> World {
+    let mut region=Region::from_json(r#"{"id":"scenery-preview","name":"Blairstown imagery preview","origin":{"latitude_deg":40.96905613156273,"longitude_deg":-75.00242278301268,"field_elevation_m":112,"runway_heading_deg":60.76659070034455,"runway_length_m":948.5376,"runway_width_m":21.336},"southwest_m":[-1000,-1000],"tiles_north":1,"tiles_east":1,"spacing_m":125,"tile_size":33,"runway_blend_m":200,"source":"Original level preview surface","licence":"Apache-2.0","attribution":"Original preview surface; elevation is not measured","tiles":["000.fcht"]}"#).unwrap();
+    region.origin.field_elevation_m = height;
     World::from_region(
         region,
         vec![
@@ -18,7 +22,7 @@ fn reference_world() -> World {
                 [-1000., -1000.],
                 125.,
                 33,
-                vec![112.; 33 * 33],
+                vec![height as f32; 33 * 33],
                 vec![Surface::Grass; 32 * 32],
             )
             .unwrap(),
@@ -45,7 +49,9 @@ fn pose(n: f64, e: f64, height: f64, heading: f64) -> State {
 fn render_1n7_scenery_reference_shots() {
     pollster::block_on(async {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let out = root.join("out/scenery");
+        let out = std::env::var_os("FLIGHTCRAFT_SCENERY_PROOF_OUT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join("out/scenery"));
         std::fs::create_dir_all(&out).unwrap();
         let stream = Arc::new(Mutex::new(LocalProvider::open(&provider(), origin()).unwrap()));
         let mut capture = Capture::new([1280, 720]).await;
@@ -115,7 +121,7 @@ fn render_1n7_scenery_reference_shots() {
                         ui.label("NAIP reference (overhead)");
                         let texture=reference_texture.get_or_insert_with(||ui.ctx().load_texture("1N7 reference",texture.clone(),Default::default()));
                         ui.image((texture.id(),eframe::egui::vec2(right.width(),right.width()*860./1600.)));
-                        ui.label("Reference imagery resampled for pipeline proof. Terrain is level. Measured trees, roofs, and water are pending.");
+                        ui.label("Imagery and terrain pipeline preview. See build-report.json for source and acceptance status. Measured trees, roofs, and water are pending.");
                     });
                 });
                 let stats = stream.lock().unwrap().stats();
@@ -130,6 +136,14 @@ fn render_1n7_scenery_reference_shots() {
                 loaded,
                 "local tile worker must produce rendered coverage: {:?}",
                 stream.lock().unwrap().stats()
+            );
+            let minimum = std::env::var("FLIGHTCRAFT_SCENERY_MIN_INSTANCES")
+                .ok()
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(0);
+            assert!(
+                stream.lock().unwrap().stats().selected_instances >= minimum,
+                "the selected coverage must contain the measured GPU tree instances"
             );
             for _ in 0..32 {
                 capture.draw(|ui| scene.show(ui, &position, 1. / 60., theme::scene()));
@@ -201,6 +215,15 @@ fn scenery_1080p_frame_budget() {
         for _ in 0..32 {
             capture.draw(|ui| scene.show(ui, &pose, 1. / 60., theme::scene()));
         }
+        let stats = stream.lock().unwrap().stats();
+        let minimum = std::env::var("FLIGHTCRAFT_SCENERY_MIN_INSTANCES")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0);
+        assert!(
+            stats.selected_instances >= minimum,
+            "frame budget must include the measured tree instances"
+        );
         let mut times = Vec::new();
         for _ in 0..120 {
             let now = std::time::Instant::now();
@@ -211,7 +234,7 @@ fn scenery_1080p_frame_budget() {
         let p95 = times[114];
         let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/scenery");
         std::fs::create_dir_all(&out).unwrap();
-        std::fs::write(out.join("frame-budget.json"),serde_json::to_vec_pretty(&serde_json::json!({"width":1920,"height":1080,"quality":"low","adapter":capture.state.adapter.get_info().name,"p95_ms":p95,"budget_ms":1000./60.})).unwrap()).unwrap();
+        std::fs::write(out.join("frame-budget.json"),serde_json::to_vec_pretty(&serde_json::json!({"width":1920,"height":1080,"quality":"low","adapter":capture.state.adapter.get_info().name,"p95_ms":p95,"budget_ms":1000./60.,"selected_instances":stats.selected_instances,"selected_tiles":stats.selected_tiles,"resident_bytes":stats.resident_bytes})).unwrap()).unwrap();
         assert!(
             p95 <= 1000. / 60.,
             "1080p p95 {p95:.2} ms exceeds the 60 fps frame budget"
@@ -309,6 +332,189 @@ fn render_nyc_city_reference_shots() {
             );
             image.save(out.join(format!("{name}.png"))).unwrap();
             scene.set_scenery(Some(stream.clone()));
+        }
+        capture.validate().await;
+    });
+}
+
+#[test]
+#[ignore = "requires an offscreen GPU and a built 1N7 test-area tileset"]
+fn imagery_replaces_higher_coarse_ground_only_in_the_scenery_footprint() {
+    pollster::block_on(async {
+        let mut capture = Capture::new([960, 640]).await;
+        let mut scene = Scene::default();
+        scene.set_world(&reference_world_at(1000.));
+        scene.airspace_visible = false;
+        scene.camera = CameraMode::Flyby;
+        scene.set_screen_view(Some(ScreenView {
+            heading_offset_rad: 0.,
+            pitch_rad: 0.,
+            fov_rad: 1.,
+            fixed_eye_ned_m: Some([150., 500., -3000.]),
+        }));
+        let position = pose(230., 320., 112., 0.);
+        // Diagnostic colors identify base terrain independently of NAIP. These are test-only.
+        let mut palette = theme::scene();
+        for color in [
+            &mut palette.ground,
+            &mut palette.earth,
+            &mut palette.dry_grass,
+            &mut palette.rock,
+            &mut palette.forest,
+            &mut palette.shoreline,
+            &mut palette.water,
+            &mut palette.grid,
+            &mut palette.runway,
+            &mut palette.shadow,
+        ] {
+            *color = [1., 0., 1., 1.];
+        }
+        palette.sky_horizon = [0.8, 0.8, 0.8, 1.];
+        palette.marking = [0.95, 0.95, 0.95, 1.];
+        for _ in 0..32 {
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+        }
+        let base = capture.image();
+        let stream = Arc::new(Mutex::new(LocalProvider::open(&provider(), origin()).unwrap()));
+        scene.set_scenery(Some(stream.clone()));
+        scene.scenery_quality = Quality::Low;
+        let started = std::time::Instant::now();
+        let mut loaded = false;
+        for frame in 0..3000 {
+            if started.elapsed() > std::time::Duration::from_secs(30) {
+                break;
+            }
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+            let stats = stream.lock().unwrap().stats();
+            assert_eq!(stats.failed_tiles, 0);
+            if stats.selected_tiles > 0 && stats.pending_tiles == 0 && frame > 32 {
+                loaded = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(loaded, "scenery must be loaded before checking occlusion");
+        for _ in 0..32 {
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+        }
+        let imagery = capture.image();
+        let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/scenery");
+        std::fs::create_dir_all(&out).unwrap();
+        base.save(out.join("higher-coarse-ground-baseline.png")).unwrap();
+        imagery
+            .save(out.join("higher-coarse-ground-imagery.png"))
+            .unwrap();
+        // NAIP can show dormant vegetation. Detect its actual, non-magenta texture pixels
+        // against the independent baseline rather than assuming a particular seasonal color.
+        let exposed = imagery
+            .pixels()
+            .zip(base.pixels())
+            .filter(|(p, b)| {
+                p.0.iter().zip(b.0).take(3).any(|(a, b)| a.abs_diff(b) > 20)
+                    && i16::from(p[0]) - i16::from(p[1]) < 20
+                    && i16::from(p[2]) - i16::from(p[1]) < 20
+            })
+            .count();
+        assert!(
+            exposed > 2000,
+            "loaded imagery must remain visible when fallback terrain is higher; exposed pixels: {exposed}"
+        );
+        // Outside the test-area footprint, coarse ground must still cover the scene.
+        let magenta = |image: &image::RgbaImage| {
+            image
+                .pixels()
+                .filter(|p| p[0] > p[1].saturating_add(30) && p[2] > p[1].saturating_add(30))
+                .count()
+        };
+        assert!(
+            magenta(&imagery) > 1000,
+            "coarse terrain must remain outside the replacement footprint"
+        );
+        capture.validate().await;
+    });
+}
+
+#[test]
+#[ignore = "requires an offscreen GPU and a built local test-area tileset"]
+fn tile_replacement_keeps_gpu_coverage_while_uploads_are_spread_out() {
+    pollster::block_on(async {
+        let mut capture = Capture::new([640, 480]).await;
+        let mut scene = Scene::default();
+        scene.set_world(&reference_world_at(1000.));
+        scene.camera = CameraMode::Flyby;
+        scene.airspace_visible = false;
+        scene.scenery_quality = Quality::High;
+        let eye = [150., 500., -3000.];
+        scene.set_screen_view(Some(ScreenView {
+            heading_offset_rad: 0.,
+            pitch_rad: 0.,
+            fov_rad: 1.,
+            fixed_eye_ned_m: Some(eye),
+        }));
+        let position = pose(230., 320., 112., 0.);
+        let mut palette = theme::scene();
+        for color in [
+            &mut palette.ground,
+            &mut palette.earth,
+            &mut palette.dry_grass,
+            &mut palette.rock,
+            &mut palette.forest,
+            &mut palette.shoreline,
+            &mut palette.water,
+            &mut palette.grid,
+        ] {
+            *color = [1., 0., 1., 1.];
+        }
+        let stream = Arc::new(Mutex::new(LocalProvider::open(&provider(), origin()).unwrap()));
+        scene.set_scenery(Some(stream.clone()));
+        let started = std::time::Instant::now();
+        let mut loaded = false;
+        for frame in 0..3000 {
+            assert!(
+                started.elapsed() < std::time::Duration::from_secs(30),
+                "replacement regression needs warm coverage"
+            );
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+            let stats = stream.lock().unwrap().stats();
+            assert_eq!(stats.failed_tiles, 0);
+            if stats.selected_tiles >= 4 && stats.pending_tiles == 0 && frame > 32 {
+                loaded = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(loaded);
+        for _ in 0..32 {
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+        }
+        let before = capture.image();
+        let selected = stream
+            .lock()
+            .unwrap()
+            .select(eye.map(f64::from), 480., 1., Quality::High)
+            .tiles;
+        assert!(selected.len() > Quality::High.uploads_per_frame());
+        // Independent CPU payload identities model eviction/reload or a refreshed provider.
+        // Geometry and imagery are identical, so replacing them cannot expose coarse ground.
+        for (id, payload) in selected {
+            stream
+                .lock()
+                .unwrap()
+                .insert(id, Arc::new((*payload).clone()), Quality::High)
+                .unwrap();
+        }
+        for frame in 0..3 {
+            capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
+            let after = capture.image();
+            let changed = before
+                .pixels()
+                .zip(after.pixels())
+                .filter(|(a, b)| a.0.iter().zip(b.0).take(3).any(|(a, b)| a.abs_diff(b) > 12))
+                .count();
+            assert!(
+                changed < 500,
+                "budgeted replacement exposed a scenery hole in frame {frame}: {changed} pixels"
+            );
         }
         capture.validate().await;
     });

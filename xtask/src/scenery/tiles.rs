@@ -9,6 +9,7 @@ pub(super) fn write_glb(
     key: TileKey,
     origin: [f64; 2],
     mut dem: Option<&mut super::dem::Dems>,
+    geoid: Option<&flightcraft_world::geoid::GeoidGrid>,
 ) -> Result<[f64; 2], String> {
     let [lat0, lon0] = origin;
     let transform = tiles3d::enu_transform(lat0, lon0, 0.).map_err(|e| e.to_string())?;
@@ -32,11 +33,16 @@ pub(super) fn write_glb(
             } else {
                 112.
             };
+            // Standard 3D Tiles/ECEF uses ellipsoidal height h = H + N.
+            // With no authentic geoid input this remains an explicitly unaccepted preview.
+            let height = if let Some(grid) = geoid {
+                grid.ellipsoidal_m(lat, lon, height).map_err(|e| e.to_string())?
+            } else {
+                height
+            };
             let [min_height, max_height] = &mut heights;
             *min_height = min_height.min(height);
             *max_height = max_height.max(height);
-            // Preview: existing MSL elevations treated as ellipsoidal. Release acceptance requires
-            // a reviewed vertical-datum transform; extras explicitly records this unresolved gate.
             let [x, y, z] = tiles3d::ecef(lat, lon, height).map_err(|e| e.to_string())?;
             let (dx, dy, dz) = (x - ox, y - oy, z - oz);
             let dot = |offset: usize| -> Result<f32, String> {
@@ -100,14 +106,26 @@ pub(super) fn write_glb(
         "meshes":[{"primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0}]}],
         "nodes":[{"mesh":0}],"scenes":[{"nodes":[0]}],"scene":0
     });
-    let mut json = serde_json::to_vec(&document).map_err(|e| e.to_string())?;
+    let glb = glb_bytes(&document, &binary)?;
+    let path = out.join(format!("tiles/{}.glb", key.name()));
+    std::fs::create_dir_all(path.parent().ok_or("GLB parent")?).map_err(|e| e.to_string())?;
+    std::fs::write(path, glb).map_err(|e| e.to_string())?;
+    Ok(heights)
+}
+pub(super) fn glb_bytes(document: &serde_json::Value, binary: &[u8]) -> Result<Vec<u8>, String> {
+    let mut json = serde_json::to_vec(document).map_err(|e| e.to_string())?;
     while !json.len().is_multiple_of(4) {
         json.push(b' ');
     }
+    let mut binary = binary.to_vec();
     while !binary.len().is_multiple_of(4) {
         binary.push(0);
     }
-    let length = 28 + json.len() + binary.len();
+    let length = 28_usize
+        .checked_add(json.len())
+        .and_then(|n| n.checked_add(binary.len()))
+        .filter(|n| *n <= flightcraft_world::tiles3d::MAX_TILE_CONTENT_BYTES)
+        .ok_or("GLB content exceeds tile budget")?;
     let mut glb = Vec::with_capacity(length);
     glb.extend(b"glTF");
     glb.extend(2_u32.to_le_bytes());
@@ -118,12 +136,13 @@ pub(super) fn write_glb(
     glb.extend((binary.len() as u32).to_le_bytes());
     glb.extend(b"BIN\0");
     glb.extend(binary);
-    let path = out.join(format!("tiles/{}.glb", key.name()));
-    std::fs::create_dir_all(path.parent().ok_or("GLB parent")?).map_err(|e| e.to_string())?;
-    std::fs::write(path, glb).map_err(|e| e.to_string())?;
-    Ok(heights)
+    Ok(glb)
 }
-pub(super) fn tileset(layout: &ImageryGrid, origin: [f64; 2]) -> Result<Tileset, String> {
+pub(super) fn tileset(
+    layout: &ImageryGrid,
+    origin: [f64; 2],
+    geoid: Option<&flightcraft_world::geoid::GeoidGrid>,
+) -> Result<Tileset, String> {
     fn node(
         layout: &ImageryGrid,
         key: TileKey,
@@ -186,7 +205,7 @@ pub(super) fn tileset(layout: &ImageryGrid, origin: [f64; 2]) -> Result<Tileset,
             .collect(),
     )?;
     root.transform = Some(tiles3d::enu_transform(origin[0], origin[1], 0.).map_err(|e| e.to_string())?);
-    let set = Tileset {
+    let mut set = Tileset {
         asset: Asset {
             version: "1.1".into(),
             copyright: Some(layout.attribution.clone()),
@@ -198,6 +217,85 @@ pub(super) fn tileset(layout: &ImageryGrid, origin: [f64; 2]) -> Result<Tileset,
             json!({"flightcraft":{"previewOnly":layout.preview_only,"verticalDatumVerified":false,"runwayAlignmentVerified":false,"lidarBuilt":false,"sourceResolutionVerified":false,"region":layout.region,"area":layout.area,"groundSampleMeters":layout.ground_sample_m}}),
         ),
     };
+    if let Some(grid) = geoid {
+        grid.validate().map_err(|e| e.to_string())?;
+        let context = set
+            .extras
+            .as_mut()
+            .and_then(|v| v.get_mut("flightcraft"))
+            .and_then(|v| v.as_object_mut())
+            .ok_or("missing scenery metadata")?;
+        context.insert(
+            "geoid".into(),
+            serde_json::to_value(grid).map_err(|e| e.to_string())?,
+        );
+    }
     set.validate().map_err(|e| e.to_string())?;
     Ok(set)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn geoid_changes_ecef_geometry_and_region_heights_without_claiming_acceptance() {
+        let out = std::env::temp_dir().join(format!("fc-ecef-datum-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&out);
+        let mut layout = manifest(&plan("eastern-pa", "1n7-test").unwrap(), true);
+        let key = TileKey { level: 0, x: 0, y: 0 };
+        let grid = flightcraft_world::geoid::GeoidGrid {
+            model: flightcraft_world::geoid::GeoidModel::NgsGeoid18,
+            source_sha256: "a".repeat(64),
+            south_deg: 40.95,
+            west_deg: -75.02,
+            step_deg: [1. / 60.; 2],
+            rows: 3,
+            cols: 3,
+            undulation_m: vec![-31.; 9],
+        };
+        let origin = [40.96905613156273, -75.00242278301268];
+        let mut tile = write_tile(
+            &out,
+            key,
+            image::RgbaImage::from_pixel(512, 512, image::Rgba([80, 120, 60, 255])),
+        )
+        .unwrap();
+        tile.height_bounds = write_glb(&out, &layout, key, origin, None, Some(&grid)).unwrap();
+        assert_eq!(tile.height_bounds, [81., 81.]); // H=112, N=-31, h=81.
+        layout.tiles.push(tile);
+        layout.max_level = 0;
+        let set = tileset(&layout, origin, Some(&grid)).unwrap();
+        assert_eq!(set.root.bounding_volume.region.unwrap()[4..], [81., 81.]);
+        assert_eq!(
+            set.extras.as_ref().unwrap()["flightcraft"]["verticalDatumVerified"],
+            false
+        );
+        let bytes = std::fs::read(out.join("tiles/0/0/0.glb")).unwrap();
+        let json_len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let binary = &bytes[28 + json_len..];
+        let offset = (16 * 33 + 16) * 12;
+        let p: Vec<f64> = binary[offset..offset + 12]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| f64::from(f32::from_le_bytes(*b)))
+            .collect();
+        let t = set.root.transform.unwrap();
+        let earth = std::array::from_fn(|axis| {
+            t[12 + axis] + t[axis] * p[0] - t[4 + axis] * p[2] + t[8 + axis] * p[1]
+        });
+        let [lat, lon, height] = tiles3d::geodetic(earth).unwrap();
+        assert!((height - 81.).abs() < 0.002);
+        assert!(
+            (set.geoid_grid()
+                .unwrap()
+                .unwrap()
+                .orthometric_m(lat, lon, height)
+                .unwrap()
+                - 112.)
+                .abs()
+                < 0.002
+        );
+        std::fs::remove_dir_all(out).unwrap();
+    }
 }

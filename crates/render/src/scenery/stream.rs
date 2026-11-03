@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-use super::{CachePolicy, TileProvider, decode_glb};
+use super::{CachePolicy, TileProvider};
 use super::{DecodedTile, Quality};
 use flightcraft_world::{
     geo::LocalProjection,
@@ -21,6 +21,7 @@ struct Node {
     error: f64,
     children: Vec<usize>,
     add: bool,
+    geoid: Option<Arc<flightcraft_world::geoid::GeoidGrid>>,
 }
 /// A transport-neutral request. URIs are opaque relative content identifiers; providers
 /// resolve their own paths or authenticated URLs outside the renderer.
@@ -29,6 +30,13 @@ pub struct ContentRequest {
     pub id: usize,
     pub uri: String,
     pub transform: [f64; 16],
+    /// Regional MSL conversion; never a provider-specific coordinate offset.
+    pub geoid: Option<Arc<flightcraft_world::geoid::GeoidGrid>>,
+}
+impl ContentRequest {
+    pub fn decode(&self, bytes: &[u8], origin: [f64; 2]) -> Result<Arc<DecodedTile>, String> {
+        super::decode_glb_with_geoid(bytes, self.transform, origin, self.geoid.as_deref())
+    }
 }
 fn content_request(nodes: &[Node], id: usize) -> Option<ContentRequest> {
     let node = nodes.get(id)?;
@@ -36,6 +44,7 @@ fn content_request(nodes: &[Node], id: usize) -> Option<ContentRequest> {
         id,
         uri: node.uri.clone()?,
         transform: node.transform,
+        geoid: node.geoid.clone(),
     })
 }
 #[derive(Clone, Default)]
@@ -75,6 +84,7 @@ impl Selection {
         self.stats.pending_tiles += layer.stats.pending_tiles;
         self.stats.failed_tiles += layer.stats.failed_tiles;
         self.stats.selected_tiles += layer.stats.selected_tiles;
+        self.stats.selected_instances += layer.stats.selected_instances;
     }
 }
 #[derive(Clone, Copy, Debug, Default)]
@@ -84,6 +94,7 @@ pub struct StreamStats {
     pub pending_tiles: usize,
     pub failed_tiles: usize,
     pub selected_tiles: usize,
+    pub selected_instances: usize,
 }
 
 struct Worker {
@@ -103,6 +114,8 @@ pub struct Stream {
     last_error: Option<String>,
     last_used: BTreeMap<usize, u64>,
     tick: u64,
+    last_instances: usize,
+    observed_sizes: BTreeMap<usize, usize>,
 }
 impl Stream {
     #[cfg(not(target_arch = "wasm32"))]
@@ -128,7 +141,7 @@ impl Stream {
                         {
                             return Err("Streaming scenery expired before decoding".into());
                         }
-                        let mut tile = decode_glb(&content.bytes, request.transform, origin)?;
+                        let mut tile = request.decode(&content.bytes, origin)?;
                         let payload = Arc::get_mut(&mut tile).ok_or("shared scenery payload")?;
                         payload.expires_at_unix_ms = content.expires_at_unix_ms;
                         payload.attribution = content.attribution;
@@ -150,12 +163,27 @@ impl Stream {
     pub fn new(set: &Tileset, origin: [f64; 2]) -> Result<Self, String> {
         set.validate().map_err(|e| e.to_string())?;
         let projection = LocalProjection::new(origin[0], origin[1]).map_err(|e| e.to_string())?;
+        let geoid = set.geoid_grid().map_err(|e| e.to_string())?.map(Arc::new);
+        let undulation_span_m = geoid.as_ref().map_or(0., |grid| {
+            let [lo, hi] = grid
+                .undulation_m
+                .iter()
+                .fold([f32::INFINITY, f32::NEG_INFINITY], |[lo, hi], &v| {
+                    [lo.min(v), hi.max(v)]
+                });
+            f64::from(hi - lo)
+        });
+        let reference = Georeference {
+            projection,
+            geoid,
+            undulation_span_m,
+        };
         let mut nodes = Vec::new();
         flatten(
             &set.root,
             DMat4::IDENTITY,
             Refine::Replace,
-            &projection,
+            &reference,
             &mut nodes,
             0,
         )?;
@@ -172,6 +200,8 @@ impl Stream {
             last_error: None,
             last_used: BTreeMap::new(),
             tick: 0,
+            last_instances: 0,
+            observed_sizes: BTreeMap::new(),
         })
     }
     pub fn content_request(&self, id: usize) -> Option<ContentRequest> {
@@ -190,6 +220,7 @@ impl Stream {
             pending_tiles: self.pending.len(),
             failed_tiles: self.failed.len(),
             selected_tiles: self.last_selected,
+            selected_instances: self.last_instances,
         }
     }
     /// Also used by browser/file adapters: accept decoded, bounded content off the draw thread.
@@ -197,6 +228,7 @@ impl Stream {
         if id >= self.nodes.len() || tile.byte_size > quality.resident_bytes() / 2 {
             return Err("scenery tile exceeds resident budget".into());
         }
+        self.observed_sizes.insert(id, tile.byte_size);
         let used: usize = self
             .resident
             .iter()
@@ -265,13 +297,10 @@ impl Stream {
         let mut selected = Vec::new();
         // Increase screen error when the requested refinement cannot fit. Otherwise a
         // fully visible tree can permanently fill the cache with incomplete sibling groups.
-        let estimate = self
-            .resident
-            .values()
-            .map(|t| t.byte_size)
-            .max()
-            .unwrap_or(0)
-            .max(2 * 1024 * 1024);
+        // Tiny building/instance payloads must not each reserve a full imagery tile.
+        // Remember decoded sizes even when a full cache defers insertion; the next selection
+        // can then coarsen accurately instead of retrying an underestimated large tile forever.
+        let unknown_size = 2 * 1024 * 1024;
         let mut target_error = quality.screen_error_px();
         for _ in 0..64 {
             desired.clear();
@@ -285,9 +314,12 @@ impl Stream {
                 target_error,
                 &mut desired,
                 &mut selected,
-                quality.resident_bytes() / estimate,
+                quality.resident_bytes() / (64 * 1024),
             );
-            if desired.len().saturating_mul(estimate) <= quality.resident_bytes() {
+            let estimated: usize = desired.iter().fold(0_usize, |sum, id| {
+                sum.saturating_add(self.observed_sizes.get(id).copied().unwrap_or(unknown_size))
+            });
+            if estimated <= quality.resident_bytes() {
                 break;
             }
             target_error *= 1.5;
@@ -365,12 +397,14 @@ impl Stream {
             browser.dispatch(&external_requests);
             external_requests.clear();
         }
+        self.last_instances = tiles.iter().map(|(_, t)| t.instance_count()).sum();
         let stats = StreamStats {
             resident_bytes: bytes,
             resident_tiles: self.resident.len(),
             pending_tiles: self.pending.len(),
             failed_tiles: self.failed.len(),
             selected_tiles: tiles.len(),
+            selected_instances: self.last_instances,
         };
         let mut credits = BTreeSet::new();
         if !self.attribution.is_empty() {
@@ -452,11 +486,23 @@ fn visit(
     }
     false
 }
+struct Georeference {
+    projection: LocalProjection,
+    geoid: Option<Arc<flightcraft_world::geoid::GeoidGrid>>,
+    undulation_span_m: f64,
+}
+impl Georeference {
+    fn msl(&self, lat: f64, lon: f64, height: f64) -> Result<f64, String> {
+        self.geoid.as_ref().map_or(Ok(height), |grid| {
+            grid.orthometric_m(lat, lon, height).map_err(|e| e.to_string())
+        })
+    }
+}
 fn flatten(
     tile: &Tile,
     parent: DMat4,
     refine: Refine,
-    projection: &LocalProjection,
+    reference: &Georeference,
     nodes: &mut Vec<Node>,
     depth: usize,
 ) -> Result<usize, String> {
@@ -465,7 +511,7 @@ fn flatten(
             .transform
             .map(|m| DMat4::from_cols_array(&m))
             .unwrap_or(DMat4::IDENTITY);
-    let (center, radius) = bounds(&tile.bounding_volume, transform, projection)?;
+    let (center, radius) = bounds(&tile.bounding_volume, transform, reference)?;
     let id = nodes.len();
     let refine = tile.refine.unwrap_or(refine);
     nodes.push(Node {
@@ -477,10 +523,11 @@ fn flatten(
         error: tile.geometric_error,
         children: Vec::new(),
         add: refine == Refine::Add,
+        geoid: reference.geoid.clone(),
     });
     let mut children = Vec::new();
     for child in &tile.children {
-        children.push(flatten(child, transform, refine, projection, nodes, depth + 1)?);
+        children.push(flatten(child, transform, refine, reference, nodes, depth + 1)?);
     }
     nodes.get_mut(id).ok_or("missing flattened tile")?.children = children;
     Ok(id)
@@ -488,8 +535,9 @@ fn flatten(
 fn bounds(
     volume: &BoundingVolume,
     transform: DMat4,
-    projection: &LocalProjection,
+    reference: &Georeference,
 ) -> Result<([f64; 3], f64), String> {
+    let projection = &reference.projection;
     if let Some([w, s, e, n, lo, hi]) = volume.region {
         let [lat, lon] = [((s + n) / 2.).to_degrees(), ((w + e) / 2.).to_degrees()];
         let [north, east] = projection.project(lat, lon).map_err(|e| e.to_string())?;
@@ -497,8 +545,9 @@ fn bounds(
             .project(s.to_degrees(), w.to_degrees())
             .map_err(|e| e.to_string())?;
         return Ok((
-            [north, east, (lo + hi) / 2.],
-            ((north - cn).powi(2) + (east - ce).powi(2) + ((hi - lo) / 2.).powi(2)).sqrt(),
+            [north, east, reference.msl(lat, lon, (lo + hi) / 2.)?],
+            ((north - cn).powi(2) + (east - ce).powi(2) + ((hi - lo) / 2.).powi(2)).sqrt()
+                + reference.undulation_span_m,
         ));
     }
     let (center, radius) = if let Some([x, y, z, r]) = volume.sphere {
@@ -523,7 +572,10 @@ fn bounds(
         .length()
         .max(transform.y_axis.truncate().length())
         .max(transform.z_axis.truncate().length());
-    Ok(([n, e, height], radius * scale))
+    Ok((
+        [n, e, reference.msl(lat, lon, height)?],
+        radius * scale + reference.undulation_span_m,
+    ))
 }
 
 #[cfg(test)]
@@ -559,12 +611,26 @@ mod tests {
     fn tile() -> Arc<DecodedTile> {
         Arc::new(DecodedTile {
             vertices: Vec::new(),
+            instanced: Vec::new(),
             mips: vec![image::RgbaImage::new(1, 1)],
             byte_size: 4,
             terrain_bounds: None,
             expires_at_unix_ms: None,
             attribution: Vec::new(),
         })
+    }
+    #[test]
+    fn small_building_tiles_do_not_force_unnecessary_imagery_coarsening() {
+        let mut set = set();
+        let child = set.root.children[0].clone();
+        set.root.children = vec![child; 32];
+        let mut stream = Stream::new(&set, [41., -75.]).unwrap();
+        for id in 0..=32 {
+            stream.insert(id, tile(), Quality::Low).unwrap();
+        }
+        let selected = stream.select([0., 0., -100.], 1080., 1., Quality::Low);
+        assert_eq!(selected.tiles.len(), 32);
+        assert!(selected.stats.resident_bytes <= Quality::Low.resident_bytes());
     }
     #[test]
     fn replacement_retains_parent_until_all_children_arrive_and_respects_budget() {
@@ -592,6 +658,7 @@ mod tests {
                     1,
                     Arc::new(DecodedTile {
                         vertices: Vec::new(),
+                        instanced: Vec::new(),
                         mips: Vec::new(),
                         byte_size: Quality::Low.resident_bytes(),
                         terrain_bounds: None,
@@ -614,7 +681,20 @@ mod tests {
     fn local_city_and_imagery_layers_keep_content_ids_and_credits_separate() {
         let mut city = Stream::new(&set(), [41., -75.]).unwrap();
         let mut imagery = Stream::new(&set(), [41., -75.]).unwrap();
-        city.insert(0, tile(), Quality::Low).unwrap();
+        let mut city_tile = tile();
+        Arc::get_mut(&mut city_tile)
+            .unwrap()
+            .instanced
+            .push(super::super::InstanceBatch {
+                vertices: Vec::new(),
+                instances: vec![
+                    super::super::Instance {
+                        matrix: glam::Mat4::IDENTITY.to_cols_array_2d()
+                    };
+                    3
+                ],
+            });
+        city.insert(0, city_tile, Quality::Low).unwrap();
         imagery.insert(0, tile(), Quality::Low).unwrap();
         let mut selected = city.select([0., 0., -100.], 1080., 1., Quality::Low);
         let mut layer = imagery.select([0., 0., -100.], 1080., 1., Quality::Low);
@@ -625,6 +705,7 @@ mod tests {
             vec![0, tiles3d::MAX_TILESET_TILES]
         );
         assert_eq!(selected.live_tiles.len(), 2);
+        assert_eq!(selected.stats.selected_instances, 3);
         assert!(selected.attribution.contains("Original fixture"));
         assert!(selected.attribution.contains("Imagery fixture credit"));
     }
@@ -650,6 +731,31 @@ mod tests {
         assert!(selection.live_tiles.iter().all(|(id, _)| *id != 1));
         assert!(!selection.attribution.contains("Expired credit"));
         assert!(selection.requests.iter().any(|request| request.id == 1));
+    }
+    #[test]
+    fn stream_bounds_and_requests_share_the_regional_height_datum() {
+        let mut tileset = set();
+        let grid = flightcraft_world::geoid::GeoidGrid {
+            model: flightcraft_world::geoid::GeoidModel::NgsGeoid18,
+            source_sha256: "a".repeat(64),
+            south_deg: 40.,
+            west_deg: -76.,
+            step_deg: [1. / 60.; 2],
+            rows: 120,
+            cols: 120,
+            undulation_m: vec![-31.; 120 * 120],
+        };
+        tileset.extras = Some(serde_json::json!({"flightcraft":{"geoid":grid}}));
+        let stream = Stream::new(&tileset, [41., -75.]).unwrap();
+        assert!((stream.nodes[0].center[2] - 131.).abs() < 1e-9);
+        let request = stream.content_request(0).unwrap();
+        assert!(request.geoid.is_some());
+        assert!(Arc::ptr_eq(
+            request.geoid.as_ref().unwrap(),
+            stream.content_request(1).unwrap().geoid.as_ref().unwrap()
+        ));
+        tileset.extras.as_mut().unwrap()["flightcraft"]["geoid"]["rows"] = serde_json::json!(u32::MAX);
+        assert!(Stream::new(&tileset, [41., -75.]).is_err());
     }
     #[test]
     fn event_loop_requests_are_bounded_and_keep_the_inherited_transform() {

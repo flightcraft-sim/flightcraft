@@ -1,6 +1,6 @@
 //! Redistributable static-host tiles, through the same 3D Tiles tree and bounded residency.
 //! This adapter never handles account keys or arbitrary remote origins.
-use super::{ContentRequest, Location, Provider, Stream, decode_glb};
+use super::{ContentRequest, Location, Provider, Stream};
 use flightcraft_world::tiles3d::{self, Tileset};
 use std::sync::{Arc, mpsc};
 use wasm_bindgen::JsCast;
@@ -68,7 +68,7 @@ impl Worker {
                     let url = web_sys::Url::new_with_base(&request.uri, &base)
                         .map_err(|_| "Invalid static scenery URL")?;
                     let bytes = fetch(&url.href(), tiles3d::MAX_TILE_CONTENT_BYTES).await?;
-                    decode_glb(&bytes, request.transform, origin)
+                    request.decode(&bytes, origin)
                 }
                 .await;
                 let _ = sender.send((request.id, result));
