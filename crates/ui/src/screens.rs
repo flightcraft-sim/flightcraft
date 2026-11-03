@@ -729,54 +729,64 @@ impl PageUi {
             PageKind::Instructor => {
                 let mut error = None;
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading("Instructor station");
-                    ui.label(format!(
-                        "LIVE · {:07.2} s · {:.0} ft · {:.0} kt",
-                        readout.time_s,
-                        readout.altitude_msl_m / 0.3048,
-                        readout.indicated_airspeed_mps / 0.514444
-                    ));
-                    ui.horizontal(|ui| {
-                        if ui
-                            .add_sized(
-                                [110., 44.],
-                                egui::Button::new(if s.paused() { "Resume" } else { "Freeze" }),
-                            )
-                            .clicked()
-                        {
-                            let _ = s.execute(if s.paused() { "sim.resume" } else { "sim.pause" }, json!({}));
-                        }
-                        for preset in ["vfr", "ifr", "night"] {
-                            if ui.add_sized([80., 44.], egui::Button::new(preset)).clicked() {
-                                let _ = s.execute("weather.set", json!({"preset":preset}));
+                    egui::Frame::new()
+                        .inner_margin(egui::Margin::symmetric(16, 12))
+                        .show(ui, |ui| {
+                            ui.heading("Instructor station");
+                            let elapsed = readout.time_s.max(0.0) as u64;
+                            ui.label(format!(
+                                "Live · {}:{:02}:{:02} · {:.0} ft · {:.0} kt",
+                                elapsed / 3600,
+                                elapsed / 60 % 60,
+                                elapsed % 60,
+                                readout.altitude_msl_m / 0.3048,
+                                readout.indicated_airspeed_mps / 0.514444
+                            ));
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add_sized(
+                                        [110., 44.],
+                                        egui::Button::new(if s.paused() { "Resume" } else { "Freeze" }),
+                                    )
+                                    .clicked()
+                                {
+                                    let _ = s.execute(
+                                        if s.paused() { "sim.resume" } else { "sim.pause" },
+                                        json!({}),
+                                    );
+                                }
+                                for (preset, label) in [("vfr", "VFR"), ("ifr", "IFR"), ("night", "Night")] {
+                                    if ui.add_sized([80., 44.], egui::Button::new(label)).clicked() {
+                                        let _ = s.execute("weather.set", json!({"preset":preset}));
+                                    }
+                                }
+                            });
+                            if ui.button("Reposition to runway").clicked() {
+                                let _ = crate::actions::reset(s);
                             }
-                        }
-                    });
-                    if ui.button("Reposition to runway").clicked() {
-                        let _ = crate::actions::reset(s);
-                    }
-                    if let Err(e) = self.instructor.panel(ui, s) {
-                        ui.colored_label(theme::AMBER, e.to_string());
-                    }
-                    ui.separator();
-                    ui.heading("ATC / radio monitor");
-                    radio::atc_panel(ui, s, &mut self.airport, &mut error);
-                    radio::transcript(ui, s);
-                    let grades = &s.flight_record().events;
-                    ui.label(format!("Live flight events / grades: {}", grades.len()));
-                    for event in grades.iter().rev().filter(|e| e.grade.is_some()).take(20) {
-                        if let Some(grade) = &event.grade {
-                            ui.colored_label(
-                                if grade.passed { theme::GREEN } else { theme::AMBER },
-                                format!(
-                                    "{:.1}s · {} · {}",
-                                    event.time_s,
-                                    if grade.passed { "PASS" } else { "REVIEW" },
-                                    grade.feedback
-                                ),
-                            );
-                        }
-                    }
+                            if let Err(e) = self.instructor.panel(ui, s) {
+                                ui.colored_label(theme::AMBER, e.to_string());
+                            }
+                            ui.separator();
+                            ui.heading("ATC / radio monitor");
+                            radio::atc_panel(ui, s, &mut self.airport, &mut error);
+                            radio::transcript(ui, s);
+                            let grades = &s.flight_record().events;
+                            ui.label(format!("Live flight events / grades: {}", grades.len()));
+                            for event in grades.iter().rev().filter(|e| e.grade.is_some()).take(20) {
+                                if let Some(grade) = &event.grade {
+                                    ui.colored_label(
+                                        if grade.passed { theme::GREEN } else { theme::AMBER },
+                                        format!(
+                                            "{:.1}s · {} · {}",
+                                            event.time_s,
+                                            if grade.passed { "PASS" } else { "REVIEW" },
+                                            grade.feedback
+                                        ),
+                                    );
+                                }
+                            }
+                        });
                 });
             }
             PageKind::Radio => {
