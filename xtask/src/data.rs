@@ -94,7 +94,10 @@ fn validate(lock: &Lock) -> Result<(), String> {
     }
     for asset in &lock.assets {
         if !flightcraft_world::region_id(&asset.region)
-            || !matches!(asset.dataset.as_str(), "terrain" | "charts" | "navigation")
+            || !matches!(
+                asset.dataset.as_str(),
+                "terrain" | "charts" | "navigation" | "scenery"
+            )
             || !release_name(&asset.asset)
             || !release_name(&asset.tag)
             || asset.bytes > MAX_DOWNLOAD as u64
@@ -285,11 +288,18 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
             .to_str()
             .ok_or("region ID requires UTF-8")?
             .to_owned();
-        for dataset in ["terrain", "charts", "navigation"] {
+        for dataset in ["terrain", "charts", "navigation", "scenery"] {
             let paths: Vec<_> = files(&region.path())?
                 .into_iter()
                 .filter(|p| {
-                    if dataset == "terrain" {
+                    let scenery = p
+                        .strip_prefix(region.path())
+                        .is_ok_and(|p| p.starts_with("scenery"));
+                    if dataset == "scenery" {
+                        scenery
+                    } else if scenery {
+                        false
+                    } else if dataset == "terrain" {
                         p.extension().is_some_and(|e| e == "fcht")
                     } else if dataset == "charts" {
                         p.extension().is_some_and(|e| e == "png" || e == "webp")
@@ -299,7 +309,7 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
                 })
                 .collect();
             if paths.is_empty() {
-                if dataset == "terrain" || region.path().join("charts").exists() {
+                if dataset == "terrain" || (dataset == "charts" && region.path().join("charts").exists()) {
                     return Err(format!(
                         "{} {dataset} data absent; run cargo xtask data fetch before publishing",
                         id
@@ -307,47 +317,74 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
                 }
                 continue;
             }
-            let mut entries = Vec::new();
-            let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
-            let options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Stored)
-                .last_modified_time(zip::DateTime::default())
-                .unix_permissions(0o644);
-            for path in paths {
-                let name = path
-                    .strip_prefix(&assets)
-                    .map_err(|e| e.to_string())?
-                    .to_str()
-                    .ok_or("UTF-8 asset path")?
-                    .replace('\\', "/");
-                let bytes = read(&path, MAX_DOWNLOAD)?;
-                entries.push(FileEntry {
-                    path: name.clone(),
-                    bytes: bytes.len() as u64,
-                    sha256: sha256(&bytes),
-                });
-                writer.start_file(&name, options).map_err(|e| e.to_string())?;
-                writer.write_all(&bytes).map_err(|e| e.to_string())?;
+            if dataset == "scenery" {
+                if !paths
+                    .iter()
+                    .any(|p| p.file_name().is_some_and(|n| n == "tileset.json"))
+                {
+                    return Err("scenery needs a tileset manifest".into());
+                }
+                for path in paths
+                    .iter()
+                    .filter(|p| p.file_name().is_some_and(|n| n == "tileset.json"))
+                {
+                    let bytes = read(path, flightcraft_world::tiles3d::MAX_TILESET_BYTES)?;
+                    flightcraft_world::tiles3d::Tileset::from_json(&bytes).map_err(|e| e.to_string())?;
+                    let set: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+                    for gate in ["verticalDatumVerified", "runwayAlignmentVerified", "lidarBuilt"] {
+                        if set
+                            .pointer(&format!("/extras/flightcraft/{gate}"))
+                            .and_then(|v| v.as_bool())
+                            != Some(true)
+                        {
+                            return Err(format!(
+                                "scenery cannot ship before {gate} passes: {}",
+                                path.display()
+                            ));
+                        }
+                    }
+                    if set
+                        .pointer("/extras/flightcraft/previewOnly")
+                        .and_then(|v| v.as_bool())
+                        != Some(false)
+                    {
+                        return Err("preview scenery cannot be published".into());
+                    }
+                }
             }
-            writer
-                .start_file("manifest.json", options)
-                .map_err(|e| e.to_string())?;
-            writer
-                .write_all(&serde_json::to_vec_pretty(&entries).map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?;
-            let bytes = writer.finish().map_err(|e| e.to_string())?.into_inner();
-            let asset = format!("{id}-{dataset}.zip");
-            std::fs::write(output.join(&asset), &bytes).map_err(|e| e.to_string())?;
-            write_json(&output.join(format!("{id}-{dataset}.manifest.json")), &entries)?;
-            lock.assets.push(Asset {
-                region: id.clone(),
-                dataset: dataset.into(),
-                tag: tag.into(),
-                asset,
-                bytes: bytes.len() as u64,
-                sha256: sha256(&bytes),
-                files: entries,
-            });
+            // 128 MiB raw tile ranges leave room for ZIP headers and the manifest beneath
+            // the existing 256 MiB verified transport cap (also below GitHub's 2 GB cap).
+            let mut groups = Vec::<Vec<PathBuf>>::new();
+            let mut group = Vec::new();
+            let mut total = 0_u64;
+            for path in paths {
+                let bytes = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+                if bytes > 128 * 1024 * 1024 {
+                    return Err("release tile exceeds 128 MiB".into());
+                }
+                if total + bytes > 128 * 1024 * 1024 && !group.is_empty() {
+                    groups.push(std::mem::take(&mut group));
+                    total = 0;
+                }
+                total += bytes;
+                group.push(path);
+            }
+            if !group.is_empty() {
+                groups.push(group);
+            }
+            let split = groups.len() > 1;
+            let mut first = 0;
+            for paths in groups {
+                let last = first + paths.len() - 1;
+                let suffix = if split {
+                    format!("-{first:06}-{last:06}")
+                } else {
+                    String::new()
+                };
+                lock.assets
+                    .push(archive(&assets, &paths, output, &id, dataset, tag, &suffix)?);
+                first = last + 1;
+            }
         }
     }
     lock.assets
@@ -369,6 +406,64 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
         output.display()
     );
     Ok(())
+}
+
+fn archive(
+    assets: &Path,
+    paths: &[PathBuf],
+    output: &Path,
+    id: &str,
+    dataset: &str,
+    tag: &str,
+    suffix: &str,
+) -> Result<Asset, String> {
+    let mut entries = Vec::new();
+    let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored)
+        .last_modified_time(zip::DateTime::default())
+        .unix_permissions(0o644);
+    for path in paths {
+        let name = path
+            .strip_prefix(assets)
+            .map_err(|e| e.to_string())?
+            .to_str()
+            .ok_or("UTF-8 asset path")?
+            .replace('\\', "/");
+        let bytes = read(path, MAX_DOWNLOAD)?;
+        entries.push(FileEntry {
+            path: name.clone(),
+            bytes: bytes.len() as u64,
+            sha256: sha256(&bytes),
+        });
+        writer.start_file(&name, options).map_err(|e| e.to_string())?;
+        writer.write_all(&bytes).map_err(|e| e.to_string())?;
+    }
+    writer
+        .start_file("manifest.json", options)
+        .map_err(|e| e.to_string())?;
+    writer
+        .write_all(&serde_json::to_vec_pretty(&entries).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    let bytes = writer.finish().map_err(|e| e.to_string())?.into_inner();
+    if bytes.len() > MAX_DOWNLOAD {
+        return Err("release range exceeds transport bound".into());
+    }
+    let asset = format!("{id}-{dataset}{suffix}.zip");
+    std::fs::write(output.join(&asset), &bytes).map_err(|e| e.to_string())?;
+    write_json(
+        &output.join(format!("{id}-{dataset}{suffix}.manifest.json")),
+        &entries,
+    )?;
+    Ok(Asset {
+        region: id.into(),
+        dataset: dataset.into(),
+        tag: tag.into(),
+        asset,
+        bytes: bytes.len() as u64,
+        sha256: sha256(&bytes),
+        files: entries,
+    })
 }
 
 pub fn run() -> Result<(), String> {

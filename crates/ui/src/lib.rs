@@ -337,6 +337,7 @@ impl FlightCraftApp {
         app.efb_serial = efb_serial;
         app.packs_directory = packs_directory;
         app.runtime = Some(runtime);
+        screens.main.scenery_preferences = app.screens.main.scenery_preferences.clone();
         app.screens = screens;
         app.screenshot = options.screenshot;
         Ok(app)
@@ -377,7 +378,14 @@ impl FlightCraftApp {
             packs_directory: "packs".into(),
             #[cfg(not(target_arch = "wasm32"))]
             runtime: None,
-            screens: screens::ScreensUi::with_chart_root(chart_root.clone()),
+            screens: {
+                let mut screens = screens::ScreensUi::with_chart_root(chart_root.clone());
+                screens.main.scenery_preferences = storage
+                    .and_then(|s| s.get_string("flightcraft.scenery.v1"))
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or_default();
+                screens
+            },
             scene: Scene::default(),
             input: input::Input::default(),
             keymap,
@@ -492,6 +500,22 @@ impl FlightCraftApp {
                 if let Some(reason) = status.reason { ui.label(reason); }
                 if let Some(error) = status.last_error { ui.colored_label(theme::AMBER, error); }
             }
+            ui.separator();
+            ui.label(RichText::new("SCENERY").color(theme::ACCENT).size(11.0));
+            let preferences = &mut self.screens.main.scenery_preferences;
+            ui.horizontal(|ui| {
+                ui.label("Quality");
+                ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::Low, "Low");
+                ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::Medium, "Medium");
+                if !cfg!(target_arch = "wasm32") { ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::High, "High"); }
+            });
+            if !cfg!(target_arch = "wasm32") {
+                ui.checkbox(&mut preferences.enabled, "Use local 3D scenery");
+                ui.label("Tileset file");
+                ui.text_edit_singleline(&mut preferences.local_tileset);
+                if ui.button("Apply scenery").clicked() { self.screens.main.reload_scenery(); }
+            }
+            ui.separator();
             ui.label(RichText::new("SOUND").color(theme::ACCENT).size(11.0));
             ui.checkbox(&mut self.audio.preferences.muted,"Mute sound");
             ui.add(egui::Slider::new(&mut self.audio.preferences.volume,0.0..=1.0).text("Master volume"));
@@ -1231,6 +1255,9 @@ impl eframe::App for FlightCraftApp {
         if let Ok(json) = serde_json::to_string(&self.audio.preferences) {
             storage.set_string("flightcraft.audio.v1", json);
         }
+        if let Ok(json) = serde_json::to_string(&self.screens.main.scenery_preferences) {
+            storage.set_string("flightcraft.scenery.v1", json);
+        }
         storage.set_string(COMPACT_PANEL_STORAGE, self.compact_panel.to_string());
         if let Ok(json) = serde_json::to_string(&self.instrument_panel.options) {
             storage.set_string(DISPLAY_OPTIONS_STORAGE, json);
@@ -1316,3 +1343,9 @@ mod main_ui_tests;
 
 #[cfg(test)]
 mod exterior_preview;
+
+/// Schema-only re-export for the repository schema generator.
+pub type SceneryProviderSchema = flightcraft_render::scenery::Provider;
+
+#[cfg(test)]
+mod scenery_preview;

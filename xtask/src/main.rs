@@ -21,6 +21,7 @@ mod panel_compare;
 mod procedures_faa;
 mod refresh;
 mod region;
+mod scenery;
 mod terrain_srtm;
 mod validation;
 mod web;
@@ -99,6 +100,7 @@ fn main() -> ExitCode {
         "layers" => layers(),
         "panel-compare" => panel_compare::run(),
         "region" => region::run(),
+        "scenery" => scenery::run(),
         "landmarks" => landmarks::run(),
         "data" => data::run(),
         "terrain" => terrain(),
@@ -169,6 +171,26 @@ fn root() -> Result<PathBuf, String> {
 
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
+        (
+            "tileset.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::tiles3d::Tileset)),
+        ),
+        (
+            "scenery-provider.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_ui::SceneryProviderSchema)),
+        ),
+        (
+            "scenery-request.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::Request)),
+        ),
+        (
+            "scenery-sources.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::Sources)),
+        ),
+        (
+            "scenery-report.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(scenery::Report)),
+        ),
         (
             "exterior.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::exterior::Exterior)),

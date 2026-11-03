@@ -30,8 +30,18 @@ pub struct PageUi {
     tune1: String,
     tune2: String,
 }
+#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SceneryPreferences {
+    pub quality: flightcraft_render::scenery::Quality,
+    pub enabled: bool,
+    pub local_tileset: String,
+}
 #[derive(Default)]
 pub struct Canvas {
+    pub scenery_preferences: SceneryPreferences,
+    scenery_attempt: Option<(String, [f64; 2])>,
+    scenery: Option<std::sync::Arc<std::sync::Mutex<flightcraft_render::scenery::Stream>>>,
     pages: BTreeMap<String, PageUi>,
     drag: Option<Element>,
     drag_delta: egui::Vec2,
@@ -46,6 +56,9 @@ fn execute(s: &mut Session, name: &str, input: serde_json::Value, error: &mut Op
     }
 }
 impl Canvas {
+    pub fn reload_scenery(&mut self) {
+        self.scenery_attempt = None;
+    }
     /// Release push-to-hold equipment before a planning map hides the panel.
     pub(crate) fn cancel_equipment_holds(&mut self, session: &mut Session) {
         for page in self.pages.values_mut() {
@@ -64,6 +77,43 @@ impl Canvas {
     }
     pub fn show(&mut self, ui: &mut egui::Ui, screen: &Screen, s: &mut Session, control: bool) {
         theme::page(ui);
+        if cfg!(target_arch = "wasm32")
+            && self.scenery_preferences.quality == flightcraft_render::scenery::Quality::High
+        {
+            self.scenery_preferences.quality = flightcraft_render::scenery::Quality::Medium;
+        }
+        if !self.scenery_preferences.enabled {
+            self.scenery = None;
+            self.scenery_attempt = None;
+        } else if let Some(region) = s.sim().world().region() {
+            let origin = [region.origin.latitude_deg, region.origin.longitude_deg];
+            let attempt = (self.scenery_preferences.local_tileset.clone(), origin);
+            if self
+                .scenery_attempt
+                .as_ref()
+                .is_none_or(|(_, loaded_origin)| *loaded_origin != origin)
+            {
+                self.scenery_attempt = Some(attempt);
+                let provider = flightcraft_render::scenery::Provider {
+                    location: flightcraft_render::scenery::Location::LocalPath(
+                        self.scenery_preferences.local_tileset.clone().into(),
+                    ),
+                    token_config_key: None,
+                    enabled: true,
+                };
+                match flightcraft_render::scenery::LocalProvider::open(&provider, origin) {
+                    Ok(stream) => self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream))),
+                    Err(error) => {
+                        self.scenery = None;
+                        self.error = Some(format!("Scenery: {error}"));
+                    }
+                }
+            }
+        } else {
+            self.scenery = None;
+            self.scenery_attempt = None;
+        }
+
         let available = ui.max_rect();
         let [cw, ch] = screen.layout.canvas;
         let calibration = screen
@@ -106,6 +156,8 @@ impl Canvas {
                 map: map::PlanningMap::with_root(self.chart_root.clone()),
                 ..Default::default()
             });
+            page.scene.set_scenery(self.scenery.clone());
+            page.scene.scenery_quality = self.scenery_preferences.quality;
             ui.scope_builder(egui::UiBuilder::new().id_salt(&element.id).max_rect(rect), |ui| {
                 ui.set_clip_rect(rect.intersect(available));
                 if !element.accepts_input || !control || self.edit {
@@ -1185,6 +1237,7 @@ impl ScreensUi {
                 c.edit = self.main.edit;
                 c.transfer = self.main.transfer.clone();
                 c.chart_root = self.main.chart_root.clone();
+                c.scenery_preferences = self.main.scenery_preferences.clone();
             }
             let source = runtime.source();
             let id = window.id;

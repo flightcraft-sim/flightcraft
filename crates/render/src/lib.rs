@@ -6,6 +6,7 @@ mod light_gun;
 pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
 mod mesh;
+pub mod scenery;
 mod vision;
 mod weather;
 pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_vision_stats};
@@ -65,6 +66,8 @@ pub enum CameraMode {
 }
 
 pub struct Scene {
+    scenery: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>,
+    pub scenery_quality: scenery::Quality,
     gpu_view: std::sync::Arc<std::sync::Mutex<Option<gpu::ViewGpu>>>,
     world: flightcraft_world::World,
     pub airspace_visible: bool,
@@ -93,6 +96,8 @@ pub struct Scene {
 impl Default for Scene {
     fn default() -> Self {
         Self {
+            scenery: None,
+            scenery_quality: Default::default(),
             gpu_view: Default::default(),
             world: flightcraft_world::World::default(),
             airspace_visible: true,
@@ -132,6 +137,10 @@ pub struct ScreenView {
     pub fixed_eye_ned_m: Option<[f32; 3]>,
 }
 impl Scene {
+    pub fn set_scenery(&mut self, stream: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>) {
+        self.scenery = stream;
+    }
+
     pub fn set_screen_view(&mut self, view: Option<ScreenView>) {
         self.screen_view = view;
     }
@@ -369,6 +378,7 @@ impl Scene {
         );
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
         let mut uniform = gpu::Uniform {
+            scenery_bounds: [0.; 4],
             landing_light: [0.; 4],
             atmosphere: [0.; 4],
             fog_color: [0.; 4],
@@ -398,6 +408,27 @@ impl Scene {
             eye: Vec4::new(eye.x, eye.y, eye.z, self.propeller_power).to_array(),
         };
         weather::apply(&mut uniform, &self.conditions, palette);
+        let scenery = self
+            .scenery
+            .as_ref()
+            .and_then(|stream| stream.try_lock().ok())
+            .map(|mut stream| {
+                stream.select(
+                    [-f64::from(eye.z), f64::from(eye.x), -f64::from(eye.y)],
+                    f64::from(rect.height()),
+                    f64::from(self.screen_view.map_or(vertical_fov, |s| {
+                        s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
+                    })),
+                    self.scenery_quality,
+                )
+            })
+            .unwrap_or_default();
+        let scenery_attribution = scenery.attribution.clone();
+        let scenery_unavailable = scenery.stats.failed_tiles > 0;
+        if scenery.stats.pending_tiles > 0 {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(16));
+        }
         if self.lights_visible
             && self.exterior.as_ref().is_some_and(|asset| {
                 asset.definition.lights.iter().any(|l| {
@@ -418,6 +449,8 @@ impl Scene {
         ui.painter().add(egui_wgpu::Callback::new_paint_callback(
             rect,
             gpu::SceneCallback {
+                scenery,
+                scenery_quality: self.scenery_quality,
                 resources: self.gpu_view.clone(),
                 uniform,
                 show_airspace: self.airspace_visible,
@@ -431,6 +464,34 @@ impl Scene {
                 exterior_pose: self.exterior_pose.clone(),
             },
         ));
+        if !scenery_attribution.is_empty() {
+            ui.painter().text(
+                rect.left_bottom() + egui::vec2(8., -8.),
+                egui::Align2::LEFT_BOTTOM,
+                &scenery_attribution,
+                egui::FontId::proportional(10.),
+                egui::Color32::from_rgba_unmultiplied(
+                    (palette.marking.first().copied().unwrap_or(1.) * 255.) as u8,
+                    (palette.marking.get(1).copied().unwrap_or(1.) * 255.) as u8,
+                    (palette.marking.get(2).copied().unwrap_or(1.) * 255.) as u8,
+                    220,
+                ),
+            );
+        }
+        if scenery_unavailable {
+            ui.painter().text(
+                rect.left_top() + egui::vec2(8., 8.),
+                egui::Align2::LEFT_TOP,
+                "Some scenery is unavailable",
+                egui::FontId::proportional(12.),
+                egui::Color32::from_rgba_unmultiplied(
+                    (palette.marking.first().copied().unwrap_or(1.) * 255.) as u8,
+                    (palette.marking.get(1).copied().unwrap_or(1.) * 255.) as u8,
+                    (palette.marking.get(2).copied().unwrap_or(1.) * 255.) as u8,
+                    255,
+                ),
+            );
+        }
         self.draw_light_gun(ui, rect, eye, projection * view, palette);
     }
 }

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sources",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string"
+    },
+    "bounds": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 4,
+      "minItems": 4
+    },
+    "ground_sample_m": {
+      "type": "number",
+      "format": "double"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Input"
+      }
+    },
+    "max_level": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "region": {
+      "type": "string"
+    },
+    "tile_pixels": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "region",
+    "area",
+    "bounds",
+    "tile_pixels",
+    "max_level",
+    "ground_sample_m",
+    "inputs"
+  ],
+  "$defs": {
+    "Input": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TileKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/InputKind"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source"
+      ]
+    },
+    "InputKind": {
+      "type": "string",
+      "enum": [
+        "naip-metadata",
+        "imagery",
+        "dem-discovery",
+        "dem",
+        "lidar-discovery",
+        "lidar",
+        "reference-image"
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "downloaded_at": {
+          "type": "string"
+        },
+        "edition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "downloaded_at",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "TileKey": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "x": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "y": {
+          "description": "Zero is the northernmost row.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "x",
+        "y"
+      ]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Report",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string"
+    },
+    "elevation_built": {
+      "type": "boolean"
+    },
+    "imagery_tiles": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "lidar_built": {
+      "type": "boolean"
+    },
+    "manifest": {
+      "type": "string"
+    },
+    "preview_only": {
+      "type": "boolean"
+    },
+    "region": {
+      "type": "string"
+    },
+    "release_ready": {
+      "type": "boolean"
+    },
+    "runway_alignment_verified": {
+      "type": "boolean"
+    },
+    "source_files": {
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "vertical_datum_verified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "region",
+    "area",
+    "manifest",
+    "imagery_tiles",
+    "source_files",
+    "preview_only",
+    "elevation_built",
+    "vertical_datum_verified",
+    "runway_alignment_verified",
+    "lidar_built",
+    "release_ready"
+  ]
+}

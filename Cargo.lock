@@ -1196,7 +1196,11 @@ dependencies = [
  "flightcraft-sim",
  "flightcraft-world",
  "glam",
+ "gltf",
+ "image",
  "naga",
+ "schemars",
+ "serde",
  "serde_json",
  "wgpu",
 ]

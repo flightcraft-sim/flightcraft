@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provider",
+  "description": "Persist in the user's preferences, never in region data. Token values are deliberately\nabsent from this descriptor: future online adapters resolve this config key privately.",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "description": "Online providers must explicitly opt in. The local adapter always rejects URLs.",
+      "type": "boolean",
+      "default": false
+    },
+    "location": {
+      "$ref": "#/$defs/Location"
+    },
+    "token_config_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "location"
+  ],
+  "$defs": {
+    "Location": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "local-path"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "url"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ]
+        }
+      ]
+    }
+  }
+}

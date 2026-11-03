@@ -31,6 +31,7 @@ pub(crate) struct Uniform {
     pub light_red: [f32; 4],
     pub viewport: [f32; 4],
     pub landing_light: [f32; 4],
+    pub scenery_bounds: [f32; 4],
 }
 
 pub(crate) struct SceneCallback {
@@ -45,6 +46,8 @@ pub(crate) struct SceneCallback {
     pub sling: bool,
     pub exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     pub exterior_pose: crate::exterior::Pose,
+    pub scenery: crate::scenery::Selection,
+    pub scenery_quality: crate::scenery::Quality,
 }
 
 struct ExteriorGpu {
@@ -54,6 +57,7 @@ struct ExteriorGpu {
 }
 
 pub(crate) struct ViewGpu {
+    scenery: crate::scenery::gpu::Cache,
     exterior: Option<ExteriorGpu>,
     uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
@@ -84,6 +88,7 @@ struct DrawMesh {
 }
 
 struct Gpu {
+    scenery: crate::scenery::gpu::Pipeline,
     terrain: Vec<TerrainBuffer>,
     airspace: Option<(wgpu::Buffer, u32)>,
     terrain_fingerprint: Option<u64>,
@@ -359,7 +364,9 @@ impl Gpu {
             }],
         });
         let vision_targets = targets(device, [750, 285], &texture_layout);
+        let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout);
         Self {
+            scenery,
             sky,
             scene,
             transparent,
@@ -497,6 +504,7 @@ impl CallbackTrait for SceneCallback {
                 }],
             });
             ViewGpu {
+                scenery: Default::default(),
                 exterior: None,
                 uniform,
                 bind,
@@ -539,7 +547,16 @@ impl CallbackTrait for SceneCallback {
             exterior.count = vertices.len() as u32;
             queue.write_buffer(&exterior.vertices, 0, bytemuck::cast_slice(&vertices));
         }
-        queue.write_buffer(&view.uniform, 0, bytemuck::bytes_of(&self.uniform));
+        gpu.scenery.prepare(
+            device,
+            queue,
+            &self.scenery,
+            &mut view.scenery,
+            self.scenery_quality.uploads_per_frame(),
+        );
+        let mut uniform = self.uniform;
+        uniform.scenery_bounds = view.scenery.terrain_bounds();
+        queue.write_buffer(&view.uniform, 0, bytemuck::bytes_of(&uniform));
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("flight scene"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -582,6 +599,8 @@ impl CallbackTrait for SceneCallback {
                 pass.draw(range, 0..1);
             }
         }
+        gpu.scenery.draw(&mut pass, &view.scenery);
+        pass.set_pipeline(&gpu.scene);
         let [corvid, larrow, sling] = &gpu.meshes;
         let mesh = if self.sling {
             sling
@@ -650,6 +669,46 @@ impl CallbackTrait for SceneCallback {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn scenery_shader_validates_and_translates_to_webgl2() -> Result<(), Box<dyn std::error::Error>> {
+        use naga::{back::glsl, valid};
+        let module = naga::front::wgsl::parse_str(include_str!("scenery.wgsl"))?;
+        let info = valid::Validator::new(valid::ValidationFlags::all(), valid::Capabilities::empty())
+            .validate(&module)?;
+        let options = glsl::Options {
+            version: glsl::Version::Embedded {
+                version: 300,
+                is_webgl: true,
+            },
+            ..Default::default()
+        };
+        for entry in &module.entry_points {
+            let pipeline = glsl::PipelineOptions {
+                shader_stage: entry.stage,
+                entry_point: entry.name.clone(),
+                multiview: None,
+            };
+            let mut output = String::new();
+            glsl::Writer::new(
+                &mut output,
+                &module,
+                &info,
+                &options,
+                &pipeline,
+                Default::default(),
+            )?
+            .write()?;
+            assert!(output.starts_with("#version 300 es"));
+        }
+        let size = module.types.iter().find_map(|(_, ty)| match &ty.inner {
+            naga::TypeInner::Struct { span, .. } if ty.name.as_deref() == Some("Uniforms") => {
+                Some(*span as usize)
+            }
+            _ => None,
+        });
+        assert_eq!(size, Some(std::mem::size_of::<super::Uniform>()));
+        Ok(())
+    }
     #[test]
     fn scene_shader_validates_and_translates_to_webgl2() -> Result<(), Box<dyn std::error::Error>> {
         use naga::{back::glsl, valid};

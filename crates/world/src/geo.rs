@@ -120,6 +120,29 @@ fn forward(lat: f64, delta: f64) -> [f64; 2] {
     [scale * x, scale * y]
 }
 
+/// WGS84 UTM grid coordinates, independently using the same Krüger series as local TM.
+/// Kept separate from the local 250 km coordinate bounds used by the simulation.
+pub fn utm(latitude_deg: f64, longitude_deg: f64, zone: u8) -> Result<[f64; 2], TerrainError> {
+    if !(1..=60).contains(&zone)
+        || !latitude_deg.is_finite()
+        || !longitude_deg.is_finite()
+        || !(-80.0..=84.).contains(&latitude_deg)
+        || !(-180.0..=180.).contains(&longitude_deg)
+    {
+        return Err(TerrainError("invalid UTM coordinate"));
+    }
+    let central = f64::from(zone) * 6. - 183.;
+    let delta = (longitude_deg - central + 180.).rem_euclid(360.) - 180.;
+    if delta.abs() > 6. {
+        return Err(TerrainError("coordinate outside UTM zone margin"));
+    }
+    let [n, e] = forward(latitude_deg.to_radians(), delta.to_radians());
+    Ok([
+        n * 0.9996 + if latitude_deg < 0. { 10_000_000. } else { 0. },
+        e * 0.9996 + 500_000.,
+    ])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,6 +210,17 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn utm_matches_independent_snyder_and_hemisphere_offsets() {
+        for latitude in [0., 40.5, -45., 80.] {
+            let [n, e] = snyder(latitude, 1.5);
+            let [actual_n, actual_e] = utm(latitude, -73.5, 18).unwrap();
+            let expected_n = n * 0.9996 + if latitude < 0. { 10_000_000. } else { 0. };
+            assert!(libm::hypot(actual_n - expected_n, actual_e - (e * 0.9996 + 500_000.)) < 0.001);
+        }
+        assert!(utm(f64::NAN, -75., 18).is_err());
+        assert!(utm(41., -75., 61).is_err());
     }
     #[test]
     fn usgs_forward_example_angles_on_wgs84() {

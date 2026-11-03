@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tileset",
+  "type": "object",
+  "properties": {
+    "asset": {
+      "$ref": "#/$defs/Asset"
+    },
+    "extensionsRequired": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "extras": true,
+    "geometricError": {
+      "type": "number",
+      "format": "double"
+    },
+    "root": {
+      "$ref": "#/$defs/Tile"
+    }
+  },
+  "required": [
+    "asset",
+    "geometricError",
+    "root"
+  ],
+  "$defs": {
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "copyright": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ]
+    },
+    "BoundingVolume": {
+      "type": "object",
+      "properties": {
+        "box": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 12,
+          "minItems": 12
+        },
+        "region": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 6,
+          "minItems": 6
+        },
+        "sphere": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 4,
+          "minItems": 4
+        }
+      }
+    },
+    "Content": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ]
+    },
+    "Refine": {
+      "type": "string",
+      "enum": [
+        "ADD",
+        "REPLACE"
+      ]
+    },
+    "Tile": {
+      "type": "object",
+      "properties": {
+        "boundingVolume": {
+          "$ref": "#/$defs/BoundingVolume"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Tile"
+          }
+        },
+        "content": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Content"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "geometricError": {
+          "type": "number",
+          "format": "double"
+        },
+        "refine": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Refine"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 16,
+          "minItems": 16
+        }
+      },
+      "required": [
+        "boundingVolume",
+        "geometricError"
+      ]
+    }
+  }
+}

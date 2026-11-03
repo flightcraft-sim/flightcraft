@@ -22,6 +22,7 @@ struct Uniforms {
     light_red: vec4<f32>,
     viewport: vec4<f32>,
     landing_light: vec4<f32>,
+    scenery_bounds: vec4<f32>,
 }
 @group(0) @binding(0) var<uniform> u: Uniforms;
 struct Sky { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32> }
@@ -139,6 +140,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
 }
 
 @fragment fn scene_fragment(i: Surface) -> @location(0) vec4<f32> {
+    if i.kind == 3.0 && u.vision.y < 0.5 && u.scenery_bounds.z > u.scenery_bounds.x && all(i.world.xz >= u.scenery_bounds.xy) && all(i.world.xz <= u.scenery_bounds.zw) { discard; }
     let distance = length(i.world - u.eye.xyz);
     let normal = normalize(i.normal);
     let sun = normalize(SUN);

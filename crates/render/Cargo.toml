@@ -23,5 +23,10 @@ wgpu.workspace = true
 bytemuck.workspace = true
 glam.workspace = true
 
+image.workspace = true
+gltf.workspace = true
+serde.workspace = true
+schemars.workspace = true
+
 [dev-dependencies]
 naga.workspace = true
