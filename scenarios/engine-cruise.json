@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "engine-cruise",
+  "title": "Engine failure in cruise \u2014 1N7 to KMPO",
+  "ai_written": false,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "1N7",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "KMPO",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [],
+  "steps": [
+    {
+      "id": "event",
+      "when": [
+        {
+          "kind": "distance",
+          "reference": "KMPO",
+          "within_nm": 12
+        },
+        {
+          "kind": "phase",
+          "phase": "cruise"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "failure_set",
+          "failure": {
+            "kind": "engine"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "Maintain aircraft control. Set best glide, choose a reachable landing area, and use the engine power loss checklist."
+        }
+      ]
+    }
+  ]
+}

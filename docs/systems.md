@@ -81,3 +81,6 @@ The [audio panel](radio.md) reads the declared panel and COM electrical loads, i
 avionics-switch, and bus power. Existing aircraft share the existing `avionics` load by default;
 the equipment demo declares independent loads. Communications stay outside systems state and its
 hash, so default aircraft demand and the golden trajectory are unchanged.
+
+Additional training faults, cockpit smoke, and their bounded physical effects are documented in
+[emergencies](emergencies.md). [Scenario scripts](scenarios.md) use the same failure commands.

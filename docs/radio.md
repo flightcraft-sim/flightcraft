@@ -254,3 +254,13 @@ A browser archive smoke harness is `flightcraft-control` example `flight_archive
 (cdylib for wasm). Its exports exercise committed save, listing and loading from a fresh session,
 JSON export, and a previously saved record after restarting the browser. Browser execution requires
 a host that permits Chromium IPC; compilation alone does not verify IndexedDB runtime behavior.
+
+[Scenario scripts](scenarios.md) now send typed facility transmissions and record nonspoken actions.
+`comms.atc` validates one live facility transmission and marks it as simulated ATC; it supplies no
+controller rules. AI-authored script events use source `scenario (ai-written)`.
+
+Scenario ATC speech addresses the pilot by spoken callsign, followed by the facility's NASR radio
+call name and role. Runway digits and wind use the radio number helpers; zero wind is “wind calm.”
+**Simulated ATC** is a kneeboard/caption/transcript tag, never part of synthesized speech. Internal
+scenario state changes remain in the structured flight record and do not appear as instructor speech.
+The temporary scenario wording adapter is isolated for integration with the shared ATC renderer.

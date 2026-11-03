@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "id": "vacuum-imc",
+  "title": "Vacuum failure in IMC \u2014 KABE ILS 06",
+  "ai_written": false,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "1N7",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "KABE",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [
+    "KABE:I06"
+  ],
+  "steps": [
+    {
+      "id": "weather",
+      "when": [],
+      "actions": [
+        {
+          "kind": "weather",
+          "conditions": {
+            "layers": [
+              {
+                "coverage": "OVC",
+                "base_ft_msl": 600,
+                "top_ft_msl": 3600
+              }
+            ],
+            "visibility_sm": 2,
+            "obscuration": "mist",
+            "precipitation": "none",
+            "time_of_day": "day",
+            "temperature_c": 15,
+            "dewpoint_c": 5,
+            "sea_level_pressure_pa": 101325
+          }
+        }
+      ]
+    },
+    {
+      "id": "event",
+      "when": [
+        {
+          "kind": "on_final",
+          "airport": "KABE",
+          "runway": "06",
+          "within_nm": 8
+        }
+      ],
+      "actions": [
+        {
+          "kind": "failure_set",
+          "failure": {
+            "kind": "vacuum_pump"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "The vacuum instruments have failed. Cross-check the electric instruments and use the vacuum failure checklist."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "door-takeoff",
+  "title": "Door open on takeoff \u2014 KMMU",
+  "ai_written": false,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "KMMU",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "1N7",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [],
+  "steps": [
+    {
+      "id": "event",
+      "when": [
+        {
+          "kind": "phase",
+          "phase": "takeoff"
+        },
+        {
+          "kind": "distance",
+          "reference": "KMMU",
+          "within_nm": 3
+        }
+      ],
+      "actions": [
+        {
+          "kind": "failure_set",
+          "failure": {
+            "kind": "door_open"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "The cabin door is open. Maintain aircraft control and use the door-open checklist."
+        }
+      ]
+    }
+  ]
+}

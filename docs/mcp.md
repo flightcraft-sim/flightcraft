@@ -482,3 +482,7 @@ underscores, for example `comms_tune`. Every entry has generated input and outpu
 Speech, captions, and traffic targets do not enter the physics hash. Event sources and facility roles
 are typed for later scenarios and towered rules. Towered clearances and speech recognition are not
 implemented by these commands. There are no modal dialogs in any radio command.
+
+Scenario tools are registered automatically: `scenario.validate`, `scenario.start`, `scenario.amend`,
+`scenario.state`, `scenario.signal`, `scenario.instructor_failure`, `comms.atc`, and `emergency.record`.
+See [scenarios](scenarios.md) for inputs and [emergencies](emergencies.md) for debrief data.

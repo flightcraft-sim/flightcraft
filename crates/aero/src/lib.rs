@@ -14,6 +14,7 @@ mod installed;
 pub mod modern;
 pub mod panel_fidelity;
 pub use installed::*;
+pub mod emergencies;
 mod failures;
 pub use failures::*;
 
@@ -184,7 +185,14 @@ pub fn forces_with_failures(
     } else {
         0.0
     };
-    let c = coefficients(aircraft, alpha, controls.flaps);
+    let mut c = coefficients(aircraft, alpha, controls.flaps);
+    if failures.airframe_icing {
+        c.lift *= 0.7;
+        c.drag += 0.065;
+    }
+    if failures.door_open {
+        c.drag += 0.025;
+    }
     let dynamic = 0.5 * finite(density, 0.0, 2.0) * speed * speed * aircraft.geometry.wing_area_m2;
     let rate = 0.5 / speed.max(10.0);
     let d = aircraft.aerodynamics.derivatives;
@@ -207,7 +215,11 @@ pub fn forces_with_failures(
         u,
         controls.throttle,
         density,
-        failures.engine_power_fraction,
+        if failures.engine_fire {
+            failures.engine_power_fraction * 0.15
+        } else {
+            failures.engine_power_fraction
+        },
     );
     // Wind axes to body axes, including beta: drag always opposes the airflow.
     let (sa, ca) = (libm::sin(alpha), libm::cos(alpha));
@@ -219,7 +231,14 @@ pub fn forces_with_failures(
             dynamic * (-c.drag * sa * cb - cy * sa * sb - c.lift * ca),
         ],
         moment_nm: [
-            dynamic * aircraft.geometry.span_m * cl,
+            dynamic
+                * aircraft.geometry.span_m
+                * (cl
+                    + if failures.flap_asymmetry {
+                        0.08 * controls.flaps.max(0.2)
+                    } else {
+                        0.0
+                    }),
             dynamic * aircraft.geometry.chord_m * cm,
             dynamic * aircraft.geometry.span_m * cn,
         ],

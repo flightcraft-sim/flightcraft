@@ -99,3 +99,7 @@ The first data release still requires maintainer publication before merging. Nat
 catalogue discovery and streaming between cells remain follow-up engine/application integration.
 
 Radio foundations and untowered training are implemented with explicit data, weather, audio, and preview limitations; see [radios](docs/radio.md).
+
+Scenario scripts and phase-three emergency training are implemented with bounded validation, aircraft
+procedures, deterministic failures, and saved glide debriefs; see [scenarios](docs/scenarios.md) and
+[emergencies](docs/emergencies.md). Towered controller rules and general lesson grading remain separate.

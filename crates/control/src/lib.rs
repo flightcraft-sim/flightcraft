@@ -4,6 +4,8 @@
 //! Two ways in, same code path: typed ([`Session::run`] with a [`Command`]) for Rust callers such
 //! as the UI, and JSON ([`Session::execute`]) for MCP and scripts. Both go through the registry.
 
+pub mod scenario;
+pub use scenario::*;
 pub mod comms;
 pub use comms::*;
 mod modern;
@@ -86,6 +88,7 @@ pub enum CommandError {
 /// One flight session: the simulation and the settings commands change.
 #[derive(Debug)]
 pub struct Session {
+    scenario: scenario::ScenarioRuntime,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
     sim: Sim,
@@ -115,6 +118,7 @@ impl Session {
             .resolve_aircraft("corvid")
             .map_err(SimError::from)?;
         Ok(Self {
+            scenario: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
             selected_configuration: Some(configuration.clone()),
@@ -195,6 +199,9 @@ impl Session {
         self.sequence_glass();
         self.sequence_comms();
         let result = command.run(self);
+        if result.is_ok() && C::NAME == "failure.set" {
+            self.begin_emergency(EventSource::Rules);
+        }
         self.sequence_glass();
         self.sequence_comms();
         #[cfg(not(target_arch = "wasm32"))]
@@ -728,6 +735,14 @@ macro_rules! registry {
 }
 
 registry!(
+    ScenarioValidate,
+    ScenarioStart,
+    ScenarioAmend,
+    GetScenarioState,
+    ScenarioSignal,
+    CommsAtc,
+    EmergencyRecord,
+    InstructorFailure,
     CommsCallsign,
     CommsTune,
     CommsAudioPanel,

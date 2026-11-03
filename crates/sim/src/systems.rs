@@ -186,6 +186,8 @@ pub struct SensedInstruments {
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 pub struct SystemsState {
+    /// Normalized cockpit smoke obscuration; accumulates under a smoke source, clears after isolation.
+    pub smoke_density: f64,
     pub modern: Option<crate::modern::ModernState>,
     pub avionics: crate::avionics::AvionicsState,
     pub enabled: bool,
@@ -239,6 +241,7 @@ impl Default for SystemsState {
         Self {
             modern: None,
             avionics: crate::avionics::AvionicsState::default(),
+            smoke_density: 0.0,
             enabled: false,
             vacuum_installed: false,
             carb_heat_installed: false,
@@ -334,6 +337,10 @@ impl SystemsState {
         let e = &self.electrical;
         let sensed = self.sensed;
         let mut words = vec![c.magnetos as u64, c.fuel_selector as u64];
+        words.extend(self.failures.emergency_hash_words());
+        if self.smoke_density > 0.0 {
+            words.extend([0x736d6f6b65, self.smoke_density.to_bits()]);
+        }
         words.extend(
             [
                 self.enabled,
@@ -830,6 +837,14 @@ impl SystemsState {
 
     pub(crate) fn step(&mut self, m: &SystemsModel, r: Readout, failures: Failures) {
         self.failures = failures;
+        let smoking = failures.cabin_smoke
+            || (failures.electrical_fire && self.controls.master)
+            || (failures.engine_fire && self.engine_running);
+        if smoking {
+            self.smoke_density = (self.smoke_density + DT_S / 15.0).min(1.0);
+        } else if self.smoke_density > 0.0 {
+            self.smoke_density = (self.smoke_density - DT_S / 30.0).max(0.0);
+        }
         self.engine_rpm = r.engine_rpm;
         self.electrical_step(m, r.engine_rpm, failures);
         self.refresh_electronic(m, r);
@@ -881,6 +896,19 @@ impl SystemsState {
                         * DT_S)
                     .min(1.0);
             }
+        }
+        if failures.carb_icing
+            && m.induction == Induction::Carburettor
+            && !self.controls.carb_heat
+            && ambient > -15.0
+            && ambient < 30.0
+            && self.controls.relative_humidity > 0.5
+        {
+            self.carb_ice = (self.carb_ice + 0.025 * DT_S).min(1.0);
+        }
+        if failures.engine_fire {
+            self.cht_c += 20.0 * DT_S;
+            self.oil_temperature_c += 8.0 * DT_S;
         }
         self.engine_power_fraction = self.power(m);
         let shaft = (m.idle_fraction + (1.0 - m.idle_fraction) * r.controls.throttle)
@@ -1049,7 +1077,7 @@ impl SystemsState {
         } else {
             0.0
         };
-        let supply = battery_available || alternator > 0.0;
+        let supply = (battery_available || alternator > 0.0) && !failures.electrical_fire;
         let mut main_demand = if c.starter && supply {
             m.definition.engine.starter_amps
         } else {

@@ -670,6 +670,17 @@ impl Sim {
 
     fn propulsion_failures(&self) -> Failures {
         let mut failures = self.failures;
+        if failures.airframe_icing {
+            let [_, _, down] = self.state.position_m;
+            let altitude_ft = -down / 0.3048;
+            let visible = self.conditions.precipitation != world::Precipitation::None
+                || self
+                    .conditions
+                    .layers
+                    .iter()
+                    .any(|l| altitude_ft >= l.base_ft_msl && altitude_ft <= l.top_ft_msl);
+            failures.airframe_icing = visible && self.conditions.temperature_c + down * 0.0065 < 0.0;
+        }
         if self.systems.enabled && self.systems.engine_power_fraction != 1.0 {
             failures.engine_power_fraction *= self.systems.engine_power_fraction;
         }
@@ -1335,6 +1346,9 @@ impl Sim {
             });
             eat(weather.seed);
             for word in self.wind.hash_words() {
+                eat(word);
+            }
+            for word in self.failures.emergency_hash_words() {
                 eat(word);
             }
             eat(self.failures.engine_power_fraction.to_bits());

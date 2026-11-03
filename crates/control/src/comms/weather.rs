@@ -7,7 +7,7 @@ pub struct ReportedLayer {
     pub coverage: Coverage,
     pub base_agl_m: f64,
 }
-pub(super) fn digits(number: u32, width: usize) -> String {
+pub(crate) fn digits(number: u32, width: usize) -> String {
     format!("{number:0width$}")
         .chars()
         .map(|c| match c {
@@ -32,7 +32,7 @@ fn temperature(value: f64) -> String {
         digits(value.abs().round() as u32, 1)
     )
 }
-fn height(value: f64) -> String {
+pub(crate) fn height(value: f64) -> String {
     let hundreds = (value * 3.280839895 / 100.).round().max(0.) as u32;
     if hundreds == 0 {
         "less than one hundred".into()
@@ -68,22 +68,11 @@ pub(super) fn weather_report(
         .filter(|l| matches!(l.coverage, Coverage::Bkn | Coverage::Ovc))
         .map(|l| l.base_agl_m)
         .min_by(f64::total_cmp);
-    let wind_text = if wind.wind_speed_mps < 0.5 {
-        "Wind calm.".into()
-    } else {
-        format!(
-            "Wind {} at {} knots.",
-            digits(
-                if (wind.wind_from_deg.round() as u32).is_multiple_of(360) {
-                    360
-                } else {
-                    wind.wind_from_deg.round() as u32
-                },
-                3
-            ),
-            digits((wind.wind_speed_mps / 0.514444).round() as u32, 1)
-        )
-    };
+    let wind_text = format!(
+        "{}{}.",
+        spoken_wind(wind).replacen("wind", "Wind", 1),
+        if wind.wind_speed_mps < 0.5 { "" } else { " knots" }
+    );
     let sm = c.effective_visibility_m() / 1609.344;
     let whole = sm.floor() as u32;
     let fraction = (((sm - f64::from(whole)) * 8.).round() as u32).min(7);
@@ -174,5 +163,17 @@ pub(super) fn weather_report(
             obscuration: c.obscuration,
             precipitation: c.precipitation,
         },
+    )
+}
+
+pub(crate) fn spoken_wind(wind: flightcraft_sim::Weather) -> String {
+    if wind.wind_speed_mps < 0.5 {
+        return "wind calm".into();
+    }
+    let direction = (wind.wind_from_deg.round() as u32) % 360;
+    format!(
+        "wind {} at {}",
+        digits(if direction == 0 { 360 } else { direction }, 3),
+        digits((wind.wind_speed_mps / 0.514444).round() as u32, 1)
     )
 }

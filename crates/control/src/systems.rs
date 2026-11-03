@@ -193,9 +193,20 @@ impl Command for SetHood {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Failure {
+    EngineFire {},
+    ElectricalFire {},
+    CabinSmoke {},
+    DoorOpen {},
+    CarbIcing {},
+    AirframeIcing {},
+    FlapAsymmetry {},
+    TrimRunaway {},
+    TrimStuck {},
+    RadioFailure {},
+
     Engine {},
     VacuumPump {},
     Alternator {},
@@ -227,6 +238,17 @@ impl Command for SetFailure {
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         let mut failures = session.sim().failures();
         match self.failure {
+            Failure::EngineFire {} => failures.engine_fire = true,
+            Failure::ElectricalFire {} => failures.electrical_fire = true,
+            Failure::CabinSmoke {} => failures.cabin_smoke = true,
+            Failure::DoorOpen {} => failures.door_open = true,
+            Failure::CarbIcing {} => failures.carb_icing = true,
+            Failure::AirframeIcing {} => failures.airframe_icing = true,
+            Failure::FlapAsymmetry {} => failures.flap_asymmetry = true,
+            Failure::TrimRunaway {} => failures.trim_runaway = true,
+            Failure::TrimStuck {} => failures.trim_stuck = true,
+            Failure::RadioFailure {} => failures.radio_failure = true,
+
             Failure::VacuumPump {} => failures.vacuum_pump = true,
             Failure::Alternator {} => failures.alternator = true,
             Failure::PitotBlocked {} => failures.pitot_blocked = true,
@@ -242,9 +264,20 @@ impl Command for SetFailure {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FailureTarget {
+    EngineFire,
+    ElectricalFire,
+    CabinSmoke,
+    DoorOpen,
+    CarbIcing,
+    AirframeIcing,
+    FlapAsymmetry,
+    TrimRunaway,
+    TrimStuck,
+    RadioFailure,
+
     #[default]
     All,
     VacuumPump,
@@ -273,6 +306,17 @@ impl Command for ClearFailure {
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         let mut f = session.sim().failures();
         match self.target {
+            FailureTarget::EngineFire => f.engine_fire = false,
+            FailureTarget::ElectricalFire => f.electrical_fire = false,
+            FailureTarget::CabinSmoke => f.cabin_smoke = false,
+            FailureTarget::DoorOpen => f.door_open = false,
+            FailureTarget::CarbIcing => f.carb_icing = false,
+            FailureTarget::AirframeIcing => f.airframe_icing = false,
+            FailureTarget::FlapAsymmetry => f.flap_asymmetry = false,
+            FailureTarget::TrimRunaway => f.trim_runaway = false,
+            FailureTarget::TrimStuck => f.trim_stuck = false,
+            FailureTarget::RadioFailure => f.radio_failure = false,
+
             FailureTarget::All => f = Failures::default(),
             FailureTarget::VacuumPump => f.vacuum_pump = false,
             FailureTarget::Alternator => f.alternator = false,

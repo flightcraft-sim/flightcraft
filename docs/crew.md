@@ -175,3 +175,7 @@ The [radio implementation](radio.md) supplies a shared caption strip, an interco
 PTT entry, and a kneeboard transcript. Its role and event models are ready for crew messages;
 virtual-pilot conversation, handover, speech recognition, and instructor lesson rules above remain
 separate work.
+
+[Emergency debriefs](emergencies.md) provide aircraft checklist timings, recognition delay, speed
+tolerance totals, radio checks, outcomes, and frozen glide footprints through `scenario.state`.
+These are inputs for future lesson grading; there is no general lesson engine yet.

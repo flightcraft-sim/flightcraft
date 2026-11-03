@@ -194,6 +194,12 @@
             }
           ]
         },
+        "emergencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EmergencyProcedure"
+          }
+        },
         "format_version": {
           "type": "integer",
           "format": "uint32",
@@ -1076,6 +1082,64 @@
         "amps",
         "breaker_amps",
         "backup_capacity_ah"
+      ]
+    },
+    "EmergencyItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "instruction",
+        "memory"
+      ]
+    },
+    "EmergencyProcedure": {
+      "type": "object",
+      "properties": {
+        "best_glide_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "glide_ratio": {
+          "type": "number",
+          "format": "double"
+        },
+        "id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EmergencyItem"
+          }
+        },
+        "speed_tolerance_mps": {
+          "type": "number",
+          "format": "double"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "best_glide_mps",
+        "glide_ratio",
+        "speed_tolerance_mps",
+        "items"
       ]
     },
     "EngineControl": {

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "electrical-fire",
+  "title": "Electrical fire near KABE",
+  "ai_written": false,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "1N7",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "KABE",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [],
+  "steps": [
+    {
+      "id": "event",
+      "when": [
+        {
+          "kind": "distance",
+          "reference": "KABE",
+          "within_nm": 10
+        }
+      ],
+      "actions": [
+        {
+          "kind": "failure_set",
+          "failure": {
+            "kind": "electrical_fire"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "There is an electrical fire. Maintain aircraft control and use the electrical fire checklist."
+        }
+      ]
+    }
+  ]
+}

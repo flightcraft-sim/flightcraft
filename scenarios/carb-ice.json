@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "id": "carb-ice",
+  "title": "Carburettor ice descending into KAVP",
+  "ai_written": false,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "KMPO",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "KAVP",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [],
+  "steps": [
+    {
+      "id": "moist-air",
+      "when": [],
+      "actions": [
+        {
+          "kind": "weather",
+          "conditions": {
+            "layers": [
+              {
+                "coverage": "BKN",
+                "base_ft_msl": 2000,
+                "top_ft_msl": 7000
+              }
+            ],
+            "visibility_sm": 6,
+            "obscuration": "mist",
+            "precipitation": "none",
+            "time_of_day": "day",
+            "temperature_c": 15,
+            "dewpoint_c": 14,
+            "sea_level_pressure_pa": 101325
+          }
+        }
+      ]
+    },
+    {
+      "id": "event",
+      "when": [
+        {
+          "kind": "distance",
+          "reference": "KAVP",
+          "within_nm": 20
+        },
+        {
+          "kind": "phase",
+          "phase": "descent"
+        }
+      ],
+      "actions": [
+        {
+          "kind": "failure_set",
+          "failure": {
+            "kind": "carb_icing"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "Engine power is decreasing. Check for carburettor ice and use the aircraft checklist."
+        }
+      ]
+    }
+  ]
+}

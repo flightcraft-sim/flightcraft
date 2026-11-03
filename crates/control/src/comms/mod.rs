@@ -11,7 +11,9 @@ pub(crate) mod archive;
 pub use archive::*;
 mod callsign;
 pub use callsign::*;
-mod weather;
+mod presentation;
+pub use presentation::*;
+pub(crate) mod weather;
 pub use weather::ReportedLayer;
 mod record;
 mod traffic;
@@ -422,6 +424,39 @@ impl Command for CommsFacilities {
     }
 }
 impl Session {
+    pub(crate) fn record_scenario_action(
+        &mut self,
+        action: crate::scenario::ScenarioAction,
+        source: EventSource,
+    ) {
+        if self.comms.record.events.len() >= MAX_EVENTS {
+            self.comms.record.dropped_events += 1;
+            return;
+        }
+        let id = self.comms.next_id;
+        self.comms.next_id += 1;
+        self.comms.record.events.push(Transmission {
+            id,
+            time_s: self.sim.state().time_s,
+            duration_s: 0.,
+            channel: Channel::Intercom,
+            speaker: Speaker::Instructor,
+            frequency_hz: None,
+            text: "Scenario state event".into(),
+            meaning: Meaning::ScenarioAction { action },
+            source,
+            reception: Reception::NotReceived,
+            reason: Some("Recorded state change; not a spoken transmission".into()),
+            grade: None,
+        });
+    }
+    pub(crate) fn selected_com_frequency(&self) -> u32 {
+        if self.comms.panel.transmit == 1 {
+            self.comms.radios.first().map_or(121500, |r| r.active_khz)
+        } else {
+            self.comms.radios.get(1).map_or(121500, |r| r.active_khz)
+        }
+    }
     pub fn flight_record(&self) -> &FlightRecord {
         &self.comms.record
     }
@@ -450,6 +485,7 @@ impl Session {
             .ok()
     }
     fn comms_power(&self) -> (bool, bool, bool) {
+        let radio_healthy = !self.sim.failures().radio_failure;
         let installation = self
             .aircraft_configuration()
             .map(|c| c.panel.audio_panel.clone())
@@ -457,7 +493,7 @@ impl Session {
         let loads = &self.sim.systems().electrical.loads;
         if loads.is_empty() {
             let on = self.sim.systems().controls.master && self.sim.systems().controls.avionics;
-            return (on, on, on);
+            return (on, on && radio_healthy, on && radio_healthy);
         }
         let power = |id: &str| {
             self.sim.systems().controls.master
@@ -468,8 +504,8 @@ impl Session {
         };
         (
             power(&installation.power_load),
-            power(&installation.com1_load),
-            power(&installation.com2_load),
+            power(&installation.com1_load) && radio_healthy,
+            power(&installation.com2_load) && radio_healthy,
         )
     }
     pub(super) fn stations(&self) -> Vec<ComStation> {
@@ -488,6 +524,10 @@ impl Session {
     }
     pub(crate) fn sequence_comms(&mut self) {
         if self.comms.generation != self.flight_generation {
+            self.scenario = crate::scenario::ScenarioRuntime {
+                generation: self.flight_generation,
+                ..Default::default()
+            };
             let extra_stations = std::mem::take(&mut self.comms.extra_stations);
             let callsign_override = self.comms.callsign_override.take();
             let abbreviate = self.comms.abbreviate;
@@ -503,12 +543,14 @@ impl Session {
             .record
             .input(self.sim.state().time_s, self.sim.controls());
         self.finish_transmissions();
+        self.comms.record.emergency = self.scenario.state.emergency.clone();
     }
     pub(crate) fn step_with_comms(&mut self, steps: u32) {
         for _ in 0..steps {
             self.sim.step(1);
             let now = self.sim.state().time_s;
             self.finish_transmissions();
+            self.sequence_scenario();
             if now - self.comms.last_tick >= 0.25 - 1e-8 {
                 let dt = now - self.comms.last_tick;
                 self.comms.last_tick = now;
@@ -542,7 +584,7 @@ impl Session {
                 self.comms.panel.squelch,
             )
     }
-    fn start_local(
+    pub(crate) fn start_local(
         &mut self,
         channel: Channel,
         speaker: Speaker,
@@ -553,7 +595,7 @@ impl Session {
         self.start_event(channel, None, speaker, text, meaning, source, None, 0.0)
     }
     #[allow(clippy::too_many_arguments)]
-    fn start_com(
+    pub(crate) fn start_com(
         &mut self,
         khz: u32,
         speaker: Speaker,

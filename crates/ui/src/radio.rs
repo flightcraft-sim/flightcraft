@@ -242,7 +242,20 @@ impl RadioUi {
                                 &mut self.error,
                             );
                         }
-                        record_transcript(ui, &saved.record);
+                        if let Some(debrief) = &saved.record.emergency {
+                            ui.heading(format!("Emergency debrief — {}", debrief.procedure.title));
+                            ui.label(debrief.summary());
+                            crate::scenario::glide_map(ui, s, debrief);
+                            for timing in &debrief.steps {
+                                ui.label(format!(
+                                    "{}: {:.1} s{}",
+                                    timing.item,
+                                    timing.elapsed_s,
+                                    if timing.in_order { "" } else { " • out of order" }
+                                ));
+                            }
+                        }
+                        record_transcript(ui, s, &saved.record);
                     }
                     if let Some(error) = &self.error {
                         ui.colored_label(theme::AMBER, error);
@@ -556,13 +569,23 @@ pub fn captions(ctx: &egui::Context, s: &Session) {
         .events
         .iter()
         .rev()
-        .find(|e| e.reception == Reception::Heard && now - e.time_s - e.duration_s < 7.0)
+        .find(|e| e.is_spoken() && e.reception == Reception::Heard && now - e.time_s - e.duration_s < 7.0)
     {
         egui::TopBottomPanel::top("radio_caption")
             .frame(egui::Frame::new().fill(theme::RAISED).inner_margin(8))
             .show(ctx, |ui| {
                 ui.label(
-                    RichText::new(format!("{} · {}", speaker(&event.speaker), event.text)).color(theme::TEXT),
+                    RichText::new(format!(
+                        "{}{} · {}",
+                        if event.is_simulated_atc() {
+                            "Simulated ATC · "
+                        } else {
+                            ""
+                        },
+                        flightcraft_control::speaker_label(&event.speaker, &s.comms_state().stations),
+                        event.text
+                    ))
+                    .color(theme::TEXT),
                 );
             });
     }
@@ -572,7 +595,7 @@ pub fn speaker(speaker: &Speaker) -> String {
         Speaker::Pilot => "YOU".into(),
         Speaker::Instructor => "INSTRUCTOR · INTERCOM".into(),
         Speaker::Traffic { callsign } => callsign.clone(),
-        Speaker::Facility { role, .. } => format!("{role:?}").to_ascii_uppercase(),
+        Speaker::Facility { role, .. } => flightcraft_control::facility_role(*role).into(),
         Speaker::Nav { ident } => format!("NAV · {ident}"),
     }
 }
@@ -588,14 +611,15 @@ pub fn transcript(ui: &mut egui::Ui, s: &Session) {
             s.traffic_state().aircraft.len()
         ));
     }
-    record_transcript(ui, s.flight_record());
+    record_transcript(ui, s, s.flight_record());
 }
-fn record_transcript(ui: &mut egui::Ui, record: &flightcraft_control::FlightRecord) {
+fn record_transcript(ui: &mut egui::Ui, s: &Session, record: &flightcraft_control::FlightRecord) {
     egui::ScrollArea::vertical()
         .stick_to_bottom(true)
         .max_height(450.0)
         .show(ui, |ui| {
-            for event in &record.events {
+            let stations = s.comms_state().stations;
+            for event in record.events.iter().filter(|e| e.is_spoken()) {
                 let color = match event.reception {
                     Reception::Heard => theme::TEXT,
                     Reception::Blocked => theme::AMBER,
@@ -610,7 +634,24 @@ fn record_transcript(ui: &mut egui::Ui, record: &flightcraft_control::FlightReco
                             event.time_s % 60.0
                         ),
                     );
-                    ui.label(RichText::new(speaker(&event.speaker)).strong().color(color));
+                    ui.label(
+                        RichText::new(flightcraft_control::speaker_label(&event.speaker, &stations))
+                            .strong()
+                            .color(color),
+                    );
+                    ui.colored_label(
+                        theme::MUTED,
+                        match event.source {
+                            flightcraft_control::EventSource::ScenarioAi => "scenario (ai-written)",
+                            flightcraft_control::EventSource::Ai => "ai",
+                            flightcraft_control::EventSource::Scenario => "scenario",
+                            flightcraft_control::EventSource::Rules => "rules",
+                            flightcraft_control::EventSource::Pilot => "pilot",
+                        },
+                    );
+                    if event.is_simulated_atc() {
+                        ui.colored_label(theme::AMBER, "Simulated ATC");
+                    }
                     ui.colored_label(color, &event.text);
                 });
                 if let Some(reason) = &event.reason {

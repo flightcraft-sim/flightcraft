@@ -129,6 +129,10 @@ pub fn derivative(
     };
     let gravity = [0.0, 0.0, aircraft.mass.mass_kg * G];
     let mut force = add(rotate(s.attitude, a.force_n), gravity);
+    if failures.airframe_icing {
+        let [n, e, d] = force;
+        force = [n, e, d + aircraft.mass.mass_kg * 0.03 * G];
+    }
     let free_force = force;
     let mut moment = a.moment_nm;
     for gear in &aircraft.geometry.gear {

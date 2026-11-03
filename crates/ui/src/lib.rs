@@ -17,6 +17,7 @@ pub mod panel_preview;
 mod procedures;
 pub mod radio;
 mod radio_speech;
+mod scenario;
 pub mod script;
 pub mod theme;
 mod weather;
@@ -115,6 +116,7 @@ pub struct FlightCraftApp {
     autopilot_controller: autopilot::Controller,
     audio: audio::Audio,
     radio: radio::RadioUi,
+    scenarios: scenario::ScenarioUi,
     radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
     script: script::Script,
@@ -302,6 +304,7 @@ impl FlightCraftApp {
             glance_origin: None,
             autopilot_controller: autopilot::Controller::default(),
             radio: radio::RadioUi::default(),
+            scenarios: scenario::ScenarioUi::default(),
             radio_ptt_held: [false; 2],
             audio: audio::Audio::with_preferences(
                 cc.storage
@@ -728,6 +731,25 @@ impl eframe::App for FlightCraftApp {
             &self.keymap,
             self.audio.preferences.gain(),
         );
+        self.scenarios.show(ctx, &mut self.session);
+        let f = self.session.sim().failures();
+        if f.engine_fire
+            || f.electrical_fire
+            || f.cabin_smoke
+            || f.door_open
+            || f.carb_icing
+            || f.airframe_icing
+            || f.flap_asymmetry
+            || f.trim_runaway
+            || f.trim_stuck
+            || f.radio_failure
+        {
+            egui::TopBottomPanel::bottom("emergency-annunciations")
+                .frame(egui::Frame::new().fill(theme::PANEL))
+                .show(ctx, |ui| {
+                    ui.horizontal_wrapped(|ui| scenario::indications(ui, &self.session));
+                });
+        }
         egui::TopBottomPanel::top("header")
             .exact_height(64.0)
             .frame(
@@ -754,6 +776,10 @@ impl eframe::App for FlightCraftApp {
                         if let Err(e) = weather::panel(ui, &mut self.session, &self.keymap) { self.error = Some(e.to_string()); }
                     });
                     self.radio.button(ui, &self.keymap);
+                    if ui.button("Scenarios").clicked() { self.scenarios.open = !self.scenarios.open; }
+                    if self.session.sim().failures() != flightcraft_sim::Failures::default() {
+                        ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| scenario::indications(ui,&self.session));
+                    }
                     for setting in self.procedure_controls.show(ui,&self.session){
                         if let Err(error)=self.session.run(flightcraft_control::SetAvionics{setting}){self.error=Some(error.to_string());}
                     }
@@ -1174,6 +1200,16 @@ impl eframe::App for FlightCraftApp {
                     elapsed as f32,
                     theme::scene(),
                 );
+                if self.scene.camera == CameraMode::Cockpit
+                    && self.session.sim().systems().smoke_density > 0.0
+                {
+                    outside.painter().rect_filled(
+                        ctx.content_rect(),
+                        0.0,
+                        theme::MUTED
+                            .gamma_multiply((self.session.sim().systems().smoke_density * 0.85) as f32),
+                    );
+                }
                 ctx.set_sublayer(layer, egui::LayerId::background());
                 let rect = ui.max_rect().shrink(24.0);
                 let conditions = ui.painter().layout(
@@ -1402,3 +1438,5 @@ mod weather_preview;
 
 #[cfg(test)]
 mod navigator_audio_tests;
+#[cfg(test)]
+mod scenario_preview;

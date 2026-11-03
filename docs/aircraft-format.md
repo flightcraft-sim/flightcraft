@@ -247,3 +247,6 @@ The [equipment specification](equipment.md) documents fields, load references, c
 limitations. The [fictional equipment pack](../examples/packs/equipment-demo/pack.json) is a
 complete composable example. Optional fields default to the existing behaviour; built-in
 engine definitions and default flight dynamics are unchanged.
+
+Emergency procedures are optional systems-layer pack data. See [emergencies](emergencies.md#aircraft-procedures)
+for ordered memory/checklist items, glide parameters, validation, and fictional built-in guidance.

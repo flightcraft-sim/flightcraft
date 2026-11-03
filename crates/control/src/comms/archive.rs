@@ -105,6 +105,7 @@ impl Session {
         }
     }
     pub(crate) fn save_flight(&mut self) -> Result<ArchiveStatus, CommandError> {
+        self.comms.record.emergency = self.scenario.state.emergency.clone();
         let generation = self.flight_generation();
         let (id, created) = match &self.flight_archive.current {
             Some((g, id, created)) if *g == generation => (id.clone(), *created),

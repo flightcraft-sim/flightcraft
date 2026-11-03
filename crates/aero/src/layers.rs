@@ -186,6 +186,8 @@ pub struct Engine {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct InstalledSystems {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub emergencies: Vec<crate::emergencies::EmergencyProcedure>,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
@@ -448,6 +450,16 @@ impl LayerFile {
                 Ok(())
             }
             Self::Systems(s) => {
+                require(s.emergencies.len() <= 32, "emergencies", "at most 32 procedures")?;
+                let mut emergency_ids = std::collections::BTreeSet::new();
+                for procedure in &s.emergencies {
+                    procedure.validate()?;
+                    require(
+                        emergency_ids.insert(&procedure.id),
+                        "emergencies",
+                        "duplicate procedure",
+                    )?;
+                }
                 if let Some(d) = &s.definition {
                     d.validate()?;
                 }
@@ -1028,6 +1040,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
         },
     };
     let systems = InstalledSystems {
+        emergencies: Vec::new(),
         definition: None,
         format_version: 2,
         identity: make_identity("systems"),

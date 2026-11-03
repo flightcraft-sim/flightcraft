@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "id": "three-mile-final",
+  "title": "Three-mile final \u2014 KABE runway 24",
+  "ai_written": true,
+  "seed": 3407,
+  "route": [
+    {
+      "reference": "1N7",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    },
+    {
+      "reference": "KABE",
+      "altitude_msl_m": 2200,
+      "clearances": []
+    }
+  ],
+  "procedures": [],
+  "steps": [
+    {
+      "id": "landing-clearance",
+      "when": [
+        {
+          "kind": "on_final",
+          "airport": "KABE",
+          "runway": "24",
+          "within_nm": 3
+        }
+      ],
+      "actions": [
+        {
+          "kind": "transmission",
+          "facility": "nasr-2026-10-29-4611-Tower",
+          "channel_khz": 120500,
+          "role": "tower",
+          "instruction": {
+            "kind": "land",
+            "airport": "KABE",
+            "runway": "24"
+          }
+        }
+      ]
+    },
+    {
+      "id": "readback-check",
+      "when": [
+        {
+          "kind": "time",
+          "seconds": 10,
+          "since_previous": true
+        }
+      ],
+      "actions": [
+        {
+          "kind": "branch",
+          "condition": {
+            "kind": "readback",
+            "contains": "cleared to land",
+            "result": "correct",
+            "timeout_s": 10
+          },
+          "then_step": "accepted",
+          "else_step": "repeat"
+        }
+      ]
+    },
+    {
+      "id": "repeat",
+      "when": [],
+      "actions": [
+        {
+          "kind": "transmission",
+          "facility": "nasr-2026-10-29-4611-Tower",
+          "channel_khz": 120500,
+          "role": "tower",
+          "instruction": {
+            "kind": "request_readback",
+            "text": "say landing clearance"
+          }
+        },
+        {
+          "kind": "cue",
+          "text": "No readback yet. Read back the landing clearance."
+        },
+        {
+          "kind": "wait",
+          "condition": {
+            "kind": "readback",
+            "contains": "cleared to land",
+            "result": "correct",
+            "timeout_s": 30
+          }
+        }
+      ]
+    },
+    {
+      "id": "accepted",
+      "when": [],
+      "actions": [
+        {
+          "kind": "cue",
+          "text": "Continue the approach and monitor runway occupancy."
+        }
+      ]
+    }
+  ]
+}

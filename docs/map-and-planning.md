@@ -443,3 +443,6 @@ meshes and font atlas to `out/map/` at full, compact (1000 × 640), and compact 
 (1000 × 546) sizes, with the 1N7 → SBJ → KMMU plan and vertical profile. Regular
 tests cover region-frame and Mercator round trips, tile edges, card hits, simulated drag commands,
 and clipped rectangular layouts.
+
+The [emergency debrief](emergencies.md#grading-and-footprint) draws a terrain- and wind-aware glide
+footprint at failure time with reachable runway thresholds and unverified terrain candidates.

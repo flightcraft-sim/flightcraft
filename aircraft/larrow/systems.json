@@ -192,5 +192,292 @@
       "starter_amps": 120
     },
     "electric_gyro_load": "electric_gyros"
-  }
+  },
+  "emergencies": [
+    {
+      "id": "engine_failure",
+      "title": "Engine power loss",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "glide",
+          "instruction": "Set and hold best glide",
+          "memory": true
+        },
+        {
+          "id": "field",
+          "instruction": "Choose a reachable landing area",
+          "memory": true
+        },
+        {
+          "id": "fuel",
+          "instruction": "Check fuel selector, mixture, and usable fuel",
+          "memory": false
+        },
+        {
+          "id": "ignition",
+          "instruction": "Check both magnetos; attempt restart only if height permits",
+          "memory": false
+        },
+        {
+          "id": "radio",
+          "instruction": "Declare emergency; select 7700 when appropriate",
+          "memory": false
+        },
+        {
+          "id": "secure",
+          "instruction": "If restart fails, fuel off and ignition off before touchdown",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "engine_fire",
+      "title": "Engine fire in flight",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "fuel_off",
+          "instruction": "Fuel selector OFF and mixture idle cutoff",
+          "memory": true
+        },
+        {
+          "id": "ignition_off",
+          "instruction": "Magnetos OFF",
+          "memory": true
+        },
+        {
+          "id": "airflow",
+          "instruction": "Maintain control; increase airflow within the operating envelope",
+          "memory": true
+        },
+        {
+          "id": "land",
+          "instruction": "Select the nearest reachable landing area; do not restart",
+          "memory": false
+        },
+        {
+          "id": "radio",
+          "instruction": "Declare Mayday if time permits",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "electrical_fire",
+      "title": "Electrical fire",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "master_off",
+          "instruction": "Master and alternator OFF",
+          "memory": true
+        },
+        {
+          "id": "vent",
+          "instruction": "Ventilate after isolating the source",
+          "memory": true
+        },
+        {
+          "id": "land",
+          "instruction": "Land promptly at a suitable reachable field",
+          "memory": false
+        },
+        {
+          "id": "restore",
+          "instruction": "Restore only essential circuits individually if the fire is out",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "cabin_smoke",
+      "title": "Smoke in cabin",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "control",
+          "instruction": "Maintain aircraft control",
+          "memory": true
+        },
+        {
+          "id": "isolate",
+          "instruction": "Identify and isolate the source; electrical master OFF if electrical",
+          "memory": true
+        },
+        {
+          "id": "vent",
+          "instruction": "Open fresh-air vents",
+          "memory": false
+        },
+        {
+          "id": "land",
+          "instruction": "Land promptly",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "door_open",
+      "title": "Door open in flight",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "control",
+          "instruction": "Maintain control and a safe airspeed",
+          "memory": true
+        },
+        {
+          "id": "climb",
+          "instruction": "Continue a safe climb; do not reach for the door near the ground",
+          "memory": true
+        },
+        {
+          "id": "land",
+          "instruction": "Return for landing and secure the door on the ground",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "airframe_icing",
+      "title": "Airframe icing encounter",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "exit",
+          "instruction": "Leave visible moisture and freezing air promptly",
+          "memory": true
+        },
+        {
+          "id": "heat",
+          "instruction": "Select pitot heat",
+          "memory": true
+        },
+        {
+          "id": "speed",
+          "instruction": "Maintain margin above the increased stall speed",
+          "memory": false
+        },
+        {
+          "id": "land",
+          "instruction": "Divert for landing; avoid large flap changes",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "flap_asymmetry",
+      "title": "Asymmetric flaps",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "stop",
+          "instruction": "Stop flap movement",
+          "memory": true
+        },
+        {
+          "id": "control",
+          "instruction": "Counter roll and maintain safe airspeed",
+          "memory": true
+        },
+        {
+          "id": "land",
+          "instruction": "Land with the existing configuration and a longer runway",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "trim_runaway",
+      "title": "Trim runaway",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "control",
+          "instruction": "Counter with elevator and reduce speed safely",
+          "memory": true
+        },
+        {
+          "id": "disconnect",
+          "instruction": "Disconnect automatic flight controls",
+          "memory": true
+        },
+        {
+          "id": "land",
+          "instruction": "Land using elevator control forces",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "trim_stuck",
+      "title": "Trim stuck",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "control",
+          "instruction": "Maintain control with elevator",
+          "memory": true
+        },
+        {
+          "id": "speed",
+          "instruction": "Choose a speed that reduces sustained control force",
+          "memory": false
+        },
+        {
+          "id": "land",
+          "instruction": "Land with a conservative configuration",
+          "memory": false
+        }
+      ]
+    },
+    {
+      "id": "radio_failure",
+      "title": "Both COM radios failed",
+      "best_glide_mps": 39.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 2.57,
+      "items": [
+        {
+          "id": "check",
+          "instruction": "Check MIC selection, volume, tuning, and electrical supply",
+          "memory": true
+        },
+        {
+          "id": "backup",
+          "instruction": "Try the other COM and 121.5",
+          "memory": false
+        },
+        {
+          "id": "squawk",
+          "instruction": "Select 7600 if communications cannot be restored",
+          "memory": false
+        },
+        {
+          "id": "land",
+          "instruction": "Follow applicable lost-communication procedures; observe tower signals",
+          "memory": false
+        }
+      ]
+    }
+  ]
 }

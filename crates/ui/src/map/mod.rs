@@ -5,6 +5,7 @@ use flightcraft_control::{BaseMap, MapOverlay as Overlay, MapState, MapUp, Sessi
 use flightcraft_world::GeoPoint;
 use serde_json::{Value, json};
 use std::collections::VecDeque;
+pub(crate) mod emergency;
 mod files;
 mod profile;
 mod projection;
