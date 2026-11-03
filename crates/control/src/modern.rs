@@ -18,6 +18,7 @@ pub enum NavigatorPage {
     WaypointInfo,
     Frequencies,
     Transponder,
+    Audio,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -37,6 +38,8 @@ pub struct NavigatorState {
     pub nav_standby_khz: u32,
     pub knob_band: RadioBand,
     pub transponder: bool,
+    /// Whether the navigator hosts the panel's shared audio installation.
+    pub audio_panel: bool,
     pub cdi_source: flightcraft_sim::avionics::radio::CdiSource,
 }
 impl Default for NavigatorState {
@@ -50,6 +53,7 @@ impl Default for NavigatorState {
             nav_standby_khz: 113000,
             knob_band: RadioBand::Com,
             transponder: false,
+            audio_panel: false,
             cdi_source: Default::default(),
         }
     }
@@ -171,7 +175,11 @@ impl Session {
         let mut result = TouchState::default();
         for e in &p.elements {
             match &e.element {
-                PanelElement::Navigator { load, transponder } => {
+                PanelElement::Navigator {
+                    load,
+                    transponder,
+                    audio_panel,
+                } => {
                     let mut nav = if current {
                         self.touch.navigator.clone()
                     } else {
@@ -186,6 +194,7 @@ impl Session {
                     nav.cdi_source = self.sim.radios().source;
                     nav.powered = powered(load);
                     nav.transponder = *transponder;
+                    nav.audio_panel = *audio_panel;
                     result.navigator = Some(nav);
                 }
                 PanelElement::TouchDisplay {
@@ -439,6 +448,9 @@ impl Session {
                 let n = &mut self.touch.navigator;
                 match action {
                     NavigatorAction::Page { page } => {
+                        if page == NavigatorPage::Audio && !nav.audio_panel {
+                            return Err(invalid(NAME, "audio control not installed here"));
+                        }
                         if page == NavigatorPage::Transponder && !nav.transponder {
                             return Err(invalid(NAME, "transponder control not installed here"));
                         }

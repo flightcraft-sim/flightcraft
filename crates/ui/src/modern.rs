@@ -60,7 +60,7 @@ fn button(
     text(ui, rect, label, font, if lit { t::ACCENT } else { t::TEXT });
     ui.interact(rect, ui.id().with(id), Sense::click_and_drag())
 }
-const NAV_TILES: [(&str, NavigatorPage); 8] = [
+const NAV_TILES: [(&str, NavigatorPage); 9] = [
     ("Flight plan", NavigatorPage::FlightPlan),
     ("Direct-to", NavigatorPage::DirectTo),
     ("Procedures", NavigatorPage::Procedures),
@@ -69,6 +69,7 @@ const NAV_TILES: [(&str, NavigatorPage); 8] = [
     ("Waypoint info", NavigatorPage::WaypointInfo),
     ("Frequencies", NavigatorPage::Frequencies),
     ("Transponder", NavigatorPage::Transponder),
+    ("Audio", NavigatorPage::Audio),
 ];
 fn caption_galley(
     ui: &egui::Ui,
@@ -206,7 +207,19 @@ impl PanelUi {
         let mut settings = Vec::new();
         let mut held = false;
         let mut start_held = false;
+        let hosted_audio = panel.elements.iter().any(|e| {
+            matches!(
+                e.element,
+                PanelElement::Navigator {
+                    audio_panel: true,
+                    ..
+                }
+            )
+        });
         for e in &panel.elements {
+            if hosted_audio && matches!(e.element, PanelElement::AudioPanel) {
+                continue;
+            }
             let [x, y] = e.position;
             let [w, h] = e.size;
             let cell = Rect::from_min_size(
@@ -1152,28 +1165,38 @@ impl PanelUi {
         let screen = cell_part(0.02, 0.35, 0.96, 0.47);
         match n.page {
             NavigatorPage::Home => {
+                let tiles: Vec<_> = NAV_TILES
+                    .into_iter()
+                    .filter(|(_, page)| {
+                        (*page != NavigatorPage::Transponder || n.transponder)
+                            && (*page != NavigatorPage::Audio || n.audio_panel)
+                    })
+                    .collect();
+                let cols = if columns { 4 } else { 2 };
+                let rows = tiles.len().div_ceil(cols);
                 let tile = |i: usize| {
-                    if columns {
-                        part(screen, (i % 4) as f32 * 0.25, (i / 4) as f32 * 0.5, 0.24, 0.47)
-                    } else {
-                        part(screen, (i % 2) as f32 * 0.5, (i / 2) as f32 * 0.25, 0.48, 0.23)
-                    }
+                    part(
+                        screen,
+                        (i % cols) as f32 / cols as f32,
+                        (i / cols) as f32 / rows as f32,
+                        1. / cols as f32 - if columns { 0.01 } else { 0.02 },
+                        1. / rows as f32 - if columns { 0.03 } else { 0.02 },
+                    )
                 };
-                let captions: Vec<_> = NAV_TILES
+                let captions: Vec<_> = tiles
                     .iter()
                     .enumerate()
-                    .filter(|(_, (_, p))| *p != NavigatorPage::Transponder || n.transponder)
                     .map(|(i, (label, _))| (tile(i), (*label).into()))
                     .collect();
                 let size = shared_caption_size(ui, &captions, screen.height() * 0.45);
-                for (i, (label, page)) in NAV_TILES.into_iter().enumerate() {
-                    if page == NavigatorPage::Transponder && !n.transponder {
-                        continue;
-                    }
+                for (i, (label, page)) in tiles.into_iter().enumerate() {
                     if uniform_button(ui, i, tile(i), label, false, size).clicked() {
                         self.nav(NavigatorAction::Page { page });
                     }
                 }
+            }
+            NavigatorPage::Audio => {
+                self.audio_controls(ui, screen, &glass.comms, font, 3);
             }
             NavigatorPage::FlightPlan | NavigatorPage::DirectTo => {
                 let title = if n.page == NavigatorPage::FlightPlan {
@@ -1567,6 +1590,16 @@ impl PanelUi {
         state: &flightcraft_control::CommsSnapshot,
         font: f32,
     ) {
+        self.audio_controls(ui, rect, state, font, 6);
+    }
+    fn audio_controls(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: Rect,
+        state: &flightcraft_control::CommsSnapshot,
+        font: f32,
+        columns: usize,
+    ) {
         use flightcraft_control::CommsAudioPanel as Setting;
         ui.painter().rect_filled(rect, 3., t::DIAL);
         let p = &state.panel;
@@ -1670,16 +1703,13 @@ impl PanelUi {
                 },
             ),
         ];
-        for (row, controls) in [first, second].into_iter().enumerate() {
-            for (column, (label, selected, setting)) in controls.into_iter().enumerate() {
-                let cell = Rect::from_min_size(
-                    rect.min + egui::vec2(column as f32 * rect.width() / 6., row as f32 * rect.height() / 2.),
-                    egui::vec2(rect.width() / 6., rect.height() / 2.),
-                )
-                .shrink(1.);
+        // Retain the existing standalone face when hosting is not enabled.
+        if columns == 6 {
+            for (i, (label, selected, setting)) in first.into_iter().chain(second).enumerate() {
+                let cell = part(rect, (i % 6) as f32 / 6., (i / 6) as f32 / 2., 1. / 6., 0.5).shrink(1.);
                 if button(
                     ui,
-                    (row, column),
+                    (i / 6, i % 6),
                     cell,
                     label,
                     selected && state.powered,
@@ -1689,6 +1719,39 @@ impl PanelUi {
                 {
                     self.commands.push(EquipmentSetting::AudioPanel { setting });
                 }
+            }
+            return;
+        }
+        let status = format!(
+            "{}VOL {:.0}%  SQ {:.0}%",
+            if state.powered { "" } else { "OFF  " },
+            p.volume * 100.,
+            p.squelch * 100.
+        );
+        let status_rect = part(rect, 0., 0., 1., 0.14);
+        let controls_rect = part(rect, 0., 0.16, 1., 0.84);
+        let cell = |i: usize| {
+            part(
+                controls_rect,
+                (i % columns) as f32 / columns as f32,
+                (i / columns) as f32 / (12 / columns) as f32,
+                1. / columns as f32,
+                1. / (12 / columns) as f32,
+            )
+            .shrink(1.)
+        };
+        let controls: Vec<_> = first.into_iter().chain(second).collect();
+        let mut captions: Vec<_> = controls
+            .iter()
+            .enumerate()
+            .map(|(i, (label, _, _))| (cell(i), (*label).into()))
+            .collect();
+        captions.push((status_rect, status.clone()));
+        let size = shared_caption_size(ui, &captions, font);
+        uniform_text(ui, status_rect, &status, size, t::TEXT);
+        for (i, (label, selected, setting)) in controls.into_iter().enumerate() {
+            if uniform_button(ui, ("audio", i), cell(i), label, selected && state.powered, size).clicked() {
+                self.commands.push(EquipmentSetting::AudioPanel { setting });
             }
         }
     }

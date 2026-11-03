@@ -55,3 +55,48 @@ fn millimetre_shell_and_composition_reject_hostile_artwork() {
     }
     assert!(LayerFile::Panel(p).validate().is_err());
 }
+
+#[test]
+fn navigator_audio_host_defaults_off_and_validates_shared_installation() {
+    let LayerFile::Panel(mut p) = panel() else {
+        unreachable!()
+    };
+    let navigator = p
+        .equipment
+        .as_mut()
+        .unwrap()
+        .elements
+        .iter_mut()
+        .find(|e| matches!(e.element, PanelElement::Navigator { .. }))
+        .unwrap();
+    let PanelElement::Navigator { audio_panel, .. } = &mut navigator.element else {
+        unreachable!()
+    };
+    assert!(!*audio_panel);
+    *audio_panel = true;
+    let encoded = serde_json::to_string(&LayerFile::Panel(p.clone())).unwrap();
+    let round_trip = LayerFile::from_json(&encoded).unwrap();
+    assert_eq!(round_trip, LayerFile::Panel(p.clone()));
+    let LayerFile::Engine(engine) =
+        LayerFile::from_json(include_str!("../../../examples/packs/equipment-demo/engine.json")).unwrap()
+    else {
+        unreachable!()
+    };
+    let LayerFile::Systems(systems) = LayerFile::from_json(include_str!(
+        "../../../examples/packs/equipment-demo/systems.json"
+    ))
+    .unwrap() else {
+        unreachable!()
+    };
+    validate_installation(&engine, systems.definition.as_ref(), &p).unwrap();
+    for field in ["power_load", "com1_load", "com2_load"] {
+        let mut invalid = p.clone();
+        match field {
+            "power_load" => invalid.audio_panel.power_load = "missing".into(),
+            "com1_load" => invalid.audio_panel.com1_load = "missing".into(),
+            _ => invalid.audio_panel.com2_load = "missing".into(),
+        }
+        assert!(validate_installation(&engine, systems.definition.as_ref(), &invalid).is_err());
+    }
+    assert!(validate_installation(&engine, None, &p).is_err());
+}

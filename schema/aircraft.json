@@ -2053,6 +2053,11 @@
         {
           "type": "object",
           "properties": {
+            "audio_panel": {
+              "description": "Host this aircraft panel's shared `audio_panel` installation on an Audio page.",
+              "type": "boolean",
+              "default": false
+            },
             "kind": {
               "type": "string",
               "const": "navigator"

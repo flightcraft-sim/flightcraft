@@ -1399,3 +1399,6 @@ mod panel_fidelity_tests;
 mod test_capture;
 #[cfg(test)]
 mod weather_preview;
+
+#[cfg(test)]
+mod navigator_audio_tests;

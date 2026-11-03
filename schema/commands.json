@@ -7219,7 +7219,8 @@
             "map",
             "waypoint_info",
             "frequencies",
-            "transponder"
+            "transponder",
+            "audio"
           ],
           "type": "string"
         },
@@ -7770,12 +7771,17 @@
             "map",
             "waypoint_info",
             "frequencies",
-            "transponder"
+            "transponder",
+            "audio"
           ],
           "type": "string"
         },
         "NavigatorState": {
           "properties": {
+            "audio_panel": {
+              "description": "Whether the navigator hosts the panel's shared audio installation.",
+              "type": "boolean"
+            },
             "cdi_source": {
               "$ref": "#/$defs/CdiSource"
             },
@@ -7822,6 +7828,7 @@
             "nav_standby_khz",
             "knob_band",
             "transponder",
+            "audio_panel",
             "cdi_source"
           ],
           "type": "object"
@@ -27250,12 +27257,17 @@
             "map",
             "waypoint_info",
             "frequencies",
-            "transponder"
+            "transponder",
+            "audio"
           ],
           "type": "string"
         },
         "NavigatorState": {
           "properties": {
+            "audio_panel": {
+              "description": "Whether the navigator hosts the panel's shared audio installation.",
+              "type": "boolean"
+            },
             "cdi_source": {
               "$ref": "#/$defs/CdiSource"
             },
@@ -27302,6 +27314,7 @@
             "nav_standby_khz",
             "knob_band",
             "transponder",
+            "audio_panel",
             "cdi_source"
           ],
           "type": "object"
@@ -29889,12 +29902,17 @@
             "map",
             "waypoint_info",
             "frequencies",
-            "transponder"
+            "transponder",
+            "audio"
           ],
           "type": "string"
         },
         "NavigatorState": {
           "properties": {
+            "audio_panel": {
+              "description": "Whether the navigator hosts the panel's shared audio installation.",
+              "type": "boolean"
+            },
             "cdi_source": {
               "$ref": "#/$defs/CdiSource"
             },
@@ -29941,6 +29959,7 @@
             "nav_standby_khz",
             "knob_band",
             "transponder",
+            "audio_panel",
             "cdi_source"
           ],
           "type": "object"

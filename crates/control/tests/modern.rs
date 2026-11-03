@@ -2,6 +2,9 @@
 use flightcraft_control::*;
 use serde_json::json;
 fn session() -> Session {
+    session_with_audio(false)
+}
+fn session_with_audio(audio: bool) -> Session {
     let mut s = Session::new().unwrap();
     let manifest =
         PackManifest::from_json(include_str!("../../../examples/packs/equipment-demo/pack.json")).unwrap();
@@ -28,7 +31,19 @@ fn session() -> Session {
         ),
     ]
     .into_iter()
-    .map(|(k, v)| (k.into(), v.into()))
+    .map(|(k, v)| {
+        if audio && k == "panel.json" {
+            let mut panel: serde_json::Value = serde_json::from_str(v).unwrap();
+            for element in panel["equipment"]["elements"].as_array_mut().unwrap() {
+                if element["element"]["kind"] == "navigator" {
+                    element["element"]["audio_panel"] = json!(true);
+                }
+            }
+            (k.into(), serde_json::to_string(&panel).unwrap())
+        } else {
+            (k.into(), v.into())
+        }
+    })
     .collect();
     s.install_pack(&PackContents { manifest, files }).unwrap();
     s.execute(
@@ -254,4 +269,46 @@ fn synthetic_vision_is_independent_per_display_and_resets_with_the_flight() {
         .unwrap();
     assert!(!s.glass_state().settings.synthetic_vision);
     assert!(s.touch_state().displays.iter().all(|d| !d.synthetic_vision));
+}
+
+#[test]
+fn navigator_audio_page_is_opt_in_and_commands_share_comms_state() {
+    let page = json!({"setting":{"kind":"navigator","action":{"kind":"page","page":"audio"}}});
+    let mut legacy = session();
+    assert!(!legacy.touch_state().navigator.unwrap().audio_panel);
+    assert!(legacy.execute("equipment.set", page.clone()).is_err());
+    let mut s = session_with_audio(true);
+    assert!(s.touch_state().navigator.unwrap().audio_panel);
+    let output = s.execute("equipment.set", page).unwrap();
+    assert_eq!(output["navigator"]["page"], "audio");
+    let schema = Session::commands()
+        .into_iter()
+        .find(|c| c.name == "equipment.set")
+        .unwrap();
+    assert!(jsonschema::is_valid(&schema.output_schema, &output));
+    let before = *s.sim().state();
+    for tx in [2, 1] {
+        set(
+            &mut s,
+            json!({"kind":"audio_panel","setting":{
+                "transmit":tx,"receive_com1":false,"receive_com2":true,"nav_ident":true,
+                "intercom":false,"volume":0.4,"squelch":0.6,"speech":false,"captions":false
+            }}),
+        );
+        let shared = s.execute("comms.audio_panel", json!({})).unwrap();
+        assert_eq!(shared["panel"]["transmit"], tx);
+        assert_eq!(shared["panel"]["receive_com1"], false);
+        assert_eq!(shared["panel"]["receive_com2"], true);
+        assert_eq!(shared["panel"]["nav_ident"], true);
+        assert_eq!(shared["panel"]["intercom"], false);
+        assert_eq!(shared["panel"]["volume"], 0.4);
+        assert_eq!(shared["panel"]["squelch"], 0.6);
+        assert_eq!(shared["panel"]["speech"], false);
+        assert_eq!(shared["panel"]["captions"], false);
+        assert_eq!(
+            serde_json::to_value(s.glass_state().comms.panel).unwrap(),
+            shared["panel"]
+        );
+    }
+    assert_eq!(s.sim().state(), &before);
 }

@@ -76,7 +76,7 @@ Channel-grid violations and out-of-range frequencies are errors. The outer knob 
 the inner knob steps a channel. Both wrap within their band.
 
 Home tiles open Flight plan, Direct-to, Procedures, Nearest, Map, Waypoint info, Frequencies,
-and optional Transponder. The navigator operates the session's existing glass settings and
+and optional Transponder and Audio. The navigator operates the session's existing glass settings and
 GPS receiver: plan edits, direct-to, CDI, automatic sequencing, and autopilot GPS guidance share
 one source. Its power load can keep that GPS source available independently of a display.
 NAV active and standby frequencies read and operate the shared NAV1 radio; tuning through
@@ -85,6 +85,28 @@ or NAV1 for both the displays and the installed autopilot. The Procedures tile e
 existing procedure/NAV controls: load CIFP procedures and transitions, activate an approach,
 select vectors, command a missed approach, sequence legs, and exit holds. Receiver power follows
 the navigator breaker when it is installed. COM audio and reception use the [radio service](radio.md).
+
+A navigator element can set `"audio_panel": true` to host the aircraft panel's single
+`panel.audio_panel` installation. The association belongs to that navigator installation id;
+its default is `false`, so existing packs keep their pages and separate audio faces. The
+installation's `power_load`, `com1_load`, and `com2_load` must all reference existing electrical
+loads. They may share the navigator load, as a lumped installation, or retain independent loads.
+For example, the navigator element can be:
+
+```json
+{"kind":"navigator","load":"navigator","transponder":false,"audio_panel":true}
+```
+
+The **Audio** home tile opens `NavigatorPage::Audio` (`"audio"` in commands). Calling
+`equipment.set` with `{"setting":{"kind":"navigator","action":{"kind":"page","page":"audio"}}}`
+requires an opted-in, powered navigator. The page reads the shared `CommsSnapshot`; MIC1/MIC2,
+RX1/RX2, NAV ID, ICS, volume, squelch, VOICE, and CAP issue `CommsAudioPanel` through
+`EquipmentSetting::AudioPanel`. Volume and squelch show their current percentages. Audio power
+remains controlled by the audio installation, independently of the screen's power. All page
+captions share one fitted font size, including in the narrow 235 × 98 navigator. Hosting reuses
+the navigator rectangle and suppresses every separate `PanelElement::AudioPanel` face, including
+private artwork on those faces. Home retains the other enabled pages and fits an extra tile row
+when both Audio and Transponder are installed.
 
 Direct-to and flight-plan query actions resolve airports, navaids, fixes, pins, and coordinates
 through the shared offline search. Plans update both the editable planning route and the shared
@@ -361,3 +383,17 @@ tuning, spacing, captions, and the kneeboard. Navigator COM1 active/standby tuni
 Aircraft identity objects may declare `registration` and `spoken_type` for radio identification.
 The shared radio service expands them into spoken GA callsigns; pilots can override them with
 `comms.callsign`. See [radio identity and flight history](radio.md#radio-identity).
+
+The ignored `render_sling_navigator_audio_preview` UI test loads the pack selected by
+`FLIGHTCRAFT_SLING_PACK` read-only and enables the navigator's `audio_panel` field in memory.
+It writes `out/navaudio/sling-audio-panel.png`, `sling-audio-navigator.png`, corresponding
+`-home-` views, and `preview.txt`. These CPU egui captures omit GPU synthetic vision and do not
+verify speech devices or station reception. The navigator audio tests click every control,
+check the shared comms state, and check caption bounds, overlap, and uniform grid fonts at both
+235 × 98 and compact scale.
+
+For an external pack preview, pass its location through the build queue's Cargo configuration:
+
+```text
+buildq run flightcraft <worktree> -- cargo test -p flightcraft-ui render_sling_navigator_audio_preview --config 'env.FLIGHTCRAFT_SLING_PACK="<pack-root>"' -- --ignored
+```

@@ -45,6 +45,15 @@ omit the object and share their existing `avionics` load; their electrical deman
 Opening a declared breaker or losing the avionics bus silences that equipment. A paused observation
 consumes no charge or radio time.
 
+A navigator with `"audio_panel": true` on its equipment element hosts the panel's shared audio
+installation. Its Home **Audio** tile provides COM1/COM2 MIC and receive selection, NAV ident,
+intercom, volume, squelch, speech, and captions through the same `CommsAudioPanel` commands and
+`CommsSnapshot` as the Radios window. Volume and squelch percentages and selections reflect
+changes made by any host. The navigator uses its existing rectangle; separate AudioPanel faces
+are suppressed. This opt-in defaults off. Audio and receiver power still follow
+`panel.audio_panel`'s load references. See [equipment](equipment.md) for pack fields and validation.
+
+
 ## FAA station data
 
 Communications facilities are `ComStation` records in the optional `Navdata.comms` array. Each keeps
@@ -233,10 +242,13 @@ original DSP/tone synthesis.
 
 The IFR observation preview is `out/radio/awos-ifr.png` with its text and optional WAV. It uses
 Sky Manor's real 121.725 AWOS channel, because the source catalogue has no AWOS transmitter at 1N7.
-Set `FLIGHTCRAFT_SLING_PACK` to a readable Sling pack directory when generating previews to also
-write `sling-audio-panel.png`. The preview adds an audio face to the in-memory panel and leaves the
-external pack unchanged. The in-memory registration placard uses N1234B to match the selected
-radio identity. `sling-preview.txt` records the audio extension.
+
+Set `FLIGHTCRAFT_SLING_PACK` to a readable Sling pack directory and run the ignored UI test
+`render_sling_navigator_audio_preview` through the build queue to write
+`out/navaudio/sling-audio-panel.png`, `sling-audio-navigator.png`, matching Home views, and
+`preview.txt`. The test opts into hosting in memory and verifies that the source pack files
+remain unchanged. It adds no separate audio face. These CPU captures omit GPU synthetic vision;
+station reception and platform speech still require separate verification.
 
 A browser archive smoke harness is `flightcraft-control` example `flight_archive_browser_smoke`
 (cdylib for wasm). Its exports exercise committed save, listing and loading from a fresh session,

@@ -425,6 +425,9 @@ pub enum PanelElement {
     Navigator {
         load: String,
         transponder: bool,
+        /// Host this aircraft panel's shared `audio_panel` installation on an Audio page.
+        #[serde(default)]
+        audio_panel: bool,
     },
     Standby,
     Autopilot,
@@ -744,6 +747,25 @@ pub fn validate_installation(
     if let Some(panel) = &p.equipment {
         let d = systems.ok_or_else(|| error("panel.equipment", "operational systems required"))?;
         for element in &panel.elements {
+            if matches!(
+                element.element,
+                PanelElement::Navigator {
+                    audio_panel: true,
+                    ..
+                }
+            ) {
+                for load in [
+                    &p.audio_panel.power_load,
+                    &p.audio_panel.com1_load,
+                    &p.audio_panel.com2_load,
+                ] {
+                    require(
+                        d.electrical.loads.iter().any(|l| &l.id == load),
+                        "panel.navigator.audio_panel",
+                        "hosted audio and COM loads must exist",
+                    )?;
+                }
+            }
             match &element.element {
                 PanelElement::TouchDisplay { load, .. }
                 | PanelElement::Navigator { load, .. }
