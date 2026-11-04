@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::unreachable)]
 use super::*;
 use crate as flightcraft_control;
 use serde_json::json;
@@ -399,4 +399,914 @@ fn a_call_the_user_keys_over_is_blocked_and_sent_again() {
             && e.text.ends_with(&target.text)
     });
     assert!(again.is_some(), "no repeat of {:?}", target.text);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Traffic advisories and radio discipline
+// ------------------------------------------------------------------------------------------------
+
+fn wind() -> serde_json::Value {
+    json!({"wind_from_deg":300.,"wind_speed_mps":6.,"shear":false,"turbulence":"off","seed":11})
+}
+fn step(s: &mut Session) {
+    s.run(crate::Step { steps: 1 }).unwrap();
+}
+/// Step one physics frame at a time until `done`, up to `limit_s` simulated seconds.
+fn step_until(s: &mut Session, limit_s: f64, mut done: impl FnMut(&Session) -> bool) -> bool {
+    let end = s.sim().state().time_s + limit_s;
+    while s.sim().state().time_s < end {
+        step(s);
+        if done(s) {
+            return true;
+        }
+    }
+    false
+}
+fn advisory_events(s: &Session) -> Vec<Transmission> {
+    s.flight_record()
+        .events
+        .iter()
+        .filter(|e| matches!(e.meaning, Meaning::TrafficAdvisory { .. }))
+        .cloned()
+        .collect()
+}
+fn follow_ups(s: &Session) -> Vec<(Transmission, TrafficFollowUpKind)> {
+    s.flight_record()
+        .events
+        .iter()
+        .filter_map(|e| match e.meaning {
+            Meaning::TrafficFollowUp { kind, .. } => Some((e.clone(), kind)),
+            _ => None,
+        })
+        .collect()
+}
+fn grades(s: &Session, item: &str) -> Vec<ComplianceGrade> {
+    s.atc_state()
+        .compliance
+        .into_iter()
+        .filter(|g| g.item == item)
+        .collect()
+}
+fn approach_high(s: &Session) -> ComStation {
+    s.stations()
+        .into_iter()
+        .find(|x| {
+            x.airport == "KABE"
+                && x.kind == FacilityKind::Approach
+                && x.metadata.as_ref().is_some_and(|m| m.sector.contains("ABV"))
+        })
+        .unwrap()
+}
+/// Fly the user in the open air 3.5 NM behind a cruising aircraft and 300 ft below it, closing, in
+/// radar contact with approach high. A 6 m/s wind makes the ground track differ from the heading.
+fn user_behind_traffic(s: &mut Session) -> u32 {
+    let state = s.fleet_state();
+    let target = state
+        .aircraft
+        .iter()
+        .filter(|a| !a.on_ground && a.ground_speed_kt >= 90. && a.altitude_msl_ft > 1500.)
+        .min_by(|a, b| a.range_nm.total_cmp(&b.range_nm))
+        .unwrap()
+        .clone();
+    let gnt = s.sim().heading_reference().grid_north_true_rad;
+    let track_grid = (target.track_true_deg.to_radians() - gnt).rem_euclid(core::f64::consts::TAU);
+    let back = track_grid + core::f64::consts::PI;
+    let [tn, te, _] = target.position_m;
+    let altitude_m = target.altitude_msl_ft * 0.3048 - 90.;
+    let mut pose = *s.sim().state();
+    pose.position_m = [
+        tn + 3.5 * 1852. * back.cos(),
+        te + 3.5 * 1852. * back.sin(),
+        -altitude_m,
+    ];
+    pose.attitude = [(track_grid / 2.).cos(), 0., 0., (track_grid / 2.).sin()];
+    let speed = (target.ground_speed_kt + 25.) * 0.514_444;
+    pose.velocity_mps = [speed * track_grid.cos(), speed * track_grid.sin(), 0.];
+    *s.sim_mut() =
+        flightcraft_sim::Sim::from_state_in_world(pose, s.sim().controls(), s.sim().world().clone()).unwrap();
+    s.execute("weather.set", wind()).unwrap();
+    let heading = s.sim().readout().heading_rad;
+    s.execute(
+        "assist.set",
+        json!({"altitude_m":altitude_m,"airspeed_mps":speed,"heading_rad":heading}),
+    )
+    .unwrap();
+    let hi = approach_high(s);
+    s.comms.atc.radar_facility = Some(crate::comms::atc::radar_facility(&hi));
+    target.id
+}
+fn advisory_session() -> Session {
+    let mut s = atc_session("KABE");
+    listen_to_approach(&mut s);
+    s.execute("weather.set", wind()).unwrap();
+    s.execute("traffic.density", json!({"density":"busy","airport":"KABE"}))
+        .unwrap();
+    advance(&mut s, 2.);
+    user_behind_traffic(&mut s);
+    s
+}
+/// A session stepped until the first advisory has been heard to its end.
+fn heard_advisory() -> (Session, Transmission) {
+    let mut s = advisory_session();
+    assert!(
+        step_until(&mut s, 240., |s| {
+            advisory_events(s)
+                .first()
+                .is_some_and(|e| e.reception == Reception::Heard)
+        }),
+        "no advisory\n{}",
+        transcript(&s).join("\n")
+    );
+    let event = advisory_events(&s).remove(0);
+    (s, event)
+}
+fn say_as_user(s: &mut Session, text: &str) {
+    s.execute("comms.transmit", json!({"text":text})).unwrap();
+}
+
+#[test]
+fn the_spoken_advisory_matches_traffic_state_at_that_instant() {
+    let mut s = advisory_session();
+    let mut checked = 0;
+    let mut seen = 0;
+    let end = s.sim().state().time_s + 240.;
+    while s.sim().state().time_s < end && checked < 3 {
+        step(&mut s);
+        let events = advisory_events(&s);
+        if events.len() == seen {
+            continue;
+        }
+        seen = events.len();
+        let event = events.last().unwrap();
+        // Recompute from the literal `traffic.state` output and the user's own motion.
+        let state: FleetState =
+            serde_json::from_value(s.execute("traffic.state", json!({})).unwrap()).unwrap();
+        let Meaning::TrafficAdvisory {
+            clock,
+            miles,
+            miles_spoken,
+            altitude_ft,
+            relative_altitude_ft,
+            target_aircraft,
+            user_track_true_deg,
+            direction,
+            ..
+        } = &event.meaning
+        else {
+            unreachable!()
+        };
+        assert_eq!(event.time_s, s.sim().state().time_s, "event is from this instant");
+        let a = state
+            .aircraft
+            .iter()
+            .find(|a| Some(&a.id) == target_aircraft.first())
+            .unwrap();
+        let [vn, ve, _] = s.sim().state().velocity_mps;
+        let gnt = s.sim().heading_reference().grid_north_true_rad;
+        let track = (libm::atan2(ve, vn) + gnt).to_degrees().rem_euclid(360.);
+        let heading_true = (s.sim().readout().heading_grid_rad + gnt)
+            .to_degrees()
+            .rem_euclid(360.);
+        assert!(
+            (track - user_track_true_deg).abs() < 1e-6,
+            "{track} {user_track_true_deg}"
+        );
+        assert!(
+            (track - heading_true).abs() > 1.,
+            "the wind should make track ({track:.1}) differ from heading ({heading_true:.1})"
+        );
+        // Bearing and range from the reported positions alone.
+        let [pn, pe, pd] = s.sim().state().position_m;
+        let [tn, te, _] = a.position_m;
+        let bearing = (libm::atan2(te - pe, tn - pn) + gnt)
+            .to_degrees()
+            .rem_euclid(360.);
+        let range = libm::hypot(tn - pn, te - pe) / 1852.;
+        assert!((range - miles).abs() < 1e-9 && (range - a.range_nm).abs() < 1e-9);
+        let mut expect = ((bearing - track).rem_euclid(360.) / 30.).round() as u8 % 12;
+        if expect == 0 {
+            expect = 12;
+        }
+        assert_eq!(
+            *clock, expect,
+            "clock from ground track, bearing {bearing:.1} track {track:.1}"
+        );
+        assert_eq!(*miles_spoken, range.round().max(1.) as u32);
+        assert_eq!(*altitude_ft, a.altitude_msl_ft.round() as u32);
+        assert_eq!(
+            *relative_altitude_ft,
+            (a.altitude_msl_ft + pd / 0.3048).round() as i32
+        );
+        // The words say the same numbers.
+        let say_clock = phraseology::clock_position(expect);
+        let say_miles = phraseology::advisory_miles(*miles_spoken);
+        let say_alt = phraseology::altitude((a.altitude_msl_ft / 100.).round() as u32 * 100);
+        assert!(
+            event.text.contains("Traffic")
+                && event
+                    .text
+                    .contains(&format!("{say_clock}, {say_miles}, {direction}")),
+            "{}",
+            event.text
+        );
+        assert!(event.text.contains(&say_alt), "{} / {say_alt}", event.text);
+        assert!(event.text.contains(&a.aircraft_type), "{}", event.text);
+        assert!(
+            a.range_nm <= 10.5 && a.relative_altitude_ft.abs() <= 1000.,
+            "{a:?}"
+        );
+        println!("{:.0}s {} | {}", event.time_s, event.speaker_name, event.text);
+        checked += 1;
+    }
+    assert!(
+        checked >= 1,
+        "no advisory in four minutes\n{}",
+        transcript(&s).join("\n")
+    );
+}
+
+#[test]
+fn advisories_never_overlap_the_traffic_on_the_frequency() {
+    let (mut s, _) = heard_advisory();
+    advance(&mut s, 120.);
+    let mut spans: Vec<(f64, f64, u32)> = s
+        .flight_record()
+        .events
+        .iter()
+        .filter(|e| e.channel == Channel::Com && e.reception == Reception::Heard)
+        .filter_map(|e| {
+            Some((
+                e.time_s,
+                e.time_s + e.duration_s,
+                (e.frequency_hz? * 3.).round() as u32,
+            ))
+        })
+        .collect();
+    spans.sort_by(|a, b| a.0.total_cmp(&b.0));
+    for (i, a) in spans.iter().enumerate() {
+        for b in spans.iter().skip(i + 1).filter(|b| b.2 == a.2) {
+            assert!(b.0 >= a.1 - 1e-6, "overlap {a:?} {b:?}");
+        }
+    }
+}
+
+#[test]
+fn traffic_in_sight_is_answered_with_a_visual_separation_or_sequencing_call() {
+    let (mut s, event) = heard_advisory();
+    let Meaning::TrafficAdvisory { callsign, .. } = &event.meaning else {
+        unreachable!()
+    };
+    let before = follow_ups(&s).len();
+    say_as_user(&mut s, "{callsign}, traffic in sight");
+    assert!(
+        step_until(&mut s, 40., |s| follow_ups(s).len() > before),
+        "no follow-up\n{}",
+        transcript(&s).join("\n")
+    );
+    let (reply, kind) = follow_ups(&s).remove(0);
+    assert!(
+        matches!(
+            kind,
+            TrafficFollowUpKind::VisualSeparation | TrafficFollowUpKind::Follow | TrafficFollowUpKind::Roger
+        ),
+        "{kind:?}"
+    );
+    assert!(
+        reply.text.contains("visual separation")
+            || reply.text.contains("Follow that traffic")
+            || reply.text.contains("Roger"),
+        "{}",
+        reply.text
+    );
+    let ok = grades(&s, "traffic_advisory");
+    assert!(ok.len() == 1 && ok[0].passed, "{ok:?} for {callsign}");
+    let tally = s.radio_discipline();
+    assert_eq!((tally.advisories_answered, tally.faults()), (1, 0), "{tally:?}");
+    // The aircraft is sighted: never called again.
+    advance(&mut s, 60.);
+    assert!(advisory_events(&s).iter().all(|e| {
+        !matches!(&e.meaning, Meaning::TrafficAdvisory { callsign: c, updated: true, .. } if c == callsign)
+    }));
+}
+
+#[test]
+fn negative_contact_brings_an_update_or_traffic_no_factor() {
+    let (mut s, event) = heard_advisory();
+    let Meaning::TrafficAdvisory { target_aircraft, .. } = event.meaning.clone() else {
+        unreachable!()
+    };
+    let (n_adv, n_fu) = (advisory_events(&s).len(), follow_ups(&s).len());
+    say_as_user(&mut s, "{callsign}, negative contact");
+    assert!(
+        step_until(&mut s, 40., |s| advisory_events(s).len() > n_adv
+            || follow_ups(s).len() > n_fu),
+        "no answer\n{}",
+        transcript(&s).join("\n")
+    );
+    if advisory_events(&s).len() > n_adv {
+        let update = advisory_events(&s).pop().unwrap();
+        let Meaning::TrafficAdvisory {
+            updated,
+            target_aircraft: t,
+            ..
+        } = &update.meaning
+        else {
+            unreachable!()
+        };
+        assert!(*updated && *t == target_aircraft);
+        assert!(update.text.contains("Traffic now"), "{}", update.text);
+    } else {
+        let (reply, kind) = follow_ups(&s).pop().unwrap();
+        assert_eq!(kind, TrafficFollowUpKind::NoFactor);
+        assert!(reply.text.contains("Traffic no factor"), "{}", reply.text);
+    }
+    let ok = grades(&s, "traffic_advisory");
+    assert!(ok.len() == 1 && ok[0].passed, "{ok:?}");
+    assert_eq!(s.radio_discipline().faults(), 0);
+}
+
+#[test]
+fn looking_is_accepted_without_a_follow_up_call() {
+    let (mut s, _) = heard_advisory();
+    let before = follow_ups(&s).len();
+    say_as_user(&mut s, "{callsign}, looking for the traffic");
+    advance(&mut s, 12.);
+    assert_eq!(follow_ups(&s).len(), before);
+    let ok = grades(&s, "traffic_advisory");
+    assert!(ok.len() == 1 && ok[0].passed, "{ok:?}");
+    assert_eq!(s.radio_discipline().advisories_answered, 1);
+}
+
+#[test]
+fn a_missed_call_is_repeated_then_graded() {
+    let (mut s, first) = heard_advisory();
+    let Meaning::TrafficAdvisory { target_aircraft, .. } = first.meaning.clone() else {
+        unreachable!()
+    };
+    // Say nothing. After the answer window the same aircraft is called again.
+    assert!(
+        step_until(&mut s, 60., |s| advisory_events(s).len() >= 2),
+        "no repeat\n{}",
+        transcript(&s).join("\n")
+    );
+    let repeat = advisory_events(&s).remove(1);
+    let Meaning::TrafficAdvisory {
+        repeat: is_repeat,
+        target_aircraft: t,
+        ..
+    } = &repeat.meaning
+    else {
+        unreachable!()
+    };
+    assert!(*is_repeat && *t == target_aircraft);
+    assert!(
+        repeat.time_s - (first.time_s + first.duration_s) >= crate::comms::fleet::advisory::RESPONSE_S,
+        "repeated too soon"
+    );
+    assert!(
+        grades(&s, "radio_discipline:no_response").is_empty(),
+        "graded before the repeat"
+    );
+    // Still silent: now it is a fault, and the instructor says so.
+    assert!(
+        step_until(&mut s, 60., |s| !grades(s, "radio_discipline:no_response")
+            .is_empty()),
+        "never graded"
+    );
+    let fault = &grades(&s, "radio_discipline:no_response")[0];
+    assert!(
+        !fault.passed && fault.observed.contains("did not answer"),
+        "{fault:?}"
+    );
+    let tally = s.radio_discipline();
+    assert_eq!(
+        (tally.repeats, tally.no_response, tally.advisories_answered),
+        (1, 1, 0),
+        "{tally:?}"
+    );
+    // The aircraft is closed: no endless nagging.
+    advance(&mut s, 60.);
+    assert!(advisory_events(&s).iter().all(|e| {
+        e.time_s <= repeat.time_s + 1.
+            || !matches!(&e.meaning, Meaning::TrafficAdvisory { target_aircraft: t, .. } if *t == target_aircraft)
+    }));
+}
+
+#[test]
+fn a_late_reply_inside_the_window_answers_the_call_without_a_fault() {
+    let (mut s, first) = heard_advisory();
+    let end = first.time_s + first.duration_s;
+    let hi = carrier_thirds_hz(approach_high(&s).channel_khz);
+    // Wait out most of the window, then key the microphone on a quiet carrier.
+    assert!(step_until(&mut s, 30., |s| {
+        let now = s.sim().state().time_s;
+        now >= end + 6. && !s.comms.pending.iter().any(|p| p.carrier == hi && p.end_s > now)
+    }));
+    assert!(s.sim().state().time_s < end + 10.);
+    say_as_user(&mut s, "{callsign}, traffic in sight");
+    advance(&mut s, 30.);
+    let Meaning::TrafficAdvisory { target_aircraft, .. } = first.meaning.clone() else {
+        unreachable!()
+    };
+    assert!(
+        advisory_events(&s).iter().all(|e| !matches!(
+            &e.meaning,
+            Meaning::TrafficAdvisory { repeat: true, target_aircraft: t, .. } if *t == target_aircraft
+        )),
+        "answered in time, so nothing is repeated"
+    );
+    assert_eq!(s.radio_discipline().faults(), 0);
+    assert_eq!(s.radio_discipline().advisories_answered, 1);
+}
+
+#[test]
+fn answering_with_another_aircrafts_callsign_is_a_fault() {
+    let (mut s, first) = heard_advisory();
+    let Meaning::TrafficAdvisory { target_aircraft, .. } = first.meaning.clone() else {
+        unreachable!()
+    };
+    let other = s
+        .fleet_state()
+        .aircraft
+        .into_iter()
+        .find(|a| Some(&a.id) != target_aircraft.first())
+        .unwrap();
+    say_as_user(&mut s, &format!("{}, traffic in sight", other.callsign));
+    advance(&mut s, 5.);
+    let faults = grades(&s, "radio_discipline:wrong_callsign");
+    assert_eq!(faults.len(), 1, "{:?}", s.atc_state().compliance);
+    assert!(!faults[0].passed);
+    assert!(
+        faults[0]
+            .observed
+            .contains(&format!("for the {}", other.aircraft_type)),
+        "{}",
+        faults[0].observed
+    );
+    assert_eq!(s.radio_discipline().wrong_callsign, 1);
+    // The wrong-callsign answer did not satisfy the advisory.
+    assert_eq!(s.radio_discipline().advisories_answered, 0);
+}
+
+#[test]
+fn reading_back_another_aircrafts_instruction_is_a_fault() {
+    let mut s = busy_session();
+    advance(&mut s, 5.);
+    // Find an instruction to somebody else that the user heard.
+    let hi = approach_high(&s);
+    let mut spoken: Option<FleetCall> = None;
+    assert!(step_until(&mut s, 600., |s| {
+        spoken = fleet_events(s).into_iter().map(|e| e.1).rev().find(|c| {
+            c.role == FleetRole::Controller
+                && c.kind == FleetCallKind::Instruction
+                && c.frequency_khz == hi.channel_khz
+                && c.instructions
+                    .iter()
+                    .any(|i| matches!(i, AtcInstruction::Altitude { .. }))
+        });
+        spoken.is_some()
+    }));
+    let call = spoken.unwrap();
+    let altitude = call
+        .instructions
+        .iter()
+        .find(|i| matches!(i, AtcInstruction::Altitude { .. }))
+        .unwrap();
+    let text = s.atc_readback(altitude);
+    say_as_user(&mut s, &text);
+    advance(&mut s, 5.);
+    let faults = grades(&s, "radio_discipline:acknowledged_other");
+    assert_eq!(faults.len(), 1, "{text} -> {:?}", s.atc_state().compliance);
+    assert!(
+        faults[0].observed.contains("not for you"),
+        "{}",
+        faults[0].observed
+    );
+    assert_eq!(s.radio_discipline().acknowledged_other, 1);
+}
+
+#[test]
+fn keying_over_traffic_is_a_fault() {
+    let mut s = busy_session();
+    advance(&mut s, 5.);
+    let hi = carrier_thirds_hz(approach_high(&s).channel_khz);
+    assert!(step_until(&mut s, 600., |s| {
+        let now = s.sim().state().time_s;
+        s.comms.pending.iter().any(|p| {
+            p.carrier == hi
+                && p.end_s > now + 1.
+                && s.flight_record()
+                    .events
+                    .iter()
+                    .any(|e| e.id == p.id && matches!(e.meaning, Meaning::Fleet { .. }))
+        })
+    }));
+    say_as_user(&mut s, "{callsign}, request flight following");
+    let faults = grades(&s, "radio_discipline:stepped_on");
+    assert_eq!(faults.len(), 1, "{:?}", s.atc_state().compliance);
+    assert!(
+        faults[0].observed.contains("was talking"),
+        "{}",
+        faults[0].observed
+    );
+    assert_eq!(s.radio_discipline().stepped_on, 1);
+}
+
+#[test]
+fn a_clean_listener_collects_no_faults_in_a_busy_quarter_hour() {
+    let mut s = busy_session();
+    advance(&mut s, 900.);
+    assert_eq!(s.radio_discipline().faults(), 0);
+    assert!(
+        s.atc_state()
+            .compliance
+            .iter()
+            .all(|g| !g.item.starts_with("radio_discipline:"))
+    );
+}
+
+#[test]
+fn traffic_the_user_already_follows_is_not_advised_again() {
+    let mut s = advisory_session();
+    // Every aircraft is "followed": the sequencing call is all the controller says.
+    for a in s.fleet_state().aircraft {
+        s.comms.atc.active.push(PendingInstruction {
+            id: 9000 + u64::from(a.id),
+            station_id: "KABE-TWR".into(),
+            airport: "KABE".into(),
+            instruction: AtcInstruction::Pattern {
+                runway: "06".into(),
+                entry: PatternEntry::StraightIn,
+                number: 2,
+                follow: Some(a.callsign.clone()),
+            },
+            phrase: "follow".into(),
+            heard: true,
+            readback: true,
+            issued_s: 0.,
+            reminder_s: f64::MAX,
+        });
+    }
+    advance(&mut s, 90.);
+    assert!(advisory_events(&s).is_empty());
+}
+
+#[test]
+fn off_the_frequency_or_out_of_radar_contact_gets_no_advisory() {
+    let mut s = advisory_session();
+    s.comms.atc.radar_facility = None;
+    advance(&mut s, 90.);
+    assert!(advisory_events(&s).is_empty());
+    s.comms.atc.radar_facility = Some(crate::comms::atc::radar_facility(&approach_high(&s)));
+    // Transmitting on a different frequency than the approach controller's.
+    s.execute("comms.tune", json!({"radio":1,"channel_khz":122800}))
+        .unwrap();
+    advance(&mut s, 90.);
+    assert!(advisory_events(&s).is_empty());
+}
+
+#[test]
+fn clock_position_is_measured_from_the_ground_track() {
+    use super::advisory::{UserMotion, assess, clock_of};
+    // A target due east of a user whose heading is 090 but whose track is 120 (a left-to-right wind).
+    assert_eq!(clock_of(90., 120.), 11);
+    assert_eq!(clock_of(90., 90.), 12);
+    assert_eq!(clock_of(120., 90.), 1);
+    assert_eq!(clock_of(180., 90.), 3);
+    assert_eq!(clock_of(0., 90.), 9);
+    assert_eq!(clock_of(270., 90.), 6);
+    assert_eq!(clock_of(5., 355.), 12);
+    let user = UserMotion {
+        track_true_deg: 90.,
+        speed_kt: 100.,
+        has_track: true,
+        vs_fpm: 0.,
+    };
+    let mut a = FleetAircraft {
+        id: 7,
+        callsign: "Cherokee Four Two Seven Kilo Papa".into(),
+        registration: "N427KP".into(),
+        aircraft_type: "Cherokee".into(),
+        type_designator: "PA28".into(),
+        latitude_deg: None,
+        longitude_deg: None,
+        altitude_msl_ft: 3480.,
+        position_m: [0.; 3],
+        track_true_deg: 270.,
+        track_magnetic_deg: 275.,
+        ground_speed_kt: 110.,
+        vertical_rate_fpm: 0.,
+        on_ground: false,
+        squawk: "1200".into(),
+        frequency_khz: 0,
+        facility_id: String::new(),
+        facility: String::new(),
+        intent: FleetIntent {
+            kind: FleetFlight::FlightFollowing,
+            phase: String::new(),
+            airport: "KABE".into(),
+            runway: "06".into(),
+        },
+        assigned_altitude_ft: None,
+        assigned_heading_deg: None,
+        assigned_speed_kt: None,
+        cleared_to_land_or_approach: false,
+        airspace_class: None,
+        voice: 0,
+        range_nm: 3.4,
+        bearing_true_deg: 60.,
+        relative_altitude_ft: 480.,
+        on_user_frequency: true,
+    };
+    let r = assess(&a, &user);
+    assert_eq!(
+        (r.clock, r.miles, r.direction.as_str()),
+        (11, 3, "opposite direction")
+    );
+    assert_eq!(r.altitude_ft, 3480);
+    assert!(r.factor, "inside 5 NM and 1,000 ft");
+    let text = phraseology::traffic_advisory(
+        r.clock,
+        r.miles,
+        &r.direction,
+        Some(&r.spoken_type),
+        r.altitude,
+        false,
+    );
+    assert_eq!(
+        text,
+        "Traffic, eleven o'clock, three miles, opposite direction, Cherokee, three thousand five hundred."
+    );
+    // Altitude rounds to the nearest hundred, the distance to whole miles (never less than one).
+    a.altitude_msl_ft = 3449.6;
+    a.range_nm = 0.4;
+    let r = assess(&a, &user);
+    assert_eq!((r.miles, r.altitude_ft), (1, 3450));
+    assert_eq!(
+        phraseology::traffic_advisory(
+            r.clock,
+            r.miles,
+            &r.direction,
+            None,
+            phraseology::AdvisoryAltitude::Indicates(3450),
+            true
+        ),
+        "Traffic now eleven o'clock, one mile, opposite direction, altitude indicates three thousand five hundred."
+    );
+    // 1,500 ft above and 4 NM away is not a factor; 800 ft above and closing is.
+    a.range_nm = 4.0;
+    a.relative_altitude_ft = 1500.;
+    assert!(!assess(&a, &user).factor);
+    a.relative_altitude_ft = 800.;
+    assert!(assess(&a, &user).factor);
+    // Same direction, crossing either way.
+    for (track, expect) in [
+        (100., "same direction"),
+        (180., "crossing left to right"),
+        (0., "crossing right to left"),
+        (90. + 170., "opposite direction"),
+    ] {
+        a.track_true_deg = track;
+        assert_eq!(assess(&a, &user).direction, expect, "track {track}");
+    }
+    // Without a track the compass word stands in.
+    assert_eq!(phraseology::traffic_direction(10., 95., false), "eastbound");
+    assert_eq!(phraseology::traffic_direction(10., 225., false), "southwestbound");
+    // Converging: 6 NM ahead on a reciprocal track, closing at 220 kt (98 s).
+    a.range_nm = 6.;
+    a.bearing_true_deg = 90.;
+    a.track_true_deg = 270.;
+    a.ground_speed_kt = 120.;
+    a.relative_altitude_ft = 600.;
+    let r = assess(&a, &user);
+    assert!(r.factor && r.cpa_nm < 0.1, "{r:?}");
+    // Climbing away through 1,000 ft above the user by the closest point: not converging on the user.
+    a.vertical_rate_fpm = 4000.;
+    assert!(!assess(&a, &user).factor);
+    assert_eq!(
+        phraseology::traffic_advisory(
+            12,
+            2,
+            "same direction",
+            Some("Mooney"),
+            phraseology::AdvisoryAltitude::Unknown,
+            false
+        ),
+        "Traffic, twelve o'clock, two miles, same direction, Mooney, altitude unknown."
+    );
+}
+
+#[test]
+fn pilot_replies_to_traffic_calls_parse() {
+    let me = PilotCallsign {
+        overridden: false,
+        registration: "N371FC".into(),
+        spoken_type: "Sling".into(),
+        not_us: false,
+        full: "Sling Three Seven One Foxtrot Charlie".into(),
+        abbreviated: "Sling One Foxtrot Charlie".into(),
+        current: "Sling One Foxtrot Charlie".into(),
+    };
+    for (text, expect) in [
+        (
+            "Sling one foxtrot charlie, traffic in sight",
+            PilotRequest::TrafficInSight,
+        ),
+        (
+            "Traffic in sight, Sling one foxtrot charlie",
+            PilotRequest::TrafficInSight,
+        ),
+        (
+            "sling one foxtrot charlie has the traffic in sight",
+            PilotRequest::TrafficInSight,
+        ),
+        ("Sling one foxtrot charlie, looking", PilotRequest::TrafficLooking),
+        (
+            "Looking for traffic, Sling one foxtrot charlie",
+            PilotRequest::TrafficLooking,
+        ),
+        (
+            "Sling one foxtrot charlie, negative contact",
+            PilotRequest::NegativeContact,
+        ),
+        (
+            "Negative contact, Sling one foxtrot charlie",
+            PilotRequest::NegativeContact,
+        ),
+        (
+            "Sling one foxtrot charlie, traffic not in sight",
+            PilotRequest::NegativeContact,
+        ),
+    ] {
+        let m = parse_pilot(text, &me);
+        assert!(m.callsign_present, "{text}");
+        assert_eq!(m.request, Some(expect), "{text}");
+    }
+    assert_eq!(
+        parse_pilot("Sling one foxtrot charlie, request flight following", &me).request,
+        Some(PilotRequest::FlightFollowing)
+    );
+    // Words that sound alike but belong to other requests stay with them.
+    assert_eq!(
+        parse_pilot(
+            "Sling one foxtrot charlie, airport in sight, request visual approach runway zero six",
+            &me
+        )
+        .request,
+        Some(PilotRequest::Approach)
+    );
+}
+
+// ------------------------------------------------------------------------------------------------
+// The "Busy frequency" lesson
+// ------------------------------------------------------------------------------------------------
+
+/// The lesson on the original flat-terrain fixture region (same airports, frequencies, procedures).
+fn lesson_session() -> Session {
+    let mut lesson = crate::lesson_library()
+        .unwrap()
+        .into_iter()
+        .find(|l| l.id == "busy-frequency")
+        .unwrap();
+    lesson.setup.region = "atc-fixture".into();
+    let mut s = Session::new().unwrap();
+    s.install_region(atc_world()).unwrap();
+    s.run(crate::LessonStart { lesson }).unwrap();
+    let heading = s.sim().readout().heading_rad;
+    let altitude_m = s.sim().readout().altitude_msl_m;
+    s.execute(
+        "assist.set",
+        json!({"altitude_m":altitude_m,"airspeed_mps":90. * 0.514_444,"heading_rad":heading}),
+    )
+    .unwrap();
+    s
+}
+/// Fly the lesson; the pilot answers each advisory with `reply` the moment it has been heard.
+fn fly_lesson(reply: &dyn Fn(&Transmission) -> Option<String>, seconds: f64) -> (Session, Vec<String>) {
+    let mut s = lesson_session();
+    let mut answered = std::collections::BTreeSet::new();
+    let end = s.sim().state().time_s + seconds;
+    while s.sim().state().time_s < end && !s.lesson_debrief().tasks.iter().all(|t| t.completed) {
+        step(&mut s);
+        let heard: Vec<Transmission> = advisory_events(&s)
+            .into_iter()
+            .filter(|e| e.reception == Reception::Heard && !answered.contains(&e.id))
+            .collect();
+        for e in heard {
+            answered.insert(e.id);
+            if let Some(text) = reply(&e) {
+                s.execute("comms.transmit", json!({"text":text})).unwrap();
+            }
+        }
+    }
+    let lines = s
+        .flight_record()
+        .events
+        .iter()
+        .filter(|e| e.channel == Channel::Com || matches!(e.meaning, Meaning::Compliance { .. }))
+        .map(|e| format!("{:.2} {} | {}", e.time_s, e.speaker_name, e.text))
+        .collect();
+    (s, lines)
+}
+
+#[test]
+fn the_busy_frequency_lesson_is_in_the_library_and_loads() {
+    let lesson = crate::lesson_library()
+        .unwrap()
+        .into_iter()
+        .find(|l| l.id == "busy-frequency")
+        .unwrap();
+    assert_eq!(lesson.setup.airport, "KABE");
+    assert_eq!(lesson.setup.traffic.unwrap().density, TrafficDensity::Busy);
+    assert_eq!(lesson.tasks.len(), 1);
+    assert_eq!(lesson.tasks[0].kind, crate::InstrumentTaskKind::Radio);
+    let s = lesson_session();
+    assert_eq!(s.fleet_state().density, TrafficDensity::Busy);
+    assert_eq!(s.fleet_state().airport.as_deref(), Some("KABE"));
+    assert!(s.fleet_state().aircraft.len() >= 10);
+    // COM1 is on the approach controller the user is in radar contact with.
+    assert_eq!(
+        s.comms_state().com1.active_khz,
+        s.comms
+            .fleet
+            .as_ref()
+            .unwrap()
+            .field
+            .st(s.comms.fleet.as_ref().unwrap().field.lo)
+            .channel_khz
+    );
+    assert!(s.comms.atc.radar_facility.is_some());
+    assert_eq!(s.lesson_debrief().tasks[0].result, crate::TaskResult::Pending);
+}
+
+#[test]
+fn a_pilot_who_answers_every_call_passes_the_lesson_deterministically() {
+    let reply = |e: &Transmission| {
+        let Meaning::TrafficAdvisory { clock, .. } = &e.meaning else {
+            return None;
+        };
+        Some(if *clock >= 9 || *clock <= 1 {
+            "{callsign}, traffic in sight".to_string()
+        } else {
+            "{callsign}, negative contact".to_string()
+        })
+    };
+    let (s, first) = fly_lesson(&reply, 900.);
+    let debrief = s.lesson_debrief();
+    assert!(
+        debrief.tasks[0].completed && debrief.tasks[0].result == crate::TaskResult::Pass,
+        "{:?}\n{}",
+        debrief.tasks[0],
+        first.join("\n")
+    );
+    assert!(s.radio_discipline().advisories_answered >= 2);
+    assert_eq!(s.radio_discipline().faults(), 0);
+    println!(
+        "{}",
+        first
+            .iter()
+            .filter(|l| l.contains("raffic"))
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    let (again, second) = fly_lesson(&reply, 900.);
+    assert_eq!(first, second, "the lesson must replay identically");
+    assert_eq!(
+        serde_json::to_string(again.lesson_debrief()).unwrap(),
+        serde_json::to_string(s.lesson_debrief()).unwrap()
+    );
+}
+
+#[test]
+fn a_pilot_who_answers_the_wrong_aircraft_fails_the_lesson() {
+    let reply = |e: &Transmission| {
+        let Meaning::TrafficAdvisory { callsign, .. } = &e.meaning else {
+            return None;
+        };
+        // Answer as the aircraft that was called, not as ourselves.
+        Some(format!("{callsign}, traffic in sight"))
+    };
+    let (s, lines) = fly_lesson(&reply, 400.);
+    let task = &s.lesson_debrief().tasks[0];
+    assert_eq!(task.result, crate::TaskResult::Fail, "{lines:?}");
+    assert!(
+        task.reasons.iter().any(|r| r.contains("not for you")),
+        "{:?}",
+        task.reasons
+    );
+    assert!(s.radio_discipline().wrong_callsign >= 1);
+}
+
+#[test]
+fn a_pilot_who_stays_silent_fails_the_lesson_for_unanswered_calls() {
+    let (s, lines) = fly_lesson(&|_| None, 400.);
+    let task = &s.lesson_debrief().tasks[0];
+    assert_eq!(task.result, crate::TaskResult::Fail, "{lines:?}");
+    assert!(
+        task.reasons.iter().any(|r| r.contains("did not answer")),
+        "{:?}",
+        task.reasons
+    );
+    assert!(s.radio_discipline().no_response >= 1);
 }

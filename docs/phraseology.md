@@ -20,7 +20,18 @@ conventions in FAA JO 7110.65 chapter 2, section 4, and the AIM radio chapter.
 | `pilot_position(station, pilot, runway, report)` | Typed facility, aircraft callsign, runway, and position phrase | A crew CTAF/tower report with spoken runway digits and NASR names |
 | `pilot_inbound(station, pilot, runway, miles, direction, information)` | Actual distance/direction and optional ATIS letter | Full CTAF identity with airport bookends, or a facility-addressed tower/radar check-in |
 | `pilot_request(station, pilot, request, information)` | Facility, request, optional information letter | Facility-addressed full-callsign request ending in a period |
+| `traffic_advisory(clock, miles, direction, type, altitude, updated)` | Clock 1-12, whole miles, direction word, type, `AdvisoryAltitude` | `Traffic, eleven o'clock, three miles, opposite direction, Cherokee, three thousand five hundred.`; an update reads `Traffic now one o'clock, two miles, ...` |
+| `clock_position(n)` / `advisory_miles(n)` | 1-12 / miles | `ten o'clock` / `one mile`, `three miles` |
+| `traffic_direction(relative_deg, magnetic_track, has_track)` | Traffic track minus pilot ground track | `same direction`, `opposite direction`, `crossing left to right`, `crossing right to left`; compass word (`eastbound`) when the pilot has no track |
+| `AdvisoryAltitude` | `Known(ft)`, `Indicates(ft)`, `Unknown` | `three thousand five hundred`, `altitude indicates three thousand five hundred`, `altitude unknown` |
+| `traffic_no_factor()`, `maintain_visual_separation()`, `follow_that_traffic()` | none | Controller follow-ups to a traffic reply |
 | `normal_case(text)` | Imported uppercase name | Normal case, expanding `INTL` and `MUNI` |
+
+Traffic advisories follow JO 7110.65 2-1-21 and AIM 4-1-15: the clock position is from the pilot's
+ground track, distance is whole miles, and the altitude is rounded to the nearest hundred feet.
+The pilot replies `looking`, `traffic in sight`, or `negative contact`; `parse_pilot` reports these as
+`PilotRequest::TrafficLooking`, `TrafficInSight`, and `NegativeContact`. See
+[tower and approach training](atc.md#traffic-advisories-and-radio-discipline).
 
 `facility_kind`, `speaker`, and `reception` provide readable labels for UI/debrief clients.
 `Transmission.speaker_name` stores the label at emission, so saved records do not require the

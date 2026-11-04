@@ -1,5 +1,7 @@
 use super::*;
 use flightcraft_world::{geo::LocalProjection, procedures::ProcedureKind};
+/// Answered traffic advisories needed before the radio task can complete.
+const RADIO_ADVISORIES_REQUIRED: u32 = 2;
 #[derive(Clone, Debug)]
 pub(crate) struct ApproachPath {
     pub endpoint: GeoPoint,
@@ -270,6 +272,9 @@ impl Command for LessonStart {
             apply_failure(&mut next, *failure)?;
         }
         next.sequence_comms();
+        if let Some(traffic) = setup.traffic {
+            next.start_lesson_traffic(&setup.airport, traffic.density)?;
+        }
         next.run(ScenarioStart {
             scenario: self.lesson.scenario.clone(),
         })?;
@@ -601,6 +606,18 @@ impl LessonRuntime {
                         && grade.observed_s >= 10.
                         && (grade.kind != InstrumentTaskKind::PartialPanel || partial)
                     {
+                        grade.done();
+                    }
+                }
+                InstrumentTaskKind::Radio => {
+                    grade.observed_s += dt;
+                    for g in s.comms.atc.compliance.iter().filter(|g| {
+                        !g.passed && (g.item.starts_with("radio_discipline:") || g.item == "missing_readback")
+                    }) {
+                        grade.fail(&g.observed);
+                    }
+                    let tally = s.radio_discipline();
+                    if tally.advisories_answered >= RADIO_ADVISORIES_REQUIRED {
                         grade.done();
                     }
                 }

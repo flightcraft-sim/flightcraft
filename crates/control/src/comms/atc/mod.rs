@@ -127,6 +127,7 @@ impl Session {
             radio_failed: self.sim.failures().radio_failure,
             light_gun: a.light_gun.clone(),
             squawk: self.glass.transponder_code.clone(),
+            radio_discipline: self.radio_discipline(),
         }
     }
     pub(super) fn active_runway(&self, airport: &str) -> Option<String> {
@@ -391,6 +392,11 @@ impl Session {
         if event.channel != Channel::Com {
             return;
         }
+        match &event.meaning {
+            Meaning::TrafficAdvisory { .. } => self.advisory_event_done(event),
+            Meaning::Fleet { call } => self.note_heard_fleet(event, call),
+            _ => {}
+        }
         if let Speaker::Facility { id, .. } = &event.speaker {
             if event.reception == Reception::Heard {
                 let now = self.sim.state().time_s;
@@ -446,9 +452,12 @@ impl Session {
         } else if event.speaker == Speaker::Pilot
             && event.reception == Reception::Heard
             && !self.sim.failures().radio_failure
-            && let Some(st) = receiver
         {
-            self.handle_pilot(event, st);
+            // Radio discipline first: a reply to a traffic call, or a call that was not for the user.
+            let answered = self.user_call_heard(event);
+            if !answered && let Some(st) = receiver {
+                self.handle_pilot(event, st);
+            }
         }
     }
     pub(super) fn atc_receiver(&self, message: &PilotMessage, khz: u32) -> Option<ComStation> {
@@ -539,7 +548,7 @@ fn new_york_controller(st: &ComStation) -> bool {
 }
 
 // NASR radio calls identify a radar facility across its sector frequencies and roles.
-fn radar_facility(station: &ComStation) -> String {
+pub(super) fn radar_facility(station: &ComStation) -> String {
     let name = station
         .metadata
         .as_ref()

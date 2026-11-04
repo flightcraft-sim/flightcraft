@@ -1,6 +1,12 @@
 use super::*;
 impl Session {
-    pub(super) fn atc_grade(&mut self, id: Option<u64>, item: &str, passed: bool, observed: String) {
+    pub(in crate::comms) fn atc_grade(
+        &mut self,
+        id: Option<u64>,
+        item: &str,
+        passed: bool,
+        observed: String,
+    ) {
         let observed = if observed.ends_with(['.', '!', '?']) {
             observed
         } else {

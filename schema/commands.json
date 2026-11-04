@@ -8025,16 +8025,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "Lesson": {
           "additionalProperties": false,
@@ -8143,6 +8152,17 @@
               "format": "double",
               "type": "number"
             },
+            "traffic": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LessonTraffic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busy-airspace traffic switched on at the start, with the user already in radar contact with\nthe approach controller of `airport` on COM1."
+            },
             "wind": {
               "$ref": "#/$defs/Weather",
               "default": {
@@ -8166,6 +8186,18 @@
             "hood",
             "look_up",
             "conditions"
+          ],
+          "type": "object"
+        },
+        "LessonTraffic": {
+          "additionalProperties": false,
+          "properties": {
+            "density": {
+              "$ref": "#/$defs/TrafficDensity"
+            }
+          },
+          "required": [
+            "density"
           ],
           "type": "object"
         },
@@ -8510,6 +8542,31 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficDensity": {
+          "oneOf": [
+            {
+              "enum": [
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "light",
+              "description": "4 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "moderate",
+              "description": "8 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "busy",
+              "description": "14 aircraft.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -10038,16 +10095,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "Lesson": {
           "additionalProperties": false,
@@ -10156,6 +10222,17 @@
               "format": "double",
               "type": "number"
             },
+            "traffic": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LessonTraffic"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busy-airspace traffic switched on at the start, with the user already in radar contact with\nthe approach controller of `airport` on COM1."
+            },
             "wind": {
               "$ref": "#/$defs/Weather",
               "default": {
@@ -10179,6 +10256,18 @@
             "hood",
             "look_up",
             "conditions"
+          ],
+          "type": "object"
+        },
+        "LessonTraffic": {
+          "additionalProperties": false,
+          "properties": {
+            "density": {
+              "$ref": "#/$defs/TrafficDensity"
+            }
+          },
+          "required": [
+            "density"
           ],
           "type": "object"
         },
@@ -10523,6 +10612,31 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficDensity": {
+          "oneOf": [
+            {
+              "enum": [
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "light",
+              "description": "4 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "moderate",
+              "description": "8 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "busy",
+              "description": "14 aircraft.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -11141,16 +11255,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "ProcedureGeometry": {
           "properties": {
@@ -11510,16 +11633,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "ProcedureGeometry": {
           "properties": {
@@ -11879,16 +12011,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "ProcedureGeometry": {
           "properties": {
@@ -12282,16 +12423,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "ProcedureGeometry": {
           "properties": {
@@ -12665,16 +12815,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "ProcedureGeometry": {
           "properties": {
@@ -16035,28 +16194,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -16065,6 +16280,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -16487,22 +16736,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -16929,6 +17197,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -35258,28 +35550,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -35288,6 +35636,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -35710,22 +36092,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -36152,6 +36553,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -42168,6 +42593,63 @@
             "reminder_s"
           ],
           "type": "object"
+        },
+        "RadioDiscipline": {
+          "description": "Radio-discipline tally for the debrief: calls to the user that were answered, and the faults.",
+          "properties": {
+            "acknowledged_other": {
+              "description": "Read back or acknowledged an instruction given to another aircraft.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_answered": {
+              "description": "Advisories the user answered (looking, in sight, negative contact, or an acknowledgment).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_issued": {
+              "description": "Initial traffic advisories spoken to the user.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "no_response": {
+              "description": "Advisories still unanswered after the repeat.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "repeats": {
+              "description": "Unanswered advisories the controller repeated.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "stepped_on": {
+              "description": "Keyed the microphone while a traffic or controller transmission was on the frequency.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "wrong_callsign": {
+              "description": "Answered or acknowledged a call that used another aircraft's callsign.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "advisories_issued",
+            "advisories_answered",
+            "repeats",
+            "wrong_callsign",
+            "acknowledged_other",
+            "stepped_on",
+            "no_response"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -42237,6 +42719,19 @@
             "$ref": "#/$defs/PendingInstruction"
           },
           "type": "array"
+        },
+        "radio_discipline": {
+          "$ref": "#/$defs/RadioDiscipline",
+          "default": {
+            "acknowledged_other": 0,
+            "advisories_answered": 0,
+            "advisories_issued": 0,
+            "no_response": 0,
+            "repeats": 0,
+            "stepped_on": 0,
+            "wrong_callsign": 0
+          },
+          "description": "Traffic advisories answered and radio-discipline faults while busy-airspace traffic runs."
         },
         "radio_failed": {
           "type": "boolean"
@@ -43134,6 +43629,63 @@
             "reminder_s"
           ],
           "type": "object"
+        },
+        "RadioDiscipline": {
+          "description": "Radio-discipline tally for the debrief: calls to the user that were answered, and the faults.",
+          "properties": {
+            "acknowledged_other": {
+              "description": "Read back or acknowledged an instruction given to another aircraft.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_answered": {
+              "description": "Advisories the user answered (looking, in sight, negative contact, or an acknowledgment).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_issued": {
+              "description": "Initial traffic advisories spoken to the user.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "no_response": {
+              "description": "Advisories still unanswered after the repeat.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "repeats": {
+              "description": "Unanswered advisories the controller repeated.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "stepped_on": {
+              "description": "Keyed the microphone while a traffic or controller transmission was on the frequency.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "wrong_callsign": {
+              "description": "Answered or acknowledged a call that used another aircraft's callsign.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "advisories_issued",
+            "advisories_answered",
+            "repeats",
+            "wrong_callsign",
+            "acknowledged_other",
+            "stepped_on",
+            "no_response"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -43203,6 +43755,19 @@
             "$ref": "#/$defs/PendingInstruction"
           },
           "type": "array"
+        },
+        "radio_discipline": {
+          "$ref": "#/$defs/RadioDiscipline",
+          "default": {
+            "acknowledged_other": 0,
+            "advisories_answered": 0,
+            "advisories_issued": 0,
+            "no_response": 0,
+            "repeats": 0,
+            "stepped_on": 0,
+            "wrong_callsign": 0
+          },
+          "description": "Traffic advisories answered and radio-discipline faults while busy-airspace traffic runs."
         },
         "radio_failed": {
           "type": "boolean"
@@ -44123,6 +44688,63 @@
             "reminder_s"
           ],
           "type": "object"
+        },
+        "RadioDiscipline": {
+          "description": "Radio-discipline tally for the debrief: calls to the user that were answered, and the faults.",
+          "properties": {
+            "acknowledged_other": {
+              "description": "Read back or acknowledged an instruction given to another aircraft.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_answered": {
+              "description": "Advisories the user answered (looking, in sight, negative contact, or an acknowledgment).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_issued": {
+              "description": "Initial traffic advisories spoken to the user.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "no_response": {
+              "description": "Advisories still unanswered after the repeat.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "repeats": {
+              "description": "Unanswered advisories the controller repeated.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "stepped_on": {
+              "description": "Keyed the microphone while a traffic or controller transmission was on the frequency.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "wrong_callsign": {
+              "description": "Answered or acknowledged a call that used another aircraft's callsign.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "advisories_issued",
+            "advisories_answered",
+            "repeats",
+            "wrong_callsign",
+            "acknowledged_other",
+            "stepped_on",
+            "no_response"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -44192,6 +44814,19 @@
             "$ref": "#/$defs/PendingInstruction"
           },
           "type": "array"
+        },
+        "radio_discipline": {
+          "$ref": "#/$defs/RadioDiscipline",
+          "default": {
+            "acknowledged_other": 0,
+            "advisories_answered": 0,
+            "advisories_issued": 0,
+            "no_response": 0,
+            "repeats": 0,
+            "stepped_on": 0,
+            "wrong_callsign": 0
+          },
+          "description": "Traffic advisories answered and radio-discipline faults while busy-airspace traffic runs."
         },
         "radio_failed": {
           "type": "boolean"
@@ -45114,6 +45749,63 @@
             "reminder_s"
           ],
           "type": "object"
+        },
+        "RadioDiscipline": {
+          "description": "Radio-discipline tally for the debrief: calls to the user that were answered, and the faults.",
+          "properties": {
+            "acknowledged_other": {
+              "description": "Read back or acknowledged an instruction given to another aircraft.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_answered": {
+              "description": "Advisories the user answered (looking, in sight, negative contact, or an acknowledgment).",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "advisories_issued": {
+              "description": "Initial traffic advisories spoken to the user.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "no_response": {
+              "description": "Advisories still unanswered after the repeat.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "repeats": {
+              "description": "Unanswered advisories the controller repeated.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "stepped_on": {
+              "description": "Keyed the microphone while a traffic or controller transmission was on the frequency.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "wrong_callsign": {
+              "description": "Answered or acknowledged a call that used another aircraft's callsign.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "advisories_issued",
+            "advisories_answered",
+            "repeats",
+            "wrong_callsign",
+            "acknowledged_other",
+            "stepped_on",
+            "no_response"
+          ],
+          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -45183,6 +45875,19 @@
             "$ref": "#/$defs/PendingInstruction"
           },
           "type": "array"
+        },
+        "radio_discipline": {
+          "$ref": "#/$defs/RadioDiscipline",
+          "default": {
+            "acknowledged_other": 0,
+            "advisories_answered": 0,
+            "advisories_issued": 0,
+            "no_response": 0,
+            "repeats": 0,
+            "stepped_on": 0,
+            "wrong_callsign": 0
+          },
+          "description": "Traffic advisories answered and radio-discipline faults while busy-airspace traffic runs."
         },
         "radio_failed": {
           "type": "boolean"
@@ -48351,28 +49056,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -48381,6 +49142,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -48803,22 +49598,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -49245,6 +50059,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -50014,22 +50852,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -52031,28 +52888,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -52061,6 +52974,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -52483,22 +53430,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -52925,6 +53891,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Trigger": {
           "oneOf": [
@@ -55500,28 +56490,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -55530,6 +56576,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -55952,22 +57032,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -56394,6 +57493,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Transmission": {
           "additionalProperties": false,
@@ -60918,16 +62041,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "Layer": {
           "additionalProperties": false,
@@ -61304,28 +62436,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -61334,6 +62522,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -61756,22 +62978,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -62340,6 +63581,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Transmission": {
           "additionalProperties": false,
@@ -65359,16 +66624,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "Layer": {
           "additionalProperties": false,
@@ -65745,28 +67019,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -65775,6 +67105,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -66197,22 +67561,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -66781,6 +68164,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Transmission": {
           "additionalProperties": false,
@@ -69802,16 +71209,25 @@
           "type": "object"
         },
         "InstrumentTaskKind": {
-          "enum": [
-            "precision",
-            "nonprecision",
-            "holding",
-            "missed",
-            "partial_panel",
-            "unusual_attitude",
-            "look_up"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "precision",
+                "nonprecision",
+                "holding",
+                "missed",
+                "partial_panel",
+                "unusual_attitude",
+                "look_up"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "radio",
+              "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+              "type": "string"
+            }
+          ]
         },
         "Layer": {
           "additionalProperties": false,
@@ -70188,28 +71604,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -70218,6 +71690,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -70640,22 +72146,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -71224,6 +72749,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Transmission": {
           "additionalProperties": false,
@@ -73971,28 +75520,84 @@
             },
             {
               "additionalProperties": false,
+              "description": "A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken\nones and are computed from the same positions `traffic.state` reports at that instant, so\ndisplays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.",
               "properties": {
                 "altitude_ft": {
+                  "description": "The traffic's altitude MSL.",
                   "format": "uint32",
                   "minimum": 0,
                   "type": "integer"
                 },
                 "callsign": {
+                  "description": "The reported aircraft's full spoken callsign.",
                   "type": "string"
                 },
                 "clock": {
+                  "description": "Clock position (1-12) relative to the user's ground track.",
                   "format": "uint8",
                   "maximum": 255,
                   "minimum": 0,
                   "type": "integer"
                 },
+                "direction": {
+                  "default": "",
+                  "description": "Direction of flight as spoken: `opposite direction`, `eastbound`, ...",
+                  "type": "string"
+                },
                 "miles": {
+                  "description": "Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).",
                   "format": "double",
                   "type": "number"
+                },
+                "miles_spoken": {
+                  "default": 0,
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "relative_altitude_ft": {
+                  "default": 0,
+                  "description": "Traffic altitude minus the user's, feet.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "repeat": {
+                  "default": false,
+                  "description": "Repeat of an unanswered advisory.",
+                  "type": "boolean"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "description": "`traffic.state` aircraft ids the advisory is about.",
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
                 },
                 "type": {
                   "const": "traffic_advisory",
                   "type": "string"
+                },
+                "updated": {
+                  "default": false,
+                  "description": "`Traffic now ...` follow-up to an earlier advisory about the same aircraft.",
+                  "type": "boolean"
+                },
+                "user_track_true_deg": {
+                  "default": 0.0,
+                  "description": "The user's ground track the clock position was measured from, true degrees.",
+                  "format": "double",
+                  "type": "number"
+                },
+                "voice": {
+                  "default": 0,
+                  "description": "Stable controller voice index 0-7, as for `fleet` calls.",
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
@@ -74001,6 +75606,40 @@
                 "clock",
                 "miles",
                 "altitude_ft"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain\nvisual separation from that traffic`, `Follow that traffic`.",
+              "properties": {
+                "kind": {
+                  "$ref": "#/$defs/TrafficFollowUpKind"
+                },
+                "target_aircraft": {
+                  "default": [],
+                  "items": {
+                    "format": "uint32",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "const": "traffic_follow_up",
+                  "type": "string"
+                },
+                "voice": {
+                  "default": 0,
+                  "format": "uint8",
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type",
+                "kind"
               ],
               "type": "object"
             },
@@ -74423,22 +76062,41 @@
           "type": "object"
         },
         "PilotRequest": {
-          "enum": [
-            "taxi",
-            "vfr_departure",
-            "ifr_clearance",
-            "ready",
-            "inbound",
-            "flight_following",
-            "bravo",
-            "approach",
-            "go_around",
-            "closed_traffic",
-            "clear_runway",
-            "handoff",
-            "position"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "taxi",
+                "vfr_departure",
+                "ifr_clearance",
+                "ready",
+                "inbound",
+                "flight_following",
+                "bravo",
+                "approach",
+                "go_around",
+                "closed_traffic",
+                "clear_runway",
+                "handoff",
+                "position"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "traffic_looking",
+              "description": "`Looking for the traffic` after an advisory.",
+              "type": "string"
+            },
+            {
+              "const": "traffic_in_sight",
+              "description": "`Traffic in sight`: the pilot sees the reported traffic.",
+              "type": "string"
+            },
+            {
+              "const": "negative_contact",
+              "description": "`Negative contact`: the pilot cannot see the reported traffic.",
+              "type": "string"
+            }
+          ]
         },
         "Precipitation": {
           "enum": [
@@ -74882,6 +76540,30 @@
             "dawn"
           ],
           "type": "string"
+        },
+        "TrafficFollowUpKind": {
+          "oneOf": [
+            {
+              "const": "no_factor",
+              "description": "`Traffic no factor.`",
+              "type": "string"
+            },
+            {
+              "const": "visual_separation",
+              "description": "`Maintain visual separation from that traffic.`",
+              "type": "string"
+            },
+            {
+              "const": "follow",
+              "description": "`Follow that traffic.` (tower sequencing)",
+              "type": "string"
+            },
+            {
+              "const": "roger",
+              "description": "`Roger.` after traffic in sight, nothing more required.",
+              "type": "string"
+            }
+          ]
         },
         "Transmission": {
           "additionalProperties": false,

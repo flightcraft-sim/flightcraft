@@ -71,11 +71,50 @@ pub enum Meaning {
     RadarContact {
         station_id: String,
     },
+    /// A controller traffic advisory to the user (JO 7110.65 2-1-21). The numbers are the spoken
+    /// ones and are computed from the same positions `traffic.state` reports at that instant, so
+    /// displays can highlight `target_aircraft` (ids from `traffic.state`) and match the words.
     TrafficAdvisory {
+        /// The reported aircraft's full spoken callsign.
         callsign: String,
+        /// Clock position (1-12) relative to the user's ground track.
         clock: u8,
+        /// Exact range in NM; the controller says it rounded to whole miles (`miles_spoken`).
         miles: f64,
+        /// The traffic's altitude MSL.
         altitude_ft: u32,
+        /// `traffic.state` aircraft ids the advisory is about.
+        #[serde(default)]
+        target_aircraft: Vec<u32>,
+        #[serde(default)]
+        miles_spoken: u32,
+        /// Traffic altitude minus the user's, feet.
+        #[serde(default)]
+        relative_altitude_ft: i32,
+        /// Direction of flight as spoken: `opposite direction`, `eastbound`, ...
+        #[serde(default)]
+        direction: String,
+        /// The user's ground track the clock position was measured from, true degrees.
+        #[serde(default)]
+        user_track_true_deg: f64,
+        /// `Traffic now ...` follow-up to an earlier advisory about the same aircraft.
+        #[serde(default)]
+        updated: bool,
+        /// Repeat of an unanswered advisory.
+        #[serde(default)]
+        repeat: bool,
+        /// Stable controller voice index 0-7, as for `fleet` calls.
+        #[serde(default)]
+        voice: u8,
+    },
+    /// A controller follow-up to the user's reply to an advisory: `Traffic no factor`, `Maintain
+    /// visual separation from that traffic`, `Follow that traffic`.
+    TrafficFollowUp {
+        kind: TrafficFollowUpKind,
+        #[serde(default)]
+        target_aircraft: Vec<u32>,
+        #[serde(default)]
+        voice: u8,
     },
     Position {
         airport: String,
@@ -117,6 +156,18 @@ pub enum Meaning {
         call: FleetCall,
     },
     Text,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TrafficFollowUpKind {
+    /// `Traffic no factor.`
+    NoFactor,
+    /// `Maintain visual separation from that traffic.`
+    VisualSeparation,
+    /// `Follow that traffic.` (tower sequencing)
+    Follow,
+    /// `Roger.` after traffic in sight, nothing more required.
+    Roger,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -45,6 +45,15 @@ pub struct LessonSetup {
     pub wind: flightcraft_world::Weather,
     #[serde(default)]
     pub failures: Vec<InstrumentFailure>,
+    /// Busy-airspace traffic switched on at the start, with the user already in radar contact with
+    /// the approach controller of `airport` on COM1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub traffic: Option<LessonTraffic>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LessonTraffic {
+    pub density: TrafficDensity,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -64,6 +73,9 @@ pub enum InstrumentTaskKind {
     PartialPanel,
     UnusualAttitude,
     LookUp,
+    /// Listening discipline on a busy frequency: answer traffic advisories, answer only calls that
+    /// use your callsign, and do not transmit over others.
+    Radio,
 }
 impl InstrumentTaskKind {
     pub fn acs(self) -> &'static str {
@@ -75,6 +87,7 @@ impl InstrumentTaskKind {
             Self::PartialPanel => "IR.VII.D",
             Self::UnusualAttitude => "IR.IV.B",
             Self::LookUp => "IR.VI.E",
+            Self::Radio => "IR.III.A",
         }
     }
 }
@@ -143,6 +156,7 @@ pub fn lesson_library() -> Result<Vec<Lesson>, CommandError> {
         include_str!("../../../../lessons/corvid-ahrs.json"),
         include_str!("../../../../lessons/corvid-display.json"),
         include_str!("../../../../lessons/unusual-attitude.json"),
+        include_str!("../../../../lessons/busy-frequency.json"),
     ]
     .iter()
     .map(|text| serde_json::from_str(text).map_err(|e| invalid("lesson.list", e.to_string())))

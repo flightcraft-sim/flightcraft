@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "id": "busy-frequency",
+  "title": "KABE busy frequency",
+  "briefing": "You are inbound to KABE in VFR conditions, already in radar contact with Allentown Approach on COM1. Fourteen other aircraft are using the airport and the frequency. Listen first, and answer only the calls that use your callsign. When the controller calls traffic, reply with your callsign and looking, traffic in sight, or negative contact. Do not read back or acknowledge instructions given to other aircraft, and do not transmit over anyone. Two answered traffic calls complete the task. This is simulated practice.",
+  "setup": {
+    "region": "eastern-pa",
+    "aircraft": "corvid-glass",
+    "airport": "KABE",
+    "procedure": "I06",
+    "mode": "ils",
+    "minimum_ft": 594,
+    "start_distance_nm": 14,
+    "airspeed_kt": 90,
+    "hood": false,
+    "look_up": false,
+    "conditions": {
+      "layers": [],
+      "visibility_sm": 10,
+      "obscuration": "none",
+      "precipitation": "none",
+      "time_of_day": "day"
+    },
+    "failures": [],
+    "wind": {
+      "wind_from_deg": 0.0,
+      "wind_speed_mps": 0.0,
+      "shear": false,
+      "turbulence": "off",
+      "seed": 0
+    },
+    "cross_track_nm": 0.8,
+    "start_altitude_ft": 3500,
+    "traffic": {
+      "density": "busy"
+    }
+  },
+  "scenario": {
+    "version": 1,
+    "id": "busy-frequency",
+    "title": "KABE busy frequency",
+    "seed": 3407,
+    "route": [
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      },
+      {
+        "reference": "KABE",
+        "altitude_msl_m": 2200,
+        "clearances": []
+      }
+    ],
+    "procedures": [
+      "KABE:I06"
+    ],
+    "steps": [
+      {
+        "id": "briefed",
+        "when": [],
+        "actions": [
+          {
+            "kind": "emit_event",
+            "name": "busy-frequency-started"
+          }
+        ]
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "title": "Radio discipline",
+      "kind": "radio",
+      "acs": "IR.III.A",
+      "tolerances": {
+        "altitude_ft": 100.0,
+        "heading_deg": 10.0,
+        "airspeed_kt": 10.0,
+        "cdi_scale": 0.75
+      }
+    }
+  ]
+}

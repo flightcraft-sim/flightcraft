@@ -125,6 +125,7 @@ pub(crate) struct Comms {
     panel: AudioPanel,
     pattern: Option<Pattern>,
     fleet: Option<fleet::Fleet>,
+    advisories: fleet::AdvisoryBook,
     traffic_calls: VecDeque<TrafficCall>,
     pending: Vec<Pending>,
     heard: VecDeque<u64>,
@@ -150,6 +151,7 @@ impl Default for Comms {
             panel: Default::default(),
             pattern: None,
             fleet: None,
+            advisories: Default::default(),
             traffic_calls: VecDeque::new(),
             pending: Vec::new(),
             heard: VecDeque::new(),
@@ -383,7 +385,7 @@ impl Command for CommsTransmit {
                 .radios
                 .get(usize::from(selected - 1))
                 .map_or(122800, |r| r.active_khz);
-            s.start_com(
+            let id = s.start_com(
                 khz,
                 Speaker::Pilot,
                 self.text,
@@ -391,7 +393,9 @@ impl Command for CommsTransmit {
                 EventSource::Pilot,
                 s.sim.state().position_m,
                 25.0,
-            )
+            );
+            s.note_user_keyed(id, khz);
+            id
         };
         let grade = if !self.intercom {
             s.grade_call(id, leg)
@@ -733,6 +737,11 @@ impl Session {
             morse_duration(morse)
         } else if let Meaning::Fleet { call } = &meaning {
             fleet_call_duration(&text, call)
+        } else if let Meaning::TrafficAdvisory { voice, .. } | Meaning::TrafficFollowUp { voice, .. } =
+            &meaning
+        {
+            // The same duration the fleet queue held the carrier for.
+            controller_voice(*voice).duration_s(&text)
         } else {
             (text.split_whitespace().count() as f64 / 2.7).clamp(1.0, 40.0)
         };

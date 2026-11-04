@@ -2,9 +2,12 @@
 //! tower and approach rules on the real frequencies, heard only where the user's radios can hear.
 //! See `docs/traffic.md`. Nothing here enters the physics state or its golden hash.
 use super::*;
+mod advisory;
 mod control;
 mod craft;
 mod field;
+pub use advisory::RadioDiscipline;
+pub(crate) use advisory::{AdvisoryBook, clock_of};
 pub(crate) use control::Fleet;
 use control::{Stage, Tx};
 use field::Field;
@@ -174,6 +177,8 @@ impl Command for SetTrafficDensity {
     const DESCRIPTION: &'static str = "Set busy-airspace traffic (off, light 4, moderate 8, busy 14 aircraft) controlled by the tower and approach rules on the real frequencies; seeded from the session weather seed.";
     type Output = FleetState;
     fn run(self, s: &mut Session) -> Result<Self::Output, CommandError> {
+        // A new traffic setup starts a new radio-discipline tally.
+        s.comms.advisories = Default::default();
         if self.density == TrafficDensity::Off {
             s.comms.fleet = None;
             return Ok(s.fleet_state());
@@ -212,6 +217,32 @@ fn fnv(text: &str) -> u64 {
 }
 
 impl Session {
+    /// Training setup: start the traffic and put the user in radar contact with the approach-low
+    /// controller of the airport, COM1 tuned to it, as an airborne continuation would be.
+    pub(crate) fn start_lesson_traffic(
+        &mut self,
+        airport: &str,
+        density: TrafficDensity,
+    ) -> Result<(), CommandError> {
+        self.execute(
+            "traffic.density",
+            serde_json::json!({"density":density,"airport":airport}),
+        )?;
+        let station = self
+            .comms
+            .fleet
+            .as_ref()
+            .map(|f| f.field.st(f.field.lo).clone())
+            .ok_or_else(|| invalid("lesson.start", "traffic needs a towered airport"))?;
+        self.execute(
+            "comms.tune",
+            serde_json::json!({"radio":1,"channel_khz":station.channel_khz}),
+        )?;
+        self.comms.atc.radar_facility = Some(super::atc::radar_facility(&station));
+        self.comms.atc.current = Some(station);
+        Ok(())
+    }
+
     fn nearest_towered(&self) -> Option<String> {
         let [pn, pe, _] = self.sim.state().position_m;
         self.stations()
@@ -393,8 +424,44 @@ impl Session {
                 .map_or_else(|| "alpha".into(), |r| r.information);
             fleet.info_at = now + 60.0;
         }
-        // Yield to anything already on a channel (the user, or a controller reply that is queued).
-        let busy: Vec<u32> = fleet
+        // A call the user keyed over was blocked: the fleet sends it again once the channel clears.
+        let blocked: Vec<u32> = fleet
+            .chans
+            .iter()
+            .filter_map(|(khz, c)| {
+                let (end, _) = c.inflight.as_ref()?;
+                let id = c.event?;
+                (*end <= now + 1e-9
+                    && self
+                        .comms
+                        .record
+                        .events
+                        .iter()
+                        .rev()
+                        .any(|e| e.id == id && e.reception == Reception::Blocked))
+                .then_some(*khz)
+            })
+            .collect();
+        fleet.repeat_blocked(&blocked);
+        fleet.advance(now, dt);
+        self.comms.fleet = Some(fleet);
+        // The controller's call to the user takes the carrier ahead of queued traffic calls.
+        self.sequence_advisories();
+        let Some(mut fleet) = self.comms.fleet.take() else {
+            return;
+        };
+        let busy = self.busy_channels(&fleet);
+        let transmissions = fleet.start_tx(now, &busy);
+        for tx in transmissions {
+            self.emit_fleet(&mut fleet, tx);
+        }
+        self.comms.fleet = Some(fleet);
+    }
+
+    /// Yield to anything already on a channel (the user, or a controller reply that is queued).
+    pub(super) fn busy_channels(&self, fleet: &Fleet) -> Vec<u32> {
+        let now = self.sim.state().time_s;
+        fleet
             .chans
             .keys()
             .copied()
@@ -416,31 +483,7 @@ impl Session {
                         .iter()
                         .any(|c| carrier_thirds_hz(c.khz) == carrier)
             })
-            .collect();
-        // A call the user keyed over was blocked: the fleet sends it again once the channel clears.
-        let blocked: Vec<u32> = fleet
-            .chans
-            .iter()
-            .filter_map(|(khz, c)| {
-                let (end, _) = c.inflight.as_ref()?;
-                let id = c.event?;
-                (*end <= now + 1e-9
-                    && self
-                        .comms
-                        .record
-                        .events
-                        .iter()
-                        .rev()
-                        .any(|e| e.id == id && e.reception == Reception::Blocked))
-                .then_some(*khz)
-            })
-            .collect();
-        fleet.repeat_blocked(&blocked);
-        let transmissions = fleet.tick(now, dt, &busy);
-        for tx in transmissions {
-            self.emit_fleet(&mut fleet, tx);
-        }
-        self.comms.fleet = Some(fleet);
+            .collect()
     }
 
     fn emit_fleet(&mut self, fleet: &mut Fleet, tx: Tx) {

@@ -103,7 +103,10 @@ fn navigator_audio_host_defaults_off_and_validates_shared_installation() {
 
 #[test]
 fn adsb_in_defaults_to_installed_with_glass_and_can_be_declared_absent() {
-    let mut config = AircraftCatalog::builtins().unwrap().resolve_aircraft("corvid-glass").unwrap();
+    let mut config = AircraftCatalog::builtins()
+        .unwrap()
+        .resolve_aircraft("corvid-glass")
+        .unwrap();
     let definition = config.installed_systems.definition.as_mut().unwrap();
     // Omitted: installed wherever there is a glass display, never without one.
     assert_eq!(definition.adsb_in, None);
@@ -116,5 +119,10 @@ fn adsb_in_defaults_to_installed_with_glass_and_can_be_declared_absent() {
     let json = serde_json::to_value(&*definition).unwrap();
     assert_eq!(json["adsb_in"], false);
     definition.adsb_in = None;
-    assert!(serde_json::to_value(&*definition).unwrap().get("adsb_in").is_none());
+    assert!(
+        serde_json::to_value(&*definition)
+            .unwrap()
+            .get("adsb_in")
+            .is_none()
+    );
 }

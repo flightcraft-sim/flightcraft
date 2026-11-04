@@ -6,8 +6,8 @@ using the same typed instructions, [shared phraseology](phraseology.md), and rea
 the user's own calls go through. You hear them when your radios can: each transmission passes the
 same tuning, power, range, and terrain line-of-sight test as every other [radio](radio.md) call.
 
-This page covers the engine, its [displays](#displays), and its voices. Traffic advisories and
-radio-discipline grading build on the same data and are separate work.
+This page covers the engine, its voices, its [displays](#displays), the controller's traffic
+advisories to the user, and radio-discipline grading.
 
 ```json
 {"command":"traffic.density","input":{"density":"busy","airport":"KABE"}}
@@ -178,9 +178,56 @@ reference, nothing an AI pilot says names anyone, and blocked or unheard calls h
 `traffic_references` (in `comms`) extracts the names from any event, so a new `Meaning` that carries
 `target_aircraft` is highlighted with no display change.
 
+## Traffic advisories to the user
+
+The controller the user is working calls traffic in the words of JO 7110.65 2-1-21 and AIM 4-1-15
+(rules and wording in [tower and approach training](atc.md#traffic-advisories-and-radio-discipline)).
+These are not `fleet` calls: they carry `meaning.type = "traffic_advisory"` with the speaker the
+facility the user is working, and the fields a display needs to show the same aircraft the pilot heard:
+
+| Field | Meaning |
+|---|---|
+| `target_aircraft` | `[id]` of the aircraft in `traffic.state`; highlight it on the map |
+| `callsign` | The aircraft's spoken callsign |
+| `clock` | 1-12, measured from the user's ground track (`user_track_true_deg`) |
+| `miles` / `miles_spoken` | Exact range in NM / the whole miles said |
+| `altitude_ft` / `relative_altitude_ft` | Traffic altitude MSL / traffic minus user, feet |
+| `direction` | `opposite direction`, `same direction`, `crossing left to right`, ... |
+| `updated`, `repeat` | `Traffic now ...` update; repeat of an unanswered call |
+| `voice` | Controller voice index 0-7, as for fleet calls |
+
+The numbers come from the same `FleetAircraft` values `traffic.state` reports at the instant the
+call starts (the advisory is computed after the traffic has moved for that tick and spoken in the same
+tick), and a test recomputes the clock, distance, and altitude from `traffic.state` and the user's
+track and requires them to match the words. The call takes the carrier through the frequency queue
+(`Fleet::claim_channel`): it waits for the carrier to be idle and for the 1.5-3.5 s gap, goes ahead of
+queued check-ins, and holds the carrier for its duration like any traffic transmission. Follow-ups
+(`Traffic no factor`, `Maintain visual separation from that traffic`, `Follow that traffic`) are
+`meaning.type = "traffic_follow_up"` with `kind` and `target_aircraft`.
+
+### Radio discipline
+
+The user must answer only calls that use their own callsign. Faults are graded in
+`atc.state.compliance` (and as `Meaning::Compliance` events, with an instructor cue) and tallied in
+`atc.state.radio_discipline`:
+
+- `radio_discipline:wrong_callsign` and `radio_discipline:acknowledged_other`: answering, reading back,
+  or acknowledging a call to another callsign (`That call was for the Skyhawk`).
+- `radio_discipline:no_response`: a traffic call, repeated after 12 s, still unanswered.
+- `radio_discipline:stepped_on`: keying while a traffic or controller transmission was on the
+  frequency. Only transmissions the user could hear count.
+- `traffic_advisory` passes when the user answers a call (`looking`, `traffic in sight`, `negative contact`).
+
+The `busy-frequency` lesson turns Busy traffic on at KABE, puts the user in radar contact with
+Allentown Approach on COM1, and grades this as the `radio` task (ACS reference IR.III.A, communicate
+and comply with ATC clearances and procedures; the traffic-advisory criteria are this project's
+addition). It completes after two answered advisories and fails on any fault above. Switching traffic
+off, or a flight reset, discards the state.
+
 ## Limits
 
 No wake model, wind, weather diversion, taxi movement (departures appear at the hold line and arrivals
-leave the runway), ground or clearance delivery exchanges, go-around sequencing beyond a simple
-circuit re-entry, or spoken traffic advisories to the user. Separation is a training model, not a certified
+leave the runway), ground or clearance delivery exchanges, or go-around sequencing beyond a simple
+circuit re-entry. One traffic call at a time (no `second traffic`), no safety alerts, and the
+traffic does not react to the user's aircraft. Separation is a training model, not a certified
 one. Traffic exists only around one airport at a time.

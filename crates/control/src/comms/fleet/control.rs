@@ -256,7 +256,70 @@ impl Fleet {
         self.craft.iter().position(|a| a.id == id)
     }
 
+    fn channel_key(&self, freq: u32) -> Option<u32> {
+        let carrier = carrier_thirds_hz(freq)?;
+        // The traffic channels are keyed by their published kHz; match by carrier.
+        Some(
+            self.chans
+                .keys()
+                .copied()
+                .find(|k| carrier_thirds_hz(*k) == Some(carrier))
+                .unwrap_or(freq),
+        )
+    }
+    /// Could a controller call to the user start now? It may only start when the carrier is idle,
+    /// past the inter-call gap, and no correction or readback is waiting.
+    pub fn channel_open(&self, freq: u32, now: f64, in_use: bool) -> bool {
+        let Some(key) = self.channel_key(freq) else {
+            return false;
+        };
+        self.chans.get(&key).is_none_or(|c| {
+            c.inflight.is_none()
+                && now >= c.quiet_until
+                && !c.queue.iter().any(|m| m.ready <= now && m.priority() <= 1)
+        }) && !in_use
+    }
+    /// A controller call to the user goes through the same frequency queue as the traffic: it holds
+    /// the carrier for its spoken duration and the usual 1.5-3.5 s gap follows it.
+    pub fn claim_channel(&mut self, freq: u32, now: f64, in_use: bool, text: &str, voice: u8) -> bool {
+        if !self.channel_open(freq, now, in_use) {
+            return false;
+        }
+        let Some(key) = self.channel_key(freq) else {
+            return false;
+        };
+        let hold = Msg {
+            ready: now,
+            seq: 0,
+            ac: 0,
+            ex: 0,
+            kind: FleetCallKind::Information,
+            role: FleetRole::Controller,
+            station: 0,
+            text: text.into(),
+            instr: Vec::new(),
+            next: Stage::Done,
+            sequence: None,
+            freq: key,
+            corrected: false,
+            repeat: false,
+        };
+        // Held for the voice's spoken duration; its audio plays after it, like a traffic call.
+        let duration = controller_voice(voice).duration_s(text);
+        let c = self.chans.entry(key).or_default();
+        c.inflight = Some((now + duration, hold));
+        c.audio_free = c.audio_free.max(now + 2.0 * duration);
+        true
+    }
+
     pub fn tick(&mut self, now: f64, dt: f64, busy: &[u32]) -> Vec<Tx> {
+        self.advance(now, dt);
+        self.start_tx(now, busy)
+    }
+
+    /// Move the traffic and let the controllers decide, without starting any transmission yet. The
+    /// session may take the carrier for a call to the user before `start_tx` hands it to a queued call.
+    pub fn advance(&mut self, now: f64, dt: f64) {
         self.clock = now;
         self.finish(now);
         for i in 0..self.craft.len() {
@@ -268,7 +331,6 @@ impl Fleet {
             self.decide(i, now);
         }
         self.craft.retain(|a| !a.gone);
-        self.start_tx(now, busy)
     }
 
     // ---------------------------------------------------------------- landing order
@@ -1507,7 +1569,7 @@ impl Fleet {
         }
     }
 
-    fn start_tx(&mut self, now: f64, busy: &[u32]) -> Vec<Tx> {
+    pub fn start_tx(&mut self, now: f64, busy: &[u32]) -> Vec<Tx> {
         let mut out = Vec::new();
         let keys: Vec<u32> = self.chans.keys().copied().collect();
         for k in keys {

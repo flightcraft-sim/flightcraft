@@ -82,7 +82,7 @@ Approach and departure accept `request flight following`, position reports such 
 `departure, leaving 400, heading 060`, and `request bravo transition`.
 Flight following assigns a deterministic four-digit octal code. Select it with the shared
 transponder control (`avionics.set`, glass transponder setting). Radar position reports produce
-radar contact, clock-position/range/altitude traffic advisories from the simulated traffic,
+radar contact, traffic advisories (see below) from the simulated traffic,
 and heading/altitude assignments or controller-initiated sector handoffs. Once radar contact has
 been heard, a frequency change between sectors of the same NASR radar facility continues that
 identification without repeating “radar contact.” A new facility identifies the aircraft again.
@@ -128,6 +128,47 @@ within 10 NM. The flown IFR preview uses a descent
 assigned by approach, then a visual-approach clearance, tower contact, and a landing clearance.
 The descent target is a training altitude above airport elevation; no minimum-vectoring-altitude
 or obstacle-clearance database is implied.
+
+## Traffic advisories and radio discipline
+
+With [busy-airspace traffic](traffic.md) on, the controller you are working calls traffic to you
+(FAA JO 7110.65 2-1-21, AIM 4-1-15): `Sling One Foxtrot Charlie, traffic, ten o'clock, three miles,
+opposite direction, Cherokee, three thousand five hundred.` Radar approach and departure advise
+aircraft in radar contact (IFR, or VFR flight following); the tower advises aircraft it is working
+within 6 NM of the field. The call must be on the frequency you transmit on, and you must be able to
+hear that controller. Traffic you have already been sequenced to follow (`Number two, follow the
+Cherokee`) is not advised again.
+
+- The clock position is measured from your **ground track**, not your heading, so a crosswind
+  correction shows in it. Distance is rounded to whole miles (never below one). The altitude is the
+  nearest hundred feet, said as `altitude indicates ...` for circuit traffic, whose readout is not
+  verified. Direction is `same direction`, `opposite direction`, `crossing left to right`, or
+  `crossing right to left`, relative to your track.
+- A call is made for traffic within about 5 NM and 1,000 ft that is closing (or within 3 NM), or that
+  is converging: closest point inside 3 NM and 1,000 ft within two minutes. One call at a time, at
+  least 20 s apart, and the carrier is taken through the traffic frequency queue, so a call never
+  overlaps another transmission.
+- Reply with your callsign and `looking`, `traffic in sight`, or `negative contact` (a bare
+  `roger` or `wilco` is accepted but the instructor says what to use). `Traffic in sight` brings `Follow
+  that traffic` from the tower when it is landing ahead of you, `Maintain visual separation from that
+  traffic` while it is still a factor, or `Roger`. `Negative contact` brings an update
+  (`Traffic now one o'clock, two miles, ...`, at most twice) or `Traffic no factor`. After `looking`
+  the controller updates once the geometry changes, or says `Traffic no factor` when it clears.
+- Silence for 12 s after the call ends is repeated once; silence after the repeat is a fault.
+
+Radio discipline is graded in `atc.state.compliance` and beside the transmissions as
+`Meaning::Compliance`; `atc.state.radio_discipline` carries the tally. `traffic_advisory` passes when you
+answer. Faults, all `passed: false`:
+
+| Item | When |
+|---|---|
+| `radio_discipline:wrong_callsign` | Your transmission uses another aircraft's callsign and not yours (`That call was for the Skyhawk`) |
+| `radio_discipline:acknowledged_other` | You read back or `roger` an instruction the controller gave another aircraft, within 25 s, with nothing outstanding for you |
+| `radio_discipline:stepped_on` | You keyed the microphone while a traffic or controller transmission was still on your frequency |
+| `radio_discipline:no_response` | A traffic call was repeated and still not answered |
+
+The `busy-frequency` lesson (KABE, VFR, busy traffic, in radar contact on COM1) completes after two
+answered advisories and fails on any of these faults or a missing readback.
 
 ## Readbacks, grammar, and compliance
 

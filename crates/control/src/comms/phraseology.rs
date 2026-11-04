@@ -513,6 +513,117 @@ pub fn sequence_position(leg: &str, miles_final: Option<u32>) -> String {
         _ => format!("on {leg}"),
     }
 }
+/// How the traffic's altitude is reported in an advisory (JO 7110.65 2-1-21, AIM 4-1-15).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdvisoryAltitude {
+    /// Verified altitude, nearest hundred feet: `three thousand five hundred`.
+    Known(u32),
+    /// Unverified altitude readout: `altitude indicates three thousand five hundred`.
+    Indicates(u32),
+    /// No altitude information: `altitude unknown`.
+    Unknown,
+}
+/// Clock position as the controller says it: `one o'clock` through `twelve o'clock`.
+pub fn clock_position(clock: u8) -> String {
+    const WORDS: [&str; 12] = [
+        "twelve", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven",
+    ];
+    format!(
+        "{} o'clock",
+        WORDS.get(usize::from(clock % 12)).copied().unwrap_or("twelve")
+    )
+}
+/// Whole-mile distance, at least one: `one mile`, `three miles`.
+pub fn advisory_miles(miles: u32) -> String {
+    let miles = miles.max(1);
+    format!(
+        "{} {}",
+        digits(miles, 1),
+        if miles == 1 { "mile" } else { "miles" }
+    )
+}
+/// Eight-point compass word for a magnetic track: `eastbound`, `southwestbound`.
+pub fn track_bound(track_deg: f64) -> &'static str {
+    const POINTS: [&str; 8] = [
+        "northbound",
+        "northeastbound",
+        "eastbound",
+        "southeastbound",
+        "southbound",
+        "southwestbound",
+        "westbound",
+        "northwestbound",
+    ];
+    POINTS
+        .get(((track_deg.rem_euclid(360.) + 22.5) / 45.) as usize % 8)
+        .copied()
+        .unwrap_or("northbound")
+}
+/// Direction of the traffic's flight relative to the pilot's ground track (`relative_deg` is the
+/// traffic track minus the pilot track): same direction, opposite direction, or crossing. Falls
+/// back to the compass word when the pilot has no track (JO 7110.65 2-1-21).
+pub fn traffic_direction(
+    relative_deg: f64,
+    traffic_magnetic_track_deg: f64,
+    pilot_has_track: bool,
+) -> String {
+    if !pilot_has_track {
+        return track_bound(traffic_magnetic_track_deg).into();
+    }
+    let d = (relative_deg + 180.).rem_euclid(360.) - 180.;
+    if d.abs() <= 30. {
+        "same direction".into()
+    } else if d.abs() >= 150. {
+        "opposite direction".into()
+    } else if d > 0. {
+        "crossing left to right".into()
+    } else {
+        "crossing right to left".into()
+    }
+}
+/// JO 7110.65 2-1-21 / AIM 4-1-15: `Traffic, two o'clock, three miles, opposite direction, Cessna,
+/// altitude indicates three thousand five hundred.` The caller supplies the clock position from the
+/// pilot's ground track, whole miles, and the type when known; the callsign prefix is added by the
+/// radio layer. An update reads `Traffic now one o'clock, two miles, ...`.
+pub fn traffic_advisory(
+    clock: u8,
+    miles: u32,
+    direction: &str,
+    aircraft_type: Option<&str>,
+    altitude: AdvisoryAltitude,
+    updated: bool,
+) -> String {
+    let altitude = match altitude {
+        AdvisoryAltitude::Known(ft) => altitude_words(ft),
+        AdvisoryAltitude::Indicates(ft) => format!("altitude indicates {}", altitude_words(ft)),
+        AdvisoryAltitude::Unknown => "altitude unknown".into(),
+    };
+    let kind = aircraft_type
+        .filter(|t| !t.is_empty())
+        .map(|t| format!(" {t},"))
+        .unwrap_or_default();
+    format!(
+        "{} {}, {}, {direction},{kind} {altitude}.",
+        if updated { "Traffic now" } else { "Traffic," },
+        clock_position(clock),
+        advisory_miles(miles),
+    )
+}
+fn altitude_words(feet: u32) -> String {
+    altitude((feet + 50) / 100 * 100)
+}
+/// The controller's answer when the reported traffic is no longer a factor.
+pub fn traffic_no_factor() -> &'static str {
+    "Traffic no factor."
+}
+/// Visual separation instruction after `traffic in sight` (JO 7110.65 7-2-1).
+pub fn maintain_visual_separation() -> &'static str {
+    "Maintain visual separation from that traffic."
+}
+/// Sequencing instruction after `traffic in sight` when the traffic is ahead in the landing order.
+pub fn follow_that_traffic() -> &'static str {
+    "Follow that traffic."
+}
 /// Radar identification without a position fix (the aircraft is already inside the sector).
 pub fn radar_identified() -> &'static str {
     "Radar contact."

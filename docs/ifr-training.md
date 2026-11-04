@@ -14,7 +14,8 @@ glidepath, leaving time for ATIS and approach contact before the FAF.
 Open **Instructor station**, choose an instrument lesson, and select **Start IFR lesson**.
 Review the briefing, then Resume. The library includes KABE ILS 06, KABE RNAV 06 LPV and LNAV,
 KMMU RNAV 05 LPV and LNAV, KABE LOC 06, missed approaches at DA and MDA, JISTO holding,
-Corvid vacuum/AHRS/display failures, and unusual attitude recovery. Both regional catalogues
+Corvid vacuum/AHRS/display failures, unusual attitude recovery, and a KABE busy-frequency radio
+discipline lesson. Both regional catalogues
 are required to start the entire library. Regional terrain must be installed through the normal
 data installation workflow.
 
@@ -36,6 +37,7 @@ of who flies or speaks.
 | Approach with failed primary instruments | IR.VII.D | Final approach evidence while the failure is present |
 | Unusual attitude recovery | IR.IV.B | Controlled return to stable flight after instructor handback |
 | Look up and visual transition | IR.VI.E | Hood removal and measured cloud boundary |
+| Radio discipline on a busy frequency (`busy-frequency`) | IR.III.A | Two traffic advisories answered; no answers to other aircraft's calls, no unanswered calls, no transmitting over traffic ([details](atc.md#traffic-advisories-and-radio-discipline)) |
 
 The ACS does not supply the lesson's hold timing/leg-length acceptance margins or numerical
 unusual-attitude completion thresholds. Those are explicitly instructor criteria: 10 seconds,

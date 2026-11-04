@@ -202,6 +202,9 @@ pub struct AtcState {
     pub radio_failed: bool,
     pub light_gun: Option<LightGunState>,
     pub squawk: String,
+    /// Traffic advisories answered and radio-discipline faults while busy-airspace traffic runs.
+    #[serde(default)]
+    pub radio_discipline: RadioDiscipline,
 }
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Atc {

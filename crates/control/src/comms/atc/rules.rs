@@ -760,41 +760,62 @@ impl Session {
             },
         );
     }
+    /// Circuit traffic from `traffic.set` is called at radar contact. Busy-airspace traffic is advised
+    /// by the fleet advisory engine instead (it paces calls, follows up, and grades the replies).
     fn traffic_advisory(&mut self, st: &ComStation) {
-        let [pn, pe, pd] = self.sim.state().position_m;
-        let heading = self.sim.readout().heading_grid_rad;
-        if let Some(a) = self.traffic_state().aircraft.iter().min_by(|a, b| {
-            distance(a.position_m, [pn, pe, pd]).total_cmp(&distance(b.position_m, [pn, pe, pd]))
-        }) {
-            let [n, e, _] = a.position_m;
-            let nm = libm::hypot(n - pn, e - pe) / 1852.;
-            if nm <= 15. {
-                let clock = ((libm::atan2(e - pe, n - pn) - heading)
-                    .to_degrees()
-                    .rem_euclid(360.)
-                    / 30.)
-                    .round() as u8;
-                let clock = if clock.is_multiple_of(12) { 12 } else { clock % 12 };
-                self.atc_reply(
-                    st,
-                    format!(
-                        "Traffic, {} o'clock, {} miles, {}, {}.",
-                        phraseology::digits(u32::from(clock), 1),
-                        phraseology::digits(nm.round().max(1.) as u32, 1),
-                        a.aircraft_type,
-                        phraseology::altitude(
-                            (a.altitude_msl_m / 0.3048 / 100.).round().max(0.) as u32 * 100
-                        )
-                    ),
-                    Meaning::TrafficAdvisory {
-                        callsign: a.callsign.clone(),
-                        clock,
-                        miles: nm,
-                        altitude_ft: (a.altitude_msl_m / 0.3048).max(0.) as u32,
-                    },
-                );
-            }
+        if self.comms.fleet.is_some() {
+            return;
         }
+        let [pn, pe, pd] = self.sim.state().position_m;
+        let user = self.user_motion();
+        let Some(a) = self.traffic_state().aircraft.into_iter().min_by(|a, b| {
+            distance(a.position_m, [pn, pe, pd]).total_cmp(&distance(b.position_m, [pn, pe, pd]))
+        }) else {
+            return;
+        };
+        let [n, e, _] = a.position_m;
+        let nm = libm::hypot(n - pn, e - pe) / 1852.;
+        if nm > 15. {
+            return;
+        }
+        let grid_north = self.sim.heading_reference().grid_north_true_rad;
+        let bearing_true = (libm::atan2(e - pe, n - pn) + grid_north).to_degrees();
+        let clock = super::super::fleet::clock_of(bearing_true, user.track_true_deg);
+        let track_true = (a.heading_grid_rad + grid_north).to_degrees();
+        let magnetic = self
+            .sim
+            .heading_reference()
+            .grid_to_magnetic(a.heading_grid_rad)
+            .to_degrees();
+        let altitude_ft = (a.altitude_msl_m / 0.3048).max(0.).round() as u32;
+        let direction =
+            phraseology::traffic_direction(track_true - user.track_true_deg, magnetic, user.has_track);
+        let miles = nm.round().max(1.) as u32;
+        self.atc_reply(
+            st,
+            phraseology::traffic_advisory(
+                clock,
+                miles,
+                &direction,
+                Some(&a.aircraft_type),
+                phraseology::AdvisoryAltitude::Indicates(altitude_ft),
+                false,
+            ),
+            Meaning::TrafficAdvisory {
+                callsign: a.callsign.clone(),
+                clock,
+                miles: nm,
+                altitude_ft,
+                target_aircraft: Vec::new(),
+                miles_spoken: miles,
+                relative_altitude_ft: (f64::from(altitude_ft) + pd / 0.3048).round() as i32,
+                direction,
+                user_track_true_deg: user.track_true_deg,
+                updated: false,
+                repeat: false,
+                voice: (st.id.len() % 8) as u8,
+            },
+        );
     }
 }
 fn distance([an, ae, _]: [f64; 3], [bn, be, _]: [f64; 3]) -> f64 {

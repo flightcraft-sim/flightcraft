@@ -1164,15 +1164,24 @@
       ]
     },
     "InstrumentTaskKind": {
-      "type": "string",
-      "enum": [
-        "precision",
-        "nonprecision",
-        "holding",
-        "missed",
-        "partial_panel",
-        "unusual_attitude",
-        "look_up"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "precision",
+            "nonprecision",
+            "holding",
+            "missed",
+            "partial_panel",
+            "unusual_attitude",
+            "look_up"
+          ]
+        },
+        {
+          "description": "Listening discipline on a busy frequency: answer traffic advisories, answer only calls that\nuse your callsign, and do not transmit over others.",
+          "type": "string",
+          "const": "radio"
+        }
       ]
     },
     "LessonSetup": {
@@ -1240,6 +1249,17 @@
           "type": "number",
           "format": "double"
         },
+        "traffic": {
+          "description": "Busy-airspace traffic switched on at the start, with the user already in radar contact with\nthe approach controller of `airport` on COM1.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LessonTraffic"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "wind": {
           "$ref": "#/$defs/Weather",
           "default": {
@@ -1264,6 +1284,18 @@
         "hood",
         "look_up",
         "conditions"
+      ]
+    },
+    "LessonTraffic": {
+      "type": "object",
+      "properties": {
+        "density": {
+          "$ref": "#/$defs/TrafficDensity"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "density"
       ]
     },
     "Obscuration": {
@@ -1606,6 +1638,31 @@
         "dusk",
         "night",
         "dawn"
+      ]
+    },
+    "TrafficDensity": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "off"
+          ]
+        },
+        {
+          "description": "4 aircraft.",
+          "type": "string",
+          "const": "light"
+        },
+        {
+          "description": "8 aircraft.",
+          "type": "string",
+          "const": "moderate"
+        },
+        {
+          "description": "14 aircraft.",
+          "type": "string",
+          "const": "busy"
+        }
       ]
     },
     "Trigger": {

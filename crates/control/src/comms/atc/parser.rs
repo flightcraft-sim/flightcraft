@@ -32,6 +32,12 @@ pub enum PilotRequest {
     ClearRunway,
     Handoff,
     Position,
+    /// `Looking for the traffic` after an advisory.
+    TrafficLooking,
+    /// `Traffic in sight`: the pilot sees the reported traffic.
+    TrafficInSight,
+    /// `Negative contact`: the pilot cannot see the reported traffic.
+    NegativeContact,
 }
 const ALPHABET: [&str; 26] = [
     "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet", "kilo",
@@ -380,7 +386,22 @@ pub fn parse_pilot(text: &str, callsign: &PilotCallsign) -> PilotMessage {
                 && !prefix.contains(&callsign.registration.to_lowercase()))
             .then_some(prefix)
         });
-    let request = if contains("go around") || contains("going around") || contains("missed approach") {
+    let request = if contains("negative contact")
+        || contains("no contact")
+        || contains("negative traffic")
+        || (contains("traffic") && contains("not in sight"))
+    {
+        Some(PilotRequest::NegativeContact)
+    } else if (contains("traffic") && contains("in sight"))
+        || contains("have the traffic")
+        || contains("have him")
+        || contains("traffic contact")
+        || contains("contact the traffic")
+    {
+        Some(PilotRequest::TrafficInSight)
+    } else if contains("looking") {
+        Some(PilotRequest::TrafficLooking)
+    } else if contains("go around") || contains("going around") || contains("missed approach") {
         Some(PilotRequest::GoAround)
     } else if contains("clear of runway") || contains("clear of the runway") {
         Some(PilotRequest::ClearRunway)

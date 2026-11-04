@@ -24,8 +24,9 @@ fn lessons_validate_start_and_read_without_advancing_time() {
     require_region_data!();
     let mut s = session();
     for lesson in lesson_library().unwrap() {
+        let hood = lesson.setup.hood;
         s.run(LessonStart { lesson }).unwrap();
-        assert!(s.sim().hood());
+        assert_eq!(s.sim().hood(), hood);
         let hash = s.sim().state_hash();
         let a = s.execute("lesson.debrief", json!({})).unwrap();
         assert_eq!(a, s.execute("lesson.debrief", json!({})).unwrap());
