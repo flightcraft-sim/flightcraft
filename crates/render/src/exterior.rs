@@ -894,12 +894,32 @@ pub struct PbrRenderer {
     probe_sampler: wgpu::Sampler,
     fallback_probe: wgpu::TextureView,
     vertices: wgpu::Buffer,
-    image_cache: Vec<(PbrImage, bool, bool, wgpu::TextureView)>,
+    image_cache: SharedPbrImages,
     materials: Vec<PbrGpuMaterial>,
     draws: Vec<PbrDraw>,
 }
+/// Uploaded exterior texture maps (image, sRGB, normal map, upload size limit, view). Every view of
+/// the aircraft (the main outside view and the exterior inset) shares one set, so a second
+/// view costs a few kilobytes of bind groups rather than another few hundred megabytes of mip
+/// chains. Uses a plain `Arc<Mutex>`: all access is from the render thread, briefly.
+pub type SharedPbrImages = Arc<std::sync::Mutex<Vec<(PbrImage, bool, bool, u32, wgpu::TextureView)>>>;
+
+/// Source bytes of cached maps above which the shared set is dropped and rebuilt on demand. Large
+/// enough for the five 4096 maps of the largest allowed aircraft plus its lower detail levels.
+pub const PBR_IMAGE_CACHE_BYTES: usize = 3 * MAX_PBR_TEXTURE_BYTES / 2;
+
+/// How many cached texture maps the shared set holds; for the guard test and diagnostics.
+#[must_use]
+pub fn shared_image_count(images: &SharedPbrImages) -> usize {
+    images.lock().map_or(0, |cache| cache.len())
+}
+
 impl PbrRenderer {
     pub fn new(device: &wgpu::Device) -> Self {
+        Self::with_shared_images(device, SharedPbrImages::default())
+    }
+    /// A renderer that uploads its texture maps into, and reuses them from, `images`.
+    pub fn with_shared_images(device: &wgpu::Device, images: SharedPbrImages) -> Self {
         use wgpu::util::DeviceExt;
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("exterior PBR frame"),
@@ -1071,7 +1091,7 @@ impl PbrRenderer {
             probe_sampler,
             fallback_probe,
             vertices,
-            image_cache: Vec::new(),
+            image_cache: images,
             materials: Vec::new(),
             draws: Vec::new(),
         }
@@ -1147,13 +1167,17 @@ impl PbrRenderer {
         });
         let defaults = [[255; 4], [255; 4], [128, 128, 255, 255], [255; 4], [255; 4]];
         let mut gpu_materials = Vec::with_capacity(materials.len());
-        let mut cached_views = std::mem::take(&mut self.image_cache);
-        // Preserve immutable texture mip chains across aircraft LOD changes, bounded per view.
+        let mut cached_views = self
+            .image_cache
+            .lock()
+            .map_err(|_| "exterior texture cache is poisoned".to_string())?;
+        // Preserve immutable texture mip chains across aircraft LOD changes and between views,
+        // bounded in total.
         if cached_views
             .iter()
-            .map(|(image, _, _, _)| image.rgba.len())
+            .map(|(image, _, _, _, _)| image.rgba.len())
             .sum::<usize>()
-            > 256 * 1024 * 1024
+            > PBR_IMAGE_CACHE_BYTES
         {
             cached_views.clear();
         }
@@ -1195,12 +1219,14 @@ impl PbrRenderer {
                         .map_or(([1, 1], neutral.as_slice()), |x| (x.size, x.rgba.as_ref()));
                     let srgb = i == 0 || i == 4;
                     if let Some(image) = image
-                        && let Some((_, _, _, view)) = cached_views.iter().find(|(seen, space, normal, _)| {
-                            *space == srgb
-                                && *normal == (i == 2)
-                                && seen.size == image.size
-                                && (Arc::ptr_eq(&seen.rgba, &image.rgba) || seen.rgba == image.rgba)
-                        })
+                        && let Some((_, _, _, _, view)) =
+                            cached_views.iter().find(|(seen, space, normal, limit, _)| {
+                                *space == srgb
+                                    && *normal == (i == 2)
+                                    && *limit == max_dimension
+                                    && seen.size == image.size
+                                    && (Arc::ptr_eq(&seen.rgba, &image.rgba) || seen.rgba == image.rgba)
+                            })
                     {
                         return view.clone();
                     }
@@ -1262,7 +1288,7 @@ impl PbrRenderer {
                     }
                     let view = texture.create_view(&Default::default());
                     if let Some(image) = image {
-                        cached_views.push((image.clone(), srgb, i == 2, view.clone()));
+                        cached_views.push((image.clone(), srgb, i == 2, max_dimension, view.clone()));
                     }
                     view
                 })
@@ -1288,7 +1314,7 @@ impl PbrRenderer {
                 alpha_mode: material.alpha_mode,
             });
         }
-        self.image_cache = cached_views;
+        drop(cached_views);
         self.materials = gpu_materials;
         self.draws.clear();
         Ok(())
@@ -1720,6 +1746,42 @@ mod pbr_tests {
             prepare_pbr(&frame, &[triangle(2., 0), triangle(-1., 0)], &[AlphaMode::Blend]).unwrap();
         assert_eq!(vertices[0].position[2], -1.);
         assert_eq!(vertices[3].position[2], 2.);
+    }
+    /// A second view of the same aircraft (the exterior inset) must not hold a second copy of the
+    /// texture mip chains: that doubled GPU memory and made the WebGPU smoke run out of it.
+    #[test]
+    fn shared_image_budget_holds_the_largest_aircraft_without_eviction() {
+        // A budget smaller than one aircraft's maps would make every view clear the shared set
+        // and re-upload everything, which is the duplication again.
+        const { assert!(PBR_IMAGE_CACHE_BYTES >= MAX_PBR_TEXTURE_BYTES) };
+    }
+    #[test]
+    #[ignore = "requires an offscreen GPU"]
+    fn two_views_sharing_images_upload_each_map_once() {
+        block_on(async {
+            let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+            let adapter = instance.request_adapter(&Default::default()).await.unwrap();
+            let (device, queue) = adapter.request_device(&Default::default()).await.unwrap();
+            let shared = SharedPbrImages::default();
+            let mut main = PbrRenderer::with_shared_images(&device, shared.clone());
+            let mut inset = PbrRenderer::with_shared_images(&device, shared.clone());
+            let image = PbrImage {
+                size: [8, 8],
+                rgba: vec![200u8; 8 * 8 * 4].into(),
+            };
+            let material = PbrMaterial {
+                images: [Some(image), None, None, None, None],
+                ..Default::default()
+            };
+            main.set_materials_with_limit(&device, &queue, std::slice::from_ref(&material), 4096)
+                .unwrap();
+            let after_main = shared_image_count(&shared);
+            inset
+                .set_materials_with_limit(&device, &queue, std::slice::from_ref(&material), 4096)
+                .unwrap();
+            assert_eq!(after_main, 1);
+            assert_eq!(shared_image_count(&shared), after_main);
+        });
     }
     fn block_on<F: std::future::Future>(future: F) -> F::Output {
         struct Wake(std::thread::Thread);

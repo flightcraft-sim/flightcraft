@@ -99,6 +99,8 @@ struct DrawMesh {
 }
 
 struct Gpu {
+    /// Exterior texture maps shared by every view that draws the aircraft.
+    pbr_images: crate::exterior::SharedPbrImages,
     empty: wgpu::BindGroup,
     scenery: crate::scenery::gpu::Pipeline,
     shadows: crate::shadows::Pipelines,
@@ -124,6 +126,7 @@ struct Gpu {
 
 /// Install resources in egui's callback store; there is one scene per viewport.
 pub fn initialize(state: &egui_wgpu::RenderState, palette: Palette) {
+    install_diagnostics(&state.device, &state.adapter);
     state.renderer.write().callback_resources.insert(Gpu::new(
         &state.device,
         state.target_format,
@@ -139,6 +142,26 @@ pub fn initialize(state: &egui_wgpu::RenderState, palette: Palette) {
             1
         },
     ));
+}
+
+/// Log the adapter's limits, every uncaptured GPU error, and device loss, so the first failure
+/// is on record (the browser console on the web) instead of only the panic it later causes.
+fn install_diagnostics(device: &wgpu::Device, adapter: &wgpu::Adapter) {
+    let limits = device.limits();
+    log::info!(
+        "GPU limits: texture 2D {}, buffer {} bytes, uniform binding {} bytes, storage binding {} bytes",
+        limits.max_texture_dimension_2d,
+        limits.max_buffer_size,
+        limits.max_uniform_buffer_binding_size,
+        limits.max_storage_buffer_binding_size
+    );
+    log::info!("GPU adapter: {:?}", adapter.get_info());
+    device.on_uncaptured_error(std::sync::Arc::new(|error| {
+        log::error!("uncaptured GPU error: {error}");
+    }));
+    device.set_device_lost_callback(|reason, message| {
+        log::error!("GPU device lost ({reason:?}): {message}");
+    });
 }
 
 /// Register the shared terrain target as an egui image, avoiding a separate composite pipeline
@@ -402,6 +425,7 @@ impl Gpu {
         let vision_targets = targets(device, [750, 285], &texture_layout);
         let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout, anisotropy);
         Self {
+            pbr_images: Default::default(),
             empty: device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("unused scene slots"),
                 layout: &empty,
@@ -600,7 +624,7 @@ impl CallbackTrait for SceneCallback {
             let exterior = view.exterior.get_or_insert_with(|| ExteriorGpu {
                 pose: None,
                 eye: None,
-                pbr: crate::exterior::PbrRenderer::new(device),
+                pbr: crate::exterior::PbrRenderer::with_shared_images(device, gpu.pbr_images.clone()),
                 asset: None,
                 lod: None,
                 ready: false,
