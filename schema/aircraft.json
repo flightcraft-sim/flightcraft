@@ -230,6 +230,17 @@
               "type": "null"
             }
           ]
+        },
+        "procedures": {
+          "description": "Normal-procedure checklists (before start through securing), versioned independently.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcedureSet"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -958,6 +969,154 @@
         }
       ]
     },
+    "Checklist": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChecklistItem"
+          }
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChecklistLimit"
+          }
+        },
+        "phase": {
+          "$ref": "#/$defs/ChecklistPhase"
+        },
+        "poh_ref": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "phase",
+        "poh_ref",
+        "items"
+      ]
+    },
+    "ChecklistItem": {
+      "type": "object",
+      "properties": {
+        "control": {
+          "description": "Panel element id to highlight on the dash.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "note": {
+          "description": "Extra caution or note shown beneath the item.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "poh_ref": {
+          "description": "Section of the pilot's operating handbook, e.g. \"POH 4.5.2 item 7\".",
+          "type": "string"
+        },
+        "response": {
+          "description": "The response (\"on\", \"clear of people and obstructions\").",
+          "type": "string"
+        },
+        "stop_on_failure": {
+          "description": "A go/no-go gate: if the verify binding is unmet or fails, the pilot must stop (abort)\nrather than carry on to later items.",
+          "type": "boolean"
+        },
+        "text": {
+          "description": "The challenge, as read from the POH.",
+          "type": "string"
+        },
+        "timer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemTimer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unverified": {
+          "description": "Set when a number comes from outside the pilot's operating handbook and has not been\nverified against that source (\"per Rotax 912 iS operator's manual, not verified\").",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verify": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Verify"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "response",
+        "poh_ref"
+      ]
+    },
+    "ChecklistLimit": {
+      "description": "A condition that must not be allowed to persist; shown as a warning while it holds.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "poh_ref": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/$defs/Verify"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "message",
+        "poh_ref",
+        "when"
+      ]
+    },
+    "ChecklistPhase": {
+      "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+      "type": "string",
+      "enum": [
+        "before_start",
+        "engine_start",
+        "warm_up",
+        "run_up",
+        "taxi",
+        "before_takeoff",
+        "shutdown",
+        "securing"
+      ]
+    },
     "ControlBinding": {
       "type": "string",
       "enum": [
@@ -1462,8 +1621,24 @@
             "lane_a_load": {
               "type": "string"
             },
+            "lane_a_only_power_fraction": {
+              "description": "Power fraction with only lane A running; defaults to `single_lane_power_fraction`.\nThe Sling 2 POH allows no drop with lane B off, so its lane A carries the engine fully.",
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
             "lane_b_load": {
               "type": "string"
+            },
+            "lane_b_only_power_fraction": {
+              "description": "Power fraction with only lane B running; defaults to `single_lane_power_fraction`.",
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
             },
             "manifold_pressure_fraction": {
               "description": "Absolute inlet pressure / ambient pressure against throttle demand.",
@@ -2025,6 +2200,37 @@
         "action"
       ]
     },
+    "ItemTimer": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TimerKind"
+        },
+        "label": {
+          "type": "string"
+        },
+        "seconds": {
+          "type": "number",
+          "format": "double"
+        },
+        "start_when": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Verify"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "kind",
+        "seconds"
+      ]
+    },
     "Keepout": {
       "type": "object",
       "properties": {
@@ -2056,6 +2262,13 @@
         "id",
         "min_m",
         "max_m"
+      ]
+    },
+    "LaneId": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b"
       ]
     },
     "LateralMode": {
@@ -3006,6 +3219,34 @@
         "fuel"
       ]
     },
+    "ProcedureSet": {
+      "description": "All normal-procedure checklists of an aircraft, with an explicit data version.",
+      "type": "object",
+      "properties": {
+        "checklists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Checklist"
+          }
+        },
+        "source": {
+          "description": "Document and revision the lists were transcribed from.",
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "source",
+        "checklists"
+      ]
+    },
     "Prop": {
       "type": "object",
       "properties": {
@@ -3109,6 +3350,13 @@
         "prop_ct",
         "prop_cp",
         "power_density"
+      ]
+    },
+    "PumpId": {
+      "type": "string",
+      "enum": [
+        "one",
+        "two"
       ]
     },
     "Rocker": {
@@ -3417,6 +3665,26 @@
         "gauge_bias_kg"
       ]
     },
+    "TimerKind": {
+      "description": "How a POH time limit applies to an item.",
+      "oneOf": [
+        {
+          "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+          "type": "string",
+          "const": "max"
+        },
+        {
+          "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+          "type": "string",
+          "const": "within"
+        },
+        {
+          "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+          "type": "string",
+          "const": "hold"
+        }
+      ]
+    },
     "TouchControlDefinition": {
       "type": "object",
       "properties": {
@@ -3595,6 +3863,595 @@
         "spin_up_s",
         "erection_rate_rps",
         "drift_rps"
+      ]
+    },
+    "Verify": {
+      "description": "A condition on simulator state. Used for item completion, timers, and limit warnings.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "master"
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "on"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "avionics"
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "on"
+          ]
+        },
+        {
+          "description": "Ignition switches: both magnetos, or both electronic lanes with the key on.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "ignition"
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "on"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "lane"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "lane",
+            "on"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pump"
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "pump",
+            "on"
+          ]
+        },
+        {
+          "description": "Backup battery switch for a named circuit, optionally with a minimum voltage.",
+          "type": "object",
+          "properties": {
+            "circuit": {
+              "$ref": "#/$defs/BackupCircuit"
+            },
+            "kind": {
+              "type": "string",
+              "const": "backup_battery"
+            },
+            "min_voltage": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "circuit",
+            "on"
+          ]
+        },
+        {
+          "description": "Any of the listed selector positions (`left`, `right`, `both`, `off`).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "fuel_selector"
+            },
+            "positions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "positions"
+          ]
+        },
+        {
+          "description": "Any panel control by element id, in the control's own 0..1 range.",
+          "type": "object",
+          "properties": {
+            "control": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "panel"
+            },
+            "max": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "control"
+          ]
+        },
+        {
+          "description": "Crankshaft rpm.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "rpm"
+            },
+            "max": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "oil_temp"
+            },
+            "max_c": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min_c": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "oil_pressure"
+            },
+            "max_bar": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min_bar": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "fuel_pressure"
+            },
+            "min_kpa": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "min_kpa"
+          ]
+        },
+        {
+          "description": "Main bus voltage.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "bus_voltage"
+            },
+            "max_v": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min_v": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "engine_running"
+            },
+            "running": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "running"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "engaged": {
+              "type": "boolean"
+            },
+            "kind": {
+              "type": "string",
+              "const": "starter"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "engaged"
+          ]
+        },
+        {
+          "description": "Wheel brakes at or above half pressure; the simulator has no separate park-brake valve.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "brake"
+            },
+            "set": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "set"
+          ]
+        },
+        {
+          "description": "Flap position as a fraction of full travel.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "flaps"
+            },
+            "max": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Pitch trim within `tolerance` of neutral (normalised, 0..0.3).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "trim_neutral"
+            },
+            "tolerance": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "tolerance"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "throttle"
+            },
+            "max": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            },
+            "min": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Sliding canopy closed and latched (always true on aircraft without one).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "canopy_latched"
+            },
+            "latched": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "latched"
+          ]
+        },
+        {
+          "description": "A run-up check the simulator has observed and found within limits.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "check"
+            }
+          },
+          "oneOf": [
+            {
+              "description": "One ignition lane switched off at `at_rpm`; the other must carry the engine. The recorded\ndrop must not exceed `max_drop_rpm` plus the measurement allowance `allow_rpm`.",
+              "type": "object",
+              "properties": {
+                "allow_rpm": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "at_rpm": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "check": {
+                  "type": "string",
+                  "const": "lane"
+                },
+                "lane": {
+                  "$ref": "#/$defs/LaneId"
+                },
+                "max_drop_rpm": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "required": [
+                "check",
+                "lane",
+                "at_rpm",
+                "max_drop_rpm",
+                "allow_rpm"
+              ]
+            },
+            {
+              "description": "One electric fuel pump alone keeps fuel pressure at or above `min_kpa`.",
+              "type": "object",
+              "properties": {
+                "check": {
+                  "type": "string",
+                  "const": "pump"
+                },
+                "min_kpa": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "pump": {
+                  "$ref": "#/$defs/PumpId"
+                }
+              },
+              "required": [
+                "check",
+                "pump",
+                "min_kpa"
+              ]
+            },
+            {
+              "description": "Every primary control moved to at least `min_deflection` both ways, and the flaps cycled.",
+              "type": "object",
+              "properties": {
+                "check": {
+                  "type": "string",
+                  "const": "controls"
+                },
+                "min_deflection": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "required": [
+                "check",
+                "min_deflection"
+              ]
+            },
+            {
+              "description": "Full throttle reaches `min_rpm` without exceeding `max_rpm`, accelerating from idle within\n`within_s` seconds.",
+              "type": "object",
+              "properties": {
+                "check": {
+                  "type": "string",
+                  "const": "max_rpm"
+                },
+                "max_rpm": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "min_rpm": {
+                  "type": "number",
+                  "format": "double"
+                },
+                "within_s": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "required": [
+                "check",
+                "min_rpm",
+                "max_rpm",
+                "within_s"
+              ]
+            }
+          ],
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "Every listed condition holds.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "all"
+            },
+            "of": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Verify"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "of"
+          ]
+        }
       ]
     },
     "VerticalMode": {

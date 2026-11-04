@@ -4,8 +4,8 @@
 use crate::theme;
 use eframe::egui::{self, Color32, Rect, RichText, Stroke};
 use flightcraft_control::{
-    ChecklistAbort, ChecklistComplete, ChecklistSelect, ChecklistShowMe, ChecklistStateCommand,
-    ChecklistView, CommandError, ItemStatus, ItemView, Session,
+    ChecklistAbort, ChecklistComplete, ChecklistItemView, ChecklistSelect, ChecklistShowMe,
+    ChecklistStateCommand, ChecklistView, CommandError, ItemStatus, Session,
 };
 use serde_json::{Value, json};
 
@@ -35,11 +35,9 @@ fn optional_command(s: &mut Session, name: &str) -> Option<Value> {
     }
 }
 
-/// The walkaround's camera framing, when `preflight.state` reports an active one.
-///
-/// Expected under `camera`: `active: true`, then either `eye_ned_m` and `target_ned_m` (world
-/// frame, metres) or `eye_body_m` and `target_body_m` (aircraft body frame about the CG), and an
-/// optional `fov_deg`. The inset uses it in place of its own part framing.
+/// The walkaround's camera framing: `preflight.state` reports `active` and a `camera` with a
+/// body-frame `target_m`, `eye_m` and `fov_deg` while the walkaround is under way. The inset uses
+/// it in place of its own part framing.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct WalkaroundCamera {
     pub body: Option<flightcraft_aero::exterior_framing::Framing>,
@@ -47,10 +45,10 @@ pub(crate) struct WalkaroundCamera {
 }
 pub(crate) fn walkaround_camera(s: &mut Session) -> Option<WalkaroundCamera> {
     let state = optional_command(s, "preflight.state")?;
-    let camera = state.get("camera")?;
-    if camera.get("active") != Some(&Value::Bool(true)) {
+    if state.get("active") != Some(&Value::Bool(true)) {
         return None;
     }
+    let camera = state.get("camera")?;
     let vec3 = |key: &str| -> Option<[f32; 3]> {
         let a = camera.get(key)?.as_array()?;
         Some([
@@ -59,18 +57,18 @@ pub(crate) fn walkaround_camera(s: &mut Session) -> Option<WalkaroundCamera> {
             a.get(2)?.as_f64()? as f32,
         ])
     };
-    let fov = camera.get("fov_deg").and_then(Value::as_f64).unwrap_or(50.) as f32;
-    let world = vec3("eye_ned_m")
-        .zip(vec3("target_ned_m"))
-        .map(|(e, t)| (e, t, fov));
-    let body = vec3("eye_body_m")
-        .zip(vec3("target_body_m"))
-        .map(|(eye_m, target_m)| flightcraft_aero::exterior_framing::Framing {
+    let fov_deg = camera.get("fov_deg").and_then(Value::as_f64).unwrap_or(50.) as f32;
+    let body = vec3("eye_m").zip(vec3("target_m")).map(|(eye_m, target_m)| {
+        flightcraft_aero::exterior_framing::Framing {
             eye_m,
             target_m,
-            fov_deg: fov,
-        });
-    (world.is_some() || body.is_some()).then_some(WalkaroundCamera { body, world })
+            fov_deg,
+        }
+    });
+    body.map(|b| WalkaroundCamera {
+        body: Some(b),
+        world: None,
+    })
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -184,7 +182,7 @@ impl ChecklistUi {
         ui: &mut egui::Ui,
         s: &mut Session,
         view: &ChecklistView,
-        current_item: Option<&ItemView>,
+        current_item: Option<&ChecklistItemView>,
     ) {
         for limit in &view.active_limits {
             ui.label(RichText::new(limit).color(theme::DANGER).strong());
@@ -227,7 +225,7 @@ impl ChecklistUi {
         });
     }
 
-    fn item(&mut self, ui: &mut egui::Ui, s: &mut Session, item: &ItemView, current: bool) {
+    fn item(&mut self, ui: &mut egui::Ui, s: &mut Session, item: &ChecklistItemView, current: bool) {
         let (mark, colour) = marker(item.status);
         let done = item.status == ItemStatus::Done;
         let failed = item.status == ItemStatus::Failed;
@@ -291,7 +289,7 @@ impl ChecklistUi {
         });
     }
 
-    fn item_buttons(&mut self, ui: &mut egui::Ui, s: &mut Session, item: &ItemView, failed: bool) {
+    fn item_buttons(&mut self, ui: &mut egui::Ui, s: &mut Session, item: &ChecklistItemView, failed: bool) {
         ui.horizontal(|ui| {
             if !item.verifiable && ui.button("Done").clicked() {
                 self.error = s
@@ -352,11 +350,13 @@ impl ChecklistUi {
                         .or_else(|| text(station, "id"))
                         .unwrap_or_else(|| "Station".into());
                     ui.label(RichText::new(name).strong());
-                    for item in station
+                    let station_id = text(station, "id");
+                    for item in state
                         .get("items")
                         .and_then(Value::as_array)
                         .into_iter()
                         .flatten()
+                        .filter(|i| text(i, "station") == station_id)
                     {
                         let done = item.get("done") == Some(&Value::Bool(true));
                         ui.horizontal_wrapped(|ui| {
@@ -369,8 +369,14 @@ impl ChecklistUi {
                             if let Some(r) = text(item, "poh_ref") {
                                 ui.label(RichText::new(r).size(10.).color(theme::MUTED));
                             }
-                            if let Some(f) = text(item, "finding").filter(|f| !f.is_empty()) {
-                                ui.label(RichText::new(f).color(theme::AMBER));
+                            if let Some(f) = item.get("finding").filter(|f| !f.is_null()) {
+                                let note = f
+                                    .as_str()
+                                    .map(str::to_owned)
+                                    .or_else(|| text(f, "text"))
+                                    .or_else(|| text(f, "description"))
+                                    .unwrap_or_else(|| f.to_string());
+                                ui.label(RichText::new(note).color(theme::AMBER));
                             }
                             if !done
                                 && let Some(id) = text(item, "id")

@@ -168,7 +168,7 @@ as in the normal layout. A window narrower than 700 px stacks them, exterior und
 speed, or airborne, the window returns to the normal layout whatever was chosen. The stored
 screen layout is never modified. The current item's control gets a pulsing outline.
 The **Preflight** tab appears only when the walkaround provides the `preflight.state` command
-(items are read from `stations[].items[]`, and `preflight.perform {item}` is called by name).
+(stations and items are read from `preflight.state`, and `preflight.perform {item}` is called by name).
 
 ## Exterior inset
 
@@ -192,9 +192,8 @@ control the inset eases to frame that part for `hold_s` (default 4 s), then ease
 
 Positions come from the node transforms of the pack's own exterior model, found through the
 `moving_parts` entries of `exterior.json` (`flightcraft_aero::exterior_framing`), so any aircraft
-with an exterior works. If `preflight.state` reports `camera.active: true` with `eye_ned_m` and
-`target_ned_m` (or `eye_body_m` and `target_body_m`) and an optional `fov_deg`, the inset uses that
-framing instead.
+with an exterior works. While `preflight.state` reports `active: true` with a `camera` (body-frame
+`target_m`, `eye_m`, `fov_deg`), the inset uses that walkaround framing instead.
 
 ## Tests
 

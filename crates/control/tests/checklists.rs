@@ -172,9 +172,24 @@ fn the_corvid_has_a_short_fictional_set_and_the_larrow_has_none() {
         )
         .unwrap();
         let lists = run(&mut s, "checklist.list", json!({}));
-        let ids: Vec<_> = lists.as_array().unwrap().iter().map(|l| l["id"].as_str().unwrap()).collect();
-        assert_eq!(ids, ["before_start", "engine_start", "run_up", "shutdown"], "{id}");
-        let procedures = s.aircraft_configuration().unwrap().installed_systems.procedures.clone().unwrap();
+        let ids: Vec<_> = lists
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            ids,
+            ["before_start", "engine_start", "run_up", "shutdown"],
+            "{id}"
+        );
+        let procedures = s
+            .aircraft_configuration()
+            .unwrap()
+            .installed_systems
+            .procedures
+            .clone()
+            .unwrap();
         procedures.validate().unwrap();
         assert!(procedures.source.contains("fictional"));
     }
@@ -182,14 +197,27 @@ fn the_corvid_has_a_short_fictional_set_and_the_larrow_has_none() {
     let mut s = Session::new().unwrap();
     run(&mut s, "checklist.select", json!({"id":"engine_start"}));
     show(&mut s, "ignition", 3.);
+    run(&mut s, "checklist.complete", json!({"item":"clear"}));
     show(&mut s, "starter", 14.);
     assert_eq!(status(&mut s, "starter"), "done");
     let mut larrow = Session::new().unwrap();
     larrow
-        .execute("aircraft.load", json!({"source":{"kind":"installed","id":"larrow"},"reset":true}))
+        .execute(
+            "aircraft.load",
+            json!({"source":{"kind":"installed","id":"larrow"},"reset":true}),
+        )
         .unwrap();
-    assert!(run(&mut larrow, "checklist.list", json!({})).as_array().unwrap().is_empty());
-    assert!(larrow.execute("checklist.select", json!({"id":"run_up"})).is_err());
+    assert!(
+        run(&mut larrow, "checklist.list", json!({}))
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        larrow
+            .execute("checklist.select", json!({"id":"run_up"}))
+            .is_err()
+    );
 }
 
 #[test]

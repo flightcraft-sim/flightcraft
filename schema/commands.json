@@ -120,7 +120,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -472,7 +473,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -893,7 +895,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -1332,7 +1335,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -1590,7 +1594,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -1898,7 +1903,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -2261,7 +2267,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -2576,7 +2583,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -3046,7 +3054,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -3543,7 +3552,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -3879,7 +3889,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -4229,7 +4240,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -4701,7 +4713,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -5037,7 +5050,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -5387,7 +5401,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -5840,7 +5855,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -6279,7 +6295,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -6718,7 +6735,8 @@
             "breaker",
             "readout",
             "image",
-            "traffic"
+            "traffic",
+            "checklist"
           ],
           "type": "string"
         },
@@ -20278,6 +20296,4813 @@
       },
       "title": "Array_of_PreflightLesson",
       "type": "array"
+    }
+  },
+  {
+    "name": "checklist.list",
+    "description": "List the aircraft's normal-procedure checklists (before start through securing) with POH references.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ChecklistListCommand",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/ChecklistSummary"
+      },
+      "title": "Array_of_ChecklistSummary",
+      "type": "array"
+    }
+  },
+  {
+    "name": "checklist.state",
+    "description": "Read the active checklist: items, which are done and by what, timers, limit and sequence warnings, and run-up measurements.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ChecklistStateCommand",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AbortRecord": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ChecklistItemView": {
+          "properties": {
+            "control": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detail": {
+              "description": "A recorded measurement, for example the lane rpm drop.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DoneBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gate": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "response": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ItemStatus"
+            },
+            "text": {
+              "type": "string"
+            },
+            "timer": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TimerView"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unverified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verifiable": {
+              "description": "Whether the simulator can verify this item; otherwise the pilot ticks it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "text",
+            "response",
+            "poh_ref",
+            "status",
+            "verifiable",
+            "gate"
+          ],
+          "type": "object"
+        },
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        },
+        "ChecklistWarning": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/WarningKind"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "kind",
+            "text",
+            "poh_ref"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "DoneBy": {
+          "oneOf": [
+            {
+              "const": "verified",
+              "description": "The simulator state satisfied the item's `verify` binding.",
+              "type": "string"
+            },
+            {
+              "const": "manual",
+              "description": "Acknowledged by the pilot (items with no binding).",
+              "type": "string"
+            },
+            {
+              "const": "forced",
+              "description": "Acknowledged although the binding was not satisfied.",
+              "type": "string"
+            }
+          ]
+        },
+        "ItemStatus": {
+          "oneOf": [
+            {
+              "enum": [
+                "pending",
+                "current",
+                "done"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "description": "A recorded measurement is outside its limit.",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TimerKind": {
+          "description": "How a POH time limit applies to an item.",
+          "oneOf": [
+            {
+              "const": "max",
+              "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+              "type": "string"
+            },
+            {
+              "const": "within",
+              "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+              "type": "string"
+            },
+            {
+              "const": "hold",
+              "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+              "type": "string"
+            }
+          ]
+        },
+        "TimerView": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/TimerKind"
+            },
+            "label": {
+              "type": "string"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "seconds": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "seconds",
+            "elapsed_s",
+            "running",
+            "expired"
+          ],
+          "type": "object"
+        },
+        "WarningKind": {
+          "oneOf": [
+            {
+              "const": "sequence",
+              "description": "An action was performed ahead of the current item.",
+              "type": "string"
+            },
+            {
+              "const": "limit",
+              "description": "A checklist limit was exceeded.",
+              "type": "string"
+            },
+            {
+              "const": "timer",
+              "description": "A POH timer ran out.",
+              "type": "string"
+            },
+            {
+              "const": "gate",
+              "description": "The pilot went on past an unmet or failed go/no-go item.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aborted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbortRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_limits": {
+          "description": "Limit warnings whose condition holds right now.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "available": {
+          "description": "Lists the aircraft carries; empty when it has no normal-procedure data.",
+          "items": {
+            "$ref": "#/$defs/ChecklistSummary"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "continued_past_gate": {
+          "description": "The pilot went on past an unmet or failed go/no-go item.",
+          "type": "boolean"
+        },
+        "current": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemView"
+          },
+          "type": "array"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "poh_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runup": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "showing": {
+          "description": "The item the virtual pilot is demonstrating, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ChecklistWarning"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "items",
+        "complete",
+        "warnings",
+        "active_limits",
+        "continued_past_gate",
+        "runup"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    }
+  },
+  {
+    "name": "checklist.select",
+    "description": "Open a checklist from the aircraft pack, or close it. Opening resets progress and run-up measurements.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "default": null,
+          "description": "A checklist id, or omitted to close the checklist.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "title": "ChecklistSelect",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AbortRecord": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ChecklistItemView": {
+          "properties": {
+            "control": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detail": {
+              "description": "A recorded measurement, for example the lane rpm drop.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DoneBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gate": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "response": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ItemStatus"
+            },
+            "text": {
+              "type": "string"
+            },
+            "timer": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TimerView"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unverified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verifiable": {
+              "description": "Whether the simulator can verify this item; otherwise the pilot ticks it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "text",
+            "response",
+            "poh_ref",
+            "status",
+            "verifiable",
+            "gate"
+          ],
+          "type": "object"
+        },
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        },
+        "ChecklistWarning": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/WarningKind"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "kind",
+            "text",
+            "poh_ref"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "DoneBy": {
+          "oneOf": [
+            {
+              "const": "verified",
+              "description": "The simulator state satisfied the item's `verify` binding.",
+              "type": "string"
+            },
+            {
+              "const": "manual",
+              "description": "Acknowledged by the pilot (items with no binding).",
+              "type": "string"
+            },
+            {
+              "const": "forced",
+              "description": "Acknowledged although the binding was not satisfied.",
+              "type": "string"
+            }
+          ]
+        },
+        "ItemStatus": {
+          "oneOf": [
+            {
+              "enum": [
+                "pending",
+                "current",
+                "done"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "description": "A recorded measurement is outside its limit.",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TimerKind": {
+          "description": "How a POH time limit applies to an item.",
+          "oneOf": [
+            {
+              "const": "max",
+              "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+              "type": "string"
+            },
+            {
+              "const": "within",
+              "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+              "type": "string"
+            },
+            {
+              "const": "hold",
+              "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+              "type": "string"
+            }
+          ]
+        },
+        "TimerView": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/TimerKind"
+            },
+            "label": {
+              "type": "string"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "seconds": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "seconds",
+            "elapsed_s",
+            "running",
+            "expired"
+          ],
+          "type": "object"
+        },
+        "WarningKind": {
+          "oneOf": [
+            {
+              "const": "sequence",
+              "description": "An action was performed ahead of the current item.",
+              "type": "string"
+            },
+            {
+              "const": "limit",
+              "description": "A checklist limit was exceeded.",
+              "type": "string"
+            },
+            {
+              "const": "timer",
+              "description": "A POH timer ran out.",
+              "type": "string"
+            },
+            {
+              "const": "gate",
+              "description": "The pilot went on past an unmet or failed go/no-go item.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aborted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbortRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_limits": {
+          "description": "Limit warnings whose condition holds right now.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "available": {
+          "description": "Lists the aircraft carries; empty when it has no normal-procedure data.",
+          "items": {
+            "$ref": "#/$defs/ChecklistSummary"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "continued_past_gate": {
+          "description": "The pilot went on past an unmet or failed go/no-go item.",
+          "type": "boolean"
+        },
+        "current": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemView"
+          },
+          "type": "array"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "poh_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runup": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "showing": {
+          "description": "The item the virtual pilot is demonstrating, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ChecklistWarning"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "items",
+        "complete",
+        "warnings",
+        "active_limits",
+        "continued_past_gate",
+        "runup"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    }
+  },
+  {
+    "name": "checklist.complete",
+    "description": "Tick a checklist item by hand. Items the simulator can verify refuse unless forced; a forced go/no-go item counts as continuing past the defect.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "force": {
+          "default": false,
+          "description": "Acknowledge although the binding is not satisfied (recorded as forced).",
+          "type": "boolean"
+        },
+        "item": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "title": "ChecklistComplete",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AbortRecord": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ChecklistItemView": {
+          "properties": {
+            "control": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detail": {
+              "description": "A recorded measurement, for example the lane rpm drop.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DoneBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gate": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "response": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ItemStatus"
+            },
+            "text": {
+              "type": "string"
+            },
+            "timer": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TimerView"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unverified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verifiable": {
+              "description": "Whether the simulator can verify this item; otherwise the pilot ticks it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "text",
+            "response",
+            "poh_ref",
+            "status",
+            "verifiable",
+            "gate"
+          ],
+          "type": "object"
+        },
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        },
+        "ChecklistWarning": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/WarningKind"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "kind",
+            "text",
+            "poh_ref"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "DoneBy": {
+          "oneOf": [
+            {
+              "const": "verified",
+              "description": "The simulator state satisfied the item's `verify` binding.",
+              "type": "string"
+            },
+            {
+              "const": "manual",
+              "description": "Acknowledged by the pilot (items with no binding).",
+              "type": "string"
+            },
+            {
+              "const": "forced",
+              "description": "Acknowledged although the binding was not satisfied.",
+              "type": "string"
+            }
+          ]
+        },
+        "ItemStatus": {
+          "oneOf": [
+            {
+              "enum": [
+                "pending",
+                "current",
+                "done"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "description": "A recorded measurement is outside its limit.",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TimerKind": {
+          "description": "How a POH time limit applies to an item.",
+          "oneOf": [
+            {
+              "const": "max",
+              "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+              "type": "string"
+            },
+            {
+              "const": "within",
+              "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+              "type": "string"
+            },
+            {
+              "const": "hold",
+              "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+              "type": "string"
+            }
+          ]
+        },
+        "TimerView": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/TimerKind"
+            },
+            "label": {
+              "type": "string"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "seconds": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "seconds",
+            "elapsed_s",
+            "running",
+            "expired"
+          ],
+          "type": "object"
+        },
+        "WarningKind": {
+          "oneOf": [
+            {
+              "const": "sequence",
+              "description": "An action was performed ahead of the current item.",
+              "type": "string"
+            },
+            {
+              "const": "limit",
+              "description": "A checklist limit was exceeded.",
+              "type": "string"
+            },
+            {
+              "const": "timer",
+              "description": "A POH timer ran out.",
+              "type": "string"
+            },
+            {
+              "const": "gate",
+              "description": "The pilot went on past an unmet or failed go/no-go item.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aborted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbortRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_limits": {
+          "description": "Limit warnings whose condition holds right now.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "available": {
+          "description": "Lists the aircraft carries; empty when it has no normal-procedure data.",
+          "items": {
+            "$ref": "#/$defs/ChecklistSummary"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "continued_past_gate": {
+          "description": "The pilot went on past an unmet or failed go/no-go item.",
+          "type": "boolean"
+        },
+        "current": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemView"
+          },
+          "type": "array"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "poh_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runup": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "showing": {
+          "description": "The item the virtual pilot is demonstrating, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ChecklistWarning"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "items",
+        "complete",
+        "warnings",
+        "active_limits",
+        "continued_past_gate",
+        "runup"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    }
+  },
+  {
+    "name": "checklist.abort",
+    "description": "Stop the procedure and squawk a defect or an unmet limit: the correct response to a failed run-up check. Recorded for grading.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "ChecklistAbort",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AbortRecord": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ChecklistItemView": {
+          "properties": {
+            "control": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detail": {
+              "description": "A recorded measurement, for example the lane rpm drop.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DoneBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gate": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "response": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ItemStatus"
+            },
+            "text": {
+              "type": "string"
+            },
+            "timer": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TimerView"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unverified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verifiable": {
+              "description": "Whether the simulator can verify this item; otherwise the pilot ticks it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "text",
+            "response",
+            "poh_ref",
+            "status",
+            "verifiable",
+            "gate"
+          ],
+          "type": "object"
+        },
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        },
+        "ChecklistWarning": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/WarningKind"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "kind",
+            "text",
+            "poh_ref"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "DoneBy": {
+          "oneOf": [
+            {
+              "const": "verified",
+              "description": "The simulator state satisfied the item's `verify` binding.",
+              "type": "string"
+            },
+            {
+              "const": "manual",
+              "description": "Acknowledged by the pilot (items with no binding).",
+              "type": "string"
+            },
+            {
+              "const": "forced",
+              "description": "Acknowledged although the binding was not satisfied.",
+              "type": "string"
+            }
+          ]
+        },
+        "ItemStatus": {
+          "oneOf": [
+            {
+              "enum": [
+                "pending",
+                "current",
+                "done"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "description": "A recorded measurement is outside its limit.",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TimerKind": {
+          "description": "How a POH time limit applies to an item.",
+          "oneOf": [
+            {
+              "const": "max",
+              "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+              "type": "string"
+            },
+            {
+              "const": "within",
+              "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+              "type": "string"
+            },
+            {
+              "const": "hold",
+              "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+              "type": "string"
+            }
+          ]
+        },
+        "TimerView": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/TimerKind"
+            },
+            "label": {
+              "type": "string"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "seconds": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "seconds",
+            "elapsed_s",
+            "running",
+            "expired"
+          ],
+          "type": "object"
+        },
+        "WarningKind": {
+          "oneOf": [
+            {
+              "const": "sequence",
+              "description": "An action was performed ahead of the current item.",
+              "type": "string"
+            },
+            {
+              "const": "limit",
+              "description": "A checklist limit was exceeded.",
+              "type": "string"
+            },
+            {
+              "const": "timer",
+              "description": "A POH timer ran out.",
+              "type": "string"
+            },
+            {
+              "const": "gate",
+              "description": "The pilot went on past an unmet or failed go/no-go item.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aborted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbortRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_limits": {
+          "description": "Limit warnings whose condition holds right now.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "available": {
+          "description": "Lists the aircraft carries; empty when it has no normal-procedure data.",
+          "items": {
+            "$ref": "#/$defs/ChecklistSummary"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "continued_past_gate": {
+          "description": "The pilot went on past an unmet or failed go/no-go item.",
+          "type": "boolean"
+        },
+        "current": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemView"
+          },
+          "type": "array"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "poh_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runup": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "showing": {
+          "description": "The item the virtual pilot is demonstrating, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ChecklistWarning"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "items",
+        "complete",
+        "warnings",
+        "active_limits",
+        "continued_past_gate",
+        "runup"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    }
+  },
+  {
+    "name": "checklist.show_me",
+    "description": "The virtual pilot performs one checklist item and explains it on the intercom. Run-up checks are performed with the proper holds.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "title": "ChecklistShowMe",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AbortRecord": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ChecklistItemView": {
+          "properties": {
+            "control": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "detail": {
+              "description": "A recorded measurement, for example the lane rpm drop.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "done_by": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DoneBy"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gate": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "response": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/ItemStatus"
+            },
+            "text": {
+              "type": "string"
+            },
+            "timer": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TimerView"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unverified": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verifiable": {
+              "description": "Whether the simulator can verify this item; otherwise the pilot ticks it.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "text",
+            "response",
+            "poh_ref",
+            "status",
+            "verifiable",
+            "gate"
+          ],
+          "type": "object"
+        },
+        "ChecklistPhase": {
+          "description": "Which part of the flight a checklist covers; drives the ground layout and lesson selection.",
+          "enum": [
+            "before_start",
+            "engine_start",
+            "warm_up",
+            "run_up",
+            "taxi",
+            "before_takeoff",
+            "shutdown",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "ChecklistSummary": {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "phase": {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "phase",
+            "poh_ref",
+            "items"
+          ],
+          "type": "object"
+        },
+        "ChecklistWarning": {
+          "properties": {
+            "item": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kind": {
+              "$ref": "#/$defs/WarningKind"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "time_s": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "time_s",
+            "kind",
+            "text",
+            "poh_ref"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "DoneBy": {
+          "oneOf": [
+            {
+              "const": "verified",
+              "description": "The simulator state satisfied the item's `verify` binding.",
+              "type": "string"
+            },
+            {
+              "const": "manual",
+              "description": "Acknowledged by the pilot (items with no binding).",
+              "type": "string"
+            },
+            {
+              "const": "forced",
+              "description": "Acknowledged although the binding was not satisfied.",
+              "type": "string"
+            }
+          ]
+        },
+        "ItemStatus": {
+          "oneOf": [
+            {
+              "enum": [
+                "pending",
+                "current",
+                "done"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "failed",
+              "description": "A recorded measurement is outside its limit.",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TimerKind": {
+          "description": "How a POH time limit applies to an item.",
+          "oneOf": [
+            {
+              "const": "max",
+              "description": "Counts while `start_when` holds; exceeding `seconds` warns (starter duty limit).",
+              "type": "string"
+            },
+            {
+              "const": "within",
+              "description": "Counts from `start_when`; the item's `verify` must hold within `seconds` or the timer\nexpires with a warning (oil pressure within 10 s of start).",
+              "type": "string"
+            },
+            {
+              "const": "hold",
+              "description": "The item's `verify` must hold continuously for `seconds` to complete it (warm-up).",
+              "type": "string"
+            }
+          ]
+        },
+        "TimerView": {
+          "properties": {
+            "elapsed_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "kind": {
+              "$ref": "#/$defs/TimerKind"
+            },
+            "label": {
+              "type": "string"
+            },
+            "running": {
+              "type": "boolean"
+            },
+            "seconds": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "seconds",
+            "elapsed_s",
+            "running",
+            "expired"
+          ],
+          "type": "object"
+        },
+        "WarningKind": {
+          "oneOf": [
+            {
+              "const": "sequence",
+              "description": "An action was performed ahead of the current item.",
+              "type": "string"
+            },
+            {
+              "const": "limit",
+              "description": "A checklist limit was exceeded.",
+              "type": "string"
+            },
+            {
+              "const": "timer",
+              "description": "A POH timer ran out.",
+              "type": "string"
+            },
+            {
+              "const": "gate",
+              "description": "The pilot went on past an unmet or failed go/no-go item.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aborted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbortRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_limits": {
+          "description": "Limit warnings whose condition holds right now.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "available": {
+          "description": "Lists the aircraft carries; empty when it has no normal-procedure data.",
+          "items": {
+            "$ref": "#/$defs/ChecklistSummary"
+          },
+          "type": "array"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "continued_past_gate": {
+          "description": "The pilot went on past an unmet or failed go/no-go item.",
+          "type": "boolean"
+        },
+        "current": {
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChecklistItemView"
+          },
+          "type": "array"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChecklistPhase"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "poh_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runup": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "showing": {
+          "description": "The item the virtual pilot is demonstrating, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ChecklistWarning"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "items",
+        "complete",
+        "warnings",
+        "active_limits",
+        "continued_past_gate",
+        "runup"
+      ],
+      "title": "ChecklistView",
+      "type": "object"
+    }
+  },
+  {
+    "name": "procedure_lesson.list",
+    "description": "List offline ground-procedure lessons: before start, run-up with seeded faults, shutdown and securing.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ProcedureLessonList",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
+        "GroundStart": {
+          "oneOf": [
+            {
+              "const": "cold_and_dark",
+              "description": "Master off, ignition off, everything as left after securing.",
+              "type": "string"
+            },
+            {
+              "const": "engine_idling",
+              "description": "Engine started and idling, brakes on, at the run-up point.",
+              "type": "string"
+            },
+            {
+              "const": "engine_running_after_flight",
+              "description": "Engine off, powered up as after a normal start of the day (shutdown lesson).",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "ProcedureFault": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "The named ignition lane delivers weak sparks and drops excessive rpm when it runs alone.",
+              "properties": {
+                "kind": {
+                  "const": "weak_lane",
+                  "type": "string"
+                },
+                "lane": {
+                  "$ref": "#/$defs/LaneId"
+                }
+              },
+              "required": [
+                "kind",
+                "lane"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The named fuel pump has failed; the pump check shows no pressure.",
+              "properties": {
+                "kind": {
+                  "const": "failed_pump",
+                  "type": "string"
+                },
+                "pump": {
+                  "$ref": "#/$defs/PumpId"
+                }
+              },
+              "required": [
+                "kind",
+                "pump"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The backup battery holds only the given fraction of its charge.",
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "fraction": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "low_backup_battery",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "fraction"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Oil temperature is below the warm-up limit when the run-up is due.",
+              "properties": {
+                "kind": {
+                  "const": "cold_oil",
+                  "type": "string"
+                },
+                "temperature_c": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "temperature_c"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ProcedureLesson": {
+          "additionalProperties": false,
+          "properties": {
+            "briefing": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "setup": {
+              "$ref": "#/$defs/ProcedureSetup"
+            },
+            "tasks": {
+              "items": {
+                "$ref": "#/$defs/ProcedureTask"
+              },
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "id",
+            "title",
+            "briefing",
+            "setup",
+            "tasks"
+          ],
+          "type": "object"
+        },
+        "ProcedureSetup": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "description": "Installed aircraft pack id.",
+              "type": "string"
+            },
+            "fault": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ProcedureFault"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Seeded defect the student should find. At most one."
+            },
+            "oil_temperature_c": {
+              "description": "Oil temperature in degrees Celsius for an idling start; omitted means warm (70).",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "start": {
+              "$ref": "#/$defs/GroundStart"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "aircraft",
+            "start"
+          ],
+          "type": "object"
+        },
+        "ProcedureTask": {
+          "additionalProperties": false,
+          "properties": {
+            "checklist": {
+              "type": "string"
+            },
+            "expect": {
+              "$ref": "#/$defs/TaskExpectation"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "checklist",
+            "poh_ref",
+            "expect"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "TaskExpectation": {
+          "oneOf": [
+            {
+              "const": "complete",
+              "description": "Work the checklist through correctly.",
+              "type": "string"
+            },
+            {
+              "const": "stop_on_fault",
+              "description": "The seeded fault is the point: stopping is correct and continuing fails the task.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "items": {
+        "$ref": "#/$defs/ProcedureLesson"
+      },
+      "title": "Array_of_ProcedureLesson",
+      "type": "array"
+    }
+  },
+  {
+    "name": "procedure_lesson.start",
+    "description": "Validate and start a ground-procedure lesson: loads the aircraft, sets the starting state and any seeded fault, and opens the first checklist.",
+    "input_schema": {
+      "$defs": {
+        "BackupCircuit": {
+          "enum": [
+            "ems",
+            "efis"
+          ],
+          "type": "string"
+        },
+        "GroundStart": {
+          "oneOf": [
+            {
+              "const": "cold_and_dark",
+              "description": "Master off, ignition off, everything as left after securing.",
+              "type": "string"
+            },
+            {
+              "const": "engine_idling",
+              "description": "Engine started and idling, brakes on, at the run-up point.",
+              "type": "string"
+            },
+            {
+              "const": "engine_running_after_flight",
+              "description": "Engine off, powered up as after a normal start of the day (shutdown lesson).",
+              "type": "string"
+            }
+          ]
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "ProcedureFault": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "The named ignition lane delivers weak sparks and drops excessive rpm when it runs alone.",
+              "properties": {
+                "kind": {
+                  "const": "weak_lane",
+                  "type": "string"
+                },
+                "lane": {
+                  "$ref": "#/$defs/LaneId"
+                }
+              },
+              "required": [
+                "kind",
+                "lane"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The named fuel pump has failed; the pump check shows no pressure.",
+              "properties": {
+                "kind": {
+                  "const": "failed_pump",
+                  "type": "string"
+                },
+                "pump": {
+                  "$ref": "#/$defs/PumpId"
+                }
+              },
+              "required": [
+                "kind",
+                "pump"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The backup battery holds only the given fraction of its charge.",
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "fraction": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "low_backup_battery",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "fraction"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Oil temperature is below the warm-up limit when the run-up is due.",
+              "properties": {
+                "kind": {
+                  "const": "cold_oil",
+                  "type": "string"
+                },
+                "temperature_c": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "temperature_c"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ProcedureLesson": {
+          "additionalProperties": false,
+          "properties": {
+            "briefing": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "setup": {
+              "$ref": "#/$defs/ProcedureSetup"
+            },
+            "tasks": {
+              "items": {
+                "$ref": "#/$defs/ProcedureTask"
+              },
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            },
+            "version": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "id",
+            "title",
+            "briefing",
+            "setup",
+            "tasks"
+          ],
+          "type": "object"
+        },
+        "ProcedureSetup": {
+          "additionalProperties": false,
+          "properties": {
+            "aircraft": {
+              "description": "Installed aircraft pack id.",
+              "type": "string"
+            },
+            "fault": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ProcedureFault"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Seeded defect the student should find. At most one."
+            },
+            "oil_temperature_c": {
+              "description": "Oil temperature in degrees Celsius for an idling start; omitted means warm (70).",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "start": {
+              "$ref": "#/$defs/GroundStart"
+            },
+            "temperature_c": {
+              "default": 15.0,
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "aircraft",
+            "start"
+          ],
+          "type": "object"
+        },
+        "ProcedureTask": {
+          "additionalProperties": false,
+          "properties": {
+            "checklist": {
+              "type": "string"
+            },
+            "expect": {
+              "$ref": "#/$defs/TaskExpectation"
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "checklist",
+            "poh_ref",
+            "expect"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "TaskExpectation": {
+          "oneOf": [
+            {
+              "const": "complete",
+              "description": "Work the checklist through correctly.",
+              "type": "string"
+            },
+            {
+              "const": "stop_on_fault",
+              "description": "The seeded fault is the point: stopping is correct and continuing fails the task.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "default": null,
+          "description": "A library lesson id.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lesson": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcedureLesson"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Or a complete lesson document."
+        }
+      },
+      "title": "ProcedureLessonStart",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "ProcedureResult": {
+          "enum": [
+            "pending",
+            "pass",
+            "fail"
+          ],
+          "type": "string"
+        },
+        "ProcedureTaskGrade": {
+          "properties": {
+            "checklist": {
+              "type": "string"
+            },
+            "expect": {
+              "$ref": "#/$defs/TaskExpectation"
+            },
+            "finished_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "reasons": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "result": {
+              "$ref": "#/$defs/ProcedureResult"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "checklist",
+            "poh_ref",
+            "expect",
+            "result",
+            "reasons"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TaskExpectation": {
+          "oneOf": [
+            {
+              "const": "complete",
+              "description": "Work the checklist through correctly.",
+              "type": "string"
+            },
+            {
+              "const": "stop_on_fault",
+              "description": "The seeded fault is the point: stopping is correct and continuing fails the task.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "briefing": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "lesson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_up": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "started_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/ProcedureTaskGrade"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "briefing",
+        "complete",
+        "started_s",
+        "tasks",
+        "run_up"
+      ],
+      "title": "ProcedureDebrief",
+      "type": "object"
+    }
+  },
+  {
+    "name": "procedure_lesson.debrief",
+    "description": "Read the live grades of the running ground-procedure lesson, with POH references for every miss.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ProcedureLessonDebrief",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "ProcedureResult": {
+          "enum": [
+            "pending",
+            "pass",
+            "fail"
+          ],
+          "type": "string"
+        },
+        "ProcedureTaskGrade": {
+          "properties": {
+            "checklist": {
+              "type": "string"
+            },
+            "expect": {
+              "$ref": "#/$defs/TaskExpectation"
+            },
+            "finished_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "reasons": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "result": {
+              "$ref": "#/$defs/ProcedureResult"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "checklist",
+            "poh_ref",
+            "expect",
+            "result",
+            "reasons"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TaskExpectation": {
+          "oneOf": [
+            {
+              "const": "complete",
+              "description": "Work the checklist through correctly.",
+              "type": "string"
+            },
+            {
+              "const": "stop_on_fault",
+              "description": "The seeded fault is the point: stopping is correct and continuing fails the task.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "briefing": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "lesson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_up": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "started_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/ProcedureTaskGrade"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "briefing",
+        "complete",
+        "started_s",
+        "tasks",
+        "run_up"
+      ],
+      "title": "ProcedureDebrief",
+      "type": "object"
+    }
+  },
+  {
+    "name": "procedure_lesson.finish",
+    "description": "End the lesson; tasks not finished fail as incomplete.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "ProcedureLessonFinish",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "AxisExtent": {
+          "properties": {
+            "max": {
+              "format": "double",
+              "type": "number"
+            },
+            "min": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "ControlsMeasure": {
+          "properties": {
+            "aileron": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "elevator": {
+              "$ref": "#/$defs/AxisExtent"
+            },
+            "rudder": {
+              "$ref": "#/$defs/AxisExtent"
+            }
+          },
+          "required": [
+            "elevator",
+            "aileron",
+            "rudder"
+          ],
+          "type": "object"
+        },
+        "LaneId": {
+          "enum": [
+            "a",
+            "b"
+          ],
+          "type": "string"
+        },
+        "LaneMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "baseline_rpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "drop_rpm": {
+              "description": "Baseline minus observed; negative when the engine sped up.",
+              "format": "double",
+              "type": "number"
+            },
+            "lane": {
+              "$ref": "#/$defs/LaneId"
+            },
+            "observed_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lane",
+            "baseline_rpm",
+            "observed_rpm",
+            "drop_rpm",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "MaxRpmMeasure": {
+          "properties": {
+            "log": {
+              "description": "`(seconds after full throttle was applied, filtered rpm)` at the evaluation rate.",
+              "items": {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "format": "double",
+                    "type": "number"
+                  },
+                  {
+                    "format": "double",
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "peak_rpm": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "peak_rpm",
+            "log"
+          ],
+          "type": "object"
+        },
+        "ProcedureResult": {
+          "enum": [
+            "pending",
+            "pass",
+            "fail"
+          ],
+          "type": "string"
+        },
+        "ProcedureTaskGrade": {
+          "properties": {
+            "checklist": {
+              "type": "string"
+            },
+            "expect": {
+              "$ref": "#/$defs/TaskExpectation"
+            },
+            "finished_s": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "poh_ref": {
+              "type": "string"
+            },
+            "reasons": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "result": {
+              "$ref": "#/$defs/ProcedureResult"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "checklist",
+            "poh_ref",
+            "expect",
+            "result",
+            "reasons"
+          ],
+          "type": "object"
+        },
+        "PumpId": {
+          "enum": [
+            "one",
+            "two"
+          ],
+          "type": "string"
+        },
+        "PumpMeasure": {
+          "properties": {
+            "at_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "pressure_kpa": {
+              "format": "double",
+              "type": "number"
+            },
+            "pump": {
+              "$ref": "#/$defs/PumpId"
+            }
+          },
+          "required": [
+            "pump",
+            "pressure_kpa",
+            "at_s"
+          ],
+          "type": "object"
+        },
+        "RunupReport": {
+          "description": "Everything the observer has measured since the checklist was selected.",
+          "properties": {
+            "controls": {
+              "$ref": "#/$defs/ControlsMeasure"
+            },
+            "lanes": {
+              "items": {
+                "$ref": "#/$defs/LaneMeasure"
+              },
+              "type": "array"
+            },
+            "max_rpm": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MaxRpmMeasure"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pumps": {
+              "items": {
+                "$ref": "#/$defs/PumpMeasure"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "lanes",
+            "pumps",
+            "controls"
+          ],
+          "type": "object"
+        },
+        "TaskExpectation": {
+          "oneOf": [
+            {
+              "const": "complete",
+              "description": "Work the checklist through correctly.",
+              "type": "string"
+            },
+            {
+              "const": "stop_on_fault",
+              "description": "The seeded fault is the point: stopping is correct and continuing fails the task.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "briefing": {
+          "type": "string"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "lesson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_up": {
+          "$ref": "#/$defs/RunupReport"
+        },
+        "started_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/ProcedureTaskGrade"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "briefing",
+        "complete",
+        "started_s",
+        "tasks",
+        "run_up"
+      ],
+      "title": "ProcedureDebrief",
+      "type": "object"
+    }
+  },
+  {
+    "name": "view.layout",
+    "description": "Choose the main window layout: auto (checklist beside a small outside view while a checklist is open on the ground), ground, or normal. Takeoff returns to normal. Also reports the exterior inset.",
+    "input_schema": {
+      "$defs": {
+        "LayoutMode": {
+          "oneOf": [
+            {
+              "const": "auto",
+              "description": "Ground layout while a checklist is open and the aircraft is on the ground.",
+              "type": "string"
+            },
+            {
+              "const": "ground",
+              "description": "Ground layout now, until takeoff.",
+              "type": "string"
+            },
+            {
+              "const": "normal",
+              "description": "The normal full-window outside view with the dash below.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Omitted reads the current layout."
+        }
+      },
+      "title": "SetViewLayout",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "ExteriorInsetState": {
+          "properties": {
+            "hold_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "mode": {
+              "$ref": "#/$defs/InsetMode"
+            },
+            "placement": {
+              "$ref": "#/$defs/InsetPlacement"
+            },
+            "remaining_s": {
+              "format": "double",
+              "type": "number"
+            },
+            "target": {
+              "$ref": "#/$defs/FramingTarget",
+              "description": "The part being framed; `default` is the three-quarter rear chase."
+            },
+            "visible": {
+              "description": "Whether the inset shows over the cockpit view right now.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "mode",
+            "visible",
+            "target",
+            "remaining_s",
+            "hold_s",
+            "placement"
+          ],
+          "type": "object"
+        },
+        "FramingTarget": {
+          "description": "A part of the aircraft the inset can frame.",
+          "oneOf": [
+            {
+              "const": "default",
+              "description": "Three-quarter rear chase of the whole aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "flaps",
+              "description": "Flap trailing edges, from behind and slightly above.",
+              "type": "string"
+            },
+            {
+              "const": "ailerons",
+              "description": "The deflecting wing tip.",
+              "type": "string"
+            },
+            {
+              "const": "tail",
+              "description": "Elevator, trim tab, or rudder.",
+              "type": "string"
+            },
+            {
+              "const": "cockpit",
+              "description": "The canopy and cockpit.",
+              "type": "string"
+            },
+            {
+              "const": "wheels",
+              "description": "Wheels, for the parking brake and nosewheel steering.",
+              "type": "string"
+            }
+          ]
+        },
+        "InsetMode": {
+          "description": "When the small exterior view of the aircraft shows beside the cockpit view.",
+          "oneOf": [
+            {
+              "enum": [
+                "off",
+                "always"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "ground",
+              "description": "On the ground only (default): flaps down, canopy, brakes and the walkaround show.",
+              "type": "string"
+            }
+          ]
+        },
+        "InsetPlacement": {
+          "additionalProperties": false,
+          "description": "Where the inset sits over the outside view, as fractions of that view (never over the dash).",
+          "properties": {
+            "h": {
+              "format": "float",
+              "type": "number"
+            },
+            "w": {
+              "format": "float",
+              "type": "number"
+            },
+            "x": {
+              "format": "float",
+              "type": "number"
+            },
+            "y": {
+              "format": "float",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "LayoutMode": {
+          "oneOf": [
+            {
+              "const": "auto",
+              "description": "Ground layout while a checklist is open and the aircraft is on the ground.",
+              "type": "string"
+            },
+            {
+              "const": "ground",
+              "description": "Ground layout now, until takeoff.",
+              "type": "string"
+            },
+            {
+              "const": "normal",
+              "description": "The normal full-window outside view with the dash below.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "exterior_inset": {
+          "$ref": "#/$defs/ExteriorInsetState"
+        },
+        "ground": {
+          "description": "Whether the window shows the ground layout right now.",
+          "type": "boolean"
+        },
+        "mode": {
+          "$ref": "#/$defs/LayoutMode"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "ground",
+        "reason",
+        "exterior_inset"
+      ],
+      "title": "ViewLayoutState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "view.exterior_inset",
+    "description": "Choose when the small exterior view shows beside the cockpit view (off, on the ground, always), how long a moved control surface stays framed, and where the box sits. Omitted fields are unchanged.",
+    "input_schema": {
+      "$defs": {
+        "InsetMode": {
+          "description": "When the small exterior view of the aircraft shows beside the cockpit view.",
+          "oneOf": [
+            {
+              "enum": [
+                "off",
+                "always"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "ground",
+              "description": "On the ground only (default): flaps down, canopy, brakes and the walkaround show.",
+              "type": "string"
+            }
+          ]
+        },
+        "InsetPlacement": {
+          "additionalProperties": false,
+          "description": "Where the inset sits over the outside view, as fractions of that view (never over the dash).",
+          "properties": {
+            "h": {
+              "format": "float",
+              "type": "number"
+            },
+            "w": {
+              "format": "float",
+              "type": "number"
+            },
+            "x": {
+              "format": "float",
+              "type": "number"
+            },
+            "y": {
+              "format": "float",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "hold_s": {
+          "default": null,
+          "description": "Seconds a moved part stays framed, 0.5 to 30.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InsetMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Off, on the ground only (default), or always."
+        },
+        "placement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InsetPlacement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the inset sits over the outside view."
+        }
+      },
+      "title": "SetExteriorInset",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "FramingTarget": {
+          "description": "A part of the aircraft the inset can frame.",
+          "oneOf": [
+            {
+              "const": "default",
+              "description": "Three-quarter rear chase of the whole aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "flaps",
+              "description": "Flap trailing edges, from behind and slightly above.",
+              "type": "string"
+            },
+            {
+              "const": "ailerons",
+              "description": "The deflecting wing tip.",
+              "type": "string"
+            },
+            {
+              "const": "tail",
+              "description": "Elevator, trim tab, or rudder.",
+              "type": "string"
+            },
+            {
+              "const": "cockpit",
+              "description": "The canopy and cockpit.",
+              "type": "string"
+            },
+            {
+              "const": "wheels",
+              "description": "Wheels, for the parking brake and nosewheel steering.",
+              "type": "string"
+            }
+          ]
+        },
+        "InsetMode": {
+          "description": "When the small exterior view of the aircraft shows beside the cockpit view.",
+          "oneOf": [
+            {
+              "enum": [
+                "off",
+                "always"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "ground",
+              "description": "On the ground only (default): flaps down, canopy, brakes and the walkaround show.",
+              "type": "string"
+            }
+          ]
+        },
+        "InsetPlacement": {
+          "additionalProperties": false,
+          "description": "Where the inset sits over the outside view, as fractions of that view (never over the dash).",
+          "properties": {
+            "h": {
+              "format": "float",
+              "type": "number"
+            },
+            "w": {
+              "format": "float",
+              "type": "number"
+            },
+            "x": {
+              "format": "float",
+              "type": "number"
+            },
+            "y": {
+              "format": "float",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "w",
+            "h"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "hold_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "mode": {
+          "$ref": "#/$defs/InsetMode"
+        },
+        "placement": {
+          "$ref": "#/$defs/InsetPlacement"
+        },
+        "remaining_s": {
+          "format": "double",
+          "type": "number"
+        },
+        "target": {
+          "$ref": "#/$defs/FramingTarget",
+          "description": "The part being framed; `default` is the three-quarter rear chase."
+        },
+        "visible": {
+          "description": "Whether the inset shows over the cockpit view right now.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mode",
+        "visible",
+        "target",
+        "remaining_s",
+        "hold_s",
+        "placement"
+      ],
+      "title": "ExteriorInsetState",
+      "type": "object"
     }
   },
   {
@@ -85904,13 +90729,23 @@
           "type": "object"
         },
         "Component": {
-          "enum": [
-            "lane_a",
-            "lane_b",
-            "pump1",
-            "pump2"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "lane_a",
+                "lane_b",
+                "pump1",
+                "pump2",
+                "lane_b_weak"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "lane_a_weak",
+              "description": "Lane A ignition runs but delivers weak sparks: the engine loses excess rpm on lane A alone.",
+              "type": "string"
+            }
+          ]
         },
         "DataArea": {
           "description": "What the MFD page's data column shows beside the map.",
@@ -86874,6 +91709,29 @@
               "required": [
                 "kind",
                 "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Ground servicing / scenario setup: charge left in a backup battery, in ampere-hours.",
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "kind": {
+                  "const": "backup_charge",
+                  "type": "string"
+                },
+                "remaining_ah": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "remaining_ah"
               ],
               "type": "object"
             },
@@ -93281,8 +98139,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -97364,8 +102229,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -105569,8 +110441,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -106965,8 +111844,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -108369,8 +113255,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -109058,13 +113951,23 @@
           "type": "string"
         },
         "Component": {
-          "enum": [
-            "lane_a",
-            "lane_b",
-            "pump1",
-            "pump2"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "lane_a",
+                "lane_b",
+                "pump1",
+                "pump2",
+                "lane_b_weak"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "lane_a_weak",
+              "description": "Lane A ignition runs but delivers weak sparks: the engine loses excess rpm on lane A alone.",
+              "type": "string"
+            }
+          ]
         },
         "FuelSelector": {
           "enum": [
@@ -109329,6 +114232,29 @@
               "required": [
                 "kind",
                 "open"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Ground servicing / scenario setup: charge left in a backup battery, in ampere-hours.",
+              "properties": {
+                "circuit": {
+                  "$ref": "#/$defs/BackupCircuit"
+                },
+                "kind": {
+                  "const": "backup_charge",
+                  "type": "string"
+                },
+                "remaining_ah": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "circuit",
+                "remaining_ah"
               ],
               "type": "object"
             },
@@ -109666,6 +114592,27 @@
                 "kind",
                 "temperature_c",
                 "relative_humidity"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Ground scenario setup: engine oil temperature, for a cold or warm engine.",
+              "properties": {
+                "kind": {
+                  "const": "oil_temperature",
+                  "type": "string"
+                },
+                "value_c": {
+                  "format": "double",
+                  "maximum": 150,
+                  "minimum": -60,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value_c"
               ],
               "type": "object"
             }
@@ -110411,8 +115358,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -119325,8 +124279,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -120754,8 +125715,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {
@@ -123216,8 +128184,15 @@
             "lane_a": {
               "$ref": "#/$defs/LaneState"
             },
+            "lane_a_weak": {
+              "description": "Seeded weak-ignition faults; absent from the hash words unless set.",
+              "type": "boolean"
+            },
             "lane_b": {
               "$ref": "#/$defs/LaneState"
+            },
+            "lane_b_weak": {
+              "type": "boolean"
             },
             "light_switches": {
               "items": {

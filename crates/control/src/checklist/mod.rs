@@ -87,7 +87,7 @@ pub struct TimerView {
     pub expired: bool,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct ItemView {
+pub struct ChecklistItemView {
     pub id: String,
     pub text: String,
     pub response: String,
@@ -127,7 +127,7 @@ pub struct ChecklistView {
     pub phase: Option<ChecklistPhase>,
     pub poh_ref: Option<String>,
     pub current: Option<usize>,
-    pub items: Vec<ItemView>,
+    pub items: Vec<ChecklistItemView>,
     pub complete: bool,
     pub warnings: Vec<ChecklistWarning>,
     /// Limit warnings whose condition holds right now.
@@ -275,7 +275,7 @@ impl Session {
                     Verify::Check(c) => rt.observer.describe(c),
                     _ => None,
                 });
-                ItemView {
+                ChecklistItemView {
                     id: item.id.clone(),
                     text: item.text.clone(),
                     response: item.response.clone(),
