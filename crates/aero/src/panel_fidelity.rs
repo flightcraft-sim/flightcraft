@@ -95,19 +95,31 @@ pub enum NavigatorLayout {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DisplayBezel {
+    /// A display model supplies the bezel geometry and control set; `margins`, soft keys, and
+    /// corner knobs are then ignored and the installation must have the model's bezel aspect.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<crate::display_model::DisplayModel>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<SrgbHex>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub edge_trim: Option<SrgbHex>,
     /// Left, top, right, bottom margins, in mm.
+    #[serde(default)]
     pub margins: [f64; 4],
+    #[serde(default)]
     pub softkeys: bool,
+    #[serde(default = "one_key")]
     #[schemars(range(min = 1, max = 12))]
     pub softkey_count: u8,
     /// Knob centres in local installation mm; zero, one, or two knobs.
+    #[serde(default)]
     #[schemars(length(max = 2))]
     pub corner_knobs: Vec<[f64; 2]>,
+    #[serde(default)]
     pub card_slot: bool,
+}
+fn one_key() -> u8 {
+    1
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -165,6 +177,10 @@ pub struct EquipmentAppearance {
     /// Host registry artwork id; omission selects original artwork.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skin: Option<String>,
+    /// A soft reference to a skin pack id. It is used when that pack is installed and the pilot has
+    /// not chosen another; otherwise the built-in public skin is shown.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommended_skin: Option<String>,
     pub synthetic_vision: bool,
 }
 pub(crate) fn rectangle([x, y, w, h]: [f64; 4], [width, height]: [f64; 2]) -> bool {
@@ -181,7 +197,18 @@ impl EquipmentAppearance {
         if let Some(id) = &self.skin {
             crate::layers::id(id, "equipment.skin")?;
         }
-        if let Some(b) = &self.bezel {
+        if let Some(id) = &self.recommended_skin {
+            crate::layers::id(id, "equipment.recommended_skin")?;
+        }
+        if let Some(model) = self.bezel.as_ref().and_then(|b| b.model) {
+            let [w, h] = size;
+            require(
+                (w / h / model.bezel_aspect() - 1.).abs() <= 0.03,
+                "display.bezel.model",
+                "installation aspect must match the display model bezel within 3%",
+            )?;
+        }
+        if let Some(b) = self.bezel.as_ref().filter(|b| b.model.is_none()) {
             for c in [&b.color, &b.edge_trim].into_iter().flatten() {
                 c.validate()?;
             }

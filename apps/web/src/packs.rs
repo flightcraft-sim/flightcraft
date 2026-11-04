@@ -1,7 +1,8 @@
 //! Capped streaming fetches of manifest-listed JSON documents from static hosts.
 use flightcraft_control::{
-    MAX_AIRCRAFT_BYTES, MAX_MANIFEST_BYTES, MAX_PACK_BYTES, MAX_PACKS, PackContents, PackManifest,
-    PackOptions,
+    MAX_AIRCRAFT_BYTES, MAX_MANIFEST_BYTES, MAX_PACK_BYTES, MAX_PACKS, MAX_SKIN_FONT_BYTES,
+    MAX_SKIN_MANIFEST_BYTES, MAX_SKINS, PackContents, PackManifest, PackOptions, SkinContents,
+    SkinPackManifest,
 };
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -30,7 +31,37 @@ async fn load_all(result: &mut PackOptions) -> Result<(), JsValue> {
             Err(e) => result.errors.push(format!("Aircraft pack {url}: {e:?}")),
         }
     }
+    // Skin packs: `?skin=URL` names a skin.json beside its declared assets.
+    let skins = query.get_all("skin");
+    if skins.length() as usize > MAX_SKINS {
+        return Err(JsValue::from_str("At most 32 skin URLs"));
+    }
+    for url in skins.iter() {
+        let Some(url) = url.as_string() else {
+            continue;
+        };
+        match load_skin(&window, &url).await {
+            Ok(skin) => result.skins.push(skin),
+            Err(e) => result.errors.push(format!("Skin pack {url}: {e:?}")),
+        }
+    }
     Ok(())
+}
+
+async fn load_skin(window: &web_sys::Window, url: &str) -> Result<SkinContents, JsValue> {
+    let url = web_sys::Url::new_with_base(url, &window.location().href()?)?;
+    if !matches!(url.protocol().as_str(), "http:" | "https:") {
+        return Err(JsValue::from_str("Skin URLs require HTTP or HTTPS"));
+    }
+    let text = fetch(window, &url.href(), MAX_SKIN_MANIFEST_BYTES).await?;
+    let manifest = SkinPackManifest::from_json(&text).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let mut assets = std::collections::BTreeMap::new();
+    for asset in &manifest.assets {
+        let file_url = web_sys::Url::new_with_base(&asset.path, &url.href())?;
+        let bytes = fetch_bytes(window, &file_url.href(), MAX_SKIN_FONT_BYTES).await?;
+        assets.insert(asset.path.clone(), bytes);
+    }
+    Ok(SkinContents { manifest, assets })
 }
 
 async fn load_one(window: &web_sys::Window, url: &str) -> Result<PackContents, JsValue> {

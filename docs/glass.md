@@ -74,7 +74,7 @@ installation has it with no pack change; `false` declares an aircraft with displ
 receiver, and then no glass page shows traffic, the TFC keys are absent, and `traffic_installed`
 in the glass state is false. The conventional analog panels have none.
 
-Symbols follow the common Garmin and Dynon ADS-B convention, from the simulator's busy-airspace
+Symbols follow the common glass-cockpit ADS-B convention, from the simulator's busy-airspace
 traffic and circuit traffic, in one merged list:
 
 | Class | Rule | Symbol |
@@ -206,6 +206,138 @@ with an engine strip. See [equipment](equipment.md#pages-roles-and-the-pilots-se
 list, settings, and reversion rules. The Corvid glass variant has this arrangement by design:
 its PFD is the left display and its MFD, which opens on the map, the right; its MFD failure moves
 the engine strip to the PFD. The Corvid displays are fixed instruments, so they have no seat swap.
+
+## Landscape touch EFIS model
+
+A touch display can declare `"appearance": {"bezel": {"model": "landscape_touch_efis"}}`. The model is the
+engine's description of a **10.6-inch landscape touch EFIS**: the screen shape, the row of physical controls
+beneath it, the split-screen arrangement, the page set, and what each knob and key does. A pack names the
+real unit it copies in its own readme; the engine does not. Without a `model` a display keeps the generic
+bezel (soft keys and corner knobs) unchanged.
+
+An installation with a `model` must have the model's bezel aspect (272 : 195, within 3 percent); the display
+is drawn at the largest bezel that fits its rectangle, so it scales uniformly on a desktop or a phone.
+
+### Geometry
+
+| Item | Value | Source |
+|---|---|---|
+| Screen | 1280 x 768 px, aspect 5:3 | Manufacturer's published specification, as quoted in a public forum post; not read from the installation manual's text |
+| Diagonal | 10.6 in (269.2 mm), so the visible screen is 230.9 x 138.5 mm | Pilot's guide 1.1 (display unit, 10.6 inch, landscape); the size follows from diagonal and aspect |
+| Panel cutout | 262.00 x 185.10 mm | Installation manual, outline drawing (section 8), read from secondary text |
+| Outer bezel | 272 x 195 mm | **Estimate**: the drawing's dimensions could not be read |
+| Controls | Left knob, NEAREST, DIRECT, data-card slot, MENU, BACK, right knob, left to right in one row **below** the screen | Pilot's guide 1.2, "Bezel Overview" figure |
+| Control positions | Fractions of the bezel width at 7.5, 20.5, 30, 50, 70, 79.5, 92.5 percent | **Estimate** (the figure gives order, not dimensions) |
+
+The pilot's guide's bezel has no soft keys: pages and options are reached by touch, and there are two
+dual-concentric knobs (small inner ring, large outer ring, each with a push on the inner ring). The model
+exposes the geometry as `flightcraft_aero::display_model::DisplayModel::geometry()`; tests check the aspect,
+that the controls fit the bezel without overlapping, and their order.
+
+### Screen modes and pages
+
+Three modes, from the pilot's guide 1.5: **full PFD**, **full MFD**, and **split** (PFD and one MFD pane).
+The on-screen SPLIT/FULL button or a BACK press-and-hold toggles between full and split. In split the PFD
+takes 60 percent of the width (estimate) and the MFD pane the rest. The MFD has a page bar along its
+bottom: the current page's name on the left and abbreviations on the right (Map, Wpt, FPL, Ter, Trf, Info,
+Eng); touching one selects it. The nearest pages are reached with NEAREST and are not in the knob cycle.
+
+| Mode | `layout` | Notes |
+|---|---|---|
+| Full PFD | `integrated_pfd`, `full_pfd`, `svt` | Attitude, tapes, HSI, data bar, engine strip, insets |
+| Split | `split` (or the older `pfd_map`) | PFD left, pane right showing the display's `mfd_page` |
+| Full MFD | `mfd` (or the older `engine`, `flight_plan`, `nearest`, `traffic`) | `mfd_page` fills the screen; the map page keeps its data column |
+
+The two-screen defaults map straight onto this: the left display opens as a full PFD, the right as a full
+MFD on the map page. A split or a full MFD page chosen on either display is saved for the aircraft variant
+beside the older `display_page` and `display_data` settings, which still work and name their own page.
+
+MFD pages: map, waypoint, active flight plan, terrain, traffic, info, engine, and nearest. Weather,
+charts, checklists, and video are not modelled. Waypoint and info are simple status pages, and terrain
+is the map on the terrain base.
+
+### Knobs
+
+Each knob is two rings; turning a ring sends `DisplayAction::Knob`, pushing the inner ring sends `KnobPush`.
+Roles follow the pilot's guide (1.5, "knob operation"):
+
+| Mode | Left knob inner / outer | Right knob inner / outer |
+|---|---|---|
+| Full PFD | Heading bug / altitude bug | Course / baro (default "right side knob action") |
+| Split, MFD pane on the right (default) | Heading bug / altitude bug | Map range / MFD page |
+| Full MFD | Map range / MFD page | Map range / MFD page |
+
+The "right side knob action" setting selects the alternate pair: course/baro, flight-director bug/baro
+(the engine has no flight-director pitch bug, so that inner ring does nothing), or heading/altitude.
+"Press to toggle knob action", when on, makes an inner push swap main and alternate functions for 10 seconds
+on a PFD knob. With it off, pushing the heading knob syncs the bug to the current heading (rounded to a
+degree). Detents: 1 degree for heading and course, 100 ft for the altitude bug, 0.01 inHg (or 1 hPa) for
+baro, and the range ladder 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100, 150, 200 NM (the real unit has 23
+ranges; the engine's range is limited to 1 to 200 NM). Clockwise zooms in. A host supplies `time_s` with each
+knob event, so the 10-second revert needs no clock in the engine and replays exactly.
+
+### Keys and menus
+
+| Key | Press | Hold |
+|---|---|---|
+| NEAREST | Open the nearest page (split, if on a full PFD) | |
+| DIRECT | Open direct-to entry; ENTER activates a direct-to to that identifier | |
+| MENU | Page menu (PFD options on a full PFD), then the main menu, then clear | |
+| BACK | Close the open menu or keypad, else return to the previous page | Toggle full and split |
+
+The page menu lists traffic and track-up on map pages and reads "No Options" elsewhere; the main menu lists
+the pages and display backup. The state machine is `flightcraft_control::touch_efis` (pure functions, no
+session access). The `equipment.set` display actions are `key`, `knob`, `knob_push`, `mfd_page`,
+`toggle_split`, `close_overlay`, `direct_to`, `knobs` (alternate pair, push-to-toggle, pane side), and
+`skin`.
+
+### Reversion
+
+As on the real unit (pilot's guide, appendix F), a failed or unpowered display makes the surviving one show
+the PFD with its engine strip, and it returns to its chosen page when the other display returns. The
+backup setting forces the same on the screen that is not showing a PFD. The autopilot follows the
+primary-display rule in the pilot's guide for a PFD failure; the engine's autopilot does not model that
+disconnect.
+
+### Skin packs
+
+A skin pack is artwork for a display model, shipped apart from the engine and from aircraft packs. It is a
+directory with a `skin.json` manifest (`kind: skin_pack`, `format_version`, `id`, `version`,
+`display_name`, SPDX `licence`, `display_model`), an optional palette (bezel, trim, key face and text, knob,
+knob mark, screen surround; key text needs 4.5:1 contrast on the key face), up to eight short key labels,
+and up to 16 declared font assets with their own licences. It carries no behaviour.
+
+- **Limits.** Manifest 64 KiB; one font 4 MiB; a pack 8 MiB; at most 32 packs; portable relative paths only
+  (no `..`, hidden names, or symlinks). A bad pack is reported and skipped, never fatal. Fonts are parsed
+  before use; one that does not parse is ignored and the built-in family is used.
+- **Loading.** Native builds read the `skins` folder beside `packs`, then the folder named by the
+  `FLIGHTCRAFT_SKINS_DIR` environment variable (later ids replace earlier ones). The browser build reads
+  `?skin=URL` parameters. Release builds bundle the skins listed in `bundled-skins.json` (a repository and
+  commit pinned once, plus the subdirectories to bundle) with `scripts/bundle-skins.py`, which copies only
+  `skin.json`, the declared assets, and readme, attribution, and licence files, and fails on a path escape.
+- **Choosing.** A display shows the skin the pilot chose in Settings (Cockpit displays), else the skin its
+  aircraft pack names in the appearance field `recommended_skin`, else the engine's built-in public skin.
+  The recommendation is a soft reference: if that skin is not installed, or is for another model, the
+  built-in skin is shown with no error. "Built-in skin" in Settings overrides a recommendation.
+- **Private skins.** A skin that reproduces a manufacturer's screens exactly stays private and is never
+  published. To use one, put its directory (same manifest format, `display_model: landscape_touch_efis`)
+  in a folder outside every repository, and start the app with `FLIGHTCRAFT_SKINS_DIR` set to that folder.
+  It appears in the display's skin list beside the public ones, and a pack can recommend it by id. The
+  older per-installation `EquipmentSkin` painter hook (`Registry::register_equipment_skin`) remains for
+  painters that replace a whole installation's artwork.
+
+The public skin is in the shared skins repository: bezel and key colours, labels, and an open-licensed
+font. Instrument faces (tapes, attitude, HSI, map) are drawn by the engine from FAA display conventions
+for every skin.
+
+### Not yet matched
+
+The model is not a screen-for-screen copy. Known differences: the PFD's exact element placement, scales and
+colour fills follow FAA conventions rather than the guide's figures; the data bar fields are the engine's;
+the baro, heading, altitude, and course touch-entry keypads, COM/NAV/transponder tuning windows on the
+display, the Select Page menu, nearest sub-pages (VOR, NDB, intersection, airspace), flight-plan editing
+by touch, and the AFCS status box on the PFD are not drawn; the inset set and the 23-step range ladder are
+reduced; outer bezel dimensions and control positions are estimates.
 
 ## Commands and controls
 

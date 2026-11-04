@@ -126,7 +126,7 @@ selected page. The independent standby retains its own computer and backup power
 ### Pages, roles, and the pilot's seat
 
 A two-screen installation is flown by one pilot, so the screens do different jobs, as on a
-Garmin G3X Touch or Dynon SkyView HDX install: the left screen is the primary flight display and
+typical two-display experimental installation: the left screen is the primary flight display and
 the right is the multi-function display (MFD). The page is the display's `layout` value:
 
 | Page | Shows |
@@ -134,6 +134,7 @@ the right is the multi-function display (MFD). The page is the display's `layout
 | `integrated_pfd`, `full_pfd` | The primary flight display |
 | `svt` | The PFD with synthetic vision always on |
 | `pfd_map` | PFD and map, split |
+| `split` | PFD beside one MFD pane (`mfd_page`) |
 | `mfd` | A large moving map with the flight director's active-leg guidance (the active leg in magenta, DTK, XTK, distance), traffic, airspace, and the plan, beside a data column |
 | `map_engine` | Map beside the narrow engine strip |
 | `engine`, `flight_plan`, `nearest`, `traffic` | The full-screen engine page or list |
@@ -143,6 +144,12 @@ The `mfd` data column shows the engine page, flight plan, nearest, or traffic li
 pressed again it steps the data column. ENG toggles the engine strip on a PFD page and the
 full-screen engine page elsewhere. SVT toggles synthetic vision, and a fifth key (LIST) steps the
 list pages. The lists are the MFD's own tables.
+
+A display with `"bezel": {"model": "landscape_touch_efis"}` is the 10.6-inch landscape touch EFIS: its
+pages, split screen, knobs, keys, and reversion follow the model described in
+[glass](glass.md#landscape-touch-efis-model), not the soft-key row below. Its appearance may also carry
+`recommended_skin`, a skin pack id used when that pack is installed; see
+[skin packs](glass.md#skin-packs).
 
 A pack declares what a display shows at power-up with the optional `default_page` of its
 `touch_display` element. Omission shows `layout`, as packs always have. `layout` remains the

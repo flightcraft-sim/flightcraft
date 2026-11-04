@@ -1349,7 +1349,8 @@
       "type": "object",
       "properties": {
         "card_slot": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "color": {
           "anyOf": [
@@ -1364,6 +1365,7 @@
         "corner_knobs": {
           "description": "Knob centres in local installation mm; zero, one, or two knobs.",
           "type": "array",
+          "default": [],
           "items": {
             "type": "array",
             "items": {
@@ -1388,6 +1390,12 @@
         "margins": {
           "description": "Left, top, right, bottom margins, in mm.",
           "type": "array",
+          "default": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
           "items": {
             "type": "number",
             "format": "double"
@@ -1395,24 +1403,30 @@
           "maxItems": 4,
           "minItems": 4
         },
+        "model": {
+          "description": "A display model supplies the bezel geometry and control set; `margins`, soft keys, and\ncorner knobs are then ignored and the installation must have the model's bezel aspect.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DisplayModel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "softkey_count": {
           "type": "integer",
           "format": "uint8",
+          "default": 1,
           "maximum": 12,
           "minimum": 1
         },
         "softkeys": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "margins",
-        "softkeys",
-        "softkey_count",
-        "corner_knobs",
-        "card_slot"
-      ]
+      "additionalProperties": false
     },
     "DisplayComposition": {
       "type": "object",
@@ -1452,6 +1466,16 @@
         "synthetic_vision",
         "engine",
         "navigation"
+      ]
+    },
+    "DisplayModel": {
+      "description": "A display class the engine knows how to draw and operate.",
+      "oneOf": [
+        {
+          "description": "10.6-inch landscape touch EFIS with a bottom row of physical controls.",
+          "type": "string",
+          "const": "landscape_touch_efis"
+        }
       ]
     },
     "ElectricalDefinition": {
@@ -1767,6 +1791,13 @@
         "navigator_layout": {
           "$ref": "#/$defs/NavigatorLayout",
           "default": "classic"
+        },
+        "recommended_skin": {
+          "description": "A soft reference to a skin pack id. It is used when that pack is installed and the pilot has\nnot chosen another; otherwise the built-in public skin is shown.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "skin": {
           "description": "Host registry artwork id; omission selects original artwork.",
@@ -3746,6 +3777,11 @@
             "pfd_map",
             "map_engine"
           ]
+        },
+        {
+          "description": "Landscape split screen: the PFD beside one MFD pane showing the display's `MfdPage`.",
+          "type": "string",
+          "const": "split"
         },
         {
           "description": "Primary flight display with synthetic vision always on.",

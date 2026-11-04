@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SkinPackManifest",
+  "type": "object",
+  "properties": {
+    "assets": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SkinAsset"
+      },
+      "maxItems": 16
+    },
+    "display_model": {
+      "description": "The display model this skin dresses.",
+      "$ref": "#/$defs/DisplayModel"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "font": {
+      "description": "Path of the chrome font among `assets`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "format_version": {
+      "type": "integer",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "labels": {
+      "description": "Short functional labels printed on keys, by control. At most 8 characters each.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "licence": {
+      "description": "SPDX licence identifier of the skin pack.",
+      "type": "string"
+    },
+    "palette": {
+      "$ref": "#/$defs/SkinPalette",
+      "default": {
+        "bezel": null,
+        "bezel_trim": null,
+        "key_face": null,
+        "key_text": null,
+        "knob": null,
+        "knob_mark": null,
+        "screen_surround": null
+      }
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "format_version",
+    "id",
+    "version",
+    "display_name",
+    "licence",
+    "display_model"
+  ],
+  "$defs": {
+    "DisplayModel": {
+      "description": "A display class the engine knows how to draw and operate.",
+      "oneOf": [
+        {
+          "description": "10.6-inch landscape touch EFIS with a bottom row of physical controls.",
+          "type": "string",
+          "const": "landscape_touch_efis"
+        }
+      ]
+    },
+    "SkinAsset": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SkinAssetKind"
+        },
+        "licence": {
+          "description": "SPDX licence identifier of the asset itself.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Portable relative path inside the skin directory.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "licence"
+      ]
+    },
+    "SkinAssetKind": {
+      "type": "string",
+      "enum": [
+        "font"
+      ]
+    },
+    "SkinPalette": {
+      "description": "Colours for the bezel and its controls. Every field is optional; omission keeps the built-in value.",
+      "type": "object",
+      "properties": {
+        "bezel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bezel_trim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "key_face": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "key_text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "knob": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "knob_mark": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "screen_surround": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SrgbHex": {
+      "description": "Six-digit opaque sRGB, including the leading `#`.",
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    }
+  }
+}

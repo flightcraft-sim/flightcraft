@@ -24,6 +24,7 @@ flightcraft-sim.workspace = true
 flightcraft-world.workspace = true
 flightcraft-aero.workspace = true
 libm.workspace = true
+ab_glyph.workspace = true
 eframe.workspace = true
 serde.workspace = true
 serde_json.workspace = true

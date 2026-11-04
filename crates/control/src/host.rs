@@ -76,6 +76,7 @@ impl Session {
             glass: self.glass.clone(),
             touch: self.touch.clone(),
             display_prefs: self.display_prefs.clone(),
+            skins: self.skins.clone(),
             selected_aircraft: self.selected_aircraft.clone(),
             aircraft_catalog: self.aircraft_catalog.clone(),
             selected_configuration: self.selected_configuration.clone(),

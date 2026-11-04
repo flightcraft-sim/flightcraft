@@ -35,6 +35,8 @@ pub struct InstrumentInput<'a> {
     pub aircraft: Option<&'a flightcraft_aero::ResolvedAircraft>,
     /// Current registration (the pilot's override, else the pack's) for `{registration}` placards.
     pub registration: Option<&'a str>,
+    /// Installed skin packs, for displays that name one.
+    pub skins: &'a [&'a flightcraft_control::SkinContents],
 }
 impl<'a> InstrumentInput<'a> {
     pub fn new(systems: &'a SystemsState, time_s: f64) -> Self {
@@ -48,7 +50,15 @@ impl<'a> InstrumentInput<'a> {
             aircraft: None,
             airports: None,
             registration: None,
+            skins: &[],
         }
+    }
+    pub fn with_skins(mut self, skins: &'a [&'a flightcraft_control::SkinContents]) -> Self {
+        self.skins = skins;
+        self
+    }
+    pub fn skin(&self, id: &str) -> Option<&'a flightcraft_control::SkinContents> {
+        self.skins.iter().copied().find(|s| s.manifest.id == id)
     }
     pub fn with_registration(mut self, registration: &'a str) -> Self {
         self.registration = Some(registration);

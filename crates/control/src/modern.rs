@@ -1,6 +1,8 @@
 //! Touch navigator and display behaviour. Navigation is owned by the session's single GPS.
+use crate::touch_efis::{self, EfisConfig, EfisKey, KeyState, Knob, KnobRole, Overlay, PushEffect, Ring};
 use crate::{Command, CommandError, GlassSetting, Session, invalid};
-use flightcraft_aero::modern::{DataArea, PanelElement, PilotSeat, TouchLayout};
+use flightcraft_aero::display_model::DisplayModel;
+use flightcraft_aero::modern::{DataArea, MfdPage, PanelElement, PilotSeat, TouchLayout};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -77,6 +79,27 @@ pub struct TouchDisplayState {
     pub failed: bool,
     pub powered: bool,
     pub reversion: bool,
+    /// The MFD page shown full-screen or in the split pane.
+    #[serde(default)]
+    pub mfd_page: MfdPage,
+    /// A menu or keypad shown over the display.
+    #[serde(default)]
+    pub overlay: Overlay,
+    /// While set and later than the host's clock, the knobs have swapped main and alternate roles.
+    #[serde(default)]
+    pub knob_toggle_until_s: Option<f64>,
+    /// Knob settings: alternate roles, press-to-toggle, split-pane side.
+    #[serde(default)]
+    pub knobs: EfisConfig,
+    /// The physical display model, when the installation declares one.
+    #[serde(default)]
+    pub model: Option<DisplayModel>,
+    /// The skin pack in use; absent means the built-in public skin.
+    #[serde(default)]
+    pub skin: Option<String>,
+    /// The skin pack id the aircraft pack recommends, whether or not it is installed.
+    #[serde(default)]
+    pub recommended_skin: Option<String>,
 }
 #[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
 pub struct TouchState {
@@ -99,6 +122,22 @@ pub struct VariantDisplays {
     pub pages: BTreeMap<String, TouchLayout>,
     #[serde(default)]
     pub data_areas: BTreeMap<String, DataArea>,
+    #[serde(default)]
+    pub mfd_pages: BTreeMap<String, MfdPage>,
+    /// Skin pack id by installation id; `built-in` forces the engine's own skin.
+    #[serde(default)]
+    pub skins: BTreeMap<String, String>,
+    #[serde(default)]
+    pub knobs: EfisConfig,
+}
+fn key_state(d: &TouchDisplayState, runtime: &DisplayRuntime) -> KeyState {
+    KeyState {
+        layout: d.layout,
+        installed_pfd: d.installed_layout,
+        page: touch_efis::effective_page(d.layout, d.mfd_page),
+        overlay: runtime.overlay,
+        previous: runtime.previous,
+    }
 }
 /// Stored by eframe on desktop and in browser storage; keyed by resolved variant id.
 pub type DisplayPreferences = BTreeMap<String, VariantDisplays>;
@@ -107,6 +146,9 @@ pub(crate) struct DisplayRuntime {
     pub engine_strip: bool,
     pub failed: bool,
     pub synthetic_vision: bool,
+    pub overlay: Overlay,
+    pub toggle_until_s: Option<f64>,
+    pub previous: Option<(TouchLayout, MfdPage)>,
 }
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TouchAvionics {
@@ -170,6 +212,49 @@ pub enum DisplayAction {
     },
     Failure {
         failed: bool,
+    },
+    /// Show an MFD page. From a full PFD this opens the split screen. Saved for the variant.
+    MfdPage {
+        page: MfdPage,
+    },
+    /// Press a physical key on a landscape touch EFIS; `hold` is press-and-hold.
+    Key {
+        key: EfisKey,
+        #[serde(default)]
+        hold: bool,
+    },
+    /// Touch the on-screen SPLIT or FULL button.
+    ToggleSplit {},
+    /// Close the menu or keypad shown over the display.
+    CloseOverlay {},
+    /// Turn one ring of a knob. `time_s` is the host's clock, so replay reads no clock.
+    Knob {
+        knob: Knob,
+        ring: Ring,
+        #[schemars(range(min = -100, max = 100))]
+        detents: i32,
+        #[serde(default)]
+        time_s: f64,
+    },
+    /// Push a knob's inner ring.
+    KnobPush {
+        knob: Knob,
+        #[serde(default)]
+        time_s: f64,
+    },
+    /// Knob behaviour settings, saved for the variant.
+    Knobs {
+        config: EfisConfig,
+    },
+    /// Choose a skin pack for this display; `built-in` forces the engine's own skin and omission
+    /// follows the aircraft pack's recommendation. Saved for the variant.
+    Skin {
+        #[serde(default)]
+        skin: Option<String>,
+    },
+    /// Enter a waypoint for direct-to, as the DIRECT key's keypad does.
+    DirectTo {
+        query: String,
     },
 }
 #[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
@@ -271,6 +356,13 @@ impl Session {
                         failed: runtime.is_some_and(|r| r.failed),
                         powered: powered(load),
                         reversion: false,
+                        mfd_page: MfdPage::default(),
+                        overlay: runtime.map_or(Overlay::None, |r| r.overlay),
+                        knob_toggle_until_s: runtime.and_then(|r| r.toggle_until_s),
+                        knobs: EfisConfig::default(),
+                        model: e.appearance.bezel.as_ref().and_then(|b| b.model),
+                        skin: None,
+                        recommended_skin: e.appearance.recommended_skin.clone(),
                     });
                 }
                 _ => {}
@@ -291,6 +383,15 @@ impl Session {
             display.data_area = prefs
                 .and_then(|p| p.data_areas.get(&display.id).copied())
                 .unwrap_or_default();
+            display.mfd_page = prefs
+                .and_then(|p| p.mfd_pages.get(&display.id).copied())
+                .unwrap_or_default();
+            display.knobs = prefs.map_or_else(EfisConfig::default, |p| p.knobs);
+            display.skin = self.resolve_skin(
+                display.model,
+                prefs.and_then(|p| p.skins.get(&display.id)).map(String::as_str),
+                display.recommended_skin.as_deref(),
+            );
             if display.layout == TouchLayout::Svt {
                 display.synthetic_vision = true;
             }
@@ -305,6 +406,92 @@ impl Session {
                 display.powered && !display.failed && (lost || (backup && !display.layout.is_pfd()));
         }
         result
+    }
+    fn save_display_layout(&mut self, id: &str, default_page: TouchLayout, layout: TouchLayout) {
+        let variant = self.callsign_variant().to_owned();
+        let entry = self.display_prefs.entry(variant.clone()).or_default();
+        if layout == default_page {
+            entry.pages.remove(id);
+        } else {
+            entry.pages.insert(id.to_owned(), layout);
+        }
+        self.prune_display_preferences(&variant);
+    }
+    /// Persist a key transition's layout and page, and keep its transient parts for this flight.
+    fn apply_key_state(
+        &mut self,
+        id: &str,
+        d: &TouchDisplayState,
+        runtime: &mut DisplayRuntime,
+        next: KeyState,
+    ) {
+        runtime.overlay = next.overlay;
+        runtime.previous = next.previous;
+        if next.layout != d.layout {
+            self.save_display_layout(id, d.default_page, next.layout);
+        }
+        if next.page != d.mfd_page {
+            let variant = self.callsign_variant().to_owned();
+            let entry = self.display_prefs.entry(variant.clone()).or_default();
+            if next.page == MfdPage::default() {
+                entry.mfd_pages.remove(id);
+            } else {
+                entry.mfd_pages.insert(id.to_owned(), next.page);
+            }
+            self.prune_display_preferences(&variant);
+        }
+    }
+    /// Turn a knob ring: the role decides what changes. A page change returns the new key state.
+    fn apply_knob_role(
+        &mut self,
+        role: KnobRole,
+        detents: i32,
+        d: &TouchDisplayState,
+    ) -> Result<Option<KeyState>, CommandError> {
+        use crate::GlassSetting as G;
+        match role {
+            KnobRole::HeadingBug => self.sim.set_avionics(crate::AvionicsSetting::HeadingBugStep {
+                detents,
+                interval_ms: None,
+            })?,
+            KnobRole::AltitudeBug => {
+                let m = (self.glass.selected_altitude_m + f64::from(detents) * 100. * 0.3048)
+                    .clamp(-500., 15000.);
+                self.set_glass(G::SelectedAltitude { altitude_m: m })?;
+            }
+            KnobRole::Baro => {
+                let step = if self.glass.pressure_hpa { 100. } else { 33.8639 };
+                let pa = (self.sim.systems().controls.altimeter_setting_pa + f64::from(detents) * step)
+                    .clamp(80000., 110000.);
+                self.set_glass(G::Baro { pressure_pa: pa })?;
+            }
+            KnobRole::Course => {
+                let rad = (self.glass.course_rad + f64::from(detents).to_radians())
+                    .rem_euclid(std::f64::consts::TAU);
+                self.set_glass(G::Course { course_rad: rad })?;
+            }
+            KnobRole::MapRange => {
+                let range = touch_efis::step_range(self.glass.range_nm, detents, false);
+                self.set_glass(G::MapRange { range_nm: range })?;
+            }
+            KnobRole::MfdPage => {
+                let current = touch_efis::effective_page(d.layout, d.mfd_page);
+                let page = touch_efis::step_page(current, detents);
+                let state = KeyState {
+                    layout: d.layout,
+                    installed_pfd: d.installed_layout,
+                    page: d.mfd_page,
+                    overlay: Overlay::None,
+                    previous: None,
+                };
+                let mut next = touch_efis::show_page(state, page);
+                next.previous = None;
+                return Ok(Some(next));
+            }
+            // The engine has no flight director pitch bug to move.
+            KnobRole::FlightDirectorBug => {}
+        }
+        Ok(None)
     }
     pub(crate) fn reset_touch_generation(&mut self) {
         if self.touch.generation != self.flight_generation {
@@ -350,7 +537,15 @@ impl Session {
                 !id_ok(k)
                     || v.pages.len() > 16
                     || v.data_areas.len() > 16
-                    || v.pages.keys().chain(v.data_areas.keys()).any(|d| !id_ok(d))
+                    || v.mfd_pages.len() > 16
+                    || v.skins.len() > 16
+                    || v.pages
+                        .keys()
+                        .chain(v.data_areas.keys())
+                        .chain(v.mfd_pages.keys())
+                        .chain(v.skins.keys())
+                        .any(|d| !id_ok(d))
+                    || v.skins.values().any(|s| !id_ok(s))
             })
         {
             return Err(invalid("displays", "invalid saved display preferences"));
@@ -431,20 +626,102 @@ impl Session {
                     engine_strip: d.engine_strip,
                     failed: d.failed,
                     synthetic_vision: d.synthetic_vision,
+                    overlay: d.overlay,
+                    toggle_until_s: d.knob_toggle_until_s,
+                    previous: self.touch.displays.get(&id).and_then(|r| r.previous),
                 };
                 match action {
                     DisplayAction::SyntheticVision { enabled } => runtime.synthetic_vision = enabled,
                     DisplayAction::EngineStrip { visible } => runtime.engine_strip = visible,
                     DisplayAction::Failure { failed } => runtime.failed = failed,
                     DisplayAction::Layout { layout } => {
+                        runtime.overlay = Overlay::None;
+                        self.save_display_layout(&id, d.default_page, layout);
+                    }
+                    DisplayAction::MfdPage { page } => {
+                        let next = touch_efis::show_page(key_state(&d, &runtime), page);
+                        self.apply_key_state(&id, &d, &mut runtime, next);
+                    }
+                    DisplayAction::Key { key, hold } => {
+                        let next = touch_efis::key(key_state(&d, &runtime), key, hold);
+                        self.apply_key_state(&id, &d, &mut runtime, next);
+                    }
+                    DisplayAction::ToggleSplit {} => {
+                        let next = touch_efis::toggle_split(key_state(&d, &runtime));
+                        self.apply_key_state(&id, &d, &mut runtime, next);
+                    }
+                    DisplayAction::CloseOverlay {} => runtime.overlay = Overlay::None,
+                    DisplayAction::Knob {
+                        knob,
+                        ring,
+                        detents,
+                        time_s,
+                    } => {
+                        if !(-100..=100).contains(&detents) {
+                            return Err(invalid(NAME, "at most 100 knob detents"));
+                        }
+                        let toggled = runtime.toggle_until_s.is_some_and(|t| time_s < t);
+                        let mode = if d.reversion {
+                            touch_efis::ScreenMode::FullPfd
+                        } else {
+                            touch_efis::ScreenMode::of(d.layout)
+                        };
+                        let role = touch_efis::knob_role(mode, d.knobs, knob, ring, toggled);
+                        if let Some(next) = self.apply_knob_role(role, detents, &d)? {
+                            self.apply_key_state(&id, &d, &mut runtime, next);
+                        }
+                    }
+                    DisplayAction::KnobPush { knob, time_s } => {
+                        let toggled = runtime.toggle_until_s.is_some_and(|t| time_s < t);
+                        let mode = if d.reversion {
+                            touch_efis::ScreenMode::FullPfd
+                        } else {
+                            touch_efis::ScreenMode::of(d.layout)
+                        };
+                        match touch_efis::knob_push(mode, d.knobs, knob, toggled) {
+                            PushEffect::ToggleFunctions => {
+                                runtime.toggle_until_s =
+                                    (!toggled).then_some(time_s + touch_efis::TOGGLE_REVERT_S);
+                            }
+                            PushEffect::SyncHeading => {
+                                self.sim.set_avionics(crate::AvionicsSetting::HeadingBugSync {})?;
+                            }
+                            PushEffect::SyncCourse
+                            | PushEffect::SyncFlightDirector
+                            | PushEffect::CentreMap
+                            | PushEffect::None => {}
+                        }
+                    }
+                    DisplayAction::Knobs { config } => {
+                        let variant = self.callsign_variant().to_owned();
+                        self.display_prefs.entry(variant.clone()).or_default().knobs = config;
+                        self.prune_display_preferences(&variant);
+                    }
+                    DisplayAction::Skin { skin } => {
+                        if let Some(skin) = &skin
+                            && skin != crate::skins::BUILT_IN_SKIN
+                            && self.resolve_skin(d.model, Some(skin), None).is_none()
+                        {
+                            return Err(invalid(
+                                NAME,
+                                "skin is not installed or does not fit this display",
+                            ));
+                        }
                         let variant = self.callsign_variant().to_owned();
                         let entry = self.display_prefs.entry(variant.clone()).or_default();
-                        if layout == d.default_page {
-                            entry.pages.remove(&id);
-                        } else {
-                            entry.pages.insert(id.clone(), layout);
+                        match skin {
+                            Some(skin) => {
+                                entry.skins.insert(id.clone(), skin);
+                            }
+                            None => {
+                                entry.skins.remove(&id);
+                            }
                         }
                         self.prune_display_preferences(&variant);
+                    }
+                    DisplayAction::DirectTo { query } => {
+                        self.navigator_plan(vec![query])?;
+                        runtime.overlay = Overlay::None;
                     }
                     DisplayAction::DataArea { area } => {
                         let variant = self.callsign_variant().to_owned();

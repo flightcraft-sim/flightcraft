@@ -12,6 +12,7 @@ pub mod crew;
 #[cfg(test)]
 mod crew_preview;
 mod display_preferences;
+mod efis;
 pub mod glass;
 mod ifr;
 #[cfg(test)]
@@ -221,6 +222,22 @@ impl FlightCraftApp {
         for pack in options.packs.fetched {
             if let Err(e) = session.install_pack(&pack) {
                 pack_errors.push(e.to_string());
+            }
+        }
+        // Skin packs sit beside the aircraft packs. FLIGHTCRAFT_SKINS_DIR adds a local directory
+        // (for example private artwork outside any repository), loaded last so its ids win.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            pack_errors.extend(
+                session.load_skins_directory(&std::path::Path::new(&packs_directory).with_file_name("skins")),
+            );
+            if let Some(extra) = std::env::var_os("FLIGHTCRAFT_SKINS_DIR") {
+                pack_errors.extend(session.load_skins_directory(std::path::Path::new(&extra)));
+            }
+        }
+        for skin in options.packs.skins {
+            if let Err(e) = session.install_skin(skin) {
+                pack_errors.push(format!("skin: {e}"));
             }
         }
         if !pack_errors.is_empty() {
@@ -477,6 +494,7 @@ impl FlightCraftApp {
             return;
         }
         let mut changes = Vec::new();
+        let mut equipment = Vec::new();
         ui.separator();
         ui.label(RichText::new("COCKPIT DISPLAYS").color(theme::ACCENT).size(11.0));
         if touch.displays.len() == 2 {
@@ -510,6 +528,88 @@ impl FlightCraftApp {
                             }
                         }
                     });
+                if let Some(model) = display.model {
+                    let current = display.skin.clone();
+                    egui::ComboBox::from_id_salt(("display skin", &display.id))
+                        .selected_text(
+                            current
+                                .as_deref()
+                                .and_then(|id| session.skin(id))
+                                .map_or("Built-in skin", |s| s.manifest.display_name.as_str()),
+                        )
+                        .show_ui(ui, |ui| {
+                            if ui.selectable_label(current.is_none(), "Built-in skin").clicked() {
+                                equipment.push(flightcraft_control::EquipmentSetting::Display {
+                                    id: display.id.clone(),
+                                    action: flightcraft_control::DisplayAction::Skin {
+                                        skin: Some(flightcraft_control::BUILT_IN_SKIN.into()),
+                                    },
+                                });
+                            }
+                            for skin in session.skins_for(model) {
+                                let id = &skin.manifest.id;
+                                if ui
+                                    .selectable_label(
+                                        current.as_deref() == Some(id),
+                                        &skin.manifest.display_name,
+                                    )
+                                    .clicked()
+                                {
+                                    equipment.push(flightcraft_control::EquipmentSetting::Display {
+                                        id: display.id.clone(),
+                                        action: flightcraft_control::DisplayAction::Skin {
+                                            skin: Some(id.clone()),
+                                        },
+                                    });
+                                }
+                            }
+                            if display.recommended_skin.is_some()
+                                && ui
+                                    .selectable_label(false, "Follow the aircraft's recommendation")
+                                    .clicked()
+                            {
+                                equipment.push(flightcraft_control::EquipmentSetting::Display {
+                                    id: display.id.clone(),
+                                    action: flightcraft_control::DisplayAction::Skin { skin: None },
+                                });
+                            }
+                        });
+                    let mut knobs = display.knobs;
+                    let mut changed = ui
+                        .checkbox(&mut knobs.press_to_toggle, "Push knob toggles functions")
+                        .changed();
+                    egui::ComboBox::from_id_salt(("display knobs", &display.id))
+                        .selected_text(match knobs.alternate {
+                            flightcraft_control::touch_efis::AlternateKnobs::CourseBaro => {
+                                "Right knob: course / baro"
+                            }
+                            flightcraft_control::touch_efis::AlternateKnobs::FdBugBaro => {
+                                "Right knob: FD bug / baro"
+                            }
+                            flightcraft_control::touch_efis::AlternateKnobs::HeadingAltitude => {
+                                "Right knob: heading / altitude"
+                            }
+                        })
+                        .show_ui(ui, |ui| {
+                            use flightcraft_control::touch_efis::AlternateKnobs as A;
+                            for (value, label) in [
+                                (A::CourseBaro, "Course / baro"),
+                                (A::FdBugBaro, "FD bug / baro"),
+                                (A::HeadingAltitude, "Heading / altitude"),
+                            ] {
+                                if ui.selectable_label(knobs.alternate == value, label).clicked() {
+                                    knobs.alternate = value;
+                                    changed = true;
+                                }
+                            }
+                        });
+                    if changed {
+                        equipment.push(flightcraft_control::EquipmentSetting::Display {
+                            id: display.id.clone(),
+                            action: flightcraft_control::DisplayAction::Knobs { config: knobs },
+                        });
+                    }
+                }
                 if display.layout == TouchLayout::Mfd {
                     egui::ComboBox::from_id_salt(("display data", &display.id))
                         .selected_text(display.data_area.label())
@@ -539,6 +639,11 @@ impl FlightCraftApp {
                 .changed()
         {
             changes.push(GlassSetting::DisplayReversion { enabled: backup });
+        }
+        for setting in equipment {
+            if let Err(e) = session.run(flightcraft_control::SetEquipment { setting }) {
+                *error = Some(e.to_string());
+            }
         }
         for setting in changes {
             if let Err(e) = session.run(flightcraft_control::SetAvionics {
@@ -1572,6 +1677,8 @@ mod weather_live_preview;
 #[cfg(test)]
 mod weather_preview;
 
+#[cfg(test)]
+mod efis_tests;
 #[cfg(test)]
 mod navigator_audio_tests;
 #[cfg(test)]

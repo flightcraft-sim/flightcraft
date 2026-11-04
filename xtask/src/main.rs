@@ -362,6 +362,12 @@ fn schemas(check: bool) -> Result<(), String> {
             "pack.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_aero::PackManifest)),
         ),
+        (
+            "skin-pack.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(
+                flightcraft_aero::skin_pack::SkinPackManifest
+            )),
+        ),
     ];
     for (name, value) in documents {
         let path = root()?.join("schema").join(name);

@@ -287,263 +287,312 @@ impl PanelUi {
                         ..
                     } => {
                         if let Some(d) = glass.touch.displays.iter().find(|d| d.id == e.id) {
-                            let b = e.appearance.bezel.as_ref();
-                            let screen = b.map_or_else(
-                                || part(cell, 0.02, 0.03, 0.96, 0.84),
-                                |b| {
-                                    let [l, t, r, bottom] = b.margins;
-                                    Rect::from_min_max(
-                                        cell.min + egui::vec2(l as f32, t as f32) * scale,
-                                        cell.max - egui::vec2(r as f32, bottom as f32) * scale,
-                                    )
-                                },
-                            );
-                            ui.painter().rect_filled(
-                                cell,
-                                6.,
-                                color(b.and_then(|b| b.color.as_ref()), bezel),
-                            );
-                            if let Some(trim) = b.and_then(|b| b.edge_trim.as_ref()) {
-                                ui.painter().rect_stroke(
+                            if let (Some(model), true) = (d.model, e.appearance.bezel.is_some()) {
+                                let style = d
+                                    .skin
+                                    .as_deref()
+                                    .and_then(|id| input.skin(id))
+                                    .map_or_else(crate::efis::Style::built_in, |skin| {
+                                        crate::efis::Style::from_skin(ui.ctx(), skin)
+                                    });
+                                let bezel_rect = crate::efis::bezel_rect(cell, model);
+                                crate::efis::paint_bezel(ui, bezel_rect, model, &style);
+                                let screen = crate::efis::screen_rect(bezel_rect, model);
+                                self.maps.extend(
+                                    crate::glass::paint_touch(ui, screen, glass, input, d, composition)
+                                        .into_iter()
+                                        .enumerate()
+                                        .map(|(i, rect)| (format!("{}-{i}", e.id), rect)),
+                                );
+                                let mut out = crate::efis::Output::default();
+                                crate::efis::controls(ui, bezel_rect, model, &e.id, &mut out);
+                                crate::efis::chrome(
+                                    ui,
+                                    screen,
+                                    &e.id,
+                                    d,
+                                    &style,
+                                    crate::efis::Shared {
+                                        backup: glass.touch.manual_reversion,
+                                        traffic_shown: glass.settings.traffic_shown,
+                                        track_up: glass.settings.orientation
+                                            != flightcraft_sim::avionics::glass::MapOrientation::NorthUp,
+                                    },
+                                    &mut out,
+                                );
+                                if d.reversion {
+                                    text(ui, part(screen, 0.2, 0., 0.6, 0.06), "REVERSION", font, t::AMBER);
+                                }
+                                self.commands.extend(out.equipment);
+                                self.avionics.extend(
+                                    out.glass
+                                        .into_iter()
+                                        .map(|setting| AvionicsSetting::Glass { setting }),
+                                );
+                            } else {
+                                let b = e.appearance.bezel.as_ref();
+                                let screen = b.map_or_else(
+                                    || part(cell, 0.02, 0.03, 0.96, 0.84),
+                                    |b| {
+                                        let [l, t, r, bottom] = b.margins;
+                                        Rect::from_min_max(
+                                            cell.min + egui::vec2(l as f32, t as f32) * scale,
+                                            cell.max - egui::vec2(r as f32, bottom as f32) * scale,
+                                        )
+                                    },
+                                );
+                                ui.painter().rect_filled(
                                     cell,
                                     6.,
-                                    Stroke::new(scale.max(0.5), color(Some(trim), t::MUTED)),
-                                    egui::StrokeKind::Inside,
+                                    color(b.and_then(|b| b.color.as_ref()), bezel),
                                 );
-                            }
-                            if b.is_some_and(|b| b.card_slot) {
-                                ui.painter()
-                                    .rect_filled(part(cell, 0.43, 0.955, 0.14, 0.012), 1., t::BORDER);
-                            }
-                            let key_count = b.map_or(5, |b| {
-                                if b.softkeys {
-                                    usize::from(b.softkey_count)
-                                } else {
-                                    0
+                                if let Some(trim) = b.and_then(|b| b.edge_trim.as_ref()) {
+                                    ui.painter().rect_stroke(
+                                        cell,
+                                        6.,
+                                        Stroke::new(scale.max(0.5), color(Some(trim), t::MUTED)),
+                                        egui::StrokeKind::Inside,
+                                    );
                                 }
-                            });
-                            self.maps.extend(
-                                crate::glass::paint_touch(ui, screen, glass, input, d, composition)
+                                if b.is_some_and(|b| b.card_slot) {
+                                    ui.painter().rect_filled(
+                                        part(cell, 0.43, 0.955, 0.14, 0.012),
+                                        1.,
+                                        t::BORDER,
+                                    );
+                                }
+                                let key_count = b.map_or(5, |b| {
+                                    if b.softkeys {
+                                        usize::from(b.softkey_count)
+                                    } else {
+                                        0
+                                    }
+                                });
+                                self.maps.extend(
+                                    crate::glass::paint_touch(ui, screen, glass, input, d, composition)
+                                        .into_iter()
+                                        .enumerate()
+                                        .map(|(i, rect)| (format!("{}-{i}", e.id), rect)),
+                                );
+                                if b.is_none() {
+                                    for (i, (label, layout)) in [
+                                        (
+                                            "PFD",
+                                            if *default_layout == TouchLayout::IntegratedPfd {
+                                                TouchLayout::IntegratedPfd
+                                            } else {
+                                                TouchLayout::FullPfd
+                                            },
+                                        ),
+                                        ("PFD / MAP", TouchLayout::PfdMap),
+                                        ("MAP / ENG", TouchLayout::MapEngine),
+                                    ]
                                     .into_iter()
                                     .enumerate()
-                                    .map(|(i, rect)| (format!("{}-{i}", e.id), rect)),
-                            );
-                            if b.is_none() {
-                                for (i, (label, layout)) in [
-                                    (
-                                        "PFD",
-                                        if *default_layout == TouchLayout::IntegratedPfd {
-                                            TouchLayout::IntegratedPfd
-                                        } else {
-                                            TouchLayout::FullPfd
-                                        },
-                                    ),
-                                    ("PFD / MAP", TouchLayout::PfdMap),
-                                    ("MAP / ENG", TouchLayout::MapEngine),
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                {
+                                    {
+                                        if button(
+                                            ui,
+                                            i,
+                                            part(cell, 0.075 + i as f32 * 0.175, 0.89, 0.168, 0.09),
+                                            label,
+                                            d.layout == layout,
+                                            font,
+                                        )
+                                        .clicked()
+                                        {
+                                            self.commands.push(EquipmentSetting::Display {
+                                                id: e.id.clone(),
+                                                action: DisplayAction::Layout { layout },
+                                            });
+                                        }
+                                    }
                                     if button(
                                         ui,
-                                        i,
-                                        part(cell, 0.075 + i as f32 * 0.175, 0.89, 0.168, 0.09),
-                                        label,
-                                        d.layout == layout,
+                                        "strip",
+                                        part(cell, 0.775, 0.89, 0.15, 0.09),
+                                        "ENG",
+                                        d.engine_strip,
                                         font,
                                     )
                                     .clicked()
                                     {
                                         self.commands.push(EquipmentSetting::Display {
                                             id: e.id.clone(),
-                                            action: DisplayAction::Layout { layout },
-                                        });
-                                    }
-                                }
-                                if button(
-                                    ui,
-                                    "strip",
-                                    part(cell, 0.775, 0.89, 0.15, 0.09),
-                                    "ENG",
-                                    d.engine_strip,
-                                    font,
-                                )
-                                .clicked()
-                                {
-                                    self.commands.push(EquipmentSetting::Display {
-                                        id: e.id.clone(),
-                                        action: DisplayAction::EngineStrip {
-                                            visible: !d.engine_strip,
-                                        },
-                                    });
-                                }
-                                if button(
-                                    ui,
-                                    "vision",
-                                    part(cell, 0.60, 0.89, 0.168, 0.09),
-                                    "SVT",
-                                    d.synthetic_vision,
-                                    font,
-                                )
-                                .clicked()
-                                {
-                                    self.commands.push(EquipmentSetting::Display {
-                                        id: e.id.clone(),
-                                        action: DisplayAction::SyntheticVision {
-                                            enabled: !d.synthetic_vision,
-                                        },
-                                    });
-                                }
-                            } else {
-                                for i in 0..key_count {
-                                    let (label, action, lit) = match i % 5 {
-                                        0 => (
-                                            "PFD",
-                                            DisplayAction::Layout {
-                                                layout: if *default_layout == TouchLayout::IntegratedPfd {
-                                                    TouchLayout::IntegratedPfd
-                                                } else {
-                                                    TouchLayout::FullPfd
-                                                },
-                                            },
-                                            matches!(
-                                                d.layout,
-                                                TouchLayout::FullPfd | TouchLayout::IntegratedPfd
-                                            ),
-                                        ),
-                                        1 => (
-                                            "MAP",
-                                            // The MFD page; pressed again, it steps the data column.
-                                            if d.layout == TouchLayout::Mfd {
-                                                DisplayAction::DataArea {
-                                                    area: match d.data_area {
-                                                        DataArea::Engine => DataArea::FlightPlan,
-                                                        DataArea::FlightPlan => DataArea::Nearest,
-                                                        DataArea::Nearest => DataArea::Traffic,
-                                                        DataArea::Traffic => DataArea::Engine,
-                                                    },
-                                                }
-                                            } else {
-                                                DisplayAction::Layout {
-                                                    layout: TouchLayout::Mfd,
-                                                }
-                                            },
-                                            d.layout == TouchLayout::Mfd,
-                                        ),
-                                        2 if !d.layout.is_pfd() && d.layout != TouchLayout::MapEngine => (
-                                            "ENG",
-                                            DisplayAction::Layout {
-                                                layout: if d.layout == TouchLayout::Engine {
-                                                    TouchLayout::Mfd
-                                                } else {
-                                                    TouchLayout::Engine
-                                                },
-                                            },
-                                            d.layout == TouchLayout::Engine,
-                                        ),
-                                        2 => (
-                                            "ENG",
-                                            DisplayAction::EngineStrip {
+                                            action: DisplayAction::EngineStrip {
                                                 visible: !d.engine_strip,
                                             },
-                                            d.engine_strip,
-                                        ),
-                                        3 => (
-                                            "SVT",
-                                            DisplayAction::SyntheticVision {
-                                                enabled: !d.synthetic_vision,
-                                            },
-                                            d.synthetic_vision,
-                                        ),
-                                        _ => (
-                                            "LIST",
-                                            DisplayAction::Layout {
-                                                layout: match d.layout {
-                                                    TouchLayout::FlightPlan => TouchLayout::Nearest,
-                                                    TouchLayout::Nearest => TouchLayout::Traffic,
-                                                    _ => TouchLayout::FlightPlan,
-                                                },
-                                            },
-                                            matches!(
-                                                d.layout,
-                                                TouchLayout::FlightPlan
-                                                    | TouchLayout::Nearest
-                                                    | TouchLayout::Traffic
-                                            ),
-                                        ),
-                                    };
-                                    let key = part(
-                                        cell,
-                                        0.14 + i as f32 * 0.72 / key_count as f32,
-                                        0.89,
-                                        0.64 / key_count as f32,
-                                        0.055,
-                                    );
-                                    if button(ui, ("softkey", i), key, label, lit, font).clicked() {
+                                        });
+                                    }
+                                    if button(
+                                        ui,
+                                        "vision",
+                                        part(cell, 0.60, 0.89, 0.168, 0.09),
+                                        "SVT",
+                                        d.synthetic_vision,
+                                        font,
+                                    )
+                                    .clicked()
+                                    {
                                         self.commands.push(EquipmentSetting::Display {
                                             id: e.id.clone(),
-                                            action,
-                                        });
-                                    }
-                                }
-                            }
-                            let knobs: Vec<_> = b.map_or_else(
-                                || {
-                                    vec![
-                                        part(cell, 0.015, 0.89, 0.045, 0.09),
-                                        part(cell, 0.94, 0.89, 0.045, 0.09),
-                                    ]
-                                },
-                                |b| {
-                                    b.corner_knobs
-                                        .iter()
-                                        .map(|[x, y]| {
-                                            Rect::from_center_size(
-                                                cell.min + egui::vec2(*x as f32, *y as f32) * scale,
-                                                egui::Vec2::splat(cell.width() * 0.045),
-                                            )
-                                        })
-                                        .collect()
-                                },
-                            );
-                            for (i, knob) in knobs.into_iter().enumerate() {
-                                let side = i == 1;
-                                ui.painter().circle_stroke(
-                                    knob.center(),
-                                    knob.width() * 0.45,
-                                    Stroke::new(1.5_f32, t::MUTED),
-                                );
-                                let response = ui.interact(
-                                    knob,
-                                    ui.id().with(("corner", side)),
-                                    Sense::click_and_drag(),
-                                );
-                                if response.hovered() {
-                                    let wheel = ui.input(|i| i.raw_scroll_delta.y);
-                                    if wheel != 0. {
-                                        self.avionics.push(AvionicsSetting::Glass {
-                                            setting: if side {
-                                                GlassSetting::MapRange {
-                                                    range_nm: (glass.settings.range_nm
-                                                        * if wheel > 0. { 0.8 } else { 1.25 })
-                                                    .clamp(1., 200.),
-                                                }
-                                            } else {
-                                                GlassSetting::HeadingBug {
-                                                    heading_rad: (glass.settings.heading_bug_rad
-                                                        + f64::from(wheel.signum()).to_radians())
-                                                    .rem_euclid(std::f64::consts::TAU),
-                                                }
+                                            action: DisplayAction::SyntheticVision {
+                                                enabled: !d.synthetic_vision,
                                             },
                                         });
                                     }
+                                } else {
+                                    for i in 0..key_count {
+                                        let (label, action, lit) = match i % 5 {
+                                            0 => (
+                                                "PFD",
+                                                DisplayAction::Layout {
+                                                    layout: if *default_layout == TouchLayout::IntegratedPfd {
+                                                        TouchLayout::IntegratedPfd
+                                                    } else {
+                                                        TouchLayout::FullPfd
+                                                    },
+                                                },
+                                                matches!(
+                                                    d.layout,
+                                                    TouchLayout::FullPfd | TouchLayout::IntegratedPfd
+                                                ),
+                                            ),
+                                            1 => (
+                                                "MAP",
+                                                // The MFD page; pressed again, it steps the data column.
+                                                if d.layout == TouchLayout::Mfd {
+                                                    DisplayAction::DataArea {
+                                                        area: match d.data_area {
+                                                            DataArea::Engine => DataArea::FlightPlan,
+                                                            DataArea::FlightPlan => DataArea::Nearest,
+                                                            DataArea::Nearest => DataArea::Traffic,
+                                                            DataArea::Traffic => DataArea::Engine,
+                                                        },
+                                                    }
+                                                } else {
+                                                    DisplayAction::Layout {
+                                                        layout: TouchLayout::Mfd,
+                                                    }
+                                                },
+                                                d.layout == TouchLayout::Mfd,
+                                            ),
+                                            2 if !d.layout.is_pfd() && d.layout != TouchLayout::MapEngine => {
+                                                (
+                                                    "ENG",
+                                                    DisplayAction::Layout {
+                                                        layout: if d.layout == TouchLayout::Engine {
+                                                            TouchLayout::Mfd
+                                                        } else {
+                                                            TouchLayout::Engine
+                                                        },
+                                                    },
+                                                    d.layout == TouchLayout::Engine,
+                                                )
+                                            }
+                                            2 => (
+                                                "ENG",
+                                                DisplayAction::EngineStrip {
+                                                    visible: !d.engine_strip,
+                                                },
+                                                d.engine_strip,
+                                            ),
+                                            3 => (
+                                                "SVT",
+                                                DisplayAction::SyntheticVision {
+                                                    enabled: !d.synthetic_vision,
+                                                },
+                                                d.synthetic_vision,
+                                            ),
+                                            _ => (
+                                                "LIST",
+                                                DisplayAction::Layout {
+                                                    layout: match d.layout {
+                                                        TouchLayout::FlightPlan => TouchLayout::Nearest,
+                                                        TouchLayout::Nearest => TouchLayout::Traffic,
+                                                        _ => TouchLayout::FlightPlan,
+                                                    },
+                                                },
+                                                matches!(
+                                                    d.layout,
+                                                    TouchLayout::FlightPlan
+                                                        | TouchLayout::Nearest
+                                                        | TouchLayout::Traffic
+                                                ),
+                                            ),
+                                        };
+                                        let key = part(
+                                            cell,
+                                            0.14 + i as f32 * 0.72 / key_count as f32,
+                                            0.89,
+                                            0.64 / key_count as f32,
+                                            0.055,
+                                        );
+                                        if button(ui, ("softkey", i), key, label, lit, font).clicked() {
+                                            self.commands.push(EquipmentSetting::Display {
+                                                id: e.id.clone(),
+                                                action,
+                                            });
+                                        }
+                                    }
                                 }
-                                if response.clicked() && !side {
-                                    self.avionics.push(AvionicsSetting::HeadingBugSync {});
+                                let knobs: Vec<_> = b.map_or_else(
+                                    || {
+                                        vec![
+                                            part(cell, 0.015, 0.89, 0.045, 0.09),
+                                            part(cell, 0.94, 0.89, 0.045, 0.09),
+                                        ]
+                                    },
+                                    |b| {
+                                        b.corner_knobs
+                                            .iter()
+                                            .map(|[x, y]| {
+                                                Rect::from_center_size(
+                                                    cell.min + egui::vec2(*x as f32, *y as f32) * scale,
+                                                    egui::Vec2::splat(cell.width() * 0.045),
+                                                )
+                                            })
+                                            .collect()
+                                    },
+                                );
+                                for (i, knob) in knobs.into_iter().enumerate() {
+                                    let side = i == 1;
+                                    ui.painter().circle_stroke(
+                                        knob.center(),
+                                        knob.width() * 0.45,
+                                        Stroke::new(1.5_f32, t::MUTED),
+                                    );
+                                    let response = ui.interact(
+                                        knob,
+                                        ui.id().with(("corner", side)),
+                                        Sense::click_and_drag(),
+                                    );
+                                    if response.hovered() {
+                                        let wheel = ui.input(|i| i.raw_scroll_delta.y);
+                                        if wheel != 0. {
+                                            self.avionics.push(AvionicsSetting::Glass {
+                                                setting: if side {
+                                                    GlassSetting::MapRange {
+                                                        range_nm: (glass.settings.range_nm
+                                                            * if wheel > 0. { 0.8 } else { 1.25 })
+                                                        .clamp(1., 200.),
+                                                    }
+                                                } else {
+                                                    GlassSetting::HeadingBug {
+                                                        heading_rad: (glass.settings.heading_bug_rad
+                                                            + f64::from(wheel.signum()).to_radians())
+                                                        .rem_euclid(std::f64::consts::TAU),
+                                                    }
+                                                },
+                                            });
+                                        }
+                                    }
+                                    if response.clicked() && !side {
+                                        self.avionics.push(AvionicsSetting::HeadingBugSync {});
+                                    }
                                 }
-                            }
-                            if d.reversion {
-                                text(ui, part(cell, 0.2, 0., 0.6, 0.06), "REVERSION", font, t::AMBER);
+                                if d.reversion {
+                                    text(ui, part(cell, 0.2, 0., 0.6, 0.06), "REVERSION", font, t::AMBER);
+                                }
                             }
                         }
                     }

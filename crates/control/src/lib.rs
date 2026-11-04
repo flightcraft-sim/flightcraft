@@ -18,7 +18,10 @@ pub mod comms;
 pub use comms::*;
 mod modern;
 pub use modern::*;
+pub mod skins;
+pub use skins::*;
 pub mod glass;
+pub mod touch_efis;
 pub use glass::*;
 mod avionics;
 pub use avionics::*;
@@ -136,6 +139,7 @@ pub struct Session {
     glass: GlassSettings,
     touch: modern::TouchAvionics,
     display_prefs: modern::DisplayPreferences,
+    skins: skins::SkinRegistry,
     selected_aircraft: flightcraft_aero::Aircraft,
     aircraft_catalog: flightcraft_aero::AircraftCatalog,
     selected_configuration: Option<flightcraft_aero::ResolvedAircraft>,
@@ -190,6 +194,7 @@ impl Session {
             glass: GlassSettings::default(),
             touch: modern::TouchAvionics::default(),
             display_prefs: Default::default(),
+            skins: Default::default(),
             paused: true,
             rate: 1.0,
             camera: None,

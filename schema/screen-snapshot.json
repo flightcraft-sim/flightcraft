@@ -627,6 +627,26 @@
         "pitch"
       ]
     },
+    "AlternateKnobs": {
+      "description": "The \"Right Side Knob Action\" setting: what the alternate PFD knob does.",
+      "oneOf": [
+        {
+          "description": "Inner: course. Outer: baro. The default.",
+          "type": "string",
+          "const": "course_baro"
+        },
+        {
+          "description": "Inner: flight director bug. Outer: baro.",
+          "type": "string",
+          "const": "fd_bug_baro"
+        },
+        {
+          "description": "Mirrors the main knob: heading and altitude.",
+          "type": "string",
+          "const": "heading_altitude"
+        }
+      ]
+    },
     "Annunciation": {
       "type": "object",
       "properties": {
@@ -2930,7 +2950,8 @@
       "type": "object",
       "properties": {
         "card_slot": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "color": {
           "anyOf": [
@@ -2945,6 +2966,7 @@
         "corner_knobs": {
           "description": "Knob centres in local installation mm; zero, one, or two knobs.",
           "type": "array",
+          "default": [],
           "items": {
             "type": "array",
             "items": {
@@ -2969,6 +2991,12 @@
         "margins": {
           "description": "Left, top, right, bottom margins, in mm.",
           "type": "array",
+          "default": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
           "items": {
             "type": "number",
             "format": "double"
@@ -2976,24 +3004,30 @@
           "maxItems": 4,
           "minItems": 4
         },
+        "model": {
+          "description": "A display model supplies the bezel geometry and control set; `margins`, soft keys, and\ncorner knobs are then ignored and the installation must have the model's bezel aspect.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DisplayModel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "softkey_count": {
           "type": "integer",
           "format": "uint8",
+          "default": 1,
           "maximum": 12,
           "minimum": 1
         },
         "softkeys": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "margins",
-        "softkeys",
-        "softkey_count",
-        "corner_knobs",
-        "card_slot"
-      ]
+      "additionalProperties": false
     },
     "DisplayComposition": {
       "type": "object",
@@ -3033,6 +3067,36 @@
         "synthetic_vision",
         "engine",
         "navigation"
+      ]
+    },
+    "DisplayModel": {
+      "description": "A display class the engine knows how to draw and operate.",
+      "oneOf": [
+        {
+          "description": "10.6-inch landscape touch EFIS with a bottom row of physical controls.",
+          "type": "string",
+          "const": "landscape_touch_efis"
+        }
+      ]
+    },
+    "EfisConfig": {
+      "type": "object",
+      "properties": {
+        "alternate": {
+          "$ref": "#/$defs/AlternateKnobs"
+        },
+        "mfd_side": {
+          "$ref": "#/$defs/PaneSide"
+        },
+        "press_to_toggle": {
+          "description": "\"Press to toggle knob action\": an inner-knob push swaps main and alternate functions.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "alternate",
+        "press_to_toggle",
+        "mfd_side"
       ]
     },
     "ElectricalDefinition": {
@@ -3890,6 +3954,13 @@
         "navigator_layout": {
           "$ref": "#/$defs/NavigatorLayout",
           "default": "classic"
+        },
+        "recommended_skin": {
+          "description": "A soft reference to a skin pack id. It is used when that pack is installed and the pilot has\nnot chosen another; otherwise the built-in public skin is shown.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "skin": {
           "description": "Host registry artwork id; omission selects original artwork.",
@@ -7481,6 +7552,20 @@
         }
       ]
     },
+    "MfdPage": {
+      "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
+      "type": "string",
+      "enum": [
+        "map",
+        "waypoint",
+        "flight_plan",
+        "terrain",
+        "traffic",
+        "info",
+        "engine",
+        "nearest"
+      ]
+    },
     "ModernState": {
       "type": "object",
       "properties": {
@@ -8038,6 +8123,37 @@
         }
       ]
     },
+    "Overlay": {
+      "description": "A keypad or menu shown over the display.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "none"
+          ]
+        },
+        {
+          "description": "MENU on a full-screen PFD: navigation tools and More Options.",
+          "type": "string",
+          "const": "pfd_options"
+        },
+        {
+          "description": "MENU on any other screen: options for the page.",
+          "type": "string",
+          "const": "page_menu"
+        },
+        {
+          "description": "A second MENU press.",
+          "type": "string",
+          "const": "main_menu"
+        },
+        {
+          "description": "Direct-to waypoint entry.",
+          "type": "string",
+          "const": "direct_to"
+        }
+      ]
+    },
     "OverlayStyle": {
       "type": "object",
       "properties": {
@@ -8131,6 +8247,14 @@
         "image",
         "traffic",
         "checklist"
+      ]
+    },
+    "PaneSide": {
+      "description": "Where the MFD pane sits in split mode. The PFD uses the knob on the other side.",
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
       ]
     },
     "Panel": {
@@ -11939,15 +12063,71 @@
           "$ref": "#/$defs/TouchLayout",
           "default": "pfd_map"
         },
+        "knob_toggle_until_s": {
+          "description": "While set and later than the host's clock, the knobs have swapped main and alternate roles.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "default": null
+        },
+        "knobs": {
+          "description": "Knob settings: alternate roles, press-to-toggle, split-pane side.",
+          "$ref": "#/$defs/EfisConfig",
+          "default": {
+            "alternate": "course_baro",
+            "mfd_side": "right",
+            "press_to_toggle": false
+          }
+        },
         "layout": {
           "description": "The page the display shows (or would show, were it not reverted).",
           "$ref": "#/$defs/TouchLayout"
         },
+        "mfd_page": {
+          "description": "The MFD page shown full-screen or in the split pane.",
+          "$ref": "#/$defs/MfdPage",
+          "default": "map"
+        },
+        "model": {
+          "description": "The physical display model, when the installation declares one.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DisplayModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "overlay": {
+          "description": "A menu or keypad shown over the display.",
+          "$ref": "#/$defs/Overlay",
+          "default": "none"
+        },
         "powered": {
           "type": "boolean"
         },
+        "recommended_skin": {
+          "description": "The skin pack id the aircraft pack recommends, whether or not it is installed.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
         "reversion": {
           "type": "boolean"
+        },
+        "skin": {
+          "description": "The skin pack in use; absent means the built-in public skin.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "synthetic_vision": {
           "type": "boolean"
@@ -11973,6 +12153,11 @@
             "pfd_map",
             "map_engine"
           ]
+        },
+        {
+          "description": "Landscape split screen: the PFD beside one MFD pane showing the display's `MfdPage`.",
+          "type": "string",
+          "const": "split"
         },
         {
           "description": "Primary flight display with synthetic vision always on.",

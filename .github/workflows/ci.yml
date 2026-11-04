@@ -151,6 +151,8 @@ jobs:
           cp LICENSE NOTICE ATTRIBUTION.md README.md "$out/"
           # Aircraft packs from their own repositories, pinned in bundled-packs.json.
           python3 scripts/bundle-packs.py bundled-packs.json "$out/packs"
+          # Display skin packs from the shared skins repository, pinned in bundled-skins.json.
+          python3 scripts/bundle-skins.py bundled-skins.json "$out/skins"
           # A tar keeps the executable bit, which artifact zips drop.
           tar czf "$out.tar.gz" "$out"
       - uses: actions/upload-artifact@v4

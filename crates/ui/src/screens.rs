@@ -932,10 +932,12 @@ impl PageUi {
                         instrument.size = [1., 1.];
                     }
                 }
+                let skins: Vec<&flightcraft_control::SkinContents> = s.skins().collect();
                 let result = self.panel.show(
                     ui,
                     &configuration.panel,
                     instruments::InstrumentInput::new(s.sim().systems(), readout.time_s)
+                        .with_skins(&skins)
                         .with_aircraft(&configuration)
                         .with_registration(&registration)
                         .with_airports(s.sim().world().airports())

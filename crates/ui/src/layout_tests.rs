@@ -44,6 +44,12 @@ fn render_layout_previews() {
         .unwrap();
         s.execute("sim.step", serde_json::json!({"steps":7200})).unwrap();
         let config = s.aircraft_configuration().unwrap().clone();
+        // FLIGHTCRAFT_SKINS_DIR adds display skin packs, as in the application.
+        if let Some(dir) = std::env::var_os("FLIGHTCRAFT_SKINS_DIR") {
+            assert!(s.load_skins_directory(std::path::Path::new(&dir)).is_empty());
+        }
+        let owned_skins: Vec<flightcraft_control::SkinContents> = s.skins().cloned().collect();
+        let skins: Vec<&flightcraft_control::SkinContents> = owned_skins.iter().collect();
         let state = s.glass_state();
         if name == "corvid" {
             for display in ["glass_pfd", "glass_mfd"] {
@@ -78,6 +84,7 @@ fn render_layout_previews() {
                     &config.panel,
                     InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
                         .with_aircraft(&config)
+                        .with_skins(&skins)
                         .with_glass(&state)
                         .with_autopilot(s.sim().installed_autopilot()),
                     s.flight_generation(),

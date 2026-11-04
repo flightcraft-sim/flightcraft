@@ -19,6 +19,8 @@ pub struct PackOptions {
     pub directory: Option<String>,
     /// Browser transports fetch these before starting the app.
     pub fetched: Vec<PackContents>,
+    /// Skin packs the browser transport fetched; native builds read the `skins` directory instead.
+    pub skins: Vec<crate::SkinContents>,
     pub errors: Vec<String>,
 }
 

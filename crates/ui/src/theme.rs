@@ -28,6 +28,14 @@ pub const MAP_NIGHT_WATER: Color32 = Color32::from_rgb(21, 47, 65);
 pub const MAP_CHART_DAY: Color32 = Color32::WHITE;
 pub const MAP_CHART_NIGHT: Color32 = Color32::from_rgb(105, 110, 125);
 pub const CLEAR: Color32 = Color32::TRANSPARENT;
+// Landscape touch EFIS bezel and chrome (the built-in skin; a skin pack may override the bezel ones).
+pub const BEZEL_BODY: Color32 = Color32::from_rgb(18, 20, 23);
+pub const BEZEL_TRIM: Color32 = Color32::from_rgb(58, 61, 66);
+pub const KEY_FACE: Color32 = Color32::from_rgb(29, 32, 36);
+pub const KNOB: Color32 = Color32::from_rgb(42, 45, 49);
+pub const KNOB_MARK: Color32 = Color32::from_rgb(154, 163, 173);
+pub const PAGE_BAR: Color32 = Color32::from_rgb(12, 14, 17);
+pub const MENU_PANEL: Color32 = Color32::from_rgb(16, 19, 23);
 
 pub fn install(ctx: &egui::Context) {
     // Bundle only an Apache-2.0 font, without egui's differently licensed default font set.

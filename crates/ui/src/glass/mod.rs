@@ -462,6 +462,7 @@ pub(crate) fn paint_touch(
     let has_strip_column = !matches!(
         layout,
         TouchLayout::Mfd
+            | TouchLayout::Split
             | TouchLayout::Engine
             | TouchLayout::FlightPlan
             | TouchLayout::Nearest
@@ -487,27 +488,42 @@ pub(crate) fn paint_touch(
     let primary = match layout {
         TouchLayout::FullPfd | TouchLayout::IntegratedPfd | TouchLayout::Svt => Some(main),
         TouchLayout::Mfd => {
-            // Large moving map with the flight director's active-leg guidance, and a data column.
-            let (map, data) = content.split_left_right_at_fraction(0.64);
-            let guidance = s.gps.valid.then_some(crate::map::Guidance {
-                active_leg: s.gps.active_leg,
-                desired_track_deg: s.gps.desired_track_rad.to_degrees(),
-                cross_track_nm: s.gps.cross_track_nm,
-                distance_nm: s.gps.distance_nm,
-            });
-            maps.push(MapViewport {
-                guidance,
-                ..MapViewport::shared(map)
-            });
-            data_area(
+            let area = with_page_bar(content, display);
+            let page = flightcraft_control::touch_efis::effective_page(layout, display.mfd_page);
+            mfd_page(
                 ui,
-                data,
+                area,
+                s,
                 &shared,
                 input,
-                display.data_area,
+                page,
+                display,
                 composition.engine_style,
+                true,
+                &mut maps,
             );
             None
+        }
+        TouchLayout::Split => {
+            let pfd_width = content.width() * crate::efis::SPLIT_PFD_FRACTION;
+            let pane = egui::Rect::from_min_max(content.min + egui::vec2(pfd_width, 0.), content.max);
+            let page = flightcraft_control::touch_efis::effective_page(layout, display.mfd_page);
+            mfd_page(
+                ui,
+                with_page_bar(pane, display),
+                s,
+                &shared,
+                input,
+                page,
+                display,
+                composition.engine_style,
+                false,
+                &mut maps,
+            );
+            Some(egui::Rect::from_min_max(
+                content.min,
+                egui::pos2(content.min.x + pfd_width, content.max.y),
+            ))
         }
         TouchLayout::Engine => {
             touch_engine(ui, content, &shared, input, composition.engine_style);
@@ -540,6 +556,17 @@ pub(crate) fn paint_touch(
             }
             None
         }
+    };
+    let split_composition;
+    let composition = if layout == TouchLayout::Split {
+        // The narrow PFD of the split screen carries no corner insets; the pane is the map.
+        split_composition = flightcraft_aero::modern::DisplayComposition {
+            insets: Vec::new(),
+            ..composition.clone()
+        };
+        &split_composition
+    } else {
+        composition
     };
     if let Some(primary) = primary {
         paint_fill(
@@ -608,6 +635,115 @@ pub(crate) fn paint_touch(
     maps
 }
 
+/// Leave room for the page bar when the display is a landscape touch EFIS.
+fn with_page_bar(area: egui::Rect, display: &flightcraft_control::TouchDisplayState) -> egui::Rect {
+    if display.model.is_none() {
+        return area;
+    }
+    let mut area = area;
+    area.max.y -= area.height() * crate::efis::PAGE_BAR_FRACTION;
+    area
+}
+/// One MFD page, full screen (`full`, with the data column beside the map) or in the split pane.
+#[allow(clippy::too_many_arguments)]
+fn mfd_page(
+    ui: &egui::Ui,
+    area: egui::Rect,
+    s: &GlassState,
+    shared: &GlassState,
+    input: InstrumentInput<'_>,
+    page: flightcraft_aero::modern::MfdPage,
+    display: &flightcraft_control::TouchDisplayState,
+    style: flightcraft_aero::modern::EngineStripStyle,
+    full: bool,
+    maps: &mut Vec<crate::map::MapViewport>,
+) {
+    use crate::map::MapViewport;
+    use flightcraft_aero::modern::MfdPage;
+    let guidance = s.gps.valid.then_some(crate::map::Guidance {
+        active_leg: s.gps.active_leg,
+        desired_track_deg: s.gps.desired_track_rad.to_degrees(),
+        cross_track_nm: s.gps.cross_track_nm,
+        distance_nm: s.gps.distance_nm,
+    });
+    match page {
+        MfdPage::Map | MfdPage::Terrain => {
+            // The map page: a large moving map with active-leg guidance, and (full screen) a data column.
+            let (map, data) = if full && page == MfdPage::Map {
+                let (map, data) = area.split_left_right_at_fraction(0.64);
+                (map, Some(data))
+            } else {
+                (area, None)
+            };
+            maps.push(MapViewport {
+                guidance,
+                base: (page == MfdPage::Terrain).then_some(flightcraft_control::BaseMap::Terrain),
+                ..MapViewport::shared(map)
+            });
+            if let Some(data) = data {
+                data_area(ui, data, shared, input, display.data_area, style);
+            }
+        }
+        MfdPage::Engine => touch_engine(ui, area, shared, input, style),
+        MfdPage::FlightPlan => list_page(ui, area, shared, mfd::ListKind::FlightPlan),
+        MfdPage::Nearest => list_page(ui, area, shared, mfd::ListKind::Nearest),
+        MfdPage::Traffic => list_page(ui, area, shared, mfd::ListKind::Traffic),
+        MfdPage::Waypoint => text_page(
+            ui,
+            area,
+            "WAYPOINT",
+            &[
+                format!("To      {}", s.gps.destination.as_deref().unwrap_or("-----")),
+                format!("Source  {}", s.gps.source),
+                format!(
+                    "DTK     {:03.0} deg M",
+                    s.gps.desired_track_rad.to_degrees().rem_euclid(360.)
+                ),
+                format!("Dist    {:.1} NM", s.gps.distance_nm),
+                format!("XTK     {:.2} NM", s.gps.cross_track_nm),
+            ],
+        ),
+        MfdPage::Info => text_page(
+            ui,
+            area,
+            "INFO",
+            &[
+                format!(
+                    "GPS     {}",
+                    if s.gps.valid { "3D location" } else { "No position" }
+                ),
+                format!("Region  {}", s.region.as_deref().unwrap_or("none loaded")),
+                format!("GS      {:.0} kt", s.ground_speed_mps * 1.943_844),
+                format!(
+                    "TRK     {:03.0} deg M",
+                    s.ground_track_rad.to_degrees().rem_euclid(360.)
+                ),
+                format!("XPDR    {}", s.settings.transponder_code),
+            ],
+        ),
+    }
+}
+/// A plain titled list of lines for the pages that have no table.
+fn text_page(ui: &egui::Ui, area: egui::Rect, title: &str, lines: &[String]) {
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let size = (area.height() * 0.06).clamp(6., 22.);
+    ui.painter().text(
+        area.min + egui::vec2(8., 6.),
+        egui::Align2::LEFT_TOP,
+        title,
+        egui::FontId::monospace(size * 1.2),
+        crate::theme::ACCENT,
+    );
+    for (i, line) in lines.iter().enumerate() {
+        ui.painter().text(
+            area.min + egui::vec2(8., 6. + size * 2.2 + i as f32 * size * 1.5),
+            egui::Align2::LEFT_TOP,
+            line,
+            egui::FontId::monospace(size),
+            crate::theme::TEXT,
+        );
+    }
+}
 /// A full-height list drawn by the MFD's table code.
 fn list_page(ui: &egui::Ui, area: egui::Rect, s: &GlassState, kind: mfd::ListKind) {
     ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);

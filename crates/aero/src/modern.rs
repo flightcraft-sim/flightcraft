@@ -225,6 +225,8 @@ pub enum TouchLayout {
     FullPfd,
     #[default]
     PfdMap,
+    /// Landscape split screen: the PFD beside one MFD pane showing the display's `MfdPage`.
+    Split,
     MapEngine,
     /// Primary flight display with synthetic vision always on.
     Svt,
@@ -244,8 +246,73 @@ impl TouchLayout {
     pub fn is_pfd(self) -> bool {
         matches!(
             self,
-            Self::IntegratedPfd | Self::FullPfd | Self::PfdMap | Self::Svt
+            Self::IntegratedPfd | Self::FullPfd | Self::PfdMap | Self::Split | Self::Svt
         )
+    }
+}
+/// The pages of a landscape touch EFIS multi-function display, in page-bar order.
+///
+/// `Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;
+/// `Nearest` is reached with the NEAREST key and is not part of the knob cycle.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MfdPage {
+    #[default]
+    Map,
+    Waypoint,
+    FlightPlan,
+    Terrain,
+    Traffic,
+    Info,
+    Engine,
+    Nearest,
+}
+impl MfdPage {
+    /// The main pages the MFD knob cycles through.
+    pub const MAIN: [Self; 7] = [
+        Self::Map,
+        Self::Waypoint,
+        Self::FlightPlan,
+        Self::Terrain,
+        Self::Traffic,
+        Self::Info,
+        Self::Engine,
+    ];
+    /// Abbreviated name shown in the page bar.
+    pub fn abbreviation(self) -> &'static str {
+        match self {
+            Self::Map => "Map",
+            Self::Waypoint => "Wpt",
+            Self::FlightPlan => "FPL",
+            Self::Terrain => "Ter",
+            Self::Traffic => "Trf",
+            Self::Info => "Info",
+            Self::Engine => "Eng",
+            Self::Nearest => "Nrst",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Map => "Map",
+            Self::Waypoint => "Waypoint",
+            Self::FlightPlan => "Active flight plan",
+            Self::Terrain => "Terrain",
+            Self::Traffic => "Traffic",
+            Self::Info => "Info",
+            Self::Engine => "Engine",
+            Self::Nearest => "Nearest",
+        }
+    }
+    /// The page a legacy full-screen layout shows, if it is one.
+    pub fn of_layout(layout: TouchLayout) -> Option<Self> {
+        match layout {
+            TouchLayout::Mfd | TouchLayout::MapEngine => Some(Self::Map),
+            TouchLayout::Engine => Some(Self::Engine),
+            TouchLayout::FlightPlan => Some(Self::FlightPlan),
+            TouchLayout::Nearest => Some(Self::Nearest),
+            TouchLayout::Traffic => Some(Self::Traffic),
+            _ => None,
+        }
     }
 }
 /// What the MFD page's data column shows beside the map.
@@ -269,11 +336,12 @@ pub enum PilotSeat {
 impl TouchLayout {
     /// The pages a pilot can choose between, in menu order. The PFD entry is the display's installed
     /// layout (`installed`), so it keeps the composition the pack designed.
-    pub fn pages(installed: Self) -> [Self; 9] {
+    pub fn pages(installed: Self) -> [Self; 10] {
         [
             installed,
             Self::Svt,
             Self::PfdMap,
+            Self::Split,
             Self::Mfd,
             Self::MapEngine,
             Self::Engine,
@@ -286,6 +354,7 @@ impl TouchLayout {
         match self {
             Self::IntegratedPfd | Self::FullPfd => "PFD",
             Self::PfdMap => "PFD + map",
+            Self::Split => "Split screen (PFD + MFD page)",
             Self::MapEngine => "Map + engine strip",
             Self::Svt => "SVT (synthetic vision PFD)",
             Self::Mfd => "MFD (map + data)",
