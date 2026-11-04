@@ -16,10 +16,12 @@ vision, planning maps, charts, and clouds retain their paths. Imagery is present
 not change replay identity or collision elevations.
 
 Not accepted yet: independent painted-runway alignment, real NYC reconstruction and full-area scaling,
-NHD water geometry, physical sun/sky, cascaded shadows, exposure/bloom, the Water Gap proof,
+NHD water geometry, the Water Gap proof,
 automatic installed-region selection, or the 60 fps integrated-GPU acceptance run.
 Static browser 3D Tiles fetching is implemented; real NYC package acceptance remains open. Publication rejects
 scenery without the explicit vertical-datum, runway-alignment, and lidar acceptance flags.
+Date-driven atmosphere, cascaded shadows, exposure, and mild bloom are implemented with 1N7
+offscreen proof below; the complete photoreal golden sample still needs visual acceptance.
 
 ## First fetch: 1N7 test area
 
@@ -495,16 +497,16 @@ scenery acceptance criteria. Run GPU tests serially (`--test-threads=1`) to avoi
 
 Exact real-window shots requested from flight lead after fetched geometry is installed:
 
-1. Pilot eye on Runway 07 at 1N7, 25 m beyond its FAA threshold, looking along true heading 60.7666°.
-2. Short final Runway 25, 100 m outside its threshold, 75 ft AGL, looking along true heading 240.7730°.
+1. Pilot eye on Runway 07 at 1N7, 25 m beyond its FAA threshold, looking along true heading 60.7666°, 52° vertical FOV.
+2. Short final Runway 25, 100 m outside its threshold, nominally 75 ft AGL, looking along true heading 240.7730°, 52° vertical FOV.
 3. Camera 40.9855956° N, 75.1221222° W, 2,500 ft MSL, true heading 180°, looking 8° down at the
    GNIS gap point (40.9675956° N, 75.1221222° W), 60° vertical FOV (pending corridor data).
-4. Director view over the 1N7 hangars: aircraft NED [230, 320, −145] m, observer NED [150, 500, −195] m
-   relative to the FAA Runway 07 origin, 51.57° vertical FOV. This is about 108 ft aircraft AGL and
-   272 ft observer AGL on the level preview. Also take an unobstructed aircraft frame for the exterior lane.
+4. Director view over the 1N7 hangars: Sling parked at aircraft NED [180, 215, −114.1] m, observer NED
+   [150, 500, −195] m relative to the FAA Runway 07 origin, 51.57° vertical FOV. Also take an
+   unobstructed close aircraft frame for the exterior lane.
 
-Use the same date, time, visibility, FOV, and quality for comparisons. The pipeline preview currently
-uses the existing day lighting; physical date/time lighting is a remaining gate. Aircraft realism is
+Use the same date, time, visibility, FOV, and quality for comparisons. The initial pipeline preview used fixed day lighting. The current scenery proof uses the shared
+physical sky and the explicit UTC clock described below. Aircraft realism is
 owned by the exterior lane, and no aircraft assets change here.
 
 ## Releases and checks
@@ -736,3 +738,51 @@ The vertical gate is true; painted-runway alignment and overall release readines
 GPU coverage regression checks include same-ID CPU payload replacement spread across the per-frame
 upload limit. Previously selected GPU payloads remain drawable until their replacement uploads
 complete; CPU readiness cannot expose coarse-ground holes between frames.
+
+
+## Date-driven atmosphere, cascades, and surface artwork
+
+Preferences can set a Gregorian date, UTC at flight start, and exposure in EV. Simulation elapsed
+seconds advance that presentation clock; pause freezes it, and no wall clock enters physics or
+replay identity. With the custom clock disabled, the existing weather Day/Dawn/Dusk/Night setting
+selects a local solar-time presentation on November 3, 2026. Location follows the aircraft through
+the existing transverse Mercator. `scenery-lighting.json` describes the validated settings API.
+
+The original atmosphere approximates single scattering with wavelength-dependent Rayleigh optical
+depths, a finite aerosol layer, solar-path extinction, and a forward Mie phase function. It uses
+relative linear solar radiance, rather than claiming calibrated photometry or multiple scattering.
+The background and a 32-pixel cubemap use the same model. Six roughness mip levels use eight GGX
+importance samples each; the existing `ExteriorEnvironment` input remains available for overrides.
+Cloud slabs keep their original optical-depth integration, including overcast and IMC.
+Scenery uses 4× anisotropic filtering when the adapter reports support, with a 1× fallback. Visibility
+sets extinction through Koschmieder's 3.912/visibility coefficient; the aircraft shares aerial
+perspective with terrain and scenery. ACES-style tone mapping and the display transfer are shared
+between those surfaces. A small display-space bloom on saturated lights also works on WebGL2.
+
+Selected terrain, alpha-cutout trees, measured roofs/walls, and animated opaque aircraft geometry
+cast into a sun depth atlas. Low has two 512-pixel cascades in a 1024-pixel atlas. Medium and High
+have three 1024-pixel cascades in a 2048-pixel atlas. The projections snap to texels; comparison
+filtering, receiver offsets, and overlap fades limit acne and crawling. Glass does not cast an
+opaque canopy shadow. Synthetic vision keeps its independent colors, geometry, and atmosphere.
+
+The original tree meshes have offset overlapping crown lobes and four shape variants per species;
+GPU color varies by tree position. Crown axes and height remain measured, and trunks fade out at
+distance. Facades use original procedural siding, metal ribs, hangar bays, windows, and doors,
+while roof UVs still sample NAIP. Facade details are plausible artwork, not a surveyed inventory.
+
+GPU proofs load the accepted Sling sliding-canopy V9 pack from a separate receipt-backed copy at
+`$HOME/builds/codex-jobs/scenery/sling-v9-proof` (or `FLIGHTCRAFT_SLING_PACK`). Its `source.json`
+records source commit c9984d6 and SHA-256 values; no live pack files are edited. Captures use
+November 3, 2026 at 18:00 UTC, clear weather, 10 statute miles visibility, and Medium quality. The director shot keeps its observer NED [150, 500, -195] m and
+places the Sling on the apron at NED [180, 215, -114.1] m. A closer shadow proof disables only
+the aircraft caster and checks changed pixels; an IMC proof checks that scene geometry disappears.
+
+The Low frame-time gate now requires p95 at or below 6 ms at 1920×1080, after material preparation
+and tile warm-up. It records hardware, selected instance count, residency, and timing. Cold
+material mip preparation is excluded from that steady-state measurement. GPU material mip chains
+are retained across LOD changes, and unchanged aircraft poses reuse their uploaded geometry.
+
+The final 1N7 lighting proof recorded 3.80 ms p95 on the GTX 1660 Ti at 1080p Low,
+with all 7,445 tree instances selected. The 48,348,727-byte test package and capture manifest
+remain local build artifacts; painted-runway and release acceptance stay false. The debug-build
+first Sling material preparation took about 21 seconds; warm timings exclude that initial work.

@@ -42,16 +42,20 @@ pub(crate) struct SceneCallback {
     pub show_aircraft: bool,
     pub show_airspace: bool,
     pub show_lights: bool,
+    pub aircraft_shadow: bool,
     pub larrow: bool,
     pub sling: bool,
     pub exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     pub exterior_pose: crate::exterior::Pose,
     pub scenery: crate::scenery::Selection,
     pub scenery_quality: crate::scenery::Quality,
+    pub lighting: crate::lighting::Frame,
     pub exterior_environment: Option<std::sync::Arc<crate::exterior::ExteriorEnvironment>>,
 }
 
 struct ExteriorGpu {
+    pose: Option<crate::exterior::Pose>,
+    eye: Option<[f32; 3]>,
     pbr: crate::exterior::PbrRenderer,
     asset: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     lod: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorModel>>,
@@ -64,6 +68,8 @@ struct ExteriorGpu {
 pub(crate) struct ViewGpu {
     scenery: crate::scenery::gpu::Cache,
     exterior: Option<ExteriorGpu>,
+    lighting: crate::lighting::GpuLighting,
+    shadows: crate::shadows::State,
     uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
     targets: Targets,
@@ -93,7 +99,10 @@ struct DrawMesh {
 }
 
 struct Gpu {
+    empty: wgpu::BindGroup,
     scenery: crate::scenery::gpu::Pipeline,
+    shadows: crate::shadows::Pipelines,
+    vision_lighting: crate::lighting::GpuLighting,
     terrain: Vec<TerrainBuffer>,
     airspace: Option<(wgpu::Buffer, u32)>,
     terrain_fingerprint: Option<u64>,
@@ -115,11 +124,21 @@ struct Gpu {
 
 /// Install resources in egui's callback store; there is one scene per viewport.
 pub fn initialize(state: &egui_wgpu::RenderState, palette: Palette) {
-    state
-        .renderer
-        .write()
-        .callback_resources
-        .insert(Gpu::new(&state.device, state.target_format, palette));
+    state.renderer.write().callback_resources.insert(Gpu::new(
+        &state.device,
+        state.target_format,
+        palette,
+        if state
+            .adapter
+            .get_downlevel_capabilities()
+            .flags
+            .contains(wgpu::DownlevelFlags::ANISOTROPIC_FILTERING)
+        {
+            4
+        } else {
+            1
+        },
+    ));
 }
 
 /// Register the shared terrain target as an egui image, avoiding a separate composite pipeline
@@ -188,10 +207,17 @@ fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout
 }
 
 impl Gpu {
-    fn new(device: &wgpu::Device, output: wgpu::TextureFormat, palette: Palette) -> Self {
+    fn new(device: &wgpu::Device, output: wgpu::TextureFormat, palette: Palette, anisotropy: u16) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("flight scene WGSL"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("scene.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    include_str!("lighting.wgsl"),
+                    include_str!("scene.wgsl")
+                )
+                .into(),
+            ),
         });
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scene uniform layout"),
@@ -206,9 +232,14 @@ impl Gpu {
                 count: None,
             }],
         });
+        let lighting_layout = crate::lighting::layout(device);
+        let empty = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("unused scene bindings"),
+            entries: &[],
+        });
         let scene_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("scene pipeline layout"),
-            bind_group_layouts: &[&uniform_layout],
+            bind_group_layouts: &[&uniform_layout, &empty, &empty, &lighting_layout],
             push_constant_ranges: &[],
         });
         let vertex_attributes = wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x4, 3 => Float32, 4 => Float32];
@@ -369,8 +400,15 @@ impl Gpu {
             }],
         });
         let vision_targets = targets(device, [750, 285], &texture_layout);
-        let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout);
+        let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout, anisotropy);
         Self {
+            empty: device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("unused scene slots"),
+                layout: &empty,
+                entries: &[],
+            }),
+            shadows: crate::shadows::Pipelines::new(device),
+            vision_lighting: crate::lighting::GpuLighting::new(device, crate::scenery::Quality::Low),
             scenery,
             sky,
             scene,
@@ -510,6 +548,8 @@ impl CallbackTrait for SceneCallback {
             });
             ViewGpu {
                 scenery: Default::default(),
+                lighting: crate::lighting::GpuLighting::new(device, self.scenery_quality),
+                shadows: gpu.shadows.state(device),
                 exterior: None,
                 uniform,
                 bind,
@@ -519,7 +559,31 @@ impl CallbackTrait for SceneCallback {
         if view.targets.size != size {
             view.targets = targets(device, size, &gpu.texture_layout);
         }
-        if self.show_aircraft
+        let atlas_size = if self.scenery_quality == crate::scenery::Quality::Low {
+            1024
+        } else {
+            2048
+        };
+        if view.lighting.size != atlas_size {
+            view.lighting = crate::lighting::GpuLighting::new(device, self.scenery_quality);
+        }
+        let mut physical = self.lighting;
+        let forward = (glam::Mat4::from_cols_array_2d(&self.uniform.world_from_clip)
+            * glam::Vec4::new(0., 0., 1., 1.))
+        .truncate()
+        .normalize_or_zero();
+        physical.cascades(forward, self.scenery_quality);
+        physical.clouds = self.uniform.clouds;
+        if self.uniform.atmosphere[2] > 0.5 || self.uniform.atmosphere[3] > 0.5 {
+            physical.splits[3] = 0.;
+            physical.radiance[3] = 2.;
+        }
+        if physical.sun[1] <= 0. {
+            physical.splits[3] = 0.;
+        }
+        physical.settings[3] = 1. / view.lighting.size as f32;
+        view.lighting.update(queue, &physical);
+        if (self.show_aircraft || physical.splits[3] > 0.)
             && let Some(asset) = &self.exterior
         {
             let eye = glam::Vec3::from_slice(&self.uniform.eye);
@@ -533,11 +597,9 @@ impl CallbackTrait for SceneCallback {
                     *powered = false;
                 }
             }
-            let frame = crate::exterior::frame(asset, &pose, eye.distance(center));
-            let opaque_count = frame.opaque.len() as u32;
-            let mut vertices = frame.opaque;
-            vertices.extend(frame.transparent);
             let exterior = view.exterior.get_or_insert_with(|| ExteriorGpu {
+                pose: None,
+                eye: None,
                 pbr: crate::exterior::PbrRenderer::new(device),
                 asset: None,
                 lod: None,
@@ -552,9 +614,6 @@ impl CallbackTrait for SceneCallback {
                 opaque_count: 0,
                 count: 0,
             });
-            exterior.opaque_count = opaque_count;
-            exterior.count = vertices.len() as u32;
-            queue.write_buffer(&exterior.vertices, 0, bytemuck::cast_slice(&vertices));
             let lod = crate::exterior::model_at_distance(asset, eye.distance(center));
             let changed = exterior
                 .asset
@@ -564,6 +623,16 @@ impl CallbackTrait for SceneCallback {
                     .lod
                     .as_ref()
                     .is_none_or(|m| !std::sync::Arc::ptr_eq(m, lod));
+            let geometry_changed =
+                changed || exterior.pose.as_ref() != Some(&pose) || exterior.eye != Some(eye.to_array());
+            if geometry_changed {
+                let frame = crate::exterior::frame(asset, &pose, eye.distance(center));
+                exterior.opaque_count = frame.opaque.len() as u32;
+                let mut vertices = frame.opaque;
+                vertices.extend(frame.transparent);
+                exterior.count = vertices.len() as u32;
+                queue.write_buffer(&exterior.vertices, 0, bytemuck::cast_slice(&vertices));
+            }
             let result = (|| -> Result<(), String> {
                 if changed {
                     exterior
@@ -582,26 +651,39 @@ impl CallbackTrait for SceneCallback {
                 lighting.world_from_body = self.uniform.aircraft;
                 lighting.eye = eye.extend(1.).to_array();
                 if self.exterior_environment.is_none() {
-                    lighting.sky_zenith = self.uniform.sky_top;
-                    lighting.sky_horizon = self.uniform.sky_horizon;
-                    lighting.ground_radiance = self.uniform.ground;
+                    lighting.sun_direction = physical.sun;
+                    lighting.sun_radiance = physical.radiance;
+                    lighting.sun_direction[3] = physical.settings[2];
+                    lighting.sky_zenith = physical.sky(glam::Vec3::Y).extend(1.).to_array();
+                    lighting.sky_horizon = physical.sky(glam::Vec3::Z).extend(1.).to_array();
+                    lighting.environment[2] = physical.settings[0];
                 }
                 let probe = self
                     .exterior_environment
                     .as_ref()
-                    .and_then(|e| e.probe.as_ref())
+                    .and_then(|e| e.probe.as_deref())
+                    .or(Some(&view.lighting.probe))
                     .map(|p| crate::exterior::SkyProbe {
                         view: &p.view,
                         mip_count: p.mip_count,
                     });
-                exterior.pbr.prepare(
-                    device,
-                    queue,
-                    lighting,
-                    &crate::exterior::pbr_primitives(asset, lod, &pose),
-                    probe,
-                )
+                exterior.pbr.set_scene_lighting(&view.lighting.bind);
+                if geometry_changed {
+                    exterior.pbr.prepare(
+                        device,
+                        queue,
+                        lighting,
+                        &crate::exterior::pbr_primitives(asset, lod, &pose),
+                        probe,
+                    )
+                } else {
+                    exterior.pbr.update_frame(device, queue, lighting, probe)
+                }
             })();
+            if result.is_ok() {
+                exterior.pose = Some(pose);
+                exterior.eye = Some(eye.to_array());
+            }
             exterior.ready = result.is_ok();
         }
         gpu.scenery.prepare(
@@ -613,7 +695,84 @@ impl CallbackTrait for SceneCallback {
         );
         let mut uniform = self.uniform;
         uniform.scenery_bounds = view.scenery.terrain_bounds();
+        if uniform.atmosphere[3] < 0.5 {
+            uniform.fog_color = physical.display(physical.sky(glam::Vec3::new(0., 0.05, 1.).normalize()));
+        }
         queue.write_buffer(&view.uniform, 0, bytemuck::bytes_of(&uniform));
+        // Each cascade uses the same selected payloads and the current animated aircraft.
+        for (index, (buffer, bind)) in view
+            .shadows
+            .cascades
+            .iter()
+            .enumerate()
+            .take(physical.splits[3] as usize)
+        {
+            let Some(matrix) = physical.shadow.get(index) else {
+                continue;
+            };
+            queue.write_buffer(
+                buffer,
+                0,
+                bytemuck::bytes_of(&crate::shadows::Uniform {
+                    matrix: *matrix,
+                    aircraft: uniform.aircraft,
+                    bounds: uniform.scenery_bounds,
+                }),
+            );
+            let mut depth = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("sun shadow cascade"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &view.lighting.atlas,
+                    depth_ops: Some(wgpu::Operations {
+                        load: if index == 0 {
+                            wgpu::LoadOp::Clear(1.)
+                        } else {
+                            wgpu::LoadOp::Load
+                        },
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            let side = view.lighting.size / 2;
+            depth.set_viewport(
+                (index as u32 % 2 * side) as f32,
+                (index as u32 / 2 * side) as f32,
+                side as f32,
+                side as f32,
+                0.,
+                1.,
+            );
+            depth.set_scissor_rect(index as u32 % 2 * side, index as u32 / 2 * side, side, side);
+            depth.set_bind_group(0, bind, &[]);
+            depth.set_pipeline(&gpu.shadows.mesh);
+            for tile in &gpu.terrain {
+                depth.set_vertex_buffer(0, tile.vertices.slice(..));
+                depth.draw(tile.fine_end..tile.count, 0..1);
+            }
+            let mesh = if self.sling {
+                gpu.meshes.get(2)
+            } else if self.larrow {
+                gpu.meshes.get(1)
+            } else {
+                gpu.meshes.first()
+            };
+            if let Some(mesh) = mesh {
+                depth.set_vertex_buffer(0, mesh.vertices.slice(..));
+                depth.draw(0..mesh.world_count, 0..1);
+            }
+            if self.aircraft_shadow
+                && let Some(exterior) = &view.exterior
+            {
+                depth.set_vertex_buffer(0, exterior.vertices.slice(..));
+                depth.draw(0..exterior.opaque_count, 0..1);
+            }
+            gpu.scenery
+                .draw_shadow(&mut depth, &view.scenery, &gpu.shadows.instances);
+        }
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("flight scene"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -637,8 +796,13 @@ impl CallbackTrait for SceneCallback {
             occlusion_query_set: None,
         });
         pass.set_bind_group(0, &view.bind, &[]);
+        pass.set_bind_group(3, &view.lighting.bind, &[]);
+        pass.set_bind_group(1, &gpu.empty, &[]);
+        pass.set_bind_group(2, &gpu.empty, &[]);
         pass.set_pipeline(&gpu.sky);
         pass.draw(0..3, 0..1);
+        pass.set_bind_group(1, &gpu.empty, &[]);
+        pass.set_bind_group(2, &gpu.empty, &[]);
         pass.set_pipeline(&gpu.scene);
         if !self.world.tiles().is_empty() {
             for tile in &gpu.terrain {
@@ -657,6 +821,8 @@ impl CallbackTrait for SceneCallback {
             }
         }
         gpu.scenery.draw(&mut pass, &view.scenery);
+        pass.set_bind_group(1, &gpu.empty, &[]);
+        pass.set_bind_group(2, &gpu.empty, &[]);
         pass.set_pipeline(&gpu.scene);
         let [corvid, larrow, sling] = &gpu.meshes;
         let mesh = if self.sling {
@@ -668,7 +834,7 @@ impl CallbackTrait for SceneCallback {
         };
         pass.set_vertex_buffer(0, mesh.vertices.slice(..));
         pass.draw(0..mesh.world_count, 0..1);
-        if self.show_aircraft {
+        if self.show_aircraft && self.uniform.atmosphere[3] < 0.5 {
             if self.exterior.is_some()
                 && let Some(exterior) = &view.exterior
             {
@@ -678,9 +844,13 @@ impl CallbackTrait for SceneCallback {
                 } else {
                     pass.set_vertex_buffer(0, exterior.vertices.slice(..));
                     pass.draw(0..exterior.opaque_count, 0..1);
+                    pass.set_bind_group(1, &gpu.empty, &[]);
+                    pass.set_bind_group(2, &gpu.empty, &[]);
                     pass.set_pipeline(&gpu.transparent);
                     pass.draw(exterior.opaque_count..exterior.count, 0..1);
                 }
+                pass.set_bind_group(1, &gpu.empty, &[]);
+                pass.set_bind_group(2, &gpu.empty, &[]);
                 pass.set_pipeline(&gpu.scene);
                 pass.set_vertex_buffer(0, mesh.vertices.slice(..));
             } else {
@@ -692,12 +862,16 @@ impl CallbackTrait for SceneCallback {
         if (!self.show_aircraft || self.exterior.is_none())
             && self.uniform.eye.get(3).is_some_and(|power| *power > 0.01)
         {
+            pass.set_bind_group(1, &gpu.empty, &[]);
+            pass.set_bind_group(2, &gpu.empty, &[]);
             pass.set_pipeline(&gpu.transparent);
             pass.draw(mesh.cockpit_end..mesh.vertex_count, 0..1);
         }
         if self.show_lights
             && let Some((vertices, count)) = &gpu.runway_lights
         {
+            pass.set_bind_group(1, &gpu.empty, &[]);
+            pass.set_bind_group(2, &gpu.empty, &[]);
             pass.set_pipeline(&gpu.scene);
             pass.set_vertex_buffer(0, vertices.slice(..));
             pass.draw(0..*count, 0..1);
@@ -705,11 +879,14 @@ impl CallbackTrait for SceneCallback {
         if self.show_airspace
             && let Some((vertices, count)) = &gpu.airspace
         {
+            pass.set_bind_group(1, &gpu.empty, &[]);
+            pass.set_bind_group(2, &gpu.empty, &[]);
             pass.set_pipeline(&gpu.transparent);
             pass.set_vertex_buffer(0, vertices.slice(..));
             pass.draw(0..*count, 0..1);
         }
         if self.show_aircraft
+            && self.uniform.atmosphere[3] < 0.5
             && let Some(exterior) = &view.exterior
             && exterior.ready
         {
@@ -740,7 +917,11 @@ mod tests {
     #[test]
     fn scenery_shader_validates_and_translates_to_webgl2() -> Result<(), Box<dyn std::error::Error>> {
         use naga::{back::glsl, valid};
-        let module = naga::front::wgsl::parse_str(include_str!("scenery.wgsl"))?;
+        let module = naga::front::wgsl::parse_str(&format!(
+            "{}\n{}",
+            include_str!("lighting.wgsl"),
+            include_str!("scenery.wgsl")
+        ))?;
         let info = valid::Validator::new(valid::ValidationFlags::all(), valid::Capabilities::empty())
             .validate(&module)?;
         let options = glsl::Options {
@@ -780,7 +961,11 @@ mod tests {
     #[test]
     fn scene_shader_validates_and_translates_to_webgl2() -> Result<(), Box<dyn std::error::Error>> {
         use naga::{back::glsl, valid};
-        let module = naga::front::wgsl::parse_str(include_str!("scene.wgsl"))?;
+        let module = naga::front::wgsl::parse_str(&format!(
+            "{}\n{}",
+            include_str!("lighting.wgsl"),
+            include_str!("scene.wgsl")
+        ))?;
         let info = valid::Validator::new(valid::ValidationFlags::all(), valid::Capabilities::empty())
             .validate(&module)?;
         let options = glsl::Options {
@@ -918,8 +1103,13 @@ impl CallbackTrait for VisionCallback {
             occlusion_query_set: None,
         });
         pass.set_bind_group(0, &gpu.vision_bind, &[]);
+        pass.set_bind_group(3, &gpu.vision_lighting.bind, &[]);
+        pass.set_bind_group(1, &gpu.empty, &[]);
+        pass.set_bind_group(2, &gpu.empty, &[]);
         pass.set_pipeline(&gpu.sky);
         pass.draw(0..3, 0..1);
+        pass.set_bind_group(1, &gpu.empty, &[]);
+        pass.set_bind_group(2, &gpu.empty, &[]);
         pass.set_pipeline(&gpu.scene);
         for tile in &gpu.terrain {
             if !self.view.tile_in_range(tile.center, tile.half_extent_m) {

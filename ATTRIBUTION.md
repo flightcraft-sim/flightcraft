@@ -5,6 +5,7 @@ Rust crate dependencies are covered by the licence check (`cargo deny check lice
 
 | Item | Source | Licence | Notes |
 |---|---|---|---|
+| Procedural facade textures, metal ribs, siding, windows, and doors | Original FlightCraft procedural artwork | Apache-2.0 | Authored in `xtask/src/scenery/building_mesh.rs`; plausible detail, not a measured facade inventory. |
 | Deciduous and conifer tree meshes, leaf clusters, and impostor atlas | Original FlightCraft procedural artwork | Apache-2.0 | Authored in `xtask/src/scenery/objects.rs`; placement and dimensions are measured separately from public-domain USGS lidar. |
 | NGS GEOID18 regional grid subsets | US National Geodetic Survey | Public domain (US government work) | [GEOID18](https://geodesy.noaa.gov/GEOID/GEOID18/); bounded subsets carry the source SHA-256; independent NGS control response retained in scenery receipts. |
 | Corvid geometry, coefficient tables, propulsion, and gear data | Original FlightCraft design | Apache-2.0 | Engineering estimates; each table documents its derivation in `aircraft/corvid/family.json` and `engine.json`. |

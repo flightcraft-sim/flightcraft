@@ -33,7 +33,7 @@ pub fn builtin(id: &str) -> Option<Arc<ExteriorAsset>> {
     .clone()
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Pose {
     pub controls: [f32; 4],
     pub canopy_open_fraction: f32,
@@ -845,6 +845,8 @@ struct PbrDraw {
 /// pipeline uses straight-alpha blending, no transparent depth writes, and back-to-front
 /// triangle sorting in view space. Convex glass renders both surfaces in their correct order.
 pub struct PbrRenderer {
+    scene_lighting: crate::lighting::GpuLighting,
+    scene_bind: Option<wgpu::BindGroup>,
     opaque: wgpu::RenderPipeline,
     transparent: wgpu::RenderPipeline,
     material_layout: wgpu::BindGroupLayout,
@@ -855,6 +857,7 @@ pub struct PbrRenderer {
     probe_sampler: wgpu::Sampler,
     fallback_probe: wgpu::TextureView,
     vertices: wgpu::Buffer,
+    image_cache: Vec<(PbrImage, bool, bool, wgpu::TextureView)>,
     materials: Vec<PbrGpuMaterial>,
     draws: Vec<PbrDraw>,
 }
@@ -948,11 +951,23 @@ impl PbrRenderer {
         let probe_bind = Self::bind_probe(device, &probe_layout, &probe_sampler, &fallback_probe);
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("exterior PBR WGSL"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("exterior.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    include_str!("lighting.wgsl"),
+                    include_str!("exterior.wgsl")
+                )
+                .into(),
+            ),
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("exterior PBR pipeline layout"),
-            bind_group_layouts: &[&frame_layout, &material_layout, &probe_layout],
+            bind_group_layouts: &[
+                &frame_layout,
+                &material_layout,
+                &probe_layout,
+                &crate::lighting::layout(device),
+            ],
             push_constant_ranges: &[],
         });
         let attributes = wgpu::vertex_attr_array![0=>Float32x3,1=>Float32x3,2=>Float32x4,3=>Float32x2,4=>Float32x4,5=>Float32];
@@ -1007,6 +1022,8 @@ impl PbrRenderer {
             mapped_at_creation: false,
         });
         Self {
+            scene_lighting: crate::lighting::GpuLighting::new(device, crate::scenery::Quality::Low),
+            scene_bind: None,
             opaque: pipeline(false),
             transparent: pipeline(true),
             material_layout,
@@ -1017,6 +1034,7 @@ impl PbrRenderer {
             probe_sampler,
             fallback_probe,
             vertices,
+            image_cache: Vec::new(),
             materials: Vec::new(),
             draws: Vec::new(),
         }
@@ -1058,10 +1076,10 @@ impl PbrRenderer {
         for material in materials {
             material.validate()?;
             for image in material.images.iter().flatten() {
-                if !unique_images
-                    .iter()
-                    .any(|seen| seen.size == image.size && Arc::ptr_eq(&seen.rgba, &image.rgba))
-                {
+                if !unique_images.iter().any(|seen| {
+                    seen.size == image.size
+                        && (Arc::ptr_eq(&seen.rgba, &image.rgba) || seen.rgba == image.rgba)
+                }) {
                     total_bytes = total_bytes.saturating_add(image.rgba.len());
                     unique_images.push(image);
                 }
@@ -1081,7 +1099,16 @@ impl PbrRenderer {
         });
         let defaults = [[255; 4], [255; 4], [128, 128, 255, 255], [255; 4], [255; 4]];
         let mut gpu_materials = Vec::with_capacity(materials.len());
-        let mut cached_views: Vec<(PbrImage, bool, bool, wgpu::TextureView)> = Vec::new();
+        let mut cached_views = std::mem::take(&mut self.image_cache);
+        // Preserve immutable texture mip chains across aircraft LOD changes, bounded per view.
+        if cached_views
+            .iter()
+            .map(|(image, _, _, _)| image.rgba.len())
+            .sum::<usize>()
+            > 256 * 1024 * 1024
+        {
+            cached_views.clear();
+        }
         for material in materials {
             let [er, eg, eb] = material.emissive;
             let uniform = MaterialUniform {
@@ -1124,7 +1151,7 @@ impl PbrRenderer {
                             *space == srgb
                                 && *normal == (i == 2)
                                 && seen.size == image.size
-                                && Arc::ptr_eq(&seen.rgba, &image.rgba)
+                                && (Arc::ptr_eq(&seen.rgba, &image.rgba) || seen.rgba == image.rgba)
                         })
                     {
                         return view.clone();
@@ -1216,6 +1243,7 @@ impl PbrRenderer {
                 alpha_mode: material.alpha_mode,
             });
         }
+        self.image_cache = cached_views;
         self.materials = gpu_materials;
         self.draws.clear();
         Ok(())
@@ -1227,7 +1255,7 @@ impl PbrRenderer {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        mut frame: PbrFrame,
+        frame: PbrFrame,
         primitives: &[PbrPrimitive],
         probe: Option<SkyProbe<'_>>,
     ) -> Result<(), String> {
@@ -1236,6 +1264,22 @@ impl PbrRenderer {
             primitives,
             &self.materials.iter().map(|m| m.alpha_mode).collect::<Vec<_>>(),
         )?;
+        self.update_frame(device, queue, frame, probe)?;
+        if !prepared.0.is_empty() {
+            queue.write_buffer(&self.vertices, 0, bytemuck::cast_slice(&prepared.0));
+        }
+        self.draws = prepared.1;
+        Ok(())
+    }
+    /// Reuse unchanged body geometry while still validating and updating the camera and lighting.
+    pub(crate) fn update_frame(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        mut frame: PbrFrame,
+        probe: Option<SkyProbe<'_>>,
+    ) -> Result<(), String> {
+        prepare_pbr(&frame, &[], &[])?;
         if probe.as_ref().is_some_and(|p| !(1..=13).contains(&p.mip_count)) {
             return Err("invalid exterior sky probe mip count".into());
         }
@@ -1251,11 +1295,10 @@ impl PbrRenderer {
         let probe_view = probe.map_or(&self.fallback_probe, |p| p.view);
         self.probe_bind = Self::bind_probe(device, &self.probe_layout, &self.probe_sampler, probe_view);
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&frame));
-        if !prepared.0.is_empty() {
-            queue.write_buffer(&self.vertices, 0, bytemuck::cast_slice(&prepared.0));
-        }
-        self.draws = prepared.1;
         Ok(())
+    }
+    pub(crate) fn set_scene_lighting(&mut self, bind: &wgpu::BindGroup) {
+        self.scene_bind = Some(bind.clone());
     }
     pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
         self.draw_opaque(pass);
@@ -1268,6 +1311,11 @@ impl PbrRenderer {
         self.draw_group(pass, true);
     }
     fn draw_group(&self, pass: &mut wgpu::RenderPass<'_>, transparent: bool) {
+        pass.set_bind_group(
+            3,
+            self.scene_bind.as_ref().unwrap_or(&self.scene_lighting.bind),
+            &[],
+        );
         pass.set_bind_group(0, &self.frame_bind, &[]);
         pass.set_bind_group(2, &self.probe_bind, &[]);
         pass.set_vertex_buffer(0, self.vertices.slice(..));
@@ -1466,7 +1514,11 @@ mod pbr_tests {
     fn pbr_shader_validates_translates_to_webgl2_and_matches_host_layout()
     -> Result<(), Box<dyn std::error::Error>> {
         use naga::{back::glsl, valid};
-        let module = naga::front::wgsl::parse_str(include_str!("exterior.wgsl"))?;
+        let module = naga::front::wgsl::parse_str(&format!(
+            "{}\n{}",
+            include_str!("lighting.wgsl"),
+            include_str!("exterior.wgsl")
+        ))?;
         let info = valid::Validator::new(valid::ValidationFlags::all(), valid::Capabilities::empty())
             .validate(&module)?;
         for entry in &module.entry_points {

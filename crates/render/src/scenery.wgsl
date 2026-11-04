@@ -12,7 +12,7 @@ struct Uniforms {
 @group(1) @binding(1) var texture_sampler: sampler;
 struct Surface {
     @builtin(position) position:vec4<f32>, @location(0) world:vec3<f32>,
-    @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>,
+    @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>, @location(4) @interpolate(flat) tree:f32,
 }
 @vertex fn vertex(@location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) color:vec4<f32>, @location(4) c0:vec4<f32>, @location(5) c1:vec4<f32>, @location(6) c2:vec4<f32>, @location(7) c3:vec4<f32>)->Surface {
     var o:Surface;
@@ -21,6 +21,8 @@ struct Surface {
     o.position=u.view_projection*vec4<f32>(o.world,1.0);
     // Cofactor normal transform supports nonuniform measured crown/height scales.
     o.normal=normalize(cross(c1.xyz,c2.xyz)*normal.x+cross(c2.xyz,c0.xyz)*normal.y+cross(c0.xyz,c1.xyz)*normal.z);o.uv=uv;o.color=color;
+    o.tree=select(0.0,1.0,length(c1.xyz)>3.0);
+    if o.tree>0.5 {let seed=fract(sin(dot(c3.xz,vec2<f32>(0.173,0.319)))*43758.5453);o.color=vec4<f32>(color.rgb*mix(vec3<f32>(0.76,0.88,0.72),vec3<f32>(1.18,1.08,0.87),seed),color.a);}
     return o;
 }
 // The same analytic cloud integration as the main scene, evaluated along this surface ray.
@@ -39,20 +41,17 @@ fn cloud_optical_depth(ray:vec3<f32>,distance:f32)->f32 {
     }
     return optical;
 }
-@fragment fn fragment(i:Surface)->@location(0) vec4<f32> {
-    let albedo_color=textureSample(albedo,texture_sampler,i.uv)*i.color;
-    if albedo_color.a<0.5 {discard;}
+@fragment fn fragment(i:Surface,@builtin(front_facing) front:bool)->@location(0) vec4<f32> {
+    let texel=textureSample(albedo,texture_sampler,i.uv)*i.color;
+    if texel.a<0.5 {discard;}
     if u.atmosphere.z>0.5 || u.atmosphere.w>0.5 {return u.fog_color;}
     let distance=length(i.world-u.eye.xyz);
-    let sun=normalize(vec3<f32>(-0.58,0.70,-0.42));
-    let normal=normalize(i.normal);
-    // Conservative ambient fill while the reference imagery still contains baked lighting.
-    var color=albedo_color.rgb*(0.65+0.35*max(dot(normal,sun),0.0))*u.atmosphere.y;
-    let center=u.aircraft[3].xz;
-    let offset=(i.world.xz-center)/vec2<f32>(5.5,2.4);
-    let shadow=exp(-dot(offset,offset))*max(0.0,1.0-u.viewport.z/30.0);
-    color*=1.0-shadow*0.23;
+    if i.tree>0.5 && distance>100.0 && (i.uv.y>0.972 || (i.uv.y>0.4 && i.uv.y<0.75)) {discard;}
+    let normal=normalize(i.normal)*select(-1.0,1.0,front);
+    let shade_normal=select(normal,normalize(vec3<f32>(normal.x*0.35,0.85,normal.z*0.35)),i.tree>0.5);
+    var energy=surface_light(i.world,shade_normal);
+    if i.tree>0.5 {energy+=light.radiance.rgb*0.08*max(dot(-normal,light.sun.xyz),0.0)*light.settings.z;}
+    let color=linear_color(texel.rgb)*energy;
     let cloud=cloud_optical_depth(normalize(i.world-u.eye.xyz),distance);
-    let transmission=exp(-distance*u.atmosphere.x-cloud);
-    return vec4<f32>(mix(u.fog_color.rgb,color,transmission),1.0);
+    return vec4<f32>(display_color(aerial(color,i.world,cloud)),1.0);
 }

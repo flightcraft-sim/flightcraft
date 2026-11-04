@@ -36,6 +36,43 @@ impl Mesh {
         }
         Ok(())
     }
+    fn lobe(&mut self, center: [f32; 3], radius: [f32; 3], u: f32) -> Result<(), String> {
+        // Smooth ellipsoidal lobes with an original cutout leaf-cluster surface.
+        let point = |latitude: u32, longitude: u32| {
+            let phi = std::f32::consts::PI * latitude as f32 / 5.;
+            let theta = std::f32::consts::TAU * longitude as f32 / 10.;
+            (
+                [
+                    center[0] + radius[0] * phi.sin() * theta.cos(),
+                    center[1] + radius[1] * phi.cos(),
+                    center[2] + radius[2] * phi.sin() * theta.sin(),
+                ],
+                [
+                    u + 0.04 + 0.42 * longitude as f32 / 10.,
+                    0.77 + 0.18 * latitude as f32 / 5.,
+                ],
+            )
+        };
+        let start = self.positions.len();
+        for y in 0..5 {
+            for x in 0..10 {
+                let (a, ua) = point(y, x);
+                let (b, ub) = point(y, x + 1);
+                let (c, uc) = point(y + 1, x + 1);
+                let (d, ud) = point(y + 1, x);
+                self.triangle([a, b, c], [ua, ub, uc])?;
+                self.triangle([a, c, d], [ua, uc, ud])?;
+            }
+        }
+        for (p, n) in self.positions.iter().zip(&mut self.normals).skip(start) {
+            let gradient = std::array::from_fn::<_, 3, _>(|i| (p[i] - center[i]) / (radius[i] * radius[i]));
+            let length = libm::sqrtf(gradient.iter().map(|v| v * v).sum());
+            if length > 1e-6 {
+                *n = gradient.map(|v| v / length);
+            }
+        }
+        Ok(())
+    }
     fn branch(&mut self, a: [f32; 3], b: [f32; 3], ra: f32, rb: f32) -> Result<(), String> {
         let direction = std::array::from_fn::<_, 3, _>(|i| b[i] - a[i]);
         let cross = |a: [f32; 3], b: [f32; 3]| {
@@ -79,7 +116,11 @@ impl Mesh {
         Ok(())
     }
 }
+#[cfg(test)]
 fn tree_mesh(species: Species, coarse: bool) -> Result<Mesh, String> {
+    tree_variant(species, coarse, 0)
+}
+fn tree_variant(species: Species, coarse: bool, variant: u32) -> Result<Mesh, String> {
     let mut mesh = Mesh::default();
     if coarse {
         let u = if species == Species::Deciduous { 0. } else { 0.5 };
@@ -94,58 +135,48 @@ fn tree_mesh(species: Species, coarse: bool) -> Result<Mesh, String> {
     } else {
         mesh.branch([0., 0., 0.], [0., 0.68, 0.], 0.055, 0.012)?;
         let u = if species == Species::Deciduous { 0. } else { 0.5 };
-        let uv = [[u, 0.96], [u + 0.5, 0.96], [u + 0.5, 0.76], [u, 0.76]];
-        for k in 0..36 {
-            let angle = k as f32 * 2.3999631;
-            let vertical = (k as f32 + 0.5) / 36.;
-            let (center, w, h) = if species == Species::Deciduous {
-                let yy = 2. * vertical - 1.;
-                let radius = libm::sqrtf((1. - yy * yy).max(0.));
+        let phase = variant as f32 * 1.71;
+        for k in 0..6 {
+            let angle = k as f32 * 2.3999631 + phase;
+            let (center, radius) = if species == Species::Deciduous {
+                let y = 0.59 + 0.17 * (k as f32 * 1.83 + phase).sin();
+                let spread = 0.44 + 0.12 * (k as f32 + phase).cos();
                 (
-                    [
-                        0.74 * radius * libm::cosf(angle),
-                        0.66 + 0.24 * yy,
-                        0.74 * radius * libm::sinf(angle),
-                    ],
-                    0.25,
-                    0.095,
+                    [spread * angle.cos(), y, spread * angle.sin()],
+                    [0.46, 0.22 + 0.035 * (k as f32 + phase).sin(), 0.42],
                 )
             } else {
-                let yy = 0.30 + 0.61 * vertical;
-                let radius = (1. - yy) * 1.15;
+                let y = 0.36 + k as f32 * 0.10;
+                let width = (1. - y) * 0.95;
                 (
-                    [radius * libm::cosf(angle), yy, radius * libm::sinf(angle)],
-                    (1. - yy) * 0.48 + 0.04,
-                    0.055,
+                    [width * 0.16 * angle.cos(), y, width * 0.16 * angle.sin()],
+                    [width, 0.13, width],
                 )
             };
-            if k % 9 == 0 {
-                mesh.branch([0., 0.38, 0.], center, 0.022, 0.006)?;
+            if k % 2 == 0 {
+                mesh.branch([0., 0.40, 0.], center, 0.022, 0.006)?;
             }
-            for facing in [angle, angle + std::f32::consts::FRAC_PI_2] {
-                let dx = w * libm::cosf(facing);
-                let dz = w * libm::sinf(facing);
-                let [x, y, z] = center;
-                let q = [
-                    [x - dx, y - h, z - dz],
-                    [x + dx, y - h, z + dz],
-                    [x + dx, y + h, z + dz],
-                    [x - dx, y + h, z - dz],
-                ];
-                mesh.triangle([q[0], q[1], q[2]], [uv[0], uv[1], uv[2]])?;
-                mesh.triangle([q[0], q[2], q[3]], [uv[0], uv[2], uv[3]])?;
-            }
+            mesh.lobe(center, radius, u)?;
         }
     }
     let top = mesh.positions.iter().map(|p| p[1]).fold(0_f32, f32::max);
     if top <= 0. {
         return Err("Authored tree has no height".into());
     }
+    let radii = mesh
+        .positions
+        .iter()
+        .fold([0_f32; 2], |r, p| [r[0].max(p[0].abs()), r[1].max(p[2].abs())]);
     for p in &mut mesh.positions {
+        p[0] /= radii[0].max(0.01);
         p[1] /= top;
+        p[2] /= radii[1].max(0.01);
     }
+
     for n in &mut mesh.normals {
+        n[0] *= radii[0];
         n[1] *= top;
+        n[2] *= radii[1];
         let length = libm::sqrtf(n.iter().map(|v| v * v).sum());
         *n = n.map(|v| v / length);
     }
@@ -173,7 +204,16 @@ fn atlas() -> Result<Vec<u8>, String> {
                     .into_iter()
                     .any(|(lo, hi, r)| yy >= lo && yy < hi && xx.abs() < r * (hi - yy) / (hi - lo) + edge)
             } else {
-                xx * xx + ((yy - 0.66) / 0.34).powi(2) < 1. + edge
+                [
+                    (-0.48, 0.56, 0.43, 0.23),
+                    (-0.20, 0.78, 0.44, 0.21),
+                    (0.26, 0.75, 0.49, 0.24),
+                    (0.55, 0.49, 0.33, 0.20),
+                    (0.04, 0.48, 0.55, 0.22),
+                    (-0.62, 0.43, 0.24, 0.17),
+                ]
+                .into_iter()
+                .any(|(cx, cy, rx, ry)| ((xx - cx) / rx).powi(2) + ((yy - cy) / ry).powi(2) < 1. + edge)
             };
             crown && noise(x / 2, y / 2) > 0.06
         } else if y < 498 {
@@ -333,8 +373,18 @@ fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<
     let mut doc = Document::default();
     let mut meshes = Vec::new();
     let mut nodes = Vec::new();
-    for species in [Species::Deciduous, Species::Conifer] {
-        let selected: Vec<_> = trees.iter().filter(|t| t.species == species).collect();
+    for (species, variant) in [Species::Deciduous, Species::Conifer]
+        .into_iter()
+        .flat_map(|species| (0..4).map(move |variant| (species, variant)))
+    {
+        let selected: Vec<_> = trees
+            .iter()
+            .filter(|t| {
+                let seed =
+                    (t.lat.to_bits() ^ t.lon.to_bits().rotate_left(17)).wrapping_mul(0x9e3779b97f4a7c15);
+                t.species == species && (seed >> 32) as u32 % 4 == variant
+            })
+            .collect();
         if selected.is_empty() {
             continue;
         }
@@ -369,7 +419,7 @@ fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<
         let rotation = doc.floats(&rotations, "VEC4")?;
         let translate = doc.floats(&translations, "VEC3")?;
         let scale = doc.floats(&scales, "VEC3")?;
-        let mesh = doc.mesh(&tree_mesh(species, coarse)?)?;
+        let mesh = doc.mesh(&tree_variant(species, coarse, variant)?)?;
         let id = meshes.len();
         meshes.push(mesh);
         nodes.push(json!({"mesh":id,"extensions":{"EXT_mesh_gpu_instancing":{"attributes":{"TRANSLATION":translate,"SCALE":scale,"ROTATION":rotation}}}}));

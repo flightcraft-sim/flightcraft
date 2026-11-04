@@ -173,6 +173,12 @@ fn root() -> Result<PathBuf, String> {
 fn schemas(check: bool) -> Result<(), String> {
     let documents = [
         (
+            "scenery-lighting.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(
+                flightcraft_render::lighting::LightingSettings
+            )),
+        ),
+        (
             "geoid.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_world::geoid::GeoidGrid)),
         ),

@@ -88,6 +88,10 @@ fn tone_map(linear: vec3<f32>) -> vec3<f32> {
     // The scenery pass uses an unorm color target, so encode the display transfer here.
     return select(12.92*mapped, 1.055*pow(mapped,vec3<f32>(1.0/2.4))-0.055, mapped>vec3<f32>(0.0031308));
 }
+fn finish_lighting(color:vec3<f32>,world:vec3<f32>)->vec3<f32> {
+    if light.settings.y>0.5 {return display_color(aerial(color,world,atmosphere_cloud_depth(normalize(world-light.eye.xyz),length(world-light.eye.xyz))));}
+    return tone_map(color);
+}
 @fragment fn fragment(i: Surface, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
     // All derivative-using samples precede alpha discard and nonuniform branches.
     let base = textureSample(base_map, surface_sampler, i.uv)*material.base_color*i.color;
@@ -118,7 +122,7 @@ fn tone_map(linear: vec3<f32>) -> vec3<f32> {
     let coat_f = fresnel(vec3<f32>(0.04),vo_h).r*material.finish.z;
     let coat = coat_f*distribution(no_h,coat_roughness)*visibility(no_v,no_l,coat_roughness);
     var direct = ((vec3<f32>(1.0)-f)*diffuse+specular)*(1.0-coat_f)+vec3<f32>(coat);
-    direct *= frame.sun_radiance.rgb*no_l*frame.sun_direction.w;
+    direct *= frame.sun_radiance.rgb*no_l*frame.sun_direction.w*sun_shadow(i.world,n);
     let ao = mix(1.0,ao_texel,material.surface.z);
     let reflected = reflect(-v,n);
     let brdf = environment_brdf(no_v,roughness);
@@ -135,7 +139,7 @@ fn tone_map(linear: vec3<f32>) -> vec3<f32> {
         alpha = clamp(base.a+(1.0-base.a)*grazing,0.0,1.0);
         // Preserve reflected energy under straight-alpha blending, avoiding alpha-squared glass.
         let reflected_light = (specular_ibl+coat_ibl)*frame.environment.w;
-        return vec4<f32>(tone_map(direct+ambient+emissive+reflected_light*(1.0/ max(alpha,0.04)-1.0)),alpha);
+        return vec4<f32>(finish_lighting(direct+ambient+emissive+reflected_light*(1.0/ max(alpha,0.04)-1.0),i.world),alpha);
     }
-    return vec4<f32>(tone_map(direct+ambient+emissive),alpha);
+    return vec4<f32>(finish_lighting(direct+ambient+emissive,i.world),alpha);
 }

@@ -2,6 +2,8 @@ use super::{DecodedTile, Selection, Vertex};
 use std::{collections::BTreeMap, sync::Arc};
 use wgpu::util::DeviceExt;
 pub(crate) struct Pipeline {
+    anisotropy: u16,
+    empty: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
 }
@@ -22,7 +24,7 @@ pub(crate) struct Cache {
     selected: Vec<usize>,
 }
 impl Pipeline {
-    pub(crate) fn new(device: &wgpu::Device, uniform: &wgpu::BindGroupLayout) -> Self {
+    pub(crate) fn new(device: &wgpu::Device, uniform: &wgpu::BindGroupLayout, anisotropy: u16) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("3D Tiles material"),
             entries: &[
@@ -44,13 +46,25 @@ impl Pipeline {
                 },
             ],
         });
+        let lighting_layout = crate::lighting::layout(device);
+        let empty = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("unused scenery bindings"),
+            entries: &[],
+        });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("3D Tiles scenery shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("../scenery.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    include_str!("../lighting.wgsl"),
+                    include_str!("../scenery.wgsl")
+                )
+                .into(),
+            ),
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("3D Tiles pipeline"),
-            bind_group_layouts: &[uniform, &layout],
+            bind_group_layouts: &[uniform, &layout, &empty, &lighting_layout],
             push_constant_ranges: &[],
         });
         let attributes = wgpu::vertex_attr_array![0=>Float32x3,1=>Float32x3,2=>Float32x2,3=>Float32x4];
@@ -105,7 +119,16 @@ impl Pipeline {
             multiview: None,
             cache: None,
         });
-        Self { pipeline, layout }
+        Self {
+            anisotropy,
+            pipeline,
+            layout,
+            empty: device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("unused scenery slot"),
+                layout: &empty,
+                entries: &[],
+            }),
+        }
     }
     pub(crate) fn prepare(
         &self,
@@ -183,7 +206,8 @@ impl Pipeline {
             }
             let view = texture.create_view(&Default::default());
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("3D Tiles trilinear sampler"),
+                label: Some("3D Tiles anisotropic mip sampler"),
+                anisotropy_clamp: self.anisotropy,
                 mag_filter: wgpu::FilterMode::Linear,
                 min_filter: wgpu::FilterMode::Linear,
                 mipmap_filter: wgpu::FilterMode::Linear,
@@ -255,7 +279,26 @@ impl Pipeline {
             cache.tiles.retain(|id, _| cache.selected.contains(id));
         }
     }
+    pub(crate) fn draw_shadow(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        cache: &Cache,
+        pipeline: &wgpu::RenderPipeline,
+    ) {
+        pass.set_pipeline(pipeline);
+        for id in &cache.selected {
+            if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {
+                pass.set_bind_group(1, &tile.bind, &[]);
+                for draw in &tile.draws {
+                    pass.set_vertex_buffer(0, draw.vertices.slice(..));
+                    pass.set_vertex_buffer(1, draw.instances.slice(..));
+                    pass.draw(0..draw.vertices_count, 0..draw.instances_count);
+                }
+            }
+        }
+    }
     pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass<'_>, cache: &Cache) {
+        pass.set_bind_group(2, &self.empty, &[]);
         pass.set_pipeline(&self.pipeline);
         for id in &cache.selected {
             if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {

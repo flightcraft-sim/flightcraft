@@ -19,6 +19,7 @@ const ORIGIN: [f64; 2] = [40.96905613156273, -75.00242278301268];
 struct Texture {
     bounds: [f64; 4],
     height: u32,
+    facade_height_m: f64,
     bytes: Vec<u8>,
 }
 impl Texture {
@@ -32,14 +33,17 @@ impl Texture {
             bounds[2] = bounds[2].max(x + 1.);
             bounds[3] = bounds[3].max(y + 1.);
         }
-        let width = libm::ceil((bounds[2] - bounds[0]) / layout.ground_sample_m).clamp(16., 512.) as u32;
+        let width = libm::ceil((bounds[2] - bounds[0]) / layout.ground_sample_m).clamp(256., 512.) as u32;
         let height = libm::ceil((bounds[3] - bounds[1]) / layout.ground_sample_m).clamp(16., 508.) as u32;
-        let mut image = image::RgbaImage::new(width, height + 4);
+        let mut image = image::RgbaImage::new(width, height + 128);
         let mut cache = BTreeMap::new();
         let side = 1_u32 << layout.max_level;
         for (col, row, pixel) in image.enumerate_pixels_mut() {
             if row >= height {
-                *pixel = image::Rgba([152, 153, 143, 255]);
+                let x = f64::from(col) / f64::from(width) * 8.;
+                let h = f64::from(height + 127 - row) / 127. * b.height_m;
+                let hangar = b.height_m < 12. && b.measured_roof_cells > 300;
+                *pixel = facade_pixel(x, h, b.height_m, hangar);
                 continue;
             }
             let gx = bounds[0] + (f64::from(col) + 0.5) / f64::from(width) * (bounds[2] - bounds[0]);
@@ -78,11 +82,17 @@ impl Texture {
         }
         let mut bytes = Vec::new();
         image::codecs::webp::WebPEncoder::new_lossless(&mut bytes)
-            .write_image(image.as_raw(), width, height + 4, image::ExtendedColorType::Rgba8)
+            .write_image(
+                image.as_raw(),
+                width,
+                height + 128,
+                image::ExtendedColorType::Rgba8,
+            )
             .map_err(|e| e.to_string())?;
         Ok(Self {
             bounds,
-            height: height + 4,
+            height: height + 128,
+            facade_height_m: b.height_m,
             bytes,
         })
     }
@@ -90,12 +100,74 @@ impl Texture {
         [
             ((x - self.bounds[0]) / (self.bounds[2] - self.bounds[0])) as f32,
             ((self.bounds[3] - y) / (self.bounds[3] - self.bounds[1])
-                * (f64::from(self.height - 4) / f64::from(self.height))) as f32,
+                * (f64::from(self.height - 128) / f64::from(self.height))) as f32,
         ]
     }
-    fn wall_uv(&self) -> [f32; 2] {
-        [0.5, 1. - 1. / self.height as f32]
+    fn wall_uv(&self, u: f64, h: f64) -> [f32; 2] {
+        [
+            u.clamp(0.002, 0.998) as f32,
+            ((f64::from(self.height - 128)
+                + 1.
+                + 126. * (1. - h / self.facade_height_m.max(1.)).clamp(0., 1.))
+                / f64::from(self.height)) as f32,
+        ]
     }
+}
+// Original plausible facade detail, not a measured window/door inventory. Units are meters.
+fn facade_pixel(x: f64, h: f64, height: f64, hangar: bool) -> image::Rgba<u8> {
+    let mut color = if hangar {
+        [0.62, 0.63, 0.59]
+    } else if height > 18. {
+        [0.56, 0.59, 0.60]
+    } else {
+        [0.66, 0.62, 0.55]
+    };
+    let rib = if hangar {
+        ((x / 0.28).fract() - 0.5).abs() < 0.09
+    } else {
+        (h / 0.18).fract() < 0.12
+    };
+    if rib {
+        color = color.map(|v| v * 0.74);
+    }
+    if hangar && x > 0.65 && x < 6.8 && h > 0.12 && h < height * 0.77 {
+        let seam = (x - 0.65) % 1.45 < 0.05 || h % 0.38 < 0.025;
+        color = if seam {
+            [0.35, 0.37, 0.37]
+        } else {
+            [0.55, 0.57, 0.55]
+        };
+    }
+    let window = if hangar {
+        x > 7.05 && x < 7.7 && h > 2.2 && h < 3.0
+    } else {
+        let floor = h % 3.4;
+        let col = x % 2.7;
+        col > 0.65 && col < 1.85 && floor > 1.05 && floor < 2.45
+    };
+    if window {
+        color = if (x % 0.5) < 0.035 || (h % 1.2) < 0.04 {
+            [0.26, 0.28, 0.28]
+        } else {
+            [
+                0.16,
+                0.24 + 0.08 * h / height.max(1.),
+                0.29 + 0.12 * h / height.max(1.),
+            ]
+        };
+    }
+    if !hangar && x > 6.6 && x < 7.5 && h < 2.1 && h > 0.05 {
+        color = [0.28, 0.27, 0.23];
+    }
+    if h < 0.12 {
+        color = [0.38, 0.39, 0.38];
+    }
+    image::Rgba([
+        (color[0] * 255.) as u8,
+        (color[1] * 255.) as u8,
+        (color[2] * 255.) as u8,
+        255,
+    ])
 }
 fn frac_floor(v: f64) -> f64 {
     libm::floor(v)
@@ -266,15 +338,46 @@ fn wall(
     if za <= ba + 0.05 && zb <= bb + 0.05 {
         return Ok(());
     }
-    let p = [
-        vertex(grid, a[0], a[1], ba.min(za), geoid)?,
-        vertex(grid, b[0], b[1], bb.min(zb), geoid)?,
-        vertex(grid, b[0], b[1], zb, geoid)?,
-        vertex(grid, a[0], a[1], za, geoid)?,
-    ];
-    let uv = texture.wall_uv();
-    mesh.triangle([p[0], p[1], p[2]], [uv; 3])?;
-    mesh.triangle([p[0], p[2], p[3]], [uv; 3])?;
+    let length = libm::hypot(b[0] - a[0], b[1] - a[1]);
+    if length < 0.001 {
+        return Ok(());
+    }
+    let axis = [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+    let start = a[0] * axis[0] + a[1] * axis[1];
+    let mut knots = vec![0., 1.];
+    let mut next = (libm::floor(start / 8.) + 1.) * 8.;
+    while next < start + length - 1e-6 {
+        knots.push((next - start) / length);
+        next += 8.;
+    }
+    knots.sort_by(f64::total_cmp);
+    for pair in knots.windows(2) {
+        let [t0, t1] = pair else {
+            continue;
+        };
+        let q0 = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0];
+        let q1 = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
+        let z0 = ba + (bb - ba) * t0;
+        let z1 = ba + (bb - ba) * t1;
+        let r0 = za + (zb - za) * t0;
+        let r1 = za + (zb - za) * t1;
+        let p = [
+            vertex(grid, q0[0], q0[1], z0.min(r0), geoid)?,
+            vertex(grid, q1[0], q1[1], z1.min(r1), geoid)?,
+            vertex(grid, q1[0], q1[1], r1, geoid)?,
+            vertex(grid, q0[0], q0[1], r0, geoid)?,
+        ];
+        let u0 = (start + length * t0).rem_euclid(8.) / 8.;
+        let u1 = (u0 + length * (t1 - t0) / 8.).min(1.);
+        let uv = [
+            texture.wall_uv(u0, 0.),
+            texture.wall_uv(u1, 0.),
+            texture.wall_uv(u1, r1 - z1),
+            texture.wall_uv(u0, r0 - z0),
+        ];
+        mesh.triangle([p[0], p[1], p[2]], [uv[0], uv[1], uv[2]])?;
+        mesh.triangle([p[0], p[2], p[3]], [uv[0], uv[2], uv[3]])?;
+    }
     Ok(())
 }
 fn geometry(
@@ -702,6 +805,24 @@ pub(super) fn write(
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn facade_material_separates_metal_ribs_windows_and_the_foundation() {
+        let rib = super::facade_pixel(0.14, 1.5, 6., true);
+        let sheet = super::facade_pixel(0.05, 1.5, 6., true);
+        assert!(rib[0] < sheet[0]);
+        let glass = super::facade_pixel(1.1, 1.6, 12., false);
+        assert!(glass[2] > glass[0]);
+        assert_ne!(super::facade_pixel(1.1, 0.05, 12., false), glass);
+        let roof = super::Texture {
+            bounds: [0., 0., 10., 10.],
+            height: 256,
+            facade_height_m: 6.,
+            bytes: Vec::new(),
+        };
+        assert_eq!(roof.uv(5., 5.), [0.5, 0.25]);
+        assert!(roof.wall_uv(0.5, 3.)[1] > 0.5);
+    }
+
     use super::*;
     #[test]
     fn lower_envelope_clips_gables_and_keeps_shared_ridge() {

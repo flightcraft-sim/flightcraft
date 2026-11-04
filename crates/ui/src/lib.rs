@@ -516,6 +516,24 @@ impl FlightCraftApp {
                 ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::Medium, "Medium");
                 if !cfg!(target_arch = "wasm32") { ui.selectable_value(&mut preferences.quality, flightcraft_render::scenery::Quality::High, "High"); }
             });
+            let mut dated=preferences.lighting.is_some();
+            if ui.checkbox(&mut dated,"Set sun date and UTC time").changed() {preferences.lighting=if dated {Some(Default::default())}else{None};}
+            if let Some(settings)=&mut preferences.lighting {
+                ui.horizontal(|ui| {
+                    ui.label("Date (year, month, day)");
+                    ui.add(egui::DragValue::new(&mut settings.year).range(1900..=2100));
+                    ui.add(egui::DragValue::new(&mut settings.month).range(1..=12));
+                    ui.add(egui::DragValue::new(&mut settings.day).range(1..=31));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("UTC at flight start");
+                    let mut hour=settings.utc_hour.floor() as u8;let mut minute=((settings.utc_hour-f64::from(hour))*60.).round() as u8;
+                    ui.add(egui::DragValue::new(&mut hour).range(0..=23));ui.label(":");ui.add(egui::DragValue::new(&mut minute).range(0..=59));
+                    settings.utc_hour=f64::from(hour)+f64::from(minute)/60.;
+                });
+                ui.add(egui::Slider::new(&mut settings.exposure_ev,-3.0..=3.0).text("Exposure (EV)"));
+                if settings.validate().is_err() {ui.colored_label(theme::AMBER,"Choose a valid calendar date.");}
+            }
             ui.checkbox(&mut preferences.enabled, "Show 3D scenery");
             if !cfg!(target_arch = "wasm32") {
                 ui.label("Tileset file");

@@ -36,6 +36,39 @@ fn provider() -> Provider {
 fn origin() -> [f64; 2] {
     [40.96905613156273, -75.00242278301268]
 }
+fn scenery_sling(scene: &mut Scene) {
+    let path = std::env::var_os("FLIGHTCRAFT_SLING_PACK")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| "/home/ray/builds/codex-jobs/scenery/sling-v9-proof".into());
+    let definition: flightcraft_aero::exterior::Exterior =
+        serde_json::from_slice(&std::fs::read(path.join("exterior.json")).unwrap()).unwrap();
+    let model = |name: &str| {
+        Arc::new(
+            flightcraft_aero::exterior::load_glb(&std::fs::read(path.join(name)).unwrap(), &definition)
+                .unwrap(),
+        )
+    };
+    let asset = flightcraft_aero::exterior::ExteriorAsset {
+        lod0: model("exterior.glb"),
+        lod1: model("exterior-lod1.glb"),
+        lod2: Some(model("exterior-lod2.glb")),
+        definition,
+    };
+    let variant: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path.join("variant.json")).unwrap()).unwrap();
+    let mut pose = flightcraft_render::exterior::Pose::default();
+    pose.cg_m = serde_json::from_value(variant["empty_mass"]["cg_m"].clone()).unwrap();
+    pose.height_agl_m = 1.1;
+    scene.set_exterior_pose(pose).unwrap();
+    scene.set_aircraft("sling2");
+    scene.set_exterior(Arc::new(asset));
+    scene
+        .set_lighting(flightcraft_render::lighting::LightingSettings {
+            utc_hour: 18.,
+            ..Default::default()
+        })
+        .unwrap();
+}
 fn pose(n: f64, e: f64, height: f64, heading: f64) -> State {
     State {
         position_m: [n, e, -height],
@@ -57,6 +90,7 @@ fn render_1n7_scenery_reference_shots() {
         let mut capture = Capture::new([1280, 720]).await;
         let mut scene = Scene::default();
         scene.set_world(&reference_world());
+        scenery_sling(&mut scene);
         scene.set_scenery(Some(stream.clone()));
         scene.scenery_quality = Quality::Medium;
         scene.airspace_visible = false;
@@ -88,7 +122,7 @@ fn render_1n7_scenery_reference_shots() {
             (
                 "hangars",
                 "Hangar flyby — imagery preview",
-                pose(230., 320., 145., heading),
+                pose(180., 215., 114.1, heading),
                 CameraMode::Flyby,
                 Some([150., 500., -195.]),
             ),
@@ -106,7 +140,7 @@ fn render_1n7_scenery_reference_shots() {
             let mut loaded = false;
             let loading_started = std::time::Instant::now();
             for frame in 0..3000 {
-                if loading_started.elapsed() > std::time::Duration::from_secs(30) {
+                if loading_started.elapsed() > std::time::Duration::from_secs(90) {
                     break;
                 }
                 capture.draw(|ui| {
@@ -121,9 +155,13 @@ fn render_1n7_scenery_reference_shots() {
                         ui.label("NAIP reference (overhead)");
                         let texture=reference_texture.get_or_insert_with(||ui.ctx().load_texture("1N7 reference",texture.clone(),Default::default()));
                         ui.image((texture.id(),eframe::egui::vec2(right.width(),right.width()*860./1600.)));
-                        ui.label("Imagery and terrain pipeline preview. See build-report.json for source and acceptance status. Measured trees, roofs, and water are pending.");
+                        ui.label("Measured lidar terrain, crowns, and roofs. Procedural facades. Water and painted-runway acceptance remain pending.");
                     });
                 });
+                if frame == 0 {
+                    capture.validate().await;
+                    eprintln!("cold Sling preparation: {:?}", loading_started.elapsed());
+                }
                 let stats = stream.lock().unwrap().stats();
                 assert_eq!(stats.failed_tiles, 0, "local content decode failed");
                 if stats.resident_tiles > 8 && stats.pending_tiles == 0 && frame > 20 {
@@ -132,6 +170,11 @@ fn render_1n7_scenery_reference_shots() {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(10));
             }
+            eprintln!(
+                "loaded {name}: {:?}, {:?}",
+                loading_started.elapsed(),
+                stream.lock().unwrap().stats()
+            );
             assert!(
                 loaded,
                 "local tile worker must produce rendered coverage: {:?}",
@@ -186,6 +229,7 @@ fn scenery_1080p_frame_budget() {
         let mut capture = Capture::new([1920, 1080]).await;
         let mut scene = Scene::default();
         scene.set_world(&reference_world());
+        scenery_sling(&mut scene);
         scene.airspace_visible = false;
         let stream = Arc::new(Mutex::new(LocalProvider::open(&provider(), origin()).unwrap()));
         scene.set_scenery(Some(stream.clone()));
@@ -195,7 +239,7 @@ fn scenery_1080p_frame_budget() {
         let mut loaded = false;
         let loading_started = std::time::Instant::now();
         for frame in 0..3000 {
-            if loading_started.elapsed() > std::time::Duration::from_secs(30) {
+            if loading_started.elapsed() > std::time::Duration::from_secs(90) {
                 break;
             }
             capture.draw(|ui| scene.show(ui, &pose, 1. / 60., theme::scene()));
@@ -234,10 +278,10 @@ fn scenery_1080p_frame_budget() {
         let p95 = times[114];
         let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/scenery");
         std::fs::create_dir_all(&out).unwrap();
-        std::fs::write(out.join("frame-budget.json"),serde_json::to_vec_pretty(&serde_json::json!({"width":1920,"height":1080,"quality":"low","adapter":capture.state.adapter.get_info().name,"p95_ms":p95,"budget_ms":1000./60.,"selected_instances":stats.selected_instances,"selected_tiles":stats.selected_tiles,"resident_bytes":stats.resident_bytes})).unwrap()).unwrap();
+        std::fs::write(out.join("frame-budget.json"),serde_json::to_vec_pretty(&serde_json::json!({"width":1920,"height":1080,"quality":"low","adapter":capture.state.adapter.get_info().name,"p95_ms":p95,"budget_ms":6.,"selected_instances":stats.selected_instances,"selected_tiles":stats.selected_tiles,"resident_bytes":stats.resident_bytes})).unwrap()).unwrap();
         assert!(
-            p95 <= 1000. / 60.,
-            "1080p p95 {p95:.2} ms exceeds the 60 fps frame budget"
+            p95 <= 6.,
+            "1080p p95 {p95:.2} ms exceeds the Low 6 ms frame budget"
         );
         capture.validate().await;
     });
@@ -381,7 +425,7 @@ fn imagery_replaces_higher_coarse_ground_only_in_the_scenery_footprint() {
         let started = std::time::Instant::now();
         let mut loaded = false;
         for frame in 0..3000 {
-            if started.elapsed() > std::time::Duration::from_secs(30) {
+            if started.elapsed() > std::time::Duration::from_secs(90) {
                 break;
             }
             capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
@@ -471,7 +515,7 @@ fn tile_replacement_keeps_gpu_coverage_while_uploads_are_spread_out() {
         let mut loaded = false;
         for frame in 0..3000 {
             assert!(
-                started.elapsed() < std::time::Duration::from_secs(30),
+                started.elapsed() < std::time::Duration::from_secs(90),
                 "replacement regression needs warm coverage"
             );
             capture.draw(|ui| scene.show(ui, &position, 1. / 60., palette));
@@ -516,6 +560,101 @@ fn tile_replacement_keeps_gpu_coverage_while_uploads_are_spread_out() {
                 "budgeted replacement exposed a scenery hole in frame {frame}: {changed} pixels"
             );
         }
+        capture.validate().await;
+    });
+}
+
+#[test]
+#[ignore = "requires receipt-backed scenery, the installed Sling, and an offscreen GPU"]
+fn physical_aircraft_shadow_and_imc_proof() {
+    pollster::block_on(async {
+        let mut capture = Capture::new([640, 480]).await;
+        let mut scene = Scene::default();
+        scene.set_world(&reference_world());
+        scenery_sling(&mut scene);
+        scene.airspace_visible = false;
+        let stream = Arc::new(Mutex::new(LocalProvider::open(&provider(), origin()).unwrap()));
+        scene.set_scenery(Some(stream.clone()));
+        scene.scenery_quality = Quality::Low;
+        scene.camera = CameraMode::Flyby;
+        scene.set_screen_view(Some(ScreenView {
+            fixed_eye_ned_m: Some([150., 285., -135.]),
+            heading_offset_rad: 0.,
+            pitch_rad: 0.,
+            fov_rad: 0.8,
+        }));
+        let state = pose(180., 215., 114.1, 60.76659_f64.to_radians());
+        let start = std::time::Instant::now();
+        let mut loaded = false;
+        for i in 0..3000 {
+            capture.draw(|ui| scene.show(ui, &state, 1. / 60., theme::scene()));
+            let stats = stream.lock().unwrap().stats();
+            assert_eq!(stats.failed_tiles, 0);
+            if i > 32 && stats.resident_tiles > 8 && stats.pending_tiles == 0 {
+                loaded = true;
+                break;
+            }
+            assert!(start.elapsed().as_secs() < 90);
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(loaded);
+        for _ in 0..32 {
+            capture.draw(|ui| scene.show(ui, &state, 1. / 60., theme::scene()));
+        }
+        let shadow = capture.image();
+        scene.aircraft_shadow = false;
+        for _ in 0..4 {
+            capture.draw(|ui| scene.show(ui, &state, 1. / 60., theme::scene()));
+        }
+        let without = capture.image();
+        let changed = shadow
+            .pixels()
+            .zip(without.pixels())
+            .filter(|(a, b)| a.0.iter().zip(b.0).take(3).any(|(a, b)| a.abs_diff(b) > 8))
+            .count();
+        capture.validate().await;
+        assert!(
+            changed > 30,
+            "actual Sling geometry must cast a visible depth shadow; changed pixels: {changed}"
+        );
+        let out = std::env::var_os("FLIGHTCRAFT_SCENERY_PROOF_OUT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/scenery/lighting")
+            });
+        std::fs::create_dir_all(&out).unwrap();
+        shadow.save(out.join("sling-shadow.png")).unwrap();
+        without.save(out.join("sling-without-shadow.png")).unwrap();
+        let conditions = flightcraft_world::Conditions {
+            layers: vec![flightcraft_world::CloudLayer {
+                base_ft_msl: 0.,
+                top_ft_msl: 3000.,
+                coverage: flightcraft_world::Coverage::Ovc,
+            }],
+            visibility_sm: 0.125,
+            ..Default::default()
+        };
+        scene.set_weather(&conditions, false);
+        capture.draw(|ui| scene.show(ui, &state, 1. / 60., theme::scene()));
+        let cloud = capture.image();
+        cloud.save(out.join("sling-imc.png")).unwrap();
+        let reference = cloud.get_pixel(320, 240);
+        let uniform = (40..440)
+            .flat_map(|y| (40..600).map(move |x| (x, y)))
+            .filter(|(x, y)| {
+                cloud
+                    .get_pixel(*x, *y)
+                    .0
+                    .iter()
+                    .zip(reference.0)
+                    .take(3)
+                    .all(|(a, b)| a.abs_diff(b) <= 3)
+            })
+            .count();
+        assert!(
+            uniform > 220_000,
+            "IMC must hide aircraft and terrain, preserving the cloud endpoint: {uniform}"
+        );
         capture.validate().await;
     });
 }

@@ -60,10 +60,12 @@ fn cloud_optical_depth(ray: vec3<f32>, distance: f32) -> f32 {
     let horizon = (1.0 - smoothstep(0.001, 0.004, abs(ray.y))) * u.vision.y;
     sky = mix(sky, u.grid, horizon);
     if u.vision.y < 0.5 {
-        sky = vec4<f32>(sky.rgb * u.atmosphere.y, 1.0);
+        let disk=smoothstep(0.99992,0.99997,dot(ray,light.sun.xyz));
+        sky=vec4<f32>(display_color(physical_sky(ray)+light.radiance.rgb*disk*12.0),1.0);
         let cloud = 1.0 - exp(-cloud_optical_depth(ray, 16000.0));
         let haze = (1.0 - smoothstep(0.0, 0.16, abs(ray.y))) * 0.65;
-        sky = mix(sky, u.fog_color, haze);
+        // Rayleigh/Mie optical depth already supplies horizon haze.
+        sky = mix(sky, u.fog_color, haze*0.12);
         // Broad billows and finer relief remain visible even in an optically thick overcast.
         let dy = select(ray.y, select(-0.01, 0.01, ray.y >= 0.0), abs(ray.y) < 0.01);
         let p = u.eye.xyz + ray * clamp((u.clouds[0].x - u.eye.y) / dy, 0.0, 16000.0);
@@ -143,7 +145,7 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
     if (i.kind == 0.0 || i.kind == 3.0 || i.kind == 4.0 || i.kind == 5.0) && u.vision.y < 0.5 && u.scenery_bounds.z > u.scenery_bounds.x && all(i.world.xz >= u.scenery_bounds.xy) && all(i.world.xz <= u.scenery_bounds.zw) { discard; }
     let distance = length(i.world - u.eye.xyz);
     let normal = normalize(i.normal);
-    let sun = normalize(SUN);
+    let sun = select(normalize(SUN),light.sun.xyz,u.vision.y<0.5);
     // Derivatives are evaluated outside material branches for downlevel shader validation.
     let fine = detail_lines(i.world.xz, 12.5);
     let coarse = detail_lines(i.world.xz, 100.0);
@@ -180,13 +182,6 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
         color = mix(u.water.rgb, u.sky_horizon.rgb, 0.18 * fresnel + sheen);
         color = mix(color, u.shoreline.rgb, shore * 0.7);
     }
-    if i.kind != 1.0 && i.kind != 2.0 && i.kind != -1.0 {
-        // Soft footprint on both terrain and pavement, fading with aircraft height.
-        let center = u.aircraft[3].xz;
-        let offset = (i.world.xz - center) / vec2<f32>(5.5, 2.4);
-        let shadow = exp(-dot(offset, offset)) * max(0.0, 1.0 - u.viewport.z / 30.0);
-        color *= 1.0 - shadow * 0.23;
-    }
     if i.kind == 1.0 || i.kind == -1.0 {
         // Preserve the aircraft and cockpit's existing two-sided lighting.
         let light = 0.62 + 0.38 * abs(dot(normal, normalize(vec3<f32>(0.4, 0.85, 0.3))));
@@ -216,6 +211,16 @@ fn detail_lines(world: vec2<f32>, spacing: f32) -> f32 {
         color = i.color.rgb;
         fog = 0.0;
         alpha = i.color.a;
+    }
+    if u.vision.y<0.5 && i.kind<6.0 && i.kind!=-2.0 {
+        if u.atmosphere.z>0.5 || u.atmosphere.w>0.5 {return u.fog_color;}
+        let cloud=cloud_optical_depth(normalize(i.world-u.eye.xyz),distance);
+        let energy=surface_light(i.world,normal);
+        var lit=linear_color(i.color.rgb)*energy;
+        if i.kind==0.0 || i.kind==4.0 {lit=linear_color(color)*energy;}
+        if i.kind==5.0 {lit=linear_color(u.water.rgb)*0.3+physical_sky(reflect(normalize(i.world-u.eye.xyz),normal))*0.35;}
+        if i.kind==1.0 || i.kind==-1.0 {lit=linear_color(i.color.rgb)*(energy+vec3<f32>(0.12));}
+        return vec4<f32>(display_color(aerial(lit,i.world,cloud)),alpha);
     }
     if u.vision.y < 0.5 {
         let cockpit = i.kind == 1.0 || i.kind == 2.0;

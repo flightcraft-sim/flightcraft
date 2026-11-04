@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LightingSettings",
+  "description": "UTC presentation clock, independent of the deterministic flight state. Simulation seconds advance it.",
+  "type": "object",
+  "properties": {
+    "day": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 31,
+      "minimum": 1
+    },
+    "exposure_ev": {
+      "type": "number",
+      "format": "float",
+      "maximum": 6,
+      "minimum": -6
+    },
+    "month": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 12,
+      "minimum": 1
+    },
+    "utc_hour": {
+      "type": "number",
+      "format": "double",
+      "maximum": 24,
+      "minimum": 0
+    },
+    "year": {
+      "description": "Gregorian calendar, 1900–2100.",
+      "type": "integer",
+      "format": "int32",
+      "maximum": 2100,
+      "minimum": 1900
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "year",
+    "month",
+    "day",
+    "utc_hour",
+    "exposure_ev"
+  ]
+}

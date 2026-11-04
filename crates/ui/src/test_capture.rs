@@ -195,6 +195,8 @@ impl Capture {
         image
     }
     pub(crate) async fn validate(&self) {
-        assert!(self.state.device.pop_error_scope().await.is_none());
+        let error = self.state.device.pop_error_scope().await;
+        assert!(error.is_none(), "offscreen GPU validation: {error:?}");
+        self.state.device.push_error_scope(wgpu::ErrorFilter::Validation);
     }
 }

@@ -39,6 +39,8 @@ pub struct PageUi {
 #[serde(deny_unknown_fields)]
 pub struct SceneryPreferences {
     pub quality: flightcraft_render::scenery::Quality,
+    #[serde(default)]
+    pub lighting: Option<flightcraft_render::lighting::LightingSettings>,
     pub enabled: bool,
     pub local_tileset: String,
     #[serde(default)]
@@ -266,6 +268,11 @@ impl Canvas {
             page.scene.set_scenery(self.scenery.clone());
             page.scene.set_imagery(self.imagery.clone());
             page.scene.scenery_quality = self.scenery_preferences.quality;
+            if let Some(settings) = self.scenery_preferences.lighting {
+                let _ = page.scene.set_lighting(settings);
+            } else {
+                page.scene.clear_lighting();
+            }
             ui.scope_builder(egui::UiBuilder::new().id_salt(&element.id).max_rect(rect), |ui| {
                 ui.set_clip_rect(rect.intersect(available));
                 if !element.accepts_input || !control || self.edit {

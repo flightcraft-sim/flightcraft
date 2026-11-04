@@ -3,12 +3,14 @@
 mod camera;
 pub mod exterior;
 mod light_gun;
+pub mod lighting;
 mod registration;
 pub use light_gun::{LightGun, LightGunPattern};
 mod gpu;
 mod mesh;
 mod registration_atlas;
 pub mod scenery;
+mod shadows;
 mod vision;
 mod weather;
 pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_vision_stats};
@@ -76,6 +78,8 @@ pub struct Scene {
     pub airspace_visible: bool,
     /// Read-only presentation switch for comparative lighting captures.
     pub lights_visible: bool,
+    /// Comparative rendering switch; receivers and geometry remain unchanged.
+    pub aircraft_shadow: bool,
     eye: Option<Vec3>,
     target: Option<Vec3>,
     chase_position: Option<Vec3>,
@@ -93,6 +97,7 @@ pub struct Scene {
     larrow: bool,
     sling: bool,
     conditions: flightcraft_world::Conditions,
+    lighting: Option<lighting::LightingSettings>,
     hood: bool,
     light_gun: Option<LightGun>,
     director_runway: Option<([f64; 3], f64)>,
@@ -111,6 +116,7 @@ impl Default for Scene {
             world: flightcraft_world::World::default(),
             airspace_visible: true,
             lights_visible: true,
+            aircraft_shadow: true,
             eye: None,
             target: None,
             chase_position: None,
@@ -128,6 +134,7 @@ impl Default for Scene {
             larrow: false,
             sling: false,
             conditions: Default::default(),
+            lighting: None,
             hood: false,
             light_gun: None,
             director_runway: None,
@@ -161,6 +168,17 @@ impl Scene {
 
     pub fn set_screen_view(&mut self, view: Option<ScreenView>) {
         self.screen_view = view;
+    }
+
+    pub fn clear_lighting(&mut self) {
+        self.lighting = None;
+    }
+
+    /// Validated UTC presentation clock; the flight trajectory is unchanged.
+    pub fn set_lighting(&mut self, settings: lighting::LightingSettings) -> Result<(), String> {
+        settings.validate()?;
+        self.lighting = Some(settings);
+        Ok(())
     }
 
     pub fn set_weather(&mut self, conditions: &flightcraft_world::Conditions, hood: bool) {
@@ -235,6 +253,28 @@ impl Scene {
             painted: painted.clone(),
         });
         self.exterior = Some(painted);
+    }
+
+    /// Bounded presentation pose for replay and offscreen clients; never changes simulation mass or controls.
+    pub fn set_exterior_pose(&mut self, pose: exterior::Pose) -> Result<(), String> {
+        if pose
+            .cg_m
+            .iter()
+            .chain(&pose.controls)
+            .chain(&pose.wheel_phase)
+            .chain(&pose.compression_m)
+            .any(|v| !v.is_finite() || v.abs() > 100000.)
+            || !pose.canopy_open_fraction.is_finite()
+            || !pose.propeller_rpm.is_finite()
+            || !pose.propeller_phase.is_finite()
+            || !pose.time_s.is_finite()
+            || !pose.height_agl_m.is_finite()
+            || pose.powered_loads.len() > 4096
+        {
+            return Err("Invalid aircraft presentation pose".into());
+        }
+        self.exterior_pose = pose;
+        Ok(())
     }
 
     /// Read-only animation inputs; phases advance in simulation time, so pause freezes motion.
@@ -557,6 +597,7 @@ impl Scene {
                 uniform,
                 show_airspace: self.airspace_visible,
                 show_lights: self.lights_visible,
+                aircraft_shadow: self.aircraft_shadow,
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera != CameraMode::Cockpit
@@ -570,6 +611,45 @@ impl Scene {
                 exterior: self.exterior.clone(),
                 exterior_pose: self.exterior_pose.clone(),
                 exterior_environment: self.exterior_environment.clone(),
+                lighting: {
+                    let origin = self
+                        .world
+                        .region()
+                        .map(|r| [r.origin.latitude_deg, r.origin.longitude_deg])
+                        .unwrap_or([40.97113, -74.99750]);
+                    let location = flightcraft_world::geo::LocalProjection::new(origin[0], origin[1])
+                        .ok()
+                        .and_then(|p| p.unproject(state.position_m[0], state.position_m[1]).ok())
+                        .unwrap_or(origin);
+                    let settings = self.lighting.unwrap_or_else(|| {
+                        let hour = match self.conditions.time_of_day {
+                            flightcraft_world::TimeOfDay::Day => 12.,
+                            flightcraft_world::TimeOfDay::Dawn => 7.,
+                            flightcraft_world::TimeOfDay::Dusk => 17.,
+                            flightcraft_world::TimeOfDay::Night => 0.,
+                        };
+                        lighting::LightingSettings {
+                            utc_hour: (hour - location[1] / 15.).rem_euclid(24.),
+                            ..Default::default()
+                        }
+                    });
+                    let sun = lighting::sun_direction(settings, location[0], location[1], state.time_s)
+                        .unwrap_or([0., 1., 0.]);
+                    let cloud = self
+                        .conditions
+                        .layers
+                        .iter()
+                        .filter(|l| l.base_ft_msl * 0.3048 > f64::from(eye.y))
+                        .map(|l| 1. - 0.78 * l.coverage.fraction() as f32)
+                        .product::<f32>();
+                    lighting::Frame::new(
+                        sun,
+                        eye.to_array(),
+                        self.conditions.effective_visibility_m() as f32,
+                        cloud,
+                        settings.exposure_ev,
+                    )
+                },
             },
         ));
         if !scenery_attribution.is_empty() {
