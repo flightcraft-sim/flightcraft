@@ -8,6 +8,8 @@ fn main() {
     if web_sys::window().is_none() {
         return;
     }
+    // Route `log` (including wgpu's GPU errors and device loss) to the browser console.
+    let _ = eframe::WebLogger::init(log::LevelFilter::Info);
     wasm_bindgen_futures::spawn_local(async {
         if let Err(error) = start().await {
             web_sys::console::error_1(&error);

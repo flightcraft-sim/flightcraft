@@ -1550,6 +1550,7 @@ dependencies = [
  "flightcraft-control",
  "flightcraft-ui",
  "js-sys",
+ "log",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
