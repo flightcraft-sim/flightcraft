@@ -238,6 +238,10 @@ impl ScreenApp {
         if let Err(error) = crate::display_preferences::restore(&mut session, cc.storage) {
             errors.push(error);
         }
+        // Saved through the shared app's save; restored here like the display choices.
+        if let Err(error) = crate::view_preferences::restore(&mut session, cc.storage) {
+            errors.push(error);
+        }
         errors.extend(options.packs.errors);
         for region in options.regions.fetched {
             session.install_region(region)?;
