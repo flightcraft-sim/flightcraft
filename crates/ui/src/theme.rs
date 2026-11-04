@@ -37,6 +37,20 @@ pub const KNOB_MARK: Color32 = Color32::from_rgb(154, 163, 173);
 pub const PAGE_BAR: Color32 = Color32::from_rgb(12, 14, 17);
 pub const MENU_PANEL: Color32 = Color32::from_rgb(16, 19, 23);
 
+// Instrument-face colours of the landscape touch EFIS, by meaning: cyan for selected values and
+// bugs, magenta for flight director, trend, and GPS guidance, green for active modes and a valid
+// VOR or localizer, white for scales and armed modes, yellow for cautions, red for warnings. A skin
+// pack's instrument palette may replace each one within its meaning.
+pub const FACE_CYAN: Color32 = Color32::from_rgb(25, 211, 218);
+pub const FACE_MAGENTA: Color32 = Color32::from_rgb(230, 59, 230);
+pub const FACE_GREEN: Color32 = Color32::from_rgb(58, 223, 78);
+pub const FACE_YELLOW: Color32 = Color32::from_rgb(242, 211, 27);
+pub const FACE_WHITE: Color32 = Color32::from_rgb(242, 242, 242);
+pub const FACE_RED: Color32 = Color32::from_rgb(255, 59, 48);
+pub const FACE_TAPE_FILL: Color32 = Color32::from_rgba_premultiplied(14, 17, 21, 150);
+pub const FACE_BOX_FILL: Color32 = Color32::from_rgba_premultiplied(0, 0, 0, 235);
+pub const FACE_BOX_BORDER: Color32 = Color32::from_rgb(143, 152, 161);
+
 pub fn install(ctx: &egui::Context) {
     // Bundle only an Apache-2.0 font, without egui's differently licensed default font set.
     let mut fonts = egui::FontDefinitions::empty();

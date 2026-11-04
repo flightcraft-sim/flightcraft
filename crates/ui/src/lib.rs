@@ -1695,6 +1695,8 @@ mod weather_live_preview;
 mod weather_preview;
 
 #[cfg(test)]
+mod efis_pfd_tests;
+#[cfg(test)]
 mod efis_tests;
 #[cfg(test)]
 mod navigator_audio_tests;

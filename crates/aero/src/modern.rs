@@ -315,6 +315,53 @@ impl MfdPage {
         }
     }
 }
+/// A page of the nearest group, chosen on the page navigation bar once NEAREST is pressed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum NearestPage {
+    #[default]
+    Airports,
+    Vors,
+    Ndbs,
+    Intersections,
+    Airspace,
+}
+impl NearestPage {
+    /// The modelled nearest pages, in the order of the unit's list. Weather, user waypoints, cities,
+    /// control centres, flight service stations, and visual reporting points are not modelled.
+    pub const ALL: [Self; 5] = [
+        Self::Airports,
+        Self::Vors,
+        Self::Ndbs,
+        Self::Intersections,
+        Self::Airspace,
+    ];
+    pub fn abbreviation(self) -> &'static str {
+        match self {
+            Self::Airports => "Apt",
+            Self::Vors => "VOR",
+            Self::Ndbs => "NDB",
+            Self::Intersections => "INT",
+            Self::Airspace => "ASPC",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Airports => "Nearest airports",
+            Self::Vors => "Nearest VORs",
+            Self::Ndbs => "Nearest NDBs",
+            Self::Intersections => "Nearest intersections",
+            Self::Airspace => "Nearest airspace",
+        }
+    }
+    /// Text shown when the list is empty.
+    pub fn empty_text(self) -> &'static str {
+        match self {
+            Self::Airspace => "No Immediate Airspace",
+            _ => "None Within 200 NM",
+        }
+    }
+}
 /// What the MFD page's data column shows beside the map.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

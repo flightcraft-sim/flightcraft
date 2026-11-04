@@ -169,8 +169,10 @@ right-seat pilot of a two-screen install gets the two screens' defaults exchange
 on the right (for right-seat practice and instructors). Changing seat drops the pilot's own page
 choices so that the new defaults show.
 
-**Reversion.** When a display fails or loses power, every surviving display shows the PFD with the
-engine strip, and returns to its chosen page when the failed display returns. The glass setting
+**Reversion.** When a display fails or loses power, every surviving display presents the PFD and the
+engine page in split-screen, and returns to its chosen page when the failed display returns. Losing the
+primary flight display also disconnects the autopilot (once; it can be engaged again, without the flight
+director); losing the multi-function display does not. See [glass](glass.md#reversion). The glass setting
 `display_reversion` (`enabled`) is the backup button: the screen that is not showing a PFD reverts
 as if the PFD screen had failed. It clears at flight reset. State reports `pilot_seat`,
 `manual_reversion`, and each display's `layout`, `default_page`, `installed_layout`, `data_area`,

@@ -5,8 +5,10 @@ use flightcraft_aero::display_model::DisplayModel;
 use flightcraft_aero::modern::{MfdPage, TouchLayout};
 use flightcraft_aero::skin_pack::SkinPackManifest;
 use flightcraft_control::touch_efis::{EfisKey, Overlay};
+use flightcraft_control::touch_entry;
 use flightcraft_control::*;
 use serde_json::{Value, json};
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 
 fn session(recommend: Option<&str>) -> Session {
     let mut s = Session::new().unwrap();
@@ -194,13 +196,13 @@ fn mfd_knob_cycles_pages_and_the_range_knob_steps_the_ladder() {
     assert_eq!(state(&s, "right_display").mfd_page, MfdPage::Engine);
     s.execute(
         "avionics.set",
-        json!({"setting":{"kind":"glass","setting":{"kind":"map_range","range_nm":10.0}}}),
+        json!({"setting":{"kind":"glass","setting":{"kind":"map_range","range_nm":12.0}}}),
     )
     .unwrap();
     knob(&mut s, "right_display", "right", "inner", 1);
-    assert_eq!(glass_state(&s).settings.range_nm, 7.0);
+    assert_eq!(glass_state(&s).settings.range_nm, 8.0);
     knob(&mut s, "right_display", "right", "inner", -2);
-    assert_eq!(glass_state(&s).settings.range_nm, 15.0);
+    assert_eq!(glass_state(&s).settings.range_nm, 20.0);
 }
 
 #[test]
@@ -355,4 +357,489 @@ fn skin_packs_are_bounded_and_must_declare_every_asset() {
     let mut extra = skin("landscape_touch_efis");
     extra.assets.insert("fonts/undeclared.ttf".into(), vec![0]);
     assert!(s.install_skin(extra).is_err());
+}
+
+// ---- Touch keypads, radio windows, range ladder, nearest pages, director knob, reversion ----
+
+fn try_display(s: &mut Session, id: &str, action: Value) -> Result<Value, CommandError> {
+    s.execute(
+        "equipment.set",
+        json!({"setting":{"kind":"display","id":id,"action":action}}),
+    )
+}
+fn open(s: &mut Session, id: &str, overlay: Value) {
+    display(s, id, json!({"kind":"open_overlay","overlay":overlay}));
+}
+fn enter(s: &mut Session, id: &str, target: &str, text: &str) -> Result<Value, CommandError> {
+    try_display(s, id, json!({"kind":"enter","target":target,"text":text}))
+}
+fn set_glass(s: &mut Session, setting: Value) {
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":setting}}),
+    )
+    .unwrap();
+}
+
+#[test]
+fn keypad_entry_sets_baro_heading_altitude_and_course() {
+    let mut s = session(None);
+    // Baro, in inHg and then hPa.
+    open(&mut s, "left_display", json!({"keypad":"baro"}));
+    assert_eq!(
+        state(&s, "left_display").overlay,
+        Overlay::Keypad(touch_entry::EntryTarget::Baro)
+    );
+    enter(&mut s, "left_display", "baro", "2985").unwrap();
+    assert!((glass_state(&s).baro_pa - 29.85 * 3386.389).abs() < 1.0);
+    assert_eq!(
+        state(&s, "left_display").overlay,
+        Overlay::None,
+        "Enter closes the keypad"
+    );
+    set_glass(&mut s, json!({"kind":"pressure_units","hpa":true}));
+    enter(&mut s, "left_display", "baro", "1020").unwrap();
+    assert!((glass_state(&s).baro_pa - 102_000.).abs() < 1e-6);
+    // Heading, with 360 meaning north.
+    enter(&mut s, "left_display", "heading", "090").unwrap();
+    assert!((glass_state(&s).settings.heading_bug_rad.to_degrees() - 90.).abs() < 1e-6);
+    enter(&mut s, "left_display", "heading", "360").unwrap();
+    assert!(glass_state(&s).settings.heading_bug_rad.to_degrees().abs() < 1e-6);
+    // Altitude in feet, and course.
+    enter(&mut s, "left_display", "altitude", "3500").unwrap();
+    assert!((glass_state(&s).settings.selected_altitude_m - 3500. * 0.3048).abs() < 1e-6);
+    enter(&mut s, "left_display", "course", "123").unwrap();
+    let g = glass_state(&s).settings;
+    assert!((g.course_rad.to_degrees() - 123.).abs() < 1e-6 && g.course_manual);
+}
+
+#[test]
+fn keypad_entry_sets_the_direct_to_identifier_the_radios_and_the_transponder() {
+    let mut s = session(None);
+    // COM1 standby, then transfer.
+    open(&mut s, "left_display", json!("com_window"));
+    assert_eq!(state(&s, "left_display").overlay, Overlay::ComWindow);
+    let active = glass_state(&s).comms.com1.active_khz;
+    enter(&mut s, "left_display", "com_standby", "121.5").unwrap();
+    assert_eq!(glass_state(&s).comms.com1.standby_khz, 121_500);
+    assert_eq!(glass_state(&s).comms.com1.active_khz, active);
+    display(&mut s, "left_display", json!({"kind":"transfer","band":"com"}));
+    assert_eq!(glass_state(&s).comms.com1.active_khz, 121_500);
+    assert_eq!(glass_state(&s).comms.com1.standby_khz, active);
+    // NAV1 standby, then transfer.
+    open(&mut s, "left_display", json!("nav_window"));
+    enter(&mut s, "left_display", "nav_standby", "113.8").unwrap();
+    assert_eq!(
+        glass_state(&s).touch.navigator.as_ref().unwrap().nav_standby_khz,
+        113_800
+    );
+    display(&mut s, "left_display", json!({"kind":"transfer","band":"nav"}));
+    assert_eq!(
+        glass_state(&s).touch.navigator.as_ref().unwrap().nav_active_khz,
+        113_800
+    );
+    // Transponder: a code, then a mode key keeps the code.
+    open(&mut s, "left_display", json!("transponder_window"));
+    enter(&mut s, "left_display", "transponder", "4321").unwrap();
+    assert_eq!(glass_state(&s).settings.transponder_code, "4321");
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"transponder_mode","mode":"standby"}),
+    );
+    let g = glass_state(&s).settings;
+    assert_eq!(g.transponder_code, "4321");
+    assert_eq!(format!("{:?}", g.transponder_mode), "Standby");
+}
+
+#[test]
+fn a_bad_entry_is_refused_and_leaves_the_keypad_open() {
+    let mut s = session(None);
+    open(&mut s, "left_display", json!({"keypad":"heading"}));
+    for (target, text) in [
+        ("heading", "361"),
+        ("heading", ""),
+        ("altitude", "99999"),
+        ("baro", "5"),
+        ("transponder", "1289"),
+        ("com_standby", "117.0"),
+        ("com_standby", "121.512"),
+        ("nav_standby", "113.83"),
+        ("direct_to", "ZZZZ9"),
+    ] {
+        assert!(
+            enter(&mut s, "left_display", target, text).is_err(),
+            "{target} {text:?}"
+        );
+    }
+    assert_eq!(
+        state(&s, "left_display").overlay,
+        Overlay::Keypad(touch_entry::EntryTarget::Heading)
+    );
+    // A non-entry overlay cannot be opened by touch.
+    assert!(
+        try_display(
+            &mut s,
+            "left_display",
+            json!({"kind":"open_overlay","overlay":"main_menu"})
+        )
+        .is_err()
+    );
+    display(&mut s, "left_display", json!({"kind":"close_overlay"}));
+    assert_eq!(state(&s, "left_display").overlay, Overlay::None);
+}
+
+#[test]
+fn keypad_shortcuts_take_the_current_value_or_standard_pressure() {
+    let mut s = session(None);
+    set_glass(&mut s, json!({"kind":"baro","pressure_pa":99_000.0}));
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"baro","shortcut":"set_to_standard"}),
+    );
+    assert!((glass_state(&s).baro_pa - 101_325.).abs() < 1e-6);
+    // Set For Field recovers the pressure for the field the aircraft sits on.
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"baro","shortcut":"set_for_field"}),
+    );
+    let field = glass_state(&s).baro_pa;
+    assert!((80_000. ..=110_000.).contains(&field));
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"heading_bug","degrees":200.0}}),
+    )
+    .unwrap();
+    let heading = glass_state(&s)
+        .air_data
+        .heading_rad
+        .to_degrees()
+        .round()
+        .rem_euclid(360.);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"heading","shortcut":"set_to_current"}),
+    );
+    assert!((glass_state(&s).settings.heading_bug_rad.to_degrees() - heading).abs() < 1e-6);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"altitude","shortcut":"set_to_current"}),
+    );
+    let sel_ft = glass_state(&s).settings.selected_altitude_m / 0.3048;
+    assert!(
+        (sel_ft / 100. - (sel_ft / 100.).round()).abs() < 1e-6,
+        "whole hundreds: {sel_ft}"
+    );
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"course","shortcut":"set_to_current"}),
+    );
+    assert!(glass_state(&s).settings.course_manual);
+    // A shortcut the pad does not offer is refused.
+    assert!(
+        try_display(
+            &mut s,
+            "left_display",
+            json!({"kind":"shortcut","target":"transponder","shortcut":"set_to_current"})
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn the_range_ladder_has_23_steps_and_the_zoom_buttons_use_it() {
+    let mut s = session(None);
+    let ladder = touch_efis::MAP_RANGES_NM;
+    assert_eq!(ladder.len(), 23);
+    set_glass(&mut s, json!({"kind":"map_range","range_nm":1200.0}));
+    // Walk the whole ladder with the knob, one detent at a time, to the smallest range.
+    let mut seen = vec![glass_state(&s).settings.range_nm];
+    for _ in 0..22 {
+        knob(&mut s, "right_display", "right", "inner", 1);
+        seen.push(glass_state(&s).settings.range_nm);
+    }
+    for (got, want) in seen.iter().zip(ladder.iter().rev()) {
+        assert!((got - want).abs() < 1e-9, "{got} vs {want}");
+    }
+    knob(&mut s, "right_display", "right", "inner", 1);
+    assert!(
+        (glass_state(&s).settings.range_nm - ladder[0]).abs() < 1e-9,
+        "stops at the end"
+    );
+    // Zoom buttons: positive steps zoom in.
+    set_glass(&mut s, json!({"kind":"map_range","range_nm":20.0}));
+    display(&mut s, "right_display", json!({"kind":"map_zoom","steps":-1}));
+    assert_eq!(glass_state(&s).settings.range_nm, 30.);
+    display(&mut s, "right_display", json!({"kind":"map_zoom","steps":2}));
+    assert_eq!(glass_state(&s).settings.range_nm, 12.);
+    // Ranges outside the ladder's ends are refused.
+    for nm in [0.01, 1201.0] {
+        assert!(
+            s.execute(
+                "avionics.set",
+                json!({"setting":{"kind":"glass","setting":{"kind":"map_range","range_nm":nm}}})
+            )
+            .is_err(),
+            "{nm}"
+        );
+    }
+}
+
+#[test]
+fn the_select_page_menu_and_nearest_pages_follow_the_nearest_key() {
+    let mut s = session(None);
+    open(&mut s, "right_display", json!("select_page"));
+    assert_eq!(state(&s, "right_display").overlay, Overlay::SelectPage);
+    display(
+        &mut s,
+        "right_display",
+        json!({"kind":"mfd_page","page":"nearest"}),
+    );
+    assert_eq!(state(&s, "right_display").overlay, Overlay::None);
+    let d = state(&s, "right_display");
+    assert_eq!(touch_efis::effective_page(d.layout, d.mfd_page), MfdPage::Nearest);
+    // The large MFD knob steps the nearest pages here, not the main pages.
+    use flightcraft_aero::modern::NearestPage as N;
+    assert_eq!(state(&s, "right_display").nearest_page, N::Airports);
+    knob(&mut s, "right_display", "right", "outer", 1);
+    assert_eq!(state(&s, "right_display").nearest_page, N::Vors);
+    assert_eq!(state(&s, "right_display").mfd_page, MfdPage::Nearest);
+    knob(&mut s, "right_display", "right", "outer", 4);
+    assert_eq!(state(&s, "right_display").nearest_page, N::Airports);
+    display(
+        &mut s,
+        "right_display",
+        json!({"kind":"nearest_page","page":"airspace"}),
+    );
+    assert_eq!(state(&s, "right_display").nearest_page, N::Airspace);
+    // The airspace list is built while its page shows; with nothing near it is empty.
+    assert!(glass_state(&s).nearest_airspace.is_empty());
+    // Leaving the nearest group, the knob steps main pages again.
+    display(&mut s, "right_display", json!({"kind":"mfd_page","page":"map"}));
+    knob(&mut s, "right_display", "right", "outer", 1);
+    assert_eq!(state(&s, "right_display").mfd_page, MfdPage::Waypoint);
+}
+
+#[test]
+fn nearest_lists_are_only_built_for_a_page_that_is_showing() {
+    let s = session(None);
+    let g = glass_state(&s);
+    assert!(g.nearest_vors.is_empty() && g.nearest_ndbs.is_empty());
+    assert!(g.nearest_intersections.is_empty() && g.nearest_airspace.is_empty());
+    // The airport list is always there and holds at most the 15 rows of the unit's list.
+    assert!(g.nearest.len() <= 15);
+    assert!(g.nearest.iter().all(|a| a.distance_nm <= 200.));
+}
+
+/// An airborne start, aligned, with the autopilot engaged in altitude hold.
+fn airborne(s: &mut Session) {
+    s.execute(
+        "sim.reset",
+        json!({"start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":0.}}),
+    )
+    .unwrap();
+    s.execute(
+        "assist.set",
+        json!({"altitude_m":1000.,"heading_rad":0.,"airspeed_mps":40.}),
+    )
+    .unwrap();
+    s.run(Step { steps: 5520 }).unwrap();
+    s.execute("assist.off", json!({})).unwrap();
+}
+fn autopilot(s: &mut Session, setting: Value) {
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"autopilot","setting":setting}}),
+    )
+    .unwrap();
+}
+
+#[test]
+fn the_flight_director_bug_knob_steps_the_active_reference_and_a_push_syncs_pitch() {
+    let mut s = session(None);
+    airborne(&mut s);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"knobs","config":{"alternate":"fd_bug_baro","press_to_toggle":false,"mfd_side":"right"}}),
+    );
+    autopilot(&mut s, json!({"kind":"flight_director","on":true}));
+    autopilot(&mut s, json!({"kind":"vertical","mode":"vs"}));
+    autopilot(&mut s, json!({"kind":"vertical_speed","vertical_speed_mps":0.0}));
+    // Right inner knob: 100 fpm per detent.
+    knob(&mut s, "left_display", "right", "inner", 3);
+    let vs = s.sim().installed_autopilot().unwrap().vertical_speed_mps / 0.3048 * 60.;
+    assert!((vs - 300.).abs() < 1e-6, "{vs}");
+    knob(&mut s, "left_display", "right", "inner", -5);
+    let vs = s.sim().installed_autopilot().unwrap().vertical_speed_mps / 0.3048 * 60.;
+    assert!((vs + 200.).abs() < 1e-6, "{vs}");
+    // Pitch hold: half a degree per detent.
+    autopilot(&mut s, json!({"kind":"vertical","mode":"pit"}));
+    let before = s.sim().installed_autopilot().unwrap().pitch_rad;
+    knob(&mut s, "left_display", "right", "inner", 2);
+    let after = s.sim().installed_autopilot().unwrap().pitch_rad;
+    assert!(
+        ((after - before).to_degrees() - 1.).abs() < 1e-6,
+        "{before} {after}"
+    );
+    // A push sets the pitch reference to the present pitch.
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"knob_push","knob":"right","time_s":0.0}),
+    );
+    let ap = s.sim().installed_autopilot().unwrap();
+    assert!((ap.pitch_rad - s.sim().readout().pitch_rad).abs() < 1e-6);
+    // The outer ring is still baro.
+    let baro = glass_state(&s).baro_pa;
+    knob(&mut s, "left_display", "right", "outer", 1);
+    assert!(glass_state(&s).baro_pa > baro);
+}
+
+#[test]
+fn the_course_knob_push_syncs_the_course_to_the_heading_without_guidance() {
+    let mut s = session(None);
+    airborne(&mut s);
+    knob(&mut s, "left_display", "right", "inner", 37);
+    let heading = glass_state(&s)
+        .air_data
+        .heading_rad
+        .to_degrees()
+        .round()
+        .rem_euclid(360.);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"knob_push","knob":"right","time_s":0.0}),
+    );
+    let course = glass_state(&s).settings.course_rad.to_degrees();
+    assert!((course - heading).abs() < 1e-6, "{course} vs {heading}");
+}
+
+/// The new-york region with the aircraft airborne in it, for tests that need real airports.
+fn in_new_york(s: &mut Session) {
+    s.install_region(
+        read_region(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/new-york"))
+            .unwrap(),
+    )
+    .unwrap();
+    s.execute(
+        "sim.reset",
+        json!({"world":"new-york","start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":0.}}),
+    )
+    .unwrap();
+    s.execute(
+        "assist.set",
+        json!({"altitude_m":1000.,"heading_rad":0.,"airspeed_mps":40.}),
+    )
+    .unwrap();
+    s.run(Step { steps: 5520 }).unwrap();
+    s.execute("assist.off", json!({})).unwrap();
+}
+
+#[test]
+fn direct_to_keypad_and_course_sync_use_a_real_leg() {
+    require_region_data!();
+    let mut s = session(None);
+    in_new_york(&mut s);
+    key(&mut s, "left_display", "direct", false);
+    enter(&mut s, "left_display", "direct_to", "kmmu").unwrap();
+    assert_eq!(state(&s, "left_display").overlay, Overlay::None);
+    assert!(glass_state(&s).settings.flight_plan.iter().any(|a| a == "KMMU"));
+    // With an active leg the course push takes the desired track, whole degrees.
+    knob(&mut s, "left_display", "right", "inner", 90);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"knob_push","knob":"right","time_s":0.0}),
+    );
+    let g = glass_state(&s);
+    assert!(g.gps.valid);
+    let dtk = g.gps.desired_track_rad.to_degrees().round().rem_euclid(360.);
+    assert!((g.settings.course_rad.to_degrees() - dtk).abs() < 1e-6, "{dtk}");
+    // Set To Current on the course keypad does the same.
+    knob(&mut s, "left_display", "right", "inner", 45);
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"course","shortcut":"set_to_current"}),
+    );
+    assert!((glass_state(&s).settings.course_rad.to_degrees() - dtk).abs() < 1e-6);
+}
+
+#[test]
+fn the_afcs_box_reflects_the_autopilot_modes_as_they_change() {
+    use flightcraft_control::touch_pfd::{AfcsTone, afcs_box};
+    let mut s = session(None);
+    airborne(&mut s);
+    let ap = || s.sim().installed_autopilot().unwrap().clone();
+    assert!(afcs_box(&ap(), "GPS").autopilot.is_none());
+    autopilot(&mut s, json!({"kind":"engage","on":true}));
+    autopilot(&mut s, json!({"kind":"lateral","mode":"hdg"}));
+    autopilot(&mut s, json!({"kind":"vertical","mode":"alt"}));
+    let b = afcs_box(s.sim().installed_autopilot().unwrap(), "GPS");
+    assert_eq!(b.autopilot.as_ref().unwrap().tone, AfcsTone::Active);
+    assert_eq!(b.lateral_active.as_ref().unwrap().text, "HDG");
+    assert_eq!(b.vertical_active.as_ref().unwrap().text, "ALT");
+    assert!(b.reference.as_ref().unwrap().ends_with("ft"));
+    assert!(!b.hand_flying);
+    // Disengaging leaves the director: hollow bars, hand flying.
+    autopilot(&mut s, json!({"kind":"flight_director","on":true}));
+    autopilot(&mut s, json!({"kind":"engage","on":false}));
+    let b = afcs_box(s.sim().installed_autopilot().unwrap(), "GPS");
+    assert!(b.hand_flying || b.autopilot.is_none());
+}
+
+#[test]
+fn losing_the_pfd_disconnects_the_autopilot_but_losing_the_mfd_does_not() {
+    let mut s = session(None);
+    airborne(&mut s);
+    autopilot(&mut s, json!({"kind":"engage","on":true}));
+    autopilot(&mut s, json!({"kind":"vertical","mode":"alt"}));
+    assert!(s.sim().installed_autopilot().unwrap().engaged);
+    // The multi-function display fails: the autopilot carries on.
+    display(&mut s, "right_display", json!({"kind":"failure","failed":true}));
+    s.run(Step { steps: 120 }).unwrap();
+    assert!(
+        s.sim().installed_autopilot().unwrap().engaged,
+        "MFD loss keeps the autopilot"
+    );
+    let left = state(&s, "left_display");
+    assert!(left.reversion, "the surviving PFD reverts");
+    display(&mut s, "right_display", json!({"kind":"failure","failed":false}));
+    // The primary display fails: the autopilot disconnects, once, and can be engaged again.
+    display(&mut s, "left_display", json!({"kind":"failure","failed":true}));
+    s.run(Step { steps: 120 }).unwrap();
+    assert!(
+        !s.sim().installed_autopilot().unwrap().engaged,
+        "PFD loss disconnects"
+    );
+    autopilot(&mut s, json!({"kind":"engage","on":true}));
+    s.run(Step { steps: 240 }).unwrap();
+    assert!(
+        s.sim().installed_autopilot().unwrap().engaged,
+        "engaging again is allowed: the disconnect happens once"
+    );
+}
+
+#[test]
+fn a_reverted_display_is_a_split_screen_with_the_pfd_and_the_engine_page() {
+    let mut s = session(None);
+    display(&mut s, "left_display", json!({"kind":"failure","failed":true}));
+    let right = state(&s, "right_display");
+    assert!(right.reversion);
+    assert_eq!(
+        touch_efis::reverted_layout(right.installed_layout),
+        TouchLayout::Split
+    );
+    assert_eq!(touch_efis::REVERSION_PAGE, MfdPage::Engine);
+    // Knobs on a reverted display behave as in the split screen: the PFD knob and the MFD knob.
+    let alt = glass_state(&s).settings.selected_altitude_m;
+    knob(&mut s, "right_display", "left", "outer", 1);
+    assert!(glass_state(&s).settings.selected_altitude_m > alt);
 }

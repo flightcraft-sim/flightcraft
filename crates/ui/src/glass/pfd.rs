@@ -24,74 +24,8 @@ pub(super) fn draw_composed(
         return d;
     }
     // The full-width attitude underlays both tapes, with a fixed viewport at every pitch and bank.
-    rect(&mut d, [0., 0., 500., 440.], Ink::Sky);
+    backdrop(&mut d, s, input, [500., 440.], [250., 125.]);
     let horizon = |x, y| rotated([x, y], [250., 125.], -a.roll_rad);
-    let pitch = flightcraft_render::pfd_pitch_y(a.pitch_rad);
-    polygon(
-        &mut d,
-        clip_polygon(
-            vec![
-                horizon(-900., pitch),
-                horizon(900., pitch),
-                horizon(900., 1000.),
-                horizon(-900., 1000.),
-            ],
-            [0., 0., 500., 440.],
-        ),
-        Ink::Earth,
-    );
-    if s.settings.synthetic_vision
-        && a.attitude_valid
-        && a.air_data_valid
-        && a.powered
-        && let Some((world, state)) = input.vision
-        && let Some(view) =
-            flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, a.pitch_rad, a.altitude_msl_m)
-    {
-        d.items.push(DrawItem::SyntheticVision {
-            min: [0., 0.],
-            max: [500., 440.],
-            view: Box::new(view.clone().with_pfd_viewport([0., 0., 500., 440.])),
-        });
-        let inside = |[x, y]: [f32; 2]| (100. ..400.).contains(&x) && (50. ..195.).contains(&y);
-        let mut occupied = Vec::<[f32; 2]>::new();
-        for (at, text) in view.labels() {
-            let [x, y] = at;
-            if inside(at)
-                && occupied
-                    .iter()
-                    .all(|[px, py]| (x - px).abs() > 75. || (y - py).abs() > 16.)
-            {
-                line(&mut d, [x, y - 4.], [x, y - 9.], Ink::Text, 1.);
-                label(&mut d, [x, y], text, 9., Ink::Text);
-                occupied.push(at);
-            }
-        }
-        if let Some(at) = view.flight_path_marker().filter(|at| inside(*at)) {
-            let [x, y] = at;
-            // Open circle preserves terrain visibility through the velocity vector.
-            let mut vertices = Vec::with_capacity(48);
-            let mut indices = Vec::with_capacity(144);
-            for i in 0..24_u32 {
-                let angle = i as f32 * std::f32::consts::TAU / 24.;
-                for radius in [5.75, 4.25] {
-                    vertices.push((
-                        [x + radius * angle.cos(), y + radius * angle.sin()],
-                        Ink::Normal,
-                        Ink::Normal,
-                        0.,
-                    ));
-                }
-                let a = i * 2;
-                let b = ((i + 1) % 24) * 2;
-                indices.extend([a, b, a + 1, a + 1, b, b + 1]);
-            }
-            d.items.push(DrawItem::Mesh { vertices, indices });
-            line(&mut d, [x - 13., y], [x - 5., y], Ink::Normal, 1.5);
-            line(&mut d, [x + 5., y], [x + 13., y], Ink::Normal, 1.5);
-            line(&mut d, [x, y - 5.], [x, y - 10.], Ink::Normal, 1.5);
-        }
-    }
     if let Some(ap) = input.autopilot {
         crate::autopilot::strip_draw(&mut d, ap, [0., 0., 500., 28.]);
     } else {
@@ -434,6 +368,94 @@ pub(super) fn draw_composed(
     d
 }
 
+/// Sky, ground, synthetic vision, and its labels, filling `size` with the optical centre (the
+/// aircraft symbol) at `center`. The synthetic-vision camera's centre is fixed at (250, 125) in
+/// its own frame, so the viewport is offset to put that point at `center`.
+pub(super) fn backdrop(
+    d: &mut DrawList,
+    s: &GlassState,
+    input: InstrumentInput<'_>,
+    size: [f32; 2],
+    center: [f32; 2],
+) {
+    let a = &s.air_data;
+    let [w, h] = size;
+    let [cx, cy] = center;
+    let (shift_x, shift_y) = (cx - 250., cy - 125.);
+    rect(d, [0., 0., w, h], Ink::Sky);
+    let horizon = |x, y| rotated([x, y], center, -a.roll_rad);
+    let pitch = flightcraft_render::pfd_pitch_y(a.pitch_rad);
+    polygon(
+        d,
+        clip_polygon(
+            vec![
+                horizon(-2000., pitch),
+                horizon(2000., pitch),
+                horizon(2000., 3000.),
+                horizon(-2000., 3000.),
+            ],
+            [0., 0., w, h],
+        ),
+        Ink::Earth,
+    );
+    if s.settings.synthetic_vision
+        && a.attitude_valid
+        && a.air_data_valid
+        && a.powered
+        && let Some((world, state)) = input.vision
+        && let Some(view) =
+            flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, a.pitch_rad, a.altitude_msl_m)
+    {
+        d.items.push(DrawItem::SyntheticVision {
+            min: [0., 0.],
+            max: [w, h],
+            view: Box::new(view.clone().with_pfd_viewport([-shift_x, -shift_y, w, h])),
+        });
+        let inside = |[x, y]: [f32; 2]| (w * 0.2..w * 0.8).contains(&x) && (h * 0.12..h * 0.5).contains(&y);
+        let mut occupied = Vec::<[f32; 2]>::new();
+        for (at, text) in view.labels() {
+            let at = [at[0] + shift_x, at[1] + shift_y];
+            let [x, y] = at;
+            if inside(at)
+                && occupied
+                    .iter()
+                    .all(|[px, py]| (x - px).abs() > 75. || (y - py).abs() > 16.)
+            {
+                line(d, [x, y - 4.], [x, y - 9.], Ink::Text, 1.);
+                label(d, [x, y], text, 9., Ink::Text);
+                occupied.push(at);
+            }
+        }
+        if let Some(at) = view
+            .flight_path_marker()
+            .map(|[x, y]| [x + shift_x, y + shift_y])
+            .filter(|at| inside(*at))
+        {
+            let [x, y] = at;
+            // Open circle preserves terrain visibility through the velocity vector.
+            let mut vertices = Vec::with_capacity(48);
+            let mut indices = Vec::with_capacity(144);
+            for i in 0..24_u32 {
+                let angle = i as f32 * std::f32::consts::TAU / 24.;
+                for radius in [5.75, 4.25] {
+                    vertices.push((
+                        [x + radius * angle.cos(), y + radius * angle.sin()],
+                        Ink::Normal,
+                        Ink::Normal,
+                        0.,
+                    ));
+                }
+                let a = i * 2;
+                let b = ((i + 1) % 24) * 2;
+                indices.extend([a, b, a + 1, a + 1, b, b + 1]);
+            }
+            d.items.push(DrawItem::Mesh { vertices, indices });
+            line(d, [x - 13., y], [x - 5., y], Ink::Normal, 1.5);
+            line(d, [x + 5., y], [x + 13., y], Ink::Normal, 1.5);
+            line(d, [x, y - 5.], [x, y - 10.], Ink::Normal, 1.5);
+        }
+    }
+}
 fn tape(d: &mut DrawList, x: f32, value: f64, step: f64, scale: f32, altitude: bool) {
     rect(d, [x, 37., 68., 181.], Ink::Face);
     for tick in -6..=6 {

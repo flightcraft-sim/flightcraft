@@ -91047,6 +91047,144 @@
                 "query"
               ],
               "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch a PFD box or the page bar: open its keypad, radio or transponder window, or the\nSelect Page menu.",
+              "properties": {
+                "kind": {
+                  "const": "open_overlay",
+                  "type": "string"
+                },
+                "overlay": {
+                  "$ref": "#/$defs/Overlay"
+                }
+              },
+              "required": [
+                "kind",
+                "overlay"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch Enter on a keypad: parse the text for the target and apply it to the shared setting.",
+              "properties": {
+                "kind": {
+                  "const": "enter",
+                  "type": "string"
+                },
+                "target": {
+                  "$ref": "#/$defs/EntryTarget"
+                },
+                "text": {
+                  "maxLength": 16,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "target",
+                "text"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch a keypad's shortcut button: Set To Current, Set To Standard, or Set For Field.",
+              "properties": {
+                "kind": {
+                  "const": "shortcut",
+                  "type": "string"
+                },
+                "shortcut": {
+                  "$ref": "#/$defs/EntryShortcut"
+                },
+                "target": {
+                  "$ref": "#/$defs/EntryTarget"
+                }
+              },
+              "required": [
+                "kind",
+                "target",
+                "shortcut"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Choose a page of the nearest group.",
+              "properties": {
+                "kind": {
+                  "const": "nearest_page",
+                  "type": "string"
+                },
+                "page": {
+                  "$ref": "#/$defs/NearestPage"
+                }
+              },
+              "required": [
+                "kind",
+                "page"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch XFER in the COM or NAV window: swap active and standby.",
+              "properties": {
+                "band": {
+                  "$ref": "#/$defs/RadioBand"
+                },
+                "kind": {
+                  "const": "transfer",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "band"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch a mode key in the transponder window.",
+              "properties": {
+                "kind": {
+                  "const": "transponder_mode",
+                  "type": "string"
+                },
+                "mode": {
+                  "$ref": "#/$defs/TransponderMode"
+                }
+              },
+              "required": [
+                "kind",
+                "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch the map's zoom buttons: positive zooms in by that many steps of the range ladder.",
+              "properties": {
+                "kind": {
+                  "const": "map_zoom",
+                  "type": "string"
+                },
+                "steps": {
+                  "format": "int32",
+                  "maximum": 30,
+                  "minimum": -30,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "kind",
+                "steps"
+              ],
+              "type": "object"
             }
           ]
         },
@@ -91079,6 +91217,71 @@
             "back"
           ],
           "type": "string"
+        },
+        "EntryShortcut": {
+          "description": "The shortcut buttons beside a keypad.",
+          "oneOf": [
+            {
+              "const": "set_to_current",
+              "description": "Heading, altitude, or course: take the current value.",
+              "type": "string"
+            },
+            {
+              "const": "set_to_standard",
+              "description": "Baro: standard pressure (29.92 inHg, 1013 hPa).",
+              "type": "string"
+            },
+            {
+              "const": "set_for_field",
+              "description": "Baro, on the ground: the pressure that makes the altimeter read the field elevation.",
+              "type": "string"
+            }
+          ]
+        },
+        "EntryTarget": {
+          "description": "What a keypad is entering a value for.",
+          "oneOf": [
+            {
+              "const": "baro",
+              "description": "Altimeter barometric setting, inHg or hPa as the display's units.",
+              "type": "string"
+            },
+            {
+              "const": "heading",
+              "description": "Selected heading, degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "altitude",
+              "description": "Selected altitude, feet.",
+              "type": "string"
+            },
+            {
+              "const": "course",
+              "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "direct_to",
+              "description": "Direct-to waypoint identifier.",
+              "type": "string"
+            },
+            {
+              "const": "com_standby",
+              "description": "Standby frequency of the first communication radio.",
+              "type": "string"
+            },
+            {
+              "const": "nav_standby",
+              "description": "Standby frequency of the first navigation radio.",
+              "type": "string"
+            },
+            {
+              "const": "transponder",
+              "description": "Transponder code.",
+              "type": "string"
+            }
+          ]
         },
         "EquipmentFailure": {
           "enum": [
@@ -92228,6 +92431,81 @@
           ],
           "type": "string"
         },
+        "NearestPage": {
+          "description": "A page of the nearest group, chosen on the page navigation bar once NEAREST is pressed.",
+          "enum": [
+            "airports",
+            "vors",
+            "ndbs",
+            "intersections",
+            "airspace"
+          ],
+          "type": "string"
+        },
+        "Overlay": {
+          "description": "A keypad or menu shown over the display.",
+          "oneOf": [
+            {
+              "enum": [
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "pfd_options",
+              "description": "MENU on a full-screen PFD: navigation tools and More Options.",
+              "type": "string"
+            },
+            {
+              "const": "page_menu",
+              "description": "MENU on any other screen: options for the page.",
+              "type": "string"
+            },
+            {
+              "const": "main_menu",
+              "description": "A second MENU press.",
+              "type": "string"
+            },
+            {
+              "const": "direct_to",
+              "description": "Direct-to waypoint entry (the identifier keypad).",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A touch keypad for a PFD box: baro, heading, altitude, or course.",
+              "properties": {
+                "keypad": {
+                  "$ref": "#/$defs/EntryTarget"
+                }
+              },
+              "required": [
+                "keypad"
+              ],
+              "type": "object"
+            },
+            {
+              "const": "com_window",
+              "description": "The COM1 standby window: frequencies, transfer, and the frequency keypad.",
+              "type": "string"
+            },
+            {
+              "const": "nav_window",
+              "description": "The NAV1 standby window.",
+              "type": "string"
+            },
+            {
+              "const": "transponder_window",
+              "description": "The transponder window: code keypad and mode keys.",
+              "type": "string"
+            },
+            {
+              "const": "select_page",
+              "description": "The Select Page menu, opened from the page bar.",
+              "type": "string"
+            }
+          ]
+        },
         "PaneSide": {
           "description": "Where the MFD pane sits in split mode. The PFD uses the knob on the other side.",
           "enum": [
@@ -92913,6 +93191,51 @@
           ],
           "type": "object"
         },
+        "EntryTarget": {
+          "description": "What a keypad is entering a value for.",
+          "oneOf": [
+            {
+              "const": "baro",
+              "description": "Altimeter barometric setting, inHg or hPa as the display's units.",
+              "type": "string"
+            },
+            {
+              "const": "heading",
+              "description": "Selected heading, degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "altitude",
+              "description": "Selected altitude, feet.",
+              "type": "string"
+            },
+            {
+              "const": "course",
+              "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "direct_to",
+              "description": "Direct-to waypoint identifier.",
+              "type": "string"
+            },
+            {
+              "const": "com_standby",
+              "description": "Standby frequency of the first communication radio.",
+              "type": "string"
+            },
+            {
+              "const": "nav_standby",
+              "description": "Standby frequency of the first navigation radio.",
+              "type": "string"
+            },
+            {
+              "const": "transponder",
+              "description": "Transponder code.",
+              "type": "string"
+            }
+          ]
+        },
         "MfdPage": {
           "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
           "enum": [
@@ -92999,6 +93322,17 @@
           ],
           "type": "object"
         },
+        "NearestPage": {
+          "description": "A page of the nearest group, chosen on the page navigation bar once NEAREST is pressed.",
+          "enum": [
+            "airports",
+            "vors",
+            "ndbs",
+            "intersections",
+            "airspace"
+          ],
+          "type": "string"
+        },
         "Overlay": {
           "description": "A keypad or menu shown over the display.",
           "oneOf": [
@@ -93025,7 +93359,40 @@
             },
             {
               "const": "direct_to",
-              "description": "Direct-to waypoint entry.",
+              "description": "Direct-to waypoint entry (the identifier keypad).",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A touch keypad for a PFD box: baro, heading, altitude, or course.",
+              "properties": {
+                "keypad": {
+                  "$ref": "#/$defs/EntryTarget"
+                }
+              },
+              "required": [
+                "keypad"
+              ],
+              "type": "object"
+            },
+            {
+              "const": "com_window",
+              "description": "The COM1 standby window: frequencies, transfer, and the frequency keypad.",
+              "type": "string"
+            },
+            {
+              "const": "nav_window",
+              "description": "The NAV1 standby window.",
+              "type": "string"
+            },
+            {
+              "const": "transponder_window",
+              "description": "The transponder window: code keypad and mode keys.",
+              "type": "string"
+            },
+            {
+              "const": "select_page",
+              "description": "The Select Page menu, opened from the page bar.",
               "type": "string"
             }
           ]
@@ -93117,6 +93484,11 @@
               ],
               "default": null,
               "description": "The physical display model, when the installation declares one."
+            },
+            "nearest_page": {
+              "$ref": "#/$defs/NearestPage",
+              "default": "airports",
+              "description": "The nearest page shown when the MFD page is the nearest group."
             },
             "overlay": {
               "$ref": "#/$defs/Overlay",
@@ -118994,6 +119366,51 @@
           ],
           "type": "object"
         },
+        "EntryTarget": {
+          "description": "What a keypad is entering a value for.",
+          "oneOf": [
+            {
+              "const": "baro",
+              "description": "Altimeter barometric setting, inHg or hPa as the display's units.",
+              "type": "string"
+            },
+            {
+              "const": "heading",
+              "description": "Selected heading, degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "altitude",
+              "description": "Selected altitude, feet.",
+              "type": "string"
+            },
+            {
+              "const": "course",
+              "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "direct_to",
+              "description": "Direct-to waypoint identifier.",
+              "type": "string"
+            },
+            {
+              "const": "com_standby",
+              "description": "Standby frequency of the first communication radio.",
+              "type": "string"
+            },
+            {
+              "const": "nav_standby",
+              "description": "Standby frequency of the first navigation radio.",
+              "type": "string"
+            },
+            {
+              "const": "transponder",
+              "description": "Transponder code.",
+              "type": "string"
+            }
+          ]
+        },
         "EquipmentFailure": {
           "enum": [
             "roll_servo",
@@ -119478,6 +119895,35 @@
             "nearest": {
               "items": {
                 "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "nearest_airspace": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestAirspace"
+              },
+              "type": "array"
+            },
+            "nearest_intersections": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
+              },
+              "type": "array"
+            },
+            "nearest_ndbs": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
+              },
+              "type": "array"
+            },
+            "nearest_vors": {
+              "default": [],
+              "description": "Nearest VORs, NDBs, intersections, and airspace. Filled only while a display shows the\nmatching nearest page; empty otherwise.",
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
               },
               "type": "array"
             },
@@ -120123,6 +120569,82 @@
           ],
           "type": "object"
         },
+        "NearestAirspace": {
+          "description": "A piece of airspace the aircraft is in or about to enter.",
+          "properties": {
+            "class": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "entry_s": {
+              "description": "Seconds until entry; zero when inside now.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "entry_s"
+          ],
+          "type": "object"
+        },
+        "NearestFacility": {
+          "description": "A VOR, NDB, or intersection near the aircraft.",
+          "properties": {
+            "bearing_rad": {
+              "description": "Magnetic bearing from the aircraft.",
+              "format": "double",
+              "type": "number"
+            },
+            "detail": {
+              "description": "Facility class: VOR, VOR/DME, VORTAC, NDB, or empty.",
+              "type": "string"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_khz": {
+              "description": "VOR and NDB frequency, kHz.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ident": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ident",
+            "name",
+            "bearing_rad",
+            "distance_nm",
+            "detail"
+          ],
+          "type": "object"
+        },
+        "NearestPage": {
+          "description": "A page of the nearest group, chosen on the page navigation bar once NEAREST is pressed.",
+          "enum": [
+            "airports",
+            "vors",
+            "ndbs",
+            "intersections",
+            "airspace"
+          ],
+          "type": "string"
+        },
         "Overlay": {
           "description": "A keypad or menu shown over the display.",
           "oneOf": [
@@ -120149,7 +120671,40 @@
             },
             {
               "const": "direct_to",
-              "description": "Direct-to waypoint entry.",
+              "description": "Direct-to waypoint entry (the identifier keypad).",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A touch keypad for a PFD box: baro, heading, altitude, or course.",
+              "properties": {
+                "keypad": {
+                  "$ref": "#/$defs/EntryTarget"
+                }
+              },
+              "required": [
+                "keypad"
+              ],
+              "type": "object"
+            },
+            {
+              "const": "com_window",
+              "description": "The COM1 standby window: frequencies, transfer, and the frequency keypad.",
+              "type": "string"
+            },
+            {
+              "const": "nav_window",
+              "description": "The NAV1 standby window.",
+              "type": "string"
+            },
+            {
+              "const": "transponder_window",
+              "description": "The transponder window: code keypad and mode keys.",
+              "type": "string"
+            },
+            {
+              "const": "select_page",
+              "description": "The Select Page menu, opened from the page bar.",
               "type": "string"
             }
           ]
@@ -120805,6 +121360,11 @@
               ],
               "default": null,
               "description": "The physical display model, when the installation declares one."
+            },
+            "nearest_page": {
+              "$ref": "#/$defs/NearestPage",
+              "default": "airports",
+              "description": "The nearest page shown when the MFD page is the nearest group."
             },
             "overlay": {
               "$ref": "#/$defs/Overlay",
@@ -121994,6 +122554,51 @@
           ],
           "type": "object"
         },
+        "EntryTarget": {
+          "description": "What a keypad is entering a value for.",
+          "oneOf": [
+            {
+              "const": "baro",
+              "description": "Altimeter barometric setting, inHg or hPa as the display's units.",
+              "type": "string"
+            },
+            {
+              "const": "heading",
+              "description": "Selected heading, degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "altitude",
+              "description": "Selected altitude, feet.",
+              "type": "string"
+            },
+            {
+              "const": "course",
+              "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "direct_to",
+              "description": "Direct-to waypoint identifier.",
+              "type": "string"
+            },
+            {
+              "const": "com_standby",
+              "description": "Standby frequency of the first communication radio.",
+              "type": "string"
+            },
+            {
+              "const": "nav_standby",
+              "description": "Standby frequency of the first navigation radio.",
+              "type": "string"
+            },
+            {
+              "const": "transponder",
+              "description": "Transponder code.",
+              "type": "string"
+            }
+          ]
+        },
         "EquipmentFailure": {
           "enum": [
             "roll_servo",
@@ -122478,6 +123083,35 @@
             "nearest": {
               "items": {
                 "$ref": "#/$defs/NavigationLeg"
+              },
+              "type": "array"
+            },
+            "nearest_airspace": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestAirspace"
+              },
+              "type": "array"
+            },
+            "nearest_intersections": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
+              },
+              "type": "array"
+            },
+            "nearest_ndbs": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
+              },
+              "type": "array"
+            },
+            "nearest_vors": {
+              "default": [],
+              "description": "Nearest VORs, NDBs, intersections, and airspace. Filled only while a display shows the\nmatching nearest page; empty otherwise.",
+              "items": {
+                "$ref": "#/$defs/NearestFacility"
               },
               "type": "array"
             },
@@ -123123,6 +123757,82 @@
           ],
           "type": "object"
         },
+        "NearestAirspace": {
+          "description": "A piece of airspace the aircraft is in or about to enter.",
+          "properties": {
+            "class": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "entry_s": {
+              "description": "Seconds until entry; zero when inside now.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "entry_s"
+          ],
+          "type": "object"
+        },
+        "NearestFacility": {
+          "description": "A VOR, NDB, or intersection near the aircraft.",
+          "properties": {
+            "bearing_rad": {
+              "description": "Magnetic bearing from the aircraft.",
+              "format": "double",
+              "type": "number"
+            },
+            "detail": {
+              "description": "Facility class: VOR, VOR/DME, VORTAC, NDB, or empty.",
+              "type": "string"
+            },
+            "distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "frequency_khz": {
+              "description": "VOR and NDB frequency, kHz.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ident": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ident",
+            "name",
+            "bearing_rad",
+            "distance_nm",
+            "detail"
+          ],
+          "type": "object"
+        },
+        "NearestPage": {
+          "description": "A page of the nearest group, chosen on the page navigation bar once NEAREST is pressed.",
+          "enum": [
+            "airports",
+            "vors",
+            "ndbs",
+            "intersections",
+            "airspace"
+          ],
+          "type": "string"
+        },
         "Overlay": {
           "description": "A keypad or menu shown over the display.",
           "oneOf": [
@@ -123149,7 +123859,40 @@
             },
             {
               "const": "direct_to",
-              "description": "Direct-to waypoint entry.",
+              "description": "Direct-to waypoint entry (the identifier keypad).",
+              "type": "string"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A touch keypad for a PFD box: baro, heading, altitude, or course.",
+              "properties": {
+                "keypad": {
+                  "$ref": "#/$defs/EntryTarget"
+                }
+              },
+              "required": [
+                "keypad"
+              ],
+              "type": "object"
+            },
+            {
+              "const": "com_window",
+              "description": "The COM1 standby window: frequencies, transfer, and the frequency keypad.",
+              "type": "string"
+            },
+            {
+              "const": "nav_window",
+              "description": "The NAV1 standby window.",
+              "type": "string"
+            },
+            {
+              "const": "transponder_window",
+              "description": "The transponder window: code keypad and mode keys.",
+              "type": "string"
+            },
+            {
+              "const": "select_page",
+              "description": "The Select Page menu, opened from the page bar.",
               "type": "string"
             }
           ]
@@ -123805,6 +124548,11 @@
               ],
               "default": null,
               "description": "The physical display model, when the installation declares one."
+            },
+            "nearest_page": {
+              "$ref": "#/$defs/NearestPage",
+              "default": "airports",
+              "description": "The nearest page shown when the MFD page is the nearest group."
             },
             "overlay": {
               "$ref": "#/$defs/Overlay",

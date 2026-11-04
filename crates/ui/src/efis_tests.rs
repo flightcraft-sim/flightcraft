@@ -355,10 +355,13 @@ fn the_page_bar_and_split_button_send_page_and_split_actions() {
         "{actions:?}"
     );
     // SPLIT is in the screen's upper right.
-    let split = egui::pos2(
-        screen.right() - screen.width() * 0.045,
-        screen.top() + screen.height() * 0.1175,
-    );
+    let split = efis::native_rect(
+        screen,
+        MODEL
+            .pfd_geometry(flightcraft_aero::display_model::PfdMode::Full)
+            .screen_rect(flightcraft_aero::display_model::PfdElement::SplitButton),
+    )
+    .center();
     frame(
         &ctx,
         &mut view,

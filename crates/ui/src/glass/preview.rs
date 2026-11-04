@@ -127,6 +127,7 @@ fn capture(
                                 id: "original".into(),
                                 colors: Vec::new(),
                                 face: Vec::new(),
+                                rgb: Vec::new(),
                             }
                             .paint(p, &draw)
                         });

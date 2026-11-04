@@ -3,14 +3,20 @@
 //! Everything here draws the model's controls and sends `DisplayAction`s; the behaviour (what a key
 //! or knob does) lives in `flightcraft_control::touch_efis`. A skin pack only changes `Style`.
 use eframe::egui::{self, Align2, Color32, FontFamily, FontId, Pos2, Rect, Sense, Stroke, Vec2};
-use flightcraft_aero::display_model::{BezelControl, DisplayModel};
-use flightcraft_aero::modern::MfdPage;
+use flightcraft_aero::display_model::{
+    BezelControl, DATA_BAR_FRACTION, DisplayModel, PfdElement, PfdMode, SPLIT_PANEL_FRACTION,
+    STATUS_BAR_FRACTION,
+};
+use flightcraft_aero::modern::{MfdPage, NearestPage};
 use flightcraft_aero::panel_fidelity::SrgbHex;
-use flightcraft_control::touch_efis::{EfisKey, Knob, Overlay, Ring, ScreenMode};
+use flightcraft_control::touch_efis::{EfisKey, Knob, Overlay, PageChoice, REVERSION_PAGE, Ring, ScreenMode};
+use flightcraft_control::touch_entry::{self, EntryShortcut, EntryTarget, PadKey};
 use flightcraft_control::{DisplayAction, EquipmentSetting, GlassSetting, SkinContents, TouchDisplayState};
 
-/// Fraction of the screen width the PFD takes in split mode.
-pub(crate) const SPLIT_PFD_FRACTION: f32 = 0.60;
+/// Fraction of the screen width the PFD (with its engine column) takes in split mode.
+pub(crate) const SPLIT_PFD_FRACTION: f32 = SPLIT_PANEL_FRACTION as f32;
+/// Height of the nearest page's tab strip as a fraction of the screen height.
+pub(crate) const NEAREST_TAB_FRACTION: f32 = 0.07;
 /// Height of the MFD page bar as a fraction of the screen height.
 pub(crate) const PAGE_BAR_FRACTION: f32 = 0.07;
 /// A press at least this long on BACK is a press-and-hold.
@@ -153,18 +159,78 @@ pub(crate) fn control_rect(bezel: Rect, model: DisplayModel, control: BezelContr
     })
 }
 
-/// The page bar's rectangle: the bottom strip of the MFD, under the split pane when split.
+/// A rectangle given in the model's native 1280 x 768 pixels, on the screen.
+pub(crate) fn native_rect(screen: Rect, [x, y, w, h]: [f64; 4]) -> Rect {
+    let k = screen.width() / 1280.;
+    Rect::from_min_size(
+        screen.min + Vec2::new(x as f32 * k, y as f32 * k),
+        Vec2::new(w as f32 * k, h as f32 * k),
+    )
+}
+
+/// The primary flight display's arrangement for a screen mode, if it shows one.
+pub(crate) fn pfd_mode(mode: ScreenMode) -> Option<PfdMode> {
+    match mode {
+        ScreenMode::FullPfd => Some(PfdMode::Full),
+        ScreenMode::Split => Some(PfdMode::Split),
+        ScreenMode::FullMfd => None,
+    }
+}
+
+/// The screen between the data bar and the status bar.
+pub(crate) fn content_rect(screen: Rect) -> Rect {
+    Rect::from_min_max(
+        Pos2::new(
+            screen.left(),
+            screen.top() + screen.height() * DATA_BAR_FRACTION as f32,
+        ),
+        Pos2::new(
+            screen.right(),
+            screen.bottom() - screen.height() * STATUS_BAR_FRACTION as f32,
+        ),
+    )
+}
+
+/// The multi-function pane: all the content area, or its part right of the PFD when split.
+pub(crate) fn mfd_rect(screen: Rect, mode: ScreenMode) -> Option<Rect> {
+    let content = content_rect(screen);
+    match mode {
+        ScreenMode::FullPfd => None,
+        ScreenMode::FullMfd => Some(content),
+        ScreenMode::Split => Some(Rect::from_min_max(
+            Pos2::new(screen.left() + screen.width() * SPLIT_PFD_FRACTION, content.top()),
+            content.max,
+        )),
+    }
+}
+
+/// The page bar's rectangle: the bottom strip of the multi-function pane, above the status bar.
 pub(crate) fn page_bar(screen: Rect, mode: ScreenMode) -> Option<Rect> {
+    let pane = mfd_rect(screen, mode)?;
     let height = screen.height() * PAGE_BAR_FRACTION;
-    let left = match mode {
-        ScreenMode::FullPfd => return None,
-        ScreenMode::FullMfd => screen.left(),
-        ScreenMode::Split => screen.left() + screen.width() * SPLIT_PFD_FRACTION,
-    };
     Some(Rect::from_min_max(
-        Pos2::new(left, screen.bottom() - height),
-        screen.right_bottom(),
+        Pos2::new(pane.left(), pane.bottom() - height),
+        pane.max,
     ))
+}
+
+/// The nearest page's tab strip: the top of the pane.
+pub(crate) fn nearest_tabs(screen: Rect, mode: ScreenMode) -> Option<Rect> {
+    let pane = mfd_rect(screen, mode)?;
+    Some(Rect::from_min_size(
+        pane.min,
+        Vec2::new(pane.width(), screen.height() * NEAREST_TAB_FRACTION),
+    ))
+}
+
+/// The pane's map or list area: the pane less the page bar, and the tab strip on a nearest page.
+pub(crate) fn pane_content(screen: Rect, mode: ScreenMode, page: MfdPage) -> Option<Rect> {
+    let pane = mfd_rect(screen, mode)?;
+    let mut area = Rect::from_min_max(pane.min, Pos2::new(pane.right(), page_bar(screen, mode)?.top()));
+    if page == MfdPage::Nearest {
+        area.min.y += screen.height() * NEAREST_TAB_FRACTION;
+    }
+    Some(area)
 }
 
 /// What the display's controls and chrome ask for this frame.
@@ -381,41 +447,115 @@ fn chip(
     ui.interact(rect, ui.id().with(salt), Sense::click()).clicked()
 }
 
-/// Touch chrome on the screen: SPLIT/FULL, the MFD page bar, and the open menu or keypad.
+/// Shared (not per display) settings the menus show and change.
+#[derive(Clone)]
+pub(crate) struct Shared {
+    pub backup: bool,
+    pub traffic_shown: bool,
+    pub track_up: bool,
+    pub pressure_hpa: bool,
+    pub range_nm: f64,
+    pub com_active_khz: u32,
+    pub com_standby_khz: u32,
+    pub nav_active_khz: Option<u32>,
+    pub nav_standby_khz: Option<u32>,
+    pub xpdr_code: String,
+    pub xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode,
+}
+
+fn hit(ui: &mut egui::Ui, rect: Rect, salt: impl std::hash::Hash) -> bool {
+    ui.interact(rect, ui.id().with(("efis-hit", salt)), Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .clicked()
+}
+
+/// Touch chrome on the screen: SPLIT/FULL, the touch boxes of the PFD, the MFD page bar, the
+/// nearest tabs, the map zoom buttons, and the open menu or keypad.
 pub(crate) fn chrome(
     ui: &mut egui::Ui,
     screen: Rect,
     id: &str,
     d: &TouchDisplayState,
     style: &Style,
-    shared: Shared,
+    shared: &Shared,
     out: &mut Output,
 ) {
-    // A reverted display shows the PFD whatever page it has chosen.
+    // A reverted display shows the split screen with the engine page.
     let mode = if d.reversion {
-        ScreenMode::FullPfd
+        ScreenMode::Split
     } else {
         ScreenMode::of(d.layout)
     };
-    let page = flightcraft_control::touch_efis::effective_page(d.layout, d.mfd_page);
-    // SPLIT or FULL, in the upper corner clear of the data bar.
-    let button = Rect::from_min_size(
-        Pos2::new(
-            screen.right() - screen.width() * 0.085,
-            screen.top() + screen.height() * 0.09,
-        ),
-        Vec2::new(screen.width() * 0.075, screen.height() * 0.055),
-    );
-    let label = if mode == ScreenMode::Split {
-        "FULL"
+    let page = if d.reversion {
+        REVERSION_PAGE
     } else {
-        "SPLIT"
+        flightcraft_control::touch_efis::effective_page(d.layout, d.mfd_page)
     };
-    if chip(ui, button, label, false, style, "efis-split") {
-        act(out, id, DisplayAction::ToggleSplit {});
+    let model = d.model.unwrap_or(DisplayModel::LandscapeTouchEfis);
+    // SPLIT or FULL, at the right end of the data bar.
+    let full = model.pfd_geometry(PfdMode::Full);
+    if !d.reversion {
+        let button = native_rect(screen, full.screen_rect(PfdElement::SplitButton));
+        let label = if mode == ScreenMode::Split {
+            "FULL"
+        } else {
+            "SPLIT"
+        };
+        if chip(ui, button, label, false, style, "efis-split") {
+            act(out, id, DisplayAction::ToggleSplit {});
+        }
+    }
+    if d.overlay == Overlay::None {
+        let boxes = pfd_mode(mode).map(|m| model.pfd_geometry(m));
+        // The radio boxes are in the data bar on every screen: touching the active frequency
+        // transfers, touching the standby frequency opens the COM window.
+        let com = native_rect(screen, full.screen_rect(PfdElement::ComBox));
+        let (active, standby) = com.split_left_right_at_fraction(0.5);
+        if hit(ui, active, "com-active") {
+            act(
+                out,
+                id,
+                DisplayAction::Transfer {
+                    band: flightcraft_control::RadioBand::Com,
+                },
+            );
+        }
+        if hit(ui, standby, "com-standby") {
+            act(
+                out,
+                id,
+                DisplayAction::OpenOverlay {
+                    overlay: Overlay::ComWindow,
+                },
+            );
+        }
+        if let Some(g) = &boxes {
+            for (element, overlay) in [
+                (
+                    PfdElement::SelectedAltitudeBox,
+                    Overlay::Keypad(EntryTarget::Altitude),
+                ),
+                (PfdElement::BaroBox, Overlay::Keypad(EntryTarget::Baro)),
+                (
+                    PfdElement::SelectedHeadingBox,
+                    Overlay::Keypad(EntryTarget::Heading),
+                ),
+                (
+                    PfdElement::SelectedCourseBox,
+                    Overlay::Keypad(EntryTarget::Course),
+                ),
+                (PfdElement::TransponderBox, Overlay::TransponderWindow),
+            ] {
+                let rect = native_rect(screen, g.screen_rect(element));
+                if rect.width() > 0. && hit(ui, rect, element) {
+                    act(out, id, DisplayAction::OpenOverlay { overlay });
+                }
+            }
+        }
     }
     if let Some(bar) = page_bar(screen, mode) {
         ui.painter().rect_filled(bar, 0., crate::theme::PAGE_BAR);
+        // Touching the page name opens the Select Page menu.
         let name = Rect::from_min_size(bar.min, Vec2::new(bar.width() * 0.3, bar.height()));
         ui.painter().text(
             name.left_center() + Vec2::new(4., 0.),
@@ -424,6 +564,15 @@ pub(crate) fn chrome(
             style.font(bar.height() * 0.5),
             style.key_text,
         );
+        if d.overlay == Overlay::None && hit(ui, name, "page-name") {
+            act(
+                out,
+                id,
+                DisplayAction::OpenOverlay {
+                    overlay: Overlay::SelectPage,
+                },
+            );
+        }
         let tabs = MfdPage::MAIN;
         let width = bar.width() * 0.7 / tabs.len() as f32;
         for (i, p) in tabs.iter().enumerate() {
@@ -437,17 +586,61 @@ pub(crate) fn chrome(
             }
         }
     }
+    if page == MfdPage::Nearest
+        && let Some(tabs) = nearest_tabs(screen, mode)
+    {
+        ui.painter().rect_filled(tabs, 0., crate::theme::PAGE_BAR);
+        let width = tabs.width() / NearestPage::ALL.len() as f32;
+        for (i, p) in NearestPage::ALL.iter().enumerate() {
+            let rect = Rect::from_min_size(
+                Pos2::new(tabs.left() + width * i as f32, tabs.top()),
+                Vec2::new(width, tabs.height()),
+            )
+            .shrink2(Vec2::new(2., 3.));
+            if chip(
+                ui,
+                rect,
+                p.abbreviation(),
+                *p == d.nearest_page,
+                style,
+                ("efis-nearest", i),
+            ) {
+                act(out, id, DisplayAction::NearestPage { page: *p });
+            }
+        }
+    }
+    // The map's zoom buttons at the right edge, and the range at its lower right.
+    if matches!(page, MfdPage::Map | MfdPage::Terrain)
+        && let Some(area) = pane_content(screen, mode, page)
+    {
+        let side = screen.height() * 0.075;
+        // On the full-screen map page the data column takes the right of the area.
+        let map_right = if mode == ScreenMode::FullMfd && page == MfdPage::Map {
+            area.left() + area.width() * 0.64
+        } else {
+            area.right()
+        };
+        let x = map_right - side - 6.;
+        for (i, (label, steps)) in [("+", 1), ("-", -1)].into_iter().enumerate() {
+            let rect = Rect::from_min_size(
+                Pos2::new(x, area.top() + 8. + i as f32 * (side + 4.)),
+                Vec2::splat(side),
+            );
+            if chip(ui, rect, label, false, style, ("efis-zoom", i)) {
+                act(out, id, DisplayAction::MapZoom { steps });
+            }
+        }
+        ui.painter().text(
+            Pos2::new(map_right - 8., area.bottom() - 6.),
+            Align2::RIGHT_BOTTOM,
+            flightcraft_control::touch_efis::range_label(shared.range_nm),
+            style.font(screen.height() * 0.04),
+            Color32::WHITE,
+        );
+    }
     if d.overlay != Overlay::None {
         overlay(ui, screen, id, d, page, style, shared, out);
     }
-}
-
-/// Shared (not per display) settings the menus show and change.
-#[derive(Clone, Copy)]
-pub(crate) struct Shared {
-    pub backup: bool,
-    pub traffic_shown: bool,
-    pub track_up: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -458,12 +651,16 @@ fn overlay(
     d: &TouchDisplayState,
     page: MfdPage,
     style: &Style,
-    shared: Shared,
+    shared: &Shared,
     out: &mut Output,
 ) {
+    let tall = d.overlay.entry_target().is_some();
     let panel = Rect::from_center_size(
         screen.center(),
-        Vec2::new(screen.width() * 0.46, screen.height() * 0.72),
+        Vec2::new(
+            screen.width() * if tall { 0.5 } else { 0.46 },
+            screen.height() * if tall { 0.9 } else { 0.72 },
+        ),
     );
     ui.painter().rect(
         panel,
@@ -472,12 +669,16 @@ fn overlay(
         Stroke::new(1.5_f32, style.key_text),
         egui::StrokeKind::Inside,
     );
+    if let Some(target) = d.overlay.entry_target() {
+        entry_panel(ui, panel, id, d, style, shared, out, target);
+        return;
+    }
     let title = match d.overlay {
         Overlay::PfdOptions => "PFD OPTIONS".to_owned(),
         Overlay::PageMenu => format!("{} MENU", page.label().to_uppercase()),
         Overlay::MainMenu => "MAIN MENU".to_owned(),
-        Overlay::DirectTo => "DIRECT-TO".to_owned(),
-        Overlay::None => return,
+        Overlay::SelectPage => "SELECT PAGE".to_owned(),
+        _ => return,
     };
     let title_rect = Rect::from_min_size(panel.min, Vec2::new(panel.width(), panel.height() * 0.11));
     ui.painter().text(
@@ -489,7 +690,7 @@ fn overlay(
     );
     let row = std::cell::Cell::new(0usize);
     let rows_top = title_rect.bottom() + 2.;
-    let row_h = panel.height() * 0.095;
+    let row_h = panel.height() * 0.085;
     let entry = |ui: &mut egui::Ui, label: &str, lit: bool| -> bool {
         let rect = Rect::from_min_size(
             Pos2::new(panel.left() + 6., rows_top + row.get() as f32 * (row_h + 2.)),
@@ -506,15 +707,6 @@ fn overlay(
                     id,
                     DisplayAction::SyntheticVision {
                         enabled: !d.synthetic_vision,
-                    },
-                );
-            }
-            if entry(ui, "Engine strip", d.engine_strip) {
-                act(
-                    out,
-                    id,
-                    DisplayAction::EngineStrip {
-                        visible: !d.engine_strip,
                     },
                 );
             }
@@ -550,7 +742,33 @@ fn overlay(
                 entry(ui, "No Options", false);
             }
         }
+        Overlay::SelectPage => {
+            for choice in flightcraft_control::touch_efis::select_page_entries(page) {
+                match choice {
+                    PageChoice::Main(p) => {
+                        if entry(ui, p.label(), p == page) {
+                            act(out, id, DisplayAction::MfdPage { page: p });
+                        }
+                    }
+                    PageChoice::Nearest(p) => {
+                        if entry(ui, p.label(), p == d.nearest_page) {
+                            act(out, id, DisplayAction::NearestPage { page: p });
+                            act(out, id, DisplayAction::CloseOverlay {});
+                        }
+                    }
+                }
+            }
+        }
         Overlay::MainMenu => {
+            for (label, overlay) in [
+                ("COM1 radio", Overlay::ComWindow),
+                ("NAV1 radio", Overlay::NavWindow),
+                ("XPDR", Overlay::TransponderWindow),
+            ] {
+                if entry(ui, label, false) {
+                    act(out, id, DisplayAction::OpenOverlay { overlay });
+                }
+            }
             for p in MfdPage::MAIN {
                 if entry(ui, &format!("Page: {}", p.label()), p == page) {
                     act(out, id, DisplayAction::MfdPage { page: p });
@@ -562,32 +780,284 @@ fn overlay(
                 });
             }
         }
-        Overlay::DirectTo => {
-            let key = ui.id().with(("efis-direct", id));
-            let mut text = ui.data(|d| d.get_temp::<String>(key)).unwrap_or_default();
-            let field = Rect::from_min_size(
-                Pos2::new(panel.left() + 8., rows_top),
-                Vec2::new(panel.width() - 16., row_h * 1.4),
-            );
-            let edit = ui.put(
-                field,
-                egui::TextEdit::singleline(&mut text)
-                    .hint_text("Identifier")
-                    .font(style.font(field.height() * 0.5))
-                    .char_limit(8),
-            );
-            text = text.to_ascii_uppercase();
-            ui.data_mut(|d| d.insert_temp(key, text.clone()));
-            row.set(2);
-            let enter = entry(ui, "ENTER", !text.is_empty());
-            let enter_key = edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            if (enter || enter_key) && !text.is_empty() {
-                act(out, id, DisplayAction::DirectTo { query: text.clone() });
-            }
-            if entry(ui, "CANCEL", false) {
-                act(out, id, DisplayAction::CloseOverlay {});
+        _ => {}
+    }
+}
+
+fn khz_text(khz: u32) -> String {
+    format!("{:.3}", f64::from(khz) / 1000.)
+}
+
+/// A keypad window: the text typed so far, the keys, the target's shortcut buttons, and ENTER and
+/// CANCEL. The radio and transponder windows add their own header and keys above it.
+#[allow(clippy::too_many_arguments)]
+fn entry_panel(
+    ui: &mut egui::Ui,
+    panel: Rect,
+    id: &str,
+    d: &TouchDisplayState,
+    style: &Style,
+    shared: &Shared,
+    out: &mut Output,
+    target: EntryTarget,
+) {
+    use flightcraft_sim::avionics::glass::TransponderMode as Mode;
+    let hpa = shared.pressure_hpa;
+    // Typed text is the pad's own state, cleared when a different pad opens.
+    let key = ui.id().with(("efis-pad", id));
+    let (opened, mut text): (Option<Overlay>, String) =
+        ui.data(|x| x.get_temp(key)).unwrap_or((None, String::new()));
+    if opened != Some(d.overlay) {
+        text.clear();
+    }
+    let mut header: Vec<(String, bool)> = Vec::new();
+    match d.overlay {
+        Overlay::ComWindow => header.push((
+            format!(
+                "ACTIVE {}    STBY {}",
+                khz_text(shared.com_active_khz),
+                khz_text(shared.com_standby_khz)
+            ),
+            false,
+        )),
+        Overlay::NavWindow => header.push((
+            format!(
+                "ACTIVE {}    STBY {}",
+                shared
+                    .nav_active_khz
+                    .map_or("---.--".into(), |k| format!("{:.2}", f64::from(k) / 1000.)),
+                shared
+                    .nav_standby_khz
+                    .map_or("---.--".into(), |k| format!("{:.2}", f64::from(k) / 1000.)),
+            ),
+            false,
+        )),
+        Overlay::TransponderWindow => header.push((
+            format!(
+                "CODE {}    MODE {}",
+                shared.xpdr_code,
+                format!("{:?}", shared.xpdr_mode).to_uppercase()
+            ),
+            false,
+        )),
+        _ => {}
+    }
+    let rows = target.rows(hpa);
+    let shortcuts = EntryShortcut::offered(target);
+    let extra_row = matches!(
+        d.overlay,
+        Overlay::ComWindow | Overlay::NavWindow | Overlay::TransponderWindow
+    );
+    let units = 1.0
+        + 0.8 * header.len() as f32
+        + 1.4
+        + 0.5 * f32::from(u8::from(true))
+        + rows.len() as f32
+        + 1.0
+        + f32::from(u8::from(!shortcuts.is_empty()))
+        + f32::from(u8::from(extra_row))
+        + 1.0;
+    let unit = (panel.height() - 16.) / units;
+    let mut y = panel.top() + 6.;
+    ui.painter().text(
+        Pos2::new(panel.center().x, y + unit * 0.5),
+        Align2::CENTER_CENTER,
+        match d.overlay {
+            Overlay::ComWindow => "COM1".to_owned(),
+            Overlay::NavWindow => "NAV1".to_owned(),
+            Overlay::TransponderWindow => "TRANSPONDER".to_owned(),
+            _ => target.title().to_owned(),
+        },
+        style.font(unit * 0.6),
+        style.key_text,
+    );
+    y += unit;
+    for (line, _) in &header {
+        ui.painter().text(
+            Pos2::new(panel.center().x, y + unit * 0.4),
+            Align2::CENTER_CENTER,
+            line,
+            style.font(unit * 0.5),
+            style.key_text,
+        );
+        y += unit * 0.8;
+    }
+    // The text field, with the reason an entry cannot be accepted yet.
+    let field = Rect::from_min_size(
+        Pos2::new(panel.left() + 10., y),
+        Vec2::new(panel.width() - 20., unit * 1.3),
+    );
+    ui.painter().rect(
+        field,
+        2.,
+        Color32::BLACK,
+        Stroke::new(1.0_f32, style.trim),
+        egui::StrokeKind::Inside,
+    );
+    ui.painter().text(
+        field.left_center() + Vec2::new(8., 0.),
+        Align2::LEFT_CENTER,
+        format!("{text}_"),
+        style.font(unit * 0.9),
+        crate::theme::FACE_CYAN,
+    );
+    y += unit * 1.4;
+    let parsed = touch_entry::parse(target, hpa, &text);
+    ui.painter().text(
+        Pos2::new(panel.center().x, y + unit * 0.25),
+        Align2::CENTER_CENTER,
+        match (&parsed, text.is_empty()) {
+            (Err(e), false) => e.to_string(),
+            _ => String::new(),
+        },
+        style.font(unit * 0.38),
+        crate::theme::AMBER,
+    );
+    y += unit * 0.5;
+    // Keys.
+    for (r, chars) in rows.iter().enumerate() {
+        let n = chars.len() as f32;
+        let w = (unit * 1.25).min((panel.width() - 24.) / n.max(7.));
+        let x0 = panel.center().x - w * n * 0.5;
+        for (c, ch) in chars.iter().enumerate() {
+            let rect = Rect::from_min_size(Pos2::new(x0 + c as f32 * w, y), Vec2::new(w, unit)).shrink(1.5);
+            if chip(ui, rect, &ch.to_string(), false, style, ("efis-pad-key", r, c)) {
+                text = touch_entry::press(target, hpa, &text, PadKey::Char(*ch));
             }
         }
-        Overlay::None => {}
+        y += unit;
     }
+    // Editing keys, and the window's own controls.
+    let strip = |ui: &mut egui::Ui, y: f32, buttons: &[(String, bool)], salt: &str| -> Option<usize> {
+        let n = buttons.len() as f32;
+        let w = (panel.width() - 24.) / n.max(1.);
+        let mut hit = None;
+        for (i, (label, lit)) in buttons.iter().enumerate() {
+            let rect = Rect::from_min_size(
+                Pos2::new(panel.left() + 12. + i as f32 * w, y),
+                Vec2::new(w, unit),
+            )
+            .shrink(2.);
+            if chip(ui, rect, label, *lit, style, (salt, i)) {
+                hit = Some(i);
+            }
+        }
+        hit
+    };
+    match strip(
+        ui,
+        y,
+        &[("BKSP".into(), false), ("CLR".into(), false)],
+        "efis-pad-edit",
+    ) {
+        Some(0) => text = touch_entry::press(target, hpa, &text, PadKey::Backspace),
+        Some(_) => text = touch_entry::press(target, hpa, &text, PadKey::Clear),
+        None => {}
+    }
+    y += unit;
+    if extra_row {
+        let buttons: Vec<(String, bool)> = match d.overlay {
+            Overlay::TransponderWindow => [("STBY", Mode::Standby), ("ALT", Mode::Alt), ("ON", Mode::On)]
+                .iter()
+                .map(|(l, m)| ((*l).to_owned(), shared.xpdr_mode == *m))
+                .collect(),
+            _ => vec![("XFER".to_owned(), false)],
+        };
+        if let Some(i) = strip(ui, y, &buttons, "efis-pad-extra") {
+            match d.overlay {
+                Overlay::TransponderWindow => {
+                    let mode = [Mode::Standby, Mode::Alt, Mode::On]
+                        .get(i)
+                        .copied()
+                        .unwrap_or(Mode::On);
+                    act(out, id, DisplayAction::TransponderMode { mode });
+                }
+                Overlay::NavWindow => act(
+                    out,
+                    id,
+                    DisplayAction::Transfer {
+                        band: flightcraft_control::RadioBand::Nav,
+                    },
+                ),
+                _ => act(
+                    out,
+                    id,
+                    DisplayAction::Transfer {
+                        band: flightcraft_control::RadioBand::Com,
+                    },
+                ),
+            }
+        }
+        y += unit;
+    }
+    if !shortcuts.is_empty() {
+        let buttons: Vec<(String, bool)> = shortcuts.iter().map(|s| (s.label().to_owned(), false)).collect();
+        if let Some(i) = strip(ui, y, &buttons, "efis-pad-shortcut")
+            && let Some(shortcut) = shortcuts.get(i)
+        {
+            act(
+                out,
+                id,
+                DisplayAction::Shortcut {
+                    target,
+                    shortcut: *shortcut,
+                },
+            );
+        }
+        y += unit;
+    }
+    let ok = parsed.is_ok();
+    // A hardware keyboard types into the pad as well; Enter accepts and Escape cancels.
+    let mut accept = false;
+    let mut cancel = false;
+    for event in ui.input(|i| i.events.clone()) {
+        match event {
+            egui::Event::Text(typed) => {
+                for c in typed.chars() {
+                    text = touch_entry::press(target, hpa, &text, PadKey::Char(c));
+                }
+            }
+            egui::Event::Key {
+                key: egui::Key::Backspace,
+                pressed: true,
+                ..
+            } => text = touch_entry::press(target, hpa, &text, PadKey::Backspace),
+            egui::Event::Key {
+                key: egui::Key::Enter,
+                pressed: true,
+                ..
+            } => accept = true,
+            egui::Event::Key {
+                key: egui::Key::Escape,
+                pressed: true,
+                ..
+            } => cancel = true,
+            _ => {}
+        }
+    }
+    match strip(
+        ui,
+        y,
+        &[("ENTER".into(), ok), ("CANCEL".into(), false)],
+        "efis-pad-final",
+    ) {
+        Some(0) => accept = true,
+        Some(_) => cancel = true,
+        None => {}
+    }
+    if accept && touch_entry::parse(target, hpa, &text).is_ok() {
+        act(
+            out,
+            id,
+            DisplayAction::Enter {
+                target,
+                text: text.clone(),
+            },
+        );
+        text.clear();
+    } else if cancel {
+        act(out, id, DisplayAction::CloseOverlay {});
+        text.clear();
+    }
+    ui.data_mut(|x| x.insert_temp(key, (Some(d.overlay), text)));
 }

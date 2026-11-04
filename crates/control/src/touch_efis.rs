@@ -3,7 +3,8 @@
 //! This module is pure state transitions. It never reads the session and never draws; skins
 //! cannot change any of it. Section references are to `docs/glass.md` ("Landscape touch EFIS
 //! model"), which cites the manufacturer's public pilot's guide for each rule.
-use flightcraft_aero::modern::{MfdPage, TouchLayout};
+use crate::touch_entry::EntryTarget;
+use flightcraft_aero::modern::{MfdPage, NearestPage, TouchLayout};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -213,19 +214,77 @@ pub fn knob_push(mode: ScreenMode, cfg: EfisConfig, knob: Knob, toggled: bool) -
     }
 }
 
-/// Map ranges the range knob steps through, in nautical miles.
-pub const MAP_RANGES_NM: [f64; 14] = [1., 2., 3., 5., 7., 10., 15., 20., 30., 50., 70., 100., 150., 200.];
+const FEET_PER_NM: f64 = 6_076.115_49;
+
+/// The 23 map ranges the range knob and the zoom buttons step through, in nautical miles. The
+/// pilot's guide states that there are 23 ranges and that the distances depend on configuration;
+/// it prints only part of the progression (2, 3, 5, 8, 12, 20, 30, 50, 80, 120 in its map setup
+/// lists). The rest follow the same 1-1.5-2-3-5-8 progression: six steps in feet below 1 NM and
+/// larger steps above 120 NM.
+pub const MAP_RANGES_NM: [f64; 23] = [
+    500. / FEET_PER_NM,
+    800. / FEET_PER_NM,
+    1200. / FEET_PER_NM,
+    2000. / FEET_PER_NM,
+    3000. / FEET_PER_NM,
+    5000. / FEET_PER_NM,
+    1.2,
+    2.,
+    3.,
+    5.,
+    8.,
+    12.,
+    20.,
+    30.,
+    50.,
+    80.,
+    120.,
+    200.,
+    300.,
+    500.,
+    800.,
+    1000.,
+    1200.,
+];
+
+/// The smallest and largest selectable range, in nautical miles.
+pub const MAP_RANGE_MIN_NM: f64 = MAP_RANGES_NM[0];
+pub const MAP_RANGE_MAX_NM: f64 = MAP_RANGES_NM[22];
 
 /// Step the range by `detents`; clockwise (positive) zooms in, so the range gets smaller.
-/// `reverse` is the "Knob Zoom Action: Reverse" setting.
+/// `reverse` is the "Knob Zoom Action: Reverse" setting. A range between steps snaps to the next
+/// larger step first.
 pub fn step_range(current_nm: f64, detents: i32, reverse: bool) -> f64 {
     let index = MAP_RANGES_NM
         .iter()
-        .position(|r| *r >= current_nm - 1e-9)
+        .position(|r| *r >= current_nm * (1. - 1e-9))
         .unwrap_or(MAP_RANGES_NM.len() - 1) as i64;
     let direction = if reverse { 1 } else { -1 };
     let next = (index + i64::from(detents) * direction).clamp(0, MAP_RANGES_NM.len() as i64 - 1);
-    MAP_RANGES_NM.get(next as usize).copied().unwrap_or(200.)
+    MAP_RANGES_NM
+        .get(next as usize)
+        .copied()
+        .unwrap_or(MAP_RANGE_MAX_NM)
+}
+
+/// The label printed at the map's lower right: feet below 1 NM, else nautical miles.
+pub fn range_label(range_nm: f64) -> String {
+    if range_nm < 1. {
+        let feet = libm::round(range_nm * FEET_PER_NM / 100.) * 100.;
+        format!("{feet:.0}ft")
+    } else if (range_nm - libm::round(range_nm)).abs() < 1e-9 {
+        format!("{range_nm:.0}nm")
+    } else {
+        format!("{range_nm:.1}nm")
+    }
+}
+
+/// Step the nearest page by `detents` through the modelled nearest pages, wrapping.
+pub fn step_nearest(current: NearestPage, detents: i32) -> NearestPage {
+    let pages = NearestPage::ALL;
+    let index = pages.iter().position(|p| *p == current).unwrap_or(0) as i64;
+    let next = (index + i64::from(detents)).rem_euclid(pages.len() as i64);
+    pages.get(next as usize).copied().unwrap_or_default()
 }
 
 /// Step the MFD page by `detents` through the main pages, wrapping.
@@ -249,8 +308,32 @@ pub enum Overlay {
     PageMenu,
     /// A second MENU press.
     MainMenu,
-    /// Direct-to waypoint entry.
+    /// Direct-to waypoint entry (the identifier keypad).
     DirectTo,
+    /// A touch keypad for a PFD box: baro, heading, altitude, or course.
+    Keypad(EntryTarget),
+    /// The COM1 standby window: frequencies, transfer, and the frequency keypad.
+    ComWindow,
+    /// The NAV1 standby window.
+    NavWindow,
+    /// The transponder window: code keypad and mode keys.
+    TransponderWindow,
+    /// The Select Page menu, opened from the page bar.
+    SelectPage,
+}
+
+impl Overlay {
+    /// The keypad target this overlay is entering a value for, if it is an entry overlay.
+    pub fn entry_target(self) -> Option<EntryTarget> {
+        match self {
+            Self::DirectTo => Some(EntryTarget::DirectTo),
+            Self::Keypad(t) => Some(t),
+            Self::ComWindow => Some(EntryTarget::ComStandby),
+            Self::NavWindow => Some(EntryTarget::NavStandby),
+            Self::TransponderWindow => Some(EntryTarget::Transponder),
+            _ => None,
+        }
+    }
 }
 
 /// A physical key on the bezel.
@@ -303,8 +386,8 @@ pub fn key(state: KeyState, key: EfisKey, hold: bool) -> KeyState {
                     }
                 }
                 // A second press opens the main menu; a third clears it.
-                Overlay::PfdOptions | Overlay::PageMenu | Overlay::DirectTo => Overlay::MainMenu,
                 Overlay::MainMenu => Overlay::None,
+                _ => Overlay::MainMenu,
             };
         }
         EfisKey::Back => {
@@ -348,12 +431,65 @@ pub fn show_page(state: KeyState, page: MfdPage) -> KeyState {
     next
 }
 
-/// Reversion: the surviving display shows the PFD with an engine strip.
-pub fn reverted_layout(installed_pfd: TouchLayout) -> TouchLayout {
-    installed_pfd
+/// Reversion: the surviving display presents the PFD and the engine page in split-screen.
+pub fn reverted_layout(_installed_pfd: TouchLayout) -> TouchLayout {
+    TouchLayout::Split
+}
+
+/// The page the MFD pane shows in reversion.
+pub const REVERSION_PAGE: MfdPage = MfdPage::Engine;
+
+/// A page the Select Page menu offers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PageChoice {
+    Main(MfdPage),
+    Nearest(NearestPage),
+}
+
+/// The Select Page menu for the current page: the nearest pages while the nearest group is
+/// showing, else the main pages the engine models.
+pub fn select_page_entries(current: MfdPage) -> Vec<PageChoice> {
+    if current == MfdPage::Nearest {
+        NearestPage::ALL
+            .iter()
+            .copied()
+            .map(PageChoice::Nearest)
+            .collect()
+    } else {
+        MfdPage::MAIN.iter().copied().map(PageChoice::Main).collect()
+    }
+}
+
+/// Labels for the status bar's knob hints: what the inner and outer ring of a knob do.
+pub fn knob_hint(
+    mode: ScreenMode,
+    cfg: EfisConfig,
+    knob: Knob,
+    toggled: bool,
+) -> (&'static str, &'static str) {
+    (
+        knob_role(mode, cfg, knob, Ring::Inner, toggled).label(),
+        knob_role(mode, cfg, knob, Ring::Outer, toggled).label(),
+    )
+}
+
+impl KnobRole {
+    /// Short name of the function, as the status bar prints it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::HeadingBug => "Heading",
+            Self::AltitudeBug => "Altitude",
+            Self::Course => "Course",
+            Self::Baro => "Baro",
+            Self::FlightDirectorBug => "FD Bug",
+            Self::MapRange => "Zoom Map",
+            Self::MfdPage => "Select Page",
+        }
+    }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -497,13 +633,124 @@ mod tests {
     }
 
     #[test]
-    fn range_knob_steps_the_published_ladder_and_stops_at_the_ends() {
-        assert_eq!(step_range(10., 1, false), 7.);
-        assert_eq!(step_range(10., -1, false), 15.);
-        assert_eq!(step_range(10., 1, true), 15.);
-        assert_eq!(step_range(1., 5, false), 1.);
-        assert_eq!(step_range(200., -5, false), 200.);
-        assert_eq!(step_range(12., 1, false), 10.);
+    fn range_ladder_has_the_guides_23_steps_in_increasing_order() {
+        assert_eq!(MAP_RANGES_NM.len(), 23);
+        assert!(MAP_RANGES_NM.windows(2).all(|w| w[0] < w[1]));
+        // The steps the guide prints in its map setup lists are all on the ladder.
+        for nm in [2., 3., 5., 8., 12., 20., 30., 50., 80., 120.] {
+            assert!(MAP_RANGES_NM.contains(&nm), "{nm}");
+        }
+        // Six steps in feet, from 500 ft up to 5,000 ft, then 1.2 NM.
+        let feet: Vec<f64> = MAP_RANGES_NM[..6]
+            .iter()
+            .map(|nm| (nm * 6076.11549).round())
+            .collect();
+        assert_eq!(feet, [500., 800., 1200., 2000., 3000., 5000.]);
+        assert_eq!(MAP_RANGES_NM[6], 1.2);
+        assert_eq!(MAP_RANGE_MIN_NM, MAP_RANGES_NM[0]);
+        assert_eq!(MAP_RANGE_MAX_NM, 1200.);
+    }
+
+    #[test]
+    fn range_knob_walks_every_step_and_stops_at_the_ends() {
+        // Clockwise zooms in through all 22 steps, one detent each.
+        let mut r = MAP_RANGE_MAX_NM;
+        let mut seen = vec![r];
+        for _ in 0..22 {
+            r = step_range(r, 1, false);
+            seen.push(r);
+        }
+        assert_eq!(seen.len(), 23);
+        assert!(seen.windows(2).all(|w| w[1] < w[0]));
+        assert_eq!(seen[22], MAP_RANGE_MIN_NM);
+        assert_eq!(step_range(MAP_RANGE_MIN_NM, 5, false), MAP_RANGE_MIN_NM);
+        assert_eq!(step_range(MAP_RANGE_MAX_NM, -5, false), MAP_RANGE_MAX_NM);
+        assert_eq!(step_range(12., 1, false), 8.);
+        assert_eq!(step_range(12., -1, false), 20.);
+        assert_eq!(step_range(12., 1, true), 20.);
+        // Several detents at once, and a range between steps snaps up first.
+        assert_eq!(step_range(120., 3, false), 30.);
+        assert_eq!(step_range(40., 1, false), 30.);
+        assert_eq!(step_range(0.01, -1, false), MAP_RANGES_NM[1]);
+    }
+
+    #[test]
+    fn range_labels_use_feet_below_one_mile() {
+        assert_eq!(range_label(MAP_RANGES_NM[0]), "500ft");
+        assert_eq!(range_label(MAP_RANGES_NM[5]), "5000ft");
+        assert_eq!(range_label(1.2), "1.2nm");
+        assert_eq!(range_label(20.), "20nm");
+        assert_eq!(range_label(1200.), "1200nm");
+    }
+
+    #[test]
+    fn nearest_pages_step_through_the_modelled_set_and_wrap() {
+        assert_eq!(step_nearest(NearestPage::Airports, 1), NearestPage::Vors);
+        assert_eq!(step_nearest(NearestPage::Airports, -1), NearestPage::Airspace);
+        assert_eq!(step_nearest(NearestPage::Airspace, 1), NearestPage::Airports);
+        assert_eq!(step_nearest(NearestPage::Vors, 3), NearestPage::Airspace);
+    }
+
+    #[test]
+    fn select_page_menu_lists_main_pages_or_nearest_pages() {
+        let main = select_page_entries(MfdPage::Map);
+        assert_eq!(main.len(), MfdPage::MAIN.len());
+        assert_eq!(main[0], PageChoice::Main(MfdPage::Map));
+        let nearest = select_page_entries(MfdPage::Nearest);
+        assert_eq!(nearest.len(), 5);
+        assert_eq!(nearest[1], PageChoice::Nearest(NearestPage::Vors));
+        assert!(!nearest.iter().any(|c| matches!(c, PageChoice::Main(_))));
+    }
+
+    #[test]
+    fn knob_hints_name_the_functions_in_each_mode() {
+        let h = |mode, k, t| knob_hint(mode, CFG, k, t);
+        assert_eq!(h(ScreenMode::FullPfd, Knob::Left, false), ("Heading", "Altitude"));
+        assert_eq!(h(ScreenMode::FullPfd, Knob::Right, false), ("Course", "Baro"));
+        assert_eq!(
+            h(ScreenMode::Split, Knob::Right, false),
+            ("Zoom Map", "Select Page")
+        );
+        assert_eq!(h(ScreenMode::FullPfd, Knob::Left, true), ("Course", "Baro"));
+        let fd = EfisConfig {
+            alternate: AlternateKnobs::FdBugBaro,
+            ..CFG
+        };
+        assert_eq!(
+            knob_hint(ScreenMode::FullPfd, fd, Knob::Right, false),
+            ("FD Bug", "Baro")
+        );
+    }
+
+    #[test]
+    fn entry_overlays_name_their_keypad_and_menu_leaves_them() {
+        use crate::touch_entry::EntryTarget as T;
+        assert_eq!(Overlay::Keypad(T::Baro).entry_target(), Some(T::Baro));
+        assert_eq!(Overlay::DirectTo.entry_target(), Some(T::DirectTo));
+        assert_eq!(Overlay::ComWindow.entry_target(), Some(T::ComStandby));
+        assert_eq!(Overlay::NavWindow.entry_target(), Some(T::NavStandby));
+        assert_eq!(Overlay::TransponderWindow.entry_target(), Some(T::Transponder));
+        assert_eq!(Overlay::MainMenu.entry_target(), None);
+        assert_eq!(Overlay::SelectPage.entry_target(), None);
+        // BACK closes a keypad; MENU swaps it for the main menu.
+        let mut s = state(TouchLayout::IntegratedPfd);
+        s.overlay = Overlay::Keypad(T::Heading);
+        assert_eq!(key(s, EfisKey::Back, false).overlay, Overlay::None);
+        assert_eq!(key(s, EfisKey::Menu, false).overlay, Overlay::MainMenu);
+        s.overlay = Overlay::SelectPage;
+        assert_eq!(key(s, EfisKey::Back, false).overlay, Overlay::None);
+        let json = serde_json::to_string(&Overlay::Keypad(T::Altitude)).unwrap();
+        assert_eq!(json, r#"{"keypad":"altitude"}"#);
+    }
+
+    #[test]
+    fn reversion_is_the_split_screen_with_the_engine_page() {
+        assert_eq!(reverted_layout(TouchLayout::IntegratedPfd), TouchLayout::Split);
+        assert_eq!(
+            ScreenMode::of(reverted_layout(TouchLayout::FullPfd)),
+            ScreenMode::Split
+        );
+        assert_eq!(REVERSION_PAGE, MfdPage::Engine);
     }
 
     #[test]

@@ -119,6 +119,18 @@ pub enum Ink {
     AirspaceBlue,
     TerrainHigh,
     TerrainLow,
+    /// Instrument-face roles of the landscape touch EFIS, drawn from the skin's instrument palette.
+    Cyan,
+    Magenta,
+    White,
+    Green,
+    Yellow,
+    Red,
+    TapeFill,
+    TapeText,
+    BoxFill,
+    BoxBorder,
+    BoxText,
 }
 
 /// Original theme tokens are also the vocabulary available to data-defined private skins.
@@ -253,10 +265,16 @@ pub struct SkinPack {
     /// Optional original or privately supplied face art, beneath dynamic items.
     #[serde(default)]
     pub face: Vec<DrawItem>,
+    /// Exact colours from a skin pack's instrument palette; they win over `colors`.
+    #[serde(skip)]
+    pub rgb: Vec<(Ink, egui::Color32)>,
 }
 impl Skin for SkinPack {
     fn paint(&self, p: &Painter, draw: &DrawList) {
         let color = |ink| {
+            if let Some((_, c)) = self.rgb.iter().find(|(role, _)| *role == ink) {
+                return *c;
+            }
             self.colors.iter().find(|(role, _)| *role == ink).map_or_else(
                 || match ink {
                     Ink::Face => t::DIAL,
@@ -274,6 +292,17 @@ impl Skin for SkinPack {
                     Ink::AirspaceBlue => t::AIRSPACE_BLUE,
                     Ink::TerrainHigh => t::TERRAIN_HIGH,
                     Ink::TerrainLow => t::TERRAIN_LOW,
+                    Ink::Cyan => t::FACE_CYAN,
+                    Ink::Magenta => t::FACE_MAGENTA,
+                    Ink::White => t::FACE_WHITE,
+                    Ink::Green => t::FACE_GREEN,
+                    Ink::Yellow => t::FACE_YELLOW,
+                    Ink::Red => t::FACE_RED,
+                    Ink::TapeFill => t::FACE_TAPE_FILL,
+                    Ink::TapeText => t::FACE_WHITE,
+                    Ink::BoxFill => t::FACE_BOX_FILL,
+                    Ink::BoxBorder => t::FACE_BOX_BORDER,
+                    Ink::BoxText => t::FACE_WHITE,
                 },
                 |(_, token)| token.color(),
             )
@@ -379,6 +408,7 @@ impl Default for Registry {
                 id: "original".into(),
                 colors: Vec::new(),
                 face: Vec::new(),
+                rgb: Vec::new(),
             }),
         );
         r

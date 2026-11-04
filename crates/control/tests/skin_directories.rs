@@ -53,6 +53,49 @@ fn a_directory_of_skins_loads_and_bad_ones_are_reported_and_skipped() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+fn write_instrument_skin(root: &std::path::Path, id: &str, instruments: &str) {
+    let dir = root.join(id);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("skin.json"),
+        format!(
+            r#"{{"kind":"skin_pack","format_version":1,"id":"{id}","version":"1","display_name":"Demo",
+            "licence":"Apache-2.0","display_model":"landscape_touch_efis","instruments":{instruments}}}"#
+        ),
+    )
+    .unwrap();
+}
+
+#[test]
+fn instrument_palettes_load_and_a_bad_palette_skips_only_that_skin() {
+    let root = scratch("instruments");
+    write_instrument_skin(
+        &root,
+        "painted",
+        r##"{"palette":{"magenta":"#ff33ff","cyan":"#00e6e6","tape_fill":"#202830","tape_text":"#f4f4f4"},
+            "typography":{"tape_text":1.2}}"##,
+    );
+    // Magenta that is really green: the meaning is lost, so the whole skin is refused.
+    write_instrument_skin(&root, "swapped", r##"{"palette":{"magenta":"#33ff33"}}"##);
+    write_instrument_skin(&root, "oversized", r##"{"typography":{"box_text":4.0}}"##);
+    write_skin(&root, "plain-skin", None);
+    let mut s = Session::new().unwrap();
+    let errors = s.load_skins_directory(&root);
+    assert_eq!(errors.len(), 2, "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("swapped")));
+    assert!(errors.iter().any(|e| e.contains("oversized")));
+    let painted = s.skin("painted").unwrap();
+    let palette = &painted.manifest.instruments.palette;
+    assert_eq!(palette.magenta.as_ref().unwrap().0, "#ff33ff");
+    assert!(palette.green.is_none(), "unset fields keep the built-in colour");
+    assert_eq!(painted.manifest.instruments.typography.tape_text, Some(1.2));
+    // A skin without an instruments section changes nothing about the instrument faces.
+    let plain = &s.skin("plain-skin").unwrap().manifest.instruments;
+    assert_eq!(plain, &Default::default());
+    assert!(s.skin("swapped").is_none() && s.skin("oversized").is_none());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 #[cfg(unix)]
 #[test]
 fn symlinked_assets_and_directories_are_refused() {

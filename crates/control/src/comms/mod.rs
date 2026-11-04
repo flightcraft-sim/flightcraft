@@ -643,6 +643,7 @@ impl Session {
                 .input(self.sim.state().time_s, self.sim.controls());
             self.tick_live_transition();
             self.sim.step(1);
+            self.apply_display_loss_rules();
             let now = self.sim.state().time_s;
             self.finish_transmissions();
             self.sequence_scenario();

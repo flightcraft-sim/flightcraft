@@ -3,6 +3,7 @@ use eframe::egui;
 mod controls;
 mod mfd;
 mod pfd;
+pub(crate) mod touch_pfd;
 mod traffic;
 use crate::instruments::{DrawItem, DrawList, Ink, Instrument, InstrumentInput};
 pub use controls::{GlassControls, shortcut};
@@ -180,7 +181,16 @@ fn engine_display(
 }
 
 /// Fill the installation viewport while keeping circular symbols and text undistorted.
-pub(crate) fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
+pub(crate) fn paint_fill(ui: &egui::Ui, area: egui::Rect, draw: DrawList) {
+    paint_fill_with(ui, area, draw, &[]);
+}
+/// [`paint_fill`] with exact colours for some inks, from a skin pack's instrument palette.
+pub(crate) fn paint_fill_with(
+    ui: &egui::Ui,
+    area: egui::Rect,
+    mut draw: DrawList,
+    rgb: &[(Ink, egui::Color32)],
+) {
     use crate::instruments::{Skin, SkinPack};
     let [w, h] = draw.size;
     let (sx, sy) = (area.width() / w, area.height() / h);
@@ -240,6 +250,7 @@ pub(crate) fn paint_fill(ui: &egui::Ui, area: egui::Rect, mut draw: DrawList) {
         id: "original".into(),
         colors: Vec::new(),
         face: Vec::new(),
+        rgb: rgb.to_vec(),
     }
     .paint(&ui.painter().with_clip_rect(area), &draw);
 }
@@ -319,6 +330,9 @@ pub(crate) fn paint_touch(
         );
         paint_fill(ui, cell, d);
         return maps;
+    }
+    if display.model.is_some() {
+        return paint_model(ui, cell, s, input, display, composition);
     }
     let integrated = flightcraft_aero::modern::DisplayComposition {
         top_data_bar: true,
@@ -635,6 +649,167 @@ pub(crate) fn paint_touch(
     maps
 }
 
+/// A page of the nearest group: airports use the shared nearest list, the rest their own tables.
+fn nearest_page(
+    ui: &egui::Ui,
+    area: egui::Rect,
+    s: &GlassState,
+    page: flightcraft_aero::modern::NearestPage,
+) {
+    if page == flightcraft_aero::modern::NearestPage::Airports {
+        list_page(ui, area, s, mfd::ListKind::Nearest);
+        return;
+    }
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let mut d = canvas();
+    mfd::nearest_table(&mut d, s, page, 250., 40., 1.);
+    paint_fill(ui, area, d);
+}
+
+#[cfg(test)]
+pub(crate) fn nearest_table_for_tests(
+    d: &mut DrawList,
+    s: &GlassState,
+    page: flightcraft_aero::modern::NearestPage,
+) {
+    mfd::nearest_table(d, s, page, 250., 40., 1.);
+}
+
+/// A landscape touch EFIS screen: the model's data bar and status bar, the primary flight display
+/// placed by the model's geometry, and the multi-function pane. `screen` has the model's aspect.
+fn paint_model(
+    ui: &egui::Ui,
+    screen: egui::Rect,
+    s: &GlassState,
+    input: InstrumentInput<'_>,
+    display: &flightcraft_control::TouchDisplayState,
+    composition: &flightcraft_aero::modern::DisplayComposition,
+) -> Vec<crate::map::MapViewport> {
+    use crate::efis;
+    use crate::map::MapViewport;
+    use flightcraft_aero::display_model::DisplayModel;
+    use flightcraft_aero::modern::DisplayInset;
+    use flightcraft_control::touch_efis::{REVERSION_PAGE, ScreenMode};
+    let mut maps = Vec::new();
+    let model = display.model.unwrap_or(DisplayModel::LandscapeTouchEfis);
+    let mode = if display.reversion {
+        ScreenMode::Split
+    } else {
+        ScreenMode::of(display.layout)
+    };
+    let page = if display.reversion {
+        REVERSION_PAGE
+    } else {
+        flightcraft_control::touch_efis::effective_page(display.layout, display.mfd_page)
+    };
+    let (rgb, typography) = touch_pfd::face_style(display.skin.as_deref().and_then(|id| input.skin(id)));
+    let mut shared = s.clone();
+    shared.pfd_failed = false;
+    shared.mfd_failed = false;
+    shared.reversion = false;
+    shared.settings.synthetic_vision = display.synthetic_vision;
+    ui.painter().rect_filled(screen, 0., egui::Color32::BLACK);
+    let style = flightcraft_aero::modern::EngineStripStyle::DialsAndBars;
+    let k = screen.width() / 1280.;
+    let pfd_mode = efis::pfd_mode(mode);
+    if let Some(pfd_mode) = pfd_mode {
+        let g = model.pfd_geometry(pfd_mode);
+        let panel = efis::native_rect(screen, g.panel);
+        paint_fill_with(ui, panel, touch_pfd::backdrop(&shared, input, &g), &rgb);
+        let options = touch_pfd::Options {
+            typography,
+            reversion: display.reversion,
+        };
+        paint_fill_with(ui, panel, touch_pfd::panel(&shared, input, &g, options), &rgb);
+        if mode == ScreenMode::Split {
+            // The engine column at the left edge of the split screen.
+            let content = efis::content_rect(screen);
+            let column = egui::Rect::from_min_max(
+                content.min,
+                egui::pos2(screen.left() + g.engine_column_px as f32 * k, content.bottom()),
+            );
+            touch_engine(ui, column, &shared, input, style);
+        } else {
+            // Pack-chosen insets sit in the bottom corners of the full-screen display.
+            for inset in &composition.insets {
+                let left = matches!(
+                    inset.corner,
+                    flightcraft_aero::modern::PfdCorner::TopLeft
+                        | flightcraft_aero::modern::PfdCorner::BottomLeft
+                );
+                let top = matches!(
+                    inset.corner,
+                    flightcraft_aero::modern::PfdCorner::TopLeft
+                        | flightcraft_aero::modern::PfdCorner::TopRight
+                );
+                let rect = egui::Rect::from_min_size(
+                    panel.min
+                        + egui::vec2(
+                            panel.width() * if left { 0.012 } else { 0.718 },
+                            panel.height() * if top { 0.12 } else { 0.71 },
+                        ),
+                    egui::vec2(panel.width() * 0.27, panel.height() * 0.21),
+                );
+                match inset.content {
+                    DisplayInset::Map => maps.push(MapViewport::shared(rect)),
+                    DisplayInset::Terrain => maps.push(MapViewport {
+                        rect,
+                        base: Some(flightcraft_control::BaseMap::Terrain),
+                        guidance: None,
+                    }),
+                    DisplayInset::Engine => touch_engine(ui, rect, &shared, input, style),
+                    DisplayInset::SyntheticVision | DisplayInset::Navigation => {}
+                }
+            }
+        }
+    }
+    if mode != ScreenMode::FullPfd
+        && let Some(area) = efis::pane_content(screen, mode, page)
+    {
+        mfd_page(
+            ui,
+            area,
+            s,
+            &shared,
+            input,
+            page,
+            display,
+            style,
+            mode == ScreenMode::FullMfd,
+            &mut maps,
+        );
+    }
+    if let Some(bar) = efis::page_bar(screen, mode) {
+        ui.painter().rect_filled(bar, 0., crate::theme::PAGE_BAR);
+    }
+    // The data bar and status bar run across the whole screen, over both halves.
+    let g = model.pfd_geometry(pfd_mode.unwrap_or(flightcraft_aero::display_model::PfdMode::Full));
+    let now = ui.input(|i| i.time);
+    let toggled = display.knob_toggle_until_s.is_some_and(|t| now < t);
+    let knob_mode = if display.reversion {
+        ScreenMode::Split
+    } else {
+        mode
+    };
+    let hint = |knob| flightcraft_control::touch_efis::knob_hint(knob_mode, display.knobs, knob, toggled);
+    paint_fill_with(
+        ui,
+        screen,
+        touch_pfd::bars(
+            &shared,
+            input,
+            &g,
+            typography,
+            [
+                hint(flightcraft_control::touch_efis::Knob::Left),
+                hint(flightcraft_control::touch_efis::Knob::Right),
+            ],
+        ),
+        &rgb,
+    );
+    maps
+}
+
 /// Leave room for the page bar when the display is a landscape touch EFIS.
 fn with_page_bar(area: egui::Rect, display: &flightcraft_control::TouchDisplayState) -> egui::Rect {
     if display.model.is_none() {
@@ -686,7 +861,7 @@ fn mfd_page(
         }
         MfdPage::Engine => touch_engine(ui, area, shared, input, style),
         MfdPage::FlightPlan => list_page(ui, area, shared, mfd::ListKind::FlightPlan),
-        MfdPage::Nearest => list_page(ui, area, shared, mfd::ListKind::Nearest),
+        MfdPage::Nearest => nearest_page(ui, area, shared, display.nearest_page),
         MfdPage::Traffic => list_page(ui, area, shared, mfd::ListKind::Traffic),
         MfdPage::Waypoint => text_page(
             ui,

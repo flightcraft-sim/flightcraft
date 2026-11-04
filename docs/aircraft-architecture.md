@@ -116,6 +116,10 @@ reports, textbook aerodynamics, and the published performance figures used only 
      (`flightcraft-skins`), pinned and loaded like an aircraft pack. It may match the real unit's layout geometry, element placement, colour
      meanings, page, menu, and soft-key structure, knob behaviour, and short functional labels, all
      taken from public manufacturer documentation and cited.
+   - Layout geometry and element placement that follow a real unit's figures live in the engine's
+     brand-neutral **display model** (for the landscape touch EFIS, `display_model::pfd_geometry`,
+     measured from the unit's public pilot's guide); a skin pack sets palette and type sizes only,
+     within the colour meanings, and cannot move an element. See [glass](glass.md#skin-packs).
    - Its artwork is drawn from scratch with an openly licensed font. It carries no manufacturer
      logos or trademarks in the interface, no proprietary fonts, and no traced or copied graphics.
      Its README names the real unit only to say what it trains for, and that it is not affiliated.

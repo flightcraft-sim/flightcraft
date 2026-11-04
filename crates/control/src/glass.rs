@@ -194,6 +194,16 @@ pub struct GlassState {
     pub wind_speed_mps: f64,
     pub gps: GpsState,
     pub nearest: Vec<NavigationLeg>,
+    /// Nearest VORs, NDBs, intersections, and airspace. Filled only while a display shows the
+    /// matching nearest page; empty otherwise.
+    #[serde(default)]
+    pub nearest_vors: Vec<crate::touch_nearest::NearestFacility>,
+    #[serde(default)]
+    pub nearest_ndbs: Vec<crate::touch_nearest::NearestFacility>,
+    #[serde(default)]
+    pub nearest_intersections: Vec<crate::touch_nearest::NearestFacility>,
+    #[serde(default)]
+    pub nearest_airspace: Vec<crate::touch_nearest::NearestAirspace>,
     pub engine: Vec<EngineValue>,
     /// Map coordinates are fractions of a square spanning twice the selected range.
     pub terrain: TerrainRaster,
@@ -243,7 +253,13 @@ impl Session {
                 self.glass.transponder_mode = mode;
             }
             GlassSetting::MapRange { range_nm } => {
-                range(NAME, "range_nm", range_nm, 1.0, 200.0)?;
+                range(
+                    NAME,
+                    "range_nm",
+                    range_nm,
+                    crate::touch_efis::MAP_RANGE_MIN_NM * 0.99,
+                    crate::touch_efis::MAP_RANGE_MAX_NM,
+                )?;
                 self.glass.range_nm = range_nm;
                 self.map.range_nm = range_nm;
             }
@@ -413,7 +429,7 @@ impl Session {
         } else {
             GlassSettings::default()
         };
-        settings.range_nm = self.map.range_nm.max(1.0);
+        settings.range_nm = self.map.range_nm.max(crate::touch_efis::MAP_RANGE_MIN_NM * 0.99);
         settings.orientation = self.map.orientation.into();
         settings.heading_bug_rad = sys.controls.heading_bug_rad;
         if let Some(ap) = sim.installed_autopilot() {
@@ -537,7 +553,8 @@ impl Session {
             })
             .unwrap_or_default();
         nearest.sort_by(|a, b| a.distance_nm.total_cmp(&b.distance_nm));
-        nearest.truncate(8);
+        nearest.retain(|l| l.distance_nm <= crate::touch_nearest::SEARCH_RADIUS_NM);
+        nearest.truncate(crate::touch_nearest::MAX_ROWS);
         let angle = match settings.orientation {
             MapOrientation::TrackUp => ground_track,
             MapOrientation::HeadingUp => reference.magnetic_to_grid(computers.primary.heading_rad),
@@ -648,6 +665,20 @@ impl Session {
                     .collect()
             })
             .unwrap_or_default();
+        let touch = self.touch_state();
+        let mut wanted = std::collections::BTreeSet::new();
+        for d in touch.displays.iter().filter(|d| d.powered && !d.failed) {
+            if crate::touch_efis::effective_page(d.layout, d.mfd_page)
+                == flightcraft_aero::modern::MfdPage::Nearest
+                && matches!(
+                    crate::touch_efis::ScreenMode::of(d.layout),
+                    crate::touch_efis::ScreenMode::FullMfd | crate::touch_efis::ScreenMode::Split
+                )
+            {
+                wanted.insert(d.nearest_page);
+            }
+        }
+        let near = self.nearest_lists(&wanted, position);
         let installed_power = |id: &str| sys.electrical.loads.iter().any(|l| l.id == id && l.powered);
         let pfd_failed = computers.pfd_failed || !installed_power("glass_pfd");
         let mfd_failed = computers.mfd_failed || !installed_power("glass_mfd");
@@ -689,7 +720,7 @@ impl Session {
             traffic: traffic_map,
             traffic_installed,
             traffic_alert,
-            touch: self.touch_state(),
+            touch,
             settings,
             air_data: computers.primary.clone(),
             standby: computers.standby.clone(),
@@ -718,6 +749,10 @@ impl Session {
             wind_speed_mps: libm::hypot(wind_n, wind_e),
             gps,
             nearest,
+            nearest_vors: near.vors,
+            nearest_ndbs: near.ndbs,
+            nearest_intersections: near.intersections,
+            nearest_airspace: near.airspace,
             engine: engine(self),
             terrain,
             outlines,
@@ -725,6 +760,118 @@ impl Session {
             region: world.region().map(|r| r.name.clone()),
             aircraft_heading_relative_rad: r.heading_grid_rad - angle,
         }
+    }
+}
+#[derive(Default)]
+struct NearLists {
+    vors: Vec<crate::touch_nearest::NearestFacility>,
+    ndbs: Vec<crate::touch_nearest::NearestFacility>,
+    intersections: Vec<crate::touch_nearest::NearestFacility>,
+    airspace: Vec<crate::touch_nearest::NearestAirspace>,
+}
+impl Session {
+    /// The nearest-page lists the open pages need; empty lists for pages nobody is showing.
+    fn nearest_lists(
+        &self,
+        wanted: &std::collections::BTreeSet<flightcraft_aero::modern::NearestPage>,
+        position: Option<[f64; 2]>,
+    ) -> NearLists {
+        use crate::touch_nearest as near;
+        use flightcraft_aero::modern::NearestPage as P;
+        use flightcraft_world::navdata::NavaidKind;
+        let mut out = NearLists::default();
+        if wanted.is_empty() {
+            return out;
+        }
+        let world = self.sim.world();
+        let reference = self.sim.heading_reference();
+        if let (Some(p), Some(nav)) = (position, world.navdata()) {
+            // A box test first: the national data holds many thousands of fixes.
+            let dlat = near::SEARCH_RADIUS_NM / 60.0 * 1.05;
+            let dlon = dlat / libm::cos(p[0].to_radians()).abs().max(0.05);
+            let in_box = |lat: f64, lon: f64| (lat - p[0]).abs() <= dlat && (lon - p[1]).abs() <= dlon;
+            let facility = |ident: &str, name: &str, at: [f64; 2], khz: Option<f64>, detail: &str| {
+                let (d, b) = inverse(p, at);
+                near::NearestFacility {
+                    ident: ident.to_owned(),
+                    name: name.to_owned(),
+                    bearing_rad: reference.true_to_magnetic(b),
+                    distance_nm: d / NM,
+                    frequency_khz: khz,
+                    detail: detail.to_owned(),
+                }
+            };
+            if wanted.contains(&P::Vors) || wanted.contains(&P::Ndbs) {
+                for n in nav
+                    .navaids
+                    .iter()
+                    .filter(|n| in_box(n.position.latitude_deg, n.position.longitude_deg))
+                {
+                    let khz = n
+                        .components
+                        .iter()
+                        .find_map(|c| c.frequency_hz)
+                        .map(|hz| hz / 1000.0);
+                    let at = [n.position.latitude_deg, n.position.longitude_deg];
+                    match n.kind {
+                        NavaidKind::Vor | NavaidKind::VorDme | NavaidKind::Vortac
+                            if wanted.contains(&P::Vors) =>
+                        {
+                            let detail = match n.kind {
+                                NavaidKind::VorDme => "VOR/DME",
+                                NavaidKind::Vortac => "VORTAC",
+                                _ => "VOR",
+                            };
+                            out.vors.push(facility(&n.ident, &n.name, at, khz, detail));
+                        }
+                        NavaidKind::Ndb if wanted.contains(&P::Ndbs) => {
+                            out.ndbs.push(facility(&n.ident, &n.name, at, khz, "NDB"));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if wanted.contains(&P::Intersections) {
+                for f in nav
+                    .fixes
+                    .iter()
+                    .filter(|f| in_box(f.position.latitude_deg, f.position.longitude_deg))
+                {
+                    out.intersections.push(facility(
+                        &f.ident,
+                        &f.name,
+                        [f.position.latitude_deg, f.position.longitude_deg],
+                        None,
+                        "",
+                    ));
+                }
+            }
+            out.vors = near::keep_nearest(out.vors);
+            out.ndbs = near::keep_nearest(out.ndbs);
+            out.intersections = near::keep_nearest(out.intersections);
+        }
+        if wanted.contains(&P::Airspace) {
+            let [n, e, _] = self.sim.state().position_m;
+            let [vn, ve, _] = self.sim.state().velocity_mps;
+            let altitude = self.sim.readout().altitude_msl_m;
+            let samples: Vec<Vec<near::SampledVolume>> = (0..=near::LOOKAHEAD_S / near::LOOKAHEAD_STEP_S)
+                .map(|i| {
+                    let t = f64::from(i * near::LOOKAHEAD_STEP_S);
+                    world
+                        .airspace_at(n + vn * t, e + ve * t, altitude)
+                        .map(|q| {
+                            q.containing
+                                .into_iter()
+                                .filter(|v| v.class.is_some())
+                                .map(|v| (v.id, v.name, v.class.map(|c| format!("{c:?}"))))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect();
+            out.airspace = near::airspace_entries(&samples);
+        }
+        out
     }
 }
 fn ete(distance: f64, speed: f64) -> Option<f64> {

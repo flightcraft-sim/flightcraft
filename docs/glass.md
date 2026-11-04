@@ -238,13 +238,16 @@ that the controls fit the bezel without overlapping, and their order.
 
 Three modes, from the pilot's guide 1.5: **full PFD**, **full MFD**, and **split** (PFD and one MFD pane).
 The on-screen SPLIT/FULL button or a BACK press-and-hold toggles between full and split. In split the PFD
-takes 60 percent of the width (estimate) and the MFD pane the rest. The MFD has a page bar along its
-bottom: the current page's name on the left and abbreviations on the right (Map, Wpt, FPL, Ter, Trf, Info,
-Eng); touching one selects it. The nearest pages are reached with NEAREST and are not in the knob cycle.
+takes 56.3 percent of the width (its first 12 percent is the engine column) and the MFD pane the rest,
+measured from the split-screen figures (pilot's guide 1.5). The MFD has a page bar along its bottom
+(above the status bar): the current page's name on the left and abbreviations on the right (Map, Wpt,
+FPL, Ter, Trf, Info, Eng); touching one selects it, and touching the name opens the **Select Page** menu
+(pilot's guide 1.6): the main pages, or the nearest pages while the nearest group is showing. The nearest
+pages are reached with NEAREST and are not in the main knob cycle.
 
 | Mode | `layout` | Notes |
 |---|---|---|
-| Full PFD | `integrated_pfd`, `full_pfd`, `svt` | Attitude, tapes, HSI, data bar, engine strip, insets |
+| Full PFD | `integrated_pfd`, `full_pfd`, `svt` | Attitude, tapes, HSI, data bar, status bar, and the pack's insets (no engine column) |
 | Split | `split` (or the older `pfd_map`) | PFD left, pane right showing the display's `mfd_page` |
 | Full MFD | `mfd` (or the older `engine`, `flight_plan`, `nearest`, `traffic`) | `mfd_page` fills the screen; the map page keeps its data column |
 
@@ -255,6 +258,107 @@ beside the older `display_page` and `display_data` settings, which still work an
 MFD pages: map, waypoint, active flight plan, terrain, traffic, info, engine, and nearest. Weather,
 charts, checklists, and video are not modelled. Waypoint and info are simple status pages, and terrain
 is the map on the terrain base.
+
+### Primary flight display
+
+The PFD's placement is the model's, not the pack's or the skin's:
+`DisplayModel::pfd_geometry(PfdMode::Full | Split)` returns the rectangle of every element in the model's
+native 1280 x 768 pixels, and the drawing (`ui::glass::touch_pfd`) and the touch boxes both read it. The
+numbers are measured from the pilot's guide's figures (full-screen PFD, section 2.1; split mode, section
+1.5), which give arrangement but no dimensions, so each is good to a few percent. Geometry tests check the
+arrangement, not the pixels: tapes either side of a centred attitude and compass, the true-airspeed box
+above and the ground-speed box below the airspeed tape, the selected-altitude box above and the baro box
+below the altitude tape, the vertical-speed scale against the altitude tape's right edge, the heading,
+selected-heading and course boxes in one row over the compass, the wind box left of the compass, and the
+AFCS box top-centre under the data bar.
+
+| Element (full PFD, px of 1280 x 768) | Rectangle (x, y, w, h) |
+|---|---|
+| Data bar / radio box / split button | 0,0,1280,60 / 0,0,238,60 / 1212,8,56,43 |
+| AFCS status box | 448,65,368,33 |
+| Airspeed tape, TAS box, GS box | 345,127,86,269 / 345,98,86,29 / 345,400,86,27 |
+| Altitude tape, selected altitude, baro | 824,135,111,253 / 840,98,95,29 / 840,399,95,32 |
+| Vertical speed scale | 935,135,39,253 |
+| Slip box, turn-rate scale | 578,361,143,28 / 545,407,190,24 |
+| Heading, selected heading, course boxes | 608,423,64,34 / 483,435,84,27 / 708,435,92,27 |
+| Wind box | 393,469,90,47 |
+| Aircraft symbol, roll arc | centre 640,261, radius 135 |
+| Compass rose | centre 637,603, radius 131 |
+
+In split mode the tapes keep their pixel size and are pinned to the pane's edges, and the compass is
+centred in the pane; the data bar loses its middle fields and gains the transponder box.
+
+What is drawn, from the guide: airspeed tape from 30 kt with ticks every 5 and numbers every 10, the speed
+range strip (red low-speed, white flap range, green normal, yellow caution, red above never-exceed), the
+magenta trend vector (6 second prediction), speed references (R, X, Y), and a pointer that turns red above
+never-exceed; the altitude tape with 100 ft numbers and 20 ft ticks, a cyan selected-altitude bug pinned to
+the tape edge when off the scale, the magenta trend vector, and a rolling-number pointer; the vertical
+speed scale (compressed above 1,000 fpm) with its pointer and digital readout; the attitude indicator with
+pitch marks every 2.5 degrees, the roll scale (ticks at 10, 20, 30, 45, and 60 degrees, an inverted triangle
+at zero), the slip ball, and the standard-rate turn scale; the heading-up compass with ticks every 10 and 5
+degrees, the selected-heading bug, the track triangle, the course pointer and deviation bar (magenta for
+GPS, green for a radio), and the source and CDI scale annunciations; the wind box with an arrow and speed
+over direction; and the top data bar (COM1 active and standby, then waypoint, bearing, distance, time en
+route, ground speed, track, minimum safe altitude, and vertical speed required) and the bottom status bar
+(the function of each knob's two rings, outside air temperature, Messages). Minimum safe altitude and
+vertical speed required are not modelled and read as dashes.
+
+Colours are by meaning, as in the guide: cyan for selected values, bugs, baro, and the standby frequency;
+magenta for the flight director, trend vectors, GPS guidance, and data bar values; green for active modes,
+the active frequency, and a valid VOR or localizer; white for scales and armed modes; yellow for the
+aircraft symbol and cautions; red for warnings and failure flags.
+
+**AFCS status box.** `flightcraft_control::touch_pfd::afcs_box` turns the autopilot's state into the box:
+autopilot and yaw damper at the far left, lateral modes in the centre, vertical modes on the right; active
+modes green, armed modes white, a disconnect flashing the autopilot annunciation yellow; ROL, HDG, TRK, the
+navigation source name (GPS, VOR, LOC) or BC; PIT, ALT, VS, IAS, GP, GS, and ALTS armed; the reference of
+altitude hold, vertical speed, and indicated airspeed beside the vertical mode. The box is the existing
+mode machine's output; nothing is stored.
+
+**Flight director.** Single-cue magenta bars that move with the pitch command and bank with the roll
+command: hollow while the pilot hand-flies with the director alone, solid with the autopilot engaged, and
+absent in reversion.
+
+### Touch entry
+
+Touching a PFD box opens a keypad over the display, as the guide describes (section 1.6 data entry; 2.1
+for each box). `flightcraft_control::touch_entry` is the pure part: which characters each target accepts,
+how typing edits the field, how an entry parses and range-checks, and the shortcut buttons.
+
+| Box touched | Keypad | Accepts | Shortcuts |
+|---|---|---|---|
+| Selected altitude | altitude | 100 to 30,000 ft | Set To Current (nearest 100 ft) |
+| Baro | baro | 27.50 to 31.50 inHg (2992 reads as 29.92) or 900 to 1100 hPa | Set To Standard, Set For Field |
+| Selected heading | heading | 0 to 360 (360 is north) | Set To Current |
+| Course | course | 0 to 360 | Set To Current (desired track, else heading) |
+| DIRECT key | waypoint | 1 to 6 letters or digits | |
+| COM1 standby, NAV1 standby | frequency | 118.000 to 136.975 on 25 kHz; 108.00 to 117.95 on 50 kHz | |
+| Transponder | code | four digits, 0 to 7 | |
+
+A hardware keyboard types into the pad as well. ENTER is enabled only for an entry that parses, the pad
+shows why it does not, and the engine rejects a bad entry with the keypad left open (`equipment.set`
+display actions `open_overlay`, `enter`, `shortcut`).
+
+### Radio and transponder windows
+
+The data bar's radio box has the guide's two touch targets (section 4.1 and 4.3): the active frequency
+transfers active and standby, and the standby frequency opens the COM1 window, which shows both
+frequencies, the keypad, and XFER. NAV1 has the same window from the main menu, as does the transponder
+(code keypad and STBY, ALT, ON keys; section 4 transponder code and mode selection), which in split mode
+also has its box in the data bar. They are wired to the existing comms tuning (`comms.tune`), the NAV radio,
+and the glass transponder setting; no new state exists. Not modelled: COM monitor, volume and squelch, NAV2
+and COM2, the audio panel page, ident.
+
+### Nearest pages
+
+NEAREST opens the nearest group, whose tab strip chooses a page, or the large MFD knob steps through them
+(guide 1.6 and 5): airports (existing), **VORs, NDBs, intersections, and airspace**. Lists hold the 15
+nearest facilities within 200 NM, nearest first, with identifier, bearing, distance and frequency, and
+read "None Within 200 NM" when empty. Airspace lists what the aircraft is inside and what it would enter
+within 10 minutes at its present speed, track, and altitude, with "Inside" or the time to entry, and reads
+"No Immediate Airspace" otherwise. The lists are built from the loaded navigation data only while a display
+shows that page. Weather, user waypoints, cities, centres, flight service stations, and visual reporting
+points are not modelled.
 
 ### Knobs
 
@@ -267,14 +371,21 @@ Roles follow the pilot's guide (1.5, "knob operation"):
 | Split, MFD pane on the right (default) | Heading bug / altitude bug | Map range / MFD page |
 | Full MFD | Map range / MFD page | Map range / MFD page |
 
-The "right side knob action" setting selects the alternate pair: course/baro, flight-director bug/baro
-(the engine has no flight-director pitch bug, so that inner ring does nothing), or heading/altitude.
-"Press to toggle knob action", when on, makes an inner push swap main and alternate functions for 10 seconds
-on a PFD knob. With it off, pushing the heading knob syncs the bug to the current heading (rounded to a
-degree). Detents: 1 degree for heading and course, 100 ft for the altitude bug, 0.01 inHg (or 1 hPa) for
-baro, and the range ladder 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100, 150, 200 NM (the real unit has 23
-ranges; the engine's range is limited to 1 to 200 NM). Clockwise zooms in. A host supplies `time_s` with each
-knob event, so the 10-second revert needs no clock in the engine and replays exactly.
+The "right side knob action" setting selects the alternate pair: course/baro, flight-director bug/baro, or
+heading/altitude. "Press to toggle knob action", when on, makes an inner push swap main and alternate
+functions for 10 seconds on a PFD knob. With it off, pushing the heading knob syncs the bug to the current
+heading (rounded to a degree), and pushing the course knob syncs the course to the active leg's desired
+track (else the heading), rounded to a degree. The flight director bug knob steps the reference of the
+active vertical mode by the guide's table (vertical modes, section 9.3): 0.5 degree in pitch hold, 100 fpm
+in vertical speed, 1 kt in indicated airspeed; pushing it sets the pitch reference to the present pitch.
+Altitude hold's 10 ft step needs a hold-altitude setting the engine's autopilot does not have, so that mode
+does not step. Detents: 1 degree for heading and course, 100 ft for the altitude bug, 0.01 inHg (or 1 hPa)
+for baro. The **range ladder has the guide's 23 steps**: 500, 800, 1,200, 2,000, 3,000, 5,000 ft, then 1.2,
+2, 3, 5, 8, 12, 20, 30, 50, 80, 120, 200, 300, 500, 800, 1,000, and 1,200 NM; the guide states the count
+(section 5, map range) and prints 2 to 120 NM in its map setup lists, and the other steps extend the same
+progression. The range knob and the map's zoom buttons share it, and the range shows at the map's lower
+right. Clockwise zooms in. A host supplies `time_s` with each knob event, so the 10-second revert needs no
+clock in the engine and replays exactly.
 
 ### Keys and menus
 
@@ -286,26 +397,41 @@ knob event, so the 10-second revert needs no clock in the engine and replays exa
 | BACK | Close the open menu or keypad, else return to the previous page | Toggle full and split |
 
 The page menu lists traffic and track-up on map pages and reads "No Options" elsewhere; the main menu lists
-the pages and display backup. The state machine is `flightcraft_control::touch_efis` (pure functions, no
-session access). The `equipment.set` display actions are `key`, `knob`, `knob_push`, `mfd_page`,
-`toggle_split`, `close_overlay`, `direct_to`, `knobs` (alternate pair, push-to-toggle, pane side), and
-`skin`.
+the radio and transponder windows, the pages, and display backup. The state machine is
+`flightcraft_control::touch_efis` (pure functions, no session access). The `equipment.set` display actions
+are `key`, `knob`, `knob_push`, `mfd_page`, `toggle_split`, `close_overlay`, `direct_to`, `knobs` (alternate
+pair, push-to-toggle, pane side), `skin`, `open_overlay`, `enter`, `shortcut`, `nearest_page`, `transfer`,
+`transponder_mode`, and `map_zoom`.
 
 ### Reversion
 
-As on the real unit (pilot's guide, appendix F), a failed or unpowered display makes the surviving one show
-the PFD with its engine strip, and it returns to its chosen page when the other display returns. The
-backup setting forces the same on the screen that is not showing a PFD. The autopilot follows the
-primary-display rule in the pilot's guide for a PFD failure; the engine's autopilot does not model that
-disconnect.
+As on the real unit (pilot's guide, appendix F), a failed or unpowered display makes the surviving one
+present the PFD and the engine page **in split-screen**, and it returns to its chosen page when the other
+display returns. The backup setting forces the same on the screen that is not showing a PFD. The
+autopilot follows the guide's rule: if the primary flight display is lost the autopilot disconnects, once
+(it can be engaged again, with basic modes available, but the flight director is gone, so the command bars
+are not drawn); if the multi-function display is lost the autopilot carries on. The primary display is the
+one whose default page is a PFD for the pilot's seat, and the rule runs every simulation step in
+`Session::apply_display_loss_rules`. The guide's REV and VFR annunciations for a lost external GPS
+navigator do not apply: the engine has only the internal navigator.
 
 ### Skin packs
 
 A skin pack is artwork for a display model, shipped apart from the engine and from aircraft packs. It is a
 directory with a `skin.json` manifest (`kind: skin_pack`, `format_version`, `id`, `version`,
 `display_name`, SPDX `licence`, `display_model`), an optional palette (bezel, trim, key face and text, knob,
-knob mark, screen surround; key text needs 4.5:1 contrast on the key face), up to eight short key labels,
-and up to 16 declared font assets with their own licences. It carries no behaviour.
+knob mark, screen surround; key text needs 4.5:1 contrast on the key face), an optional `instruments`
+section (below), up to eight short key labels, and up to 16 declared font assets with their own licences.
+It carries no behaviour and no geometry.
+
+The `instruments` section styles the PFD's faces. `palette` may set `sky`, `ground`, `tape_fill`,
+`tape_text`, `box_fill`, `box_border`, `box_text`, and the six meaning colours `white`, `cyan`, `magenta`,
+`green`, `yellow`, `red`. The meaning colours must stay in their hue family (cyan 170 to 205 degrees,
+magenta 280 to 335, green 90 to 160, yellow 40 to 66, red 345 to 14, white near white) and keep 3:1 against
+the box fill; tape and box text need 4.5:1 against their fill. `typography` sets multipliers (0.7 to 1.4)
+for the tape numbers, box text, data bar text, and mode annunciations. Tape fills draw translucent over the
+attitude display. Any field left out keeps the built-in value, which already follows the guide's colour
+meanings; a skin that breaks a rule is reported and skipped whole, and the display shows the built-in skin.
 
 - **Limits.** Manifest 64 KiB; one font 4 MiB; a pack 8 MiB; at most 32 packs; portable relative paths only
   (no `..`, hidden names, or symlinks). A bad pack is reported and skipped, never fatal. Fonts are parsed
@@ -326,18 +452,38 @@ and up to 16 declared font assets with their own licences. It carries no behavio
   older per-installation `EquipmentSkin` painter hook (`Registry::register_equipment_skin`) remains for
   painters that replace a whole installation's artwork.
 
-The public skin is in the shared skins repository: bezel and key colours, labels, and an open-licensed
-font. Instrument faces (tapes, attitude, HSI, map) are drawn by the engine from FAA display conventions
-for every skin.
+The public skin is in the shared skins repository: bezel and key colours, labels, an open-licensed font, and
+an instrument palette and typography that make the colour meanings explicit. The map and the placement of
+everything are the engine's for every skin.
 
-### Not yet matched
+### Matched, and not yet matched
 
-The model is not a screen-for-screen copy. Known differences: the PFD's exact element placement, scales and
-colour fills follow FAA conventions rather than the guide's figures; the data bar fields are the engine's;
-the baro, heading, altitude, and course touch-entry keypads, COM/NAV/transponder tuning windows on the
-display, the Select Page menu, nearest sub-pages (VOR, NDB, intersection, airspace), flight-plan editing
-by touch, and the AFCS status box on the PFD are not drawn; the inset set and the 23-step range ladder are
-reduced; outer bezel dimensions and control positions are estimates.
+The model is not a screen-for-screen copy. **Matched** (from the guide's figures and text): the full-screen
+and split-screen PFD arrangement and colour meanings, the AFCS status box and flight director bars, the data
+bar and status bar, the touch entry keypads (baro, heading, altitude, course, direct-to) with their
+shortcuts, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
+flight director bug knob and course-sync push, the Select Page menu, the VOR, NDB, intersection, and
+airspace nearest pages, and reversion with the autopilot rule.
+
+**Remaining gaps**, honestly:
+
+- The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
+  positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
+- The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
+- Minimum safe altitude and vertical speed required (data bar), the flight timer and clock, the flap and
+  trim indicators, the CAS message window, baro minimums, VNAV and its indicator, the second bearing
+  pointer, the G meter, and the Vspeed bugs' configuration page are not modelled; the airspeed Vspeed
+  letters show only R, X, and Y.
+- Touching the AFCS box (autopilot controls on the display), the selected-altitude and selected-heading
+  bugs' "Set to Current" on the tapes themselves, PFD options beyond synthetic vision, and the pitch offset
+  are not drawn.
+- Flight director altitude-hold reference stepping (needs a hold-altitude autopilot setting).
+- COM monitor, volume, squelch, 8.33 kHz entry, COM2 and NAV2, the audio panel and intercom windows,
+  transponder ident.
+- Nearest pages for weather, user waypoints, cities, centres, flight service stations, and visual
+  reporting points; flight-plan editing by touch; weather, charts, checklists, and video pages.
+- Synthetic vision shows the existing engine view; the guide's pathway boxes are not drawn.
+- The round-gauge PFD presentation, and the guide's inset window set beyond what a pack lists.
 
 ## Commands and controls
 

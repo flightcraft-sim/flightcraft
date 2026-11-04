@@ -319,17 +319,30 @@ impl PanelUi {
                                     &e.id,
                                     d,
                                     &style,
-                                    crate::efis::Shared {
+                                    &crate::efis::Shared {
                                         backup: glass.touch.manual_reversion,
                                         traffic_shown: glass.settings.traffic_shown,
                                         track_up: glass.settings.orientation
                                             != flightcraft_sim::avionics::glass::MapOrientation::NorthUp,
+                                        pressure_hpa: glass.settings.pressure_hpa,
+                                        range_nm: glass.settings.range_nm,
+                                        com_active_khz: glass.comms.com1.active_khz,
+                                        com_standby_khz: glass.comms.com1.standby_khz,
+                                        nav_active_khz: glass
+                                            .touch
+                                            .navigator
+                                            .as_ref()
+                                            .map(|n| n.nav_active_khz),
+                                        nav_standby_khz: glass
+                                            .touch
+                                            .navigator
+                                            .as_ref()
+                                            .map(|n| n.nav_standby_khz),
+                                        xpdr_code: glass.settings.transponder_code.clone(),
+                                        xpdr_mode: glass.settings.transponder_mode,
                                     },
                                     &mut out,
                                 );
-                                if d.reversion {
-                                    text(ui, part(screen, 0.2, 0., 0.6, 0.06), "REVERSION", font, t::AMBER);
-                                }
                                 self.commands.extend(out.equipment);
                                 self.avionics.extend(
                                     out.glass

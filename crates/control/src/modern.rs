@@ -1,7 +1,9 @@
 //! Touch navigator and display behaviour. Navigation is owned by the session's single GPS.
 use crate::touch_efis::{self, EfisConfig, EfisKey, KeyState, Knob, KnobRole, Overlay, PushEffect, Ring};
+use crate::touch_entry::{self, Entry, EntryShortcut, EntryTarget};
 use crate::{Command, CommandError, GlassSetting, Session, invalid};
 use flightcraft_aero::display_model::DisplayModel;
+use flightcraft_aero::modern::NearestPage;
 use flightcraft_aero::modern::{DataArea, MfdPage, PanelElement, PilotSeat, TouchLayout};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -85,6 +87,9 @@ pub struct TouchDisplayState {
     /// A menu or keypad shown over the display.
     #[serde(default)]
     pub overlay: Overlay,
+    /// The nearest page shown when the MFD page is the nearest group.
+    #[serde(default)]
+    pub nearest_page: NearestPage,
     /// While set and later than the host's clock, the knobs have swapped main and alternate roles.
     #[serde(default)]
     pub knob_toggle_until_s: Option<f64>,
@@ -147,6 +152,7 @@ pub(crate) struct DisplayRuntime {
     pub failed: bool,
     pub synthetic_vision: bool,
     pub overlay: Overlay,
+    pub nearest: NearestPage,
     pub toggle_until_s: Option<f64>,
     pub previous: Option<(TouchLayout, MfdPage)>,
 }
@@ -156,6 +162,9 @@ pub(crate) struct TouchAvionics {
     pub navigator: NavigatorState,
     pub displays: BTreeMap<String, DisplayRuntime>,
     pub manual_reversion: bool,
+    /// The primary flight display was lost at the last check, so the autopilot has already been
+    /// disconnected for it.
+    pub primary_lost: bool,
 }
 #[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -255,6 +264,39 @@ pub enum DisplayAction {
     /// Enter a waypoint for direct-to, as the DIRECT key's keypad does.
     DirectTo {
         query: String,
+    },
+    /// Touch a PFD box or the page bar: open its keypad, radio or transponder window, or the
+    /// Select Page menu.
+    OpenOverlay {
+        overlay: Overlay,
+    },
+    /// Touch Enter on a keypad: parse the text for the target and apply it to the shared setting.
+    Enter {
+        target: EntryTarget,
+        #[schemars(length(max = 16))]
+        text: String,
+    },
+    /// Touch a keypad's shortcut button: Set To Current, Set To Standard, or Set For Field.
+    Shortcut {
+        target: EntryTarget,
+        shortcut: EntryShortcut,
+    },
+    /// Choose a page of the nearest group.
+    NearestPage {
+        page: NearestPage,
+    },
+    /// Touch XFER in the COM or NAV window: swap active and standby.
+    Transfer {
+        band: RadioBand,
+    },
+    /// Touch a mode key in the transponder window.
+    TransponderMode {
+        mode: flightcraft_sim::avionics::glass::TransponderMode,
+    },
+    /// Touch the map's zoom buttons: positive zooms in by that many steps of the range ladder.
+    MapZoom {
+        #[schemars(range(min = -30, max = 30))]
+        steps: i32,
     },
 }
 #[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
@@ -358,6 +400,7 @@ impl Session {
                         reversion: false,
                         mfd_page: MfdPage::default(),
                         overlay: runtime.map_or(Overlay::None, |r| r.overlay),
+                        nearest_page: runtime.map_or_else(NearestPage::default, |r| r.nearest),
                         knob_toggle_until_s: runtime.and_then(|r| r.toggle_until_s),
                         knobs: EfisConfig::default(),
                         model: e.appearance.bezel.as_ref().and_then(|b| b.model),
@@ -447,7 +490,7 @@ impl Session {
         role: KnobRole,
         detents: i32,
         d: &TouchDisplayState,
-    ) -> Result<Option<KeyState>, CommandError> {
+    ) -> Result<KnobOutcome, CommandError> {
         use crate::GlassSetting as G;
         match role {
             KnobRole::HeadingBug => self.sim.set_avionics(crate::AvionicsSetting::HeadingBugStep {
@@ -474,6 +517,13 @@ impl Session {
                 let range = touch_efis::step_range(self.glass.range_nm, detents, false);
                 self.set_glass(G::MapRange { range_nm: range })?;
             }
+            KnobRole::MfdPage if touch_efis::effective_page(d.layout, d.mfd_page) == MfdPage::Nearest => {
+                // The nearest group has its own pages, which the large knob steps through.
+                return Ok(KnobOutcome::Nearest(touch_efis::step_nearest(
+                    d.nearest_page,
+                    detents,
+                )));
+            }
             KnobRole::MfdPage => {
                 let current = touch_efis::effective_page(d.layout, d.mfd_page);
                 let page = touch_efis::step_page(current, detents);
@@ -486,12 +536,19 @@ impl Session {
                 };
                 let mut next = touch_efis::show_page(state, page);
                 next.previous = None;
-                return Ok(Some(next));
+                return Ok(KnobOutcome::Page(next));
             }
-            // The engine has no flight director pitch bug to move.
-            KnobRole::FlightDirectorBug => {}
+            KnobRole::FlightDirectorBug => {
+                if let Some(setting) = self
+                    .sim
+                    .installed_autopilot()
+                    .and_then(|s| crate::touch_pfd::fd_bug_step(s, detents))
+                {
+                    self.sim.set_autopilot_panel(setting)?;
+                }
+            }
         }
-        Ok(None)
+        Ok(KnobOutcome::None)
     }
     pub(crate) fn reset_touch_generation(&mut self) {
         if self.touch.generation != self.flight_generation {
@@ -627,6 +684,7 @@ impl Session {
                     failed: d.failed,
                     synthetic_vision: d.synthetic_vision,
                     overlay: d.overlay,
+                    nearest: d.nearest_page,
                     toggle_until_s: d.knob_toggle_until_s,
                     previous: self.touch.displays.get(&id).and_then(|r| r.previous),
                 };
@@ -661,23 +719,17 @@ impl Session {
                             return Err(invalid(NAME, "at most 100 knob detents"));
                         }
                         let toggled = runtime.toggle_until_s.is_some_and(|t| time_s < t);
-                        let mode = if d.reversion {
-                            touch_efis::ScreenMode::FullPfd
-                        } else {
-                            touch_efis::ScreenMode::of(d.layout)
-                        };
+                        let mode = knob_mode(&d);
                         let role = touch_efis::knob_role(mode, d.knobs, knob, ring, toggled);
-                        if let Some(next) = self.apply_knob_role(role, detents, &d)? {
-                            self.apply_key_state(&id, &d, &mut runtime, next);
+                        match self.apply_knob_role(role, detents, &d)? {
+                            KnobOutcome::Page(next) => self.apply_key_state(&id, &d, &mut runtime, next),
+                            KnobOutcome::Nearest(page) => runtime.nearest = page,
+                            KnobOutcome::None => {}
                         }
                     }
                     DisplayAction::KnobPush { knob, time_s } => {
                         let toggled = runtime.toggle_until_s.is_some_and(|t| time_s < t);
-                        let mode = if d.reversion {
-                            touch_efis::ScreenMode::FullPfd
-                        } else {
-                            touch_efis::ScreenMode::of(d.layout)
-                        };
+                        let mode = knob_mode(&d);
                         match touch_efis::knob_push(mode, d.knobs, knob, toggled) {
                             PushEffect::ToggleFunctions => {
                                 runtime.toggle_until_s =
@@ -686,10 +738,15 @@ impl Session {
                             PushEffect::SyncHeading => {
                                 self.sim.set_avionics(crate::AvionicsSetting::HeadingBugSync {})?;
                             }
-                            PushEffect::SyncCourse
-                            | PushEffect::SyncFlightDirector
-                            | PushEffect::CentreMap
-                            | PushEffect::None => {}
+                            PushEffect::SyncCourse => self.sync_course()?,
+                            PushEffect::SyncFlightDirector => {
+                                let pitch = self.sim.readout().pitch_rad;
+                                if self.sim.installed_autopilot().is_some() {
+                                    self.sim
+                                        .set_autopilot_panel(crate::touch_pfd::fd_bug_sync(pitch))?;
+                                }
+                            }
+                            PushEffect::CentreMap | PushEffect::None => {}
                         }
                     }
                     DisplayAction::Knobs { config } => {
@@ -722,6 +779,50 @@ impl Session {
                     DisplayAction::DirectTo { query } => {
                         self.navigator_plan(vec![query])?;
                         runtime.overlay = Overlay::None;
+                    }
+                    DisplayAction::OpenOverlay { overlay } => {
+                        let allowed = overlay.entry_target().is_some()
+                            || matches!(overlay, Overlay::SelectPage | Overlay::PfdOptions);
+                        if !allowed {
+                            return Err(invalid(NAME, "that overlay opens with a key, not by touch"));
+                        }
+                        runtime.overlay = overlay;
+                    }
+                    DisplayAction::Enter { target, text } => {
+                        let entry = touch_entry::parse(target, self.glass.pressure_hpa, &text)
+                            .map_err(|e| invalid(NAME, e.to_string()))?;
+                        self.apply_entry(entry)?;
+                        runtime.overlay = Overlay::None;
+                    }
+                    DisplayAction::Shortcut { target, shortcut } => {
+                        if !EntryShortcut::offered(target).contains(&shortcut) {
+                            return Err(invalid(NAME, "that shortcut is not offered for this entry"));
+                        }
+                        self.apply_shortcut(target, shortcut)?;
+                        runtime.overlay = Overlay::None;
+                    }
+                    DisplayAction::NearestPage { page } => runtime.nearest = page,
+                    DisplayAction::Transfer { band } => {
+                        match band {
+                            RadioBand::Com => {
+                                self.run(crate::CommsTune {
+                                    radio: 1,
+                                    swap: true,
+                                    ..Default::default()
+                                })?;
+                            }
+                            RadioBand::Nav => self.sim.set_avionics(crate::AvionicsSetting::NavRadio {
+                                setting: flightcraft_sim::avionics::radio::RadioSetting::Swap { radio: 1 },
+                            })?,
+                        };
+                    }
+                    DisplayAction::TransponderMode { mode } => {
+                        let code = self.glass.transponder_code.clone();
+                        self.set_glass(GlassSetting::Transponder { code, mode })?;
+                    }
+                    DisplayAction::MapZoom { steps } => {
+                        let range = touch_efis::step_range(self.map.range_nm, steps, false);
+                        self.set_glass(GlassSetting::MapRange { range_nm: range })?;
                     }
                     DisplayAction::DataArea { area } => {
                         let variant = self.callsign_variant().to_owned();
@@ -911,6 +1012,153 @@ impl Session {
             }
         }
         Ok(())
+    }
+}
+/// What a knob event means on this display: a reverted display is a split screen.
+fn knob_mode(d: &TouchDisplayState) -> touch_efis::ScreenMode {
+    if d.reversion {
+        touch_efis::ScreenMode::Split
+    } else {
+        touch_efis::ScreenMode::of(d.layout)
+    }
+}
+/// What a knob turn changed besides a shared setting.
+enum KnobOutcome {
+    None,
+    Page(KeyState),
+    Nearest(NearestPage),
+}
+impl Session {
+    /// Apply a parsed keypad entry to the shared settings, as the display's own controls do.
+    fn apply_entry(&mut self, entry: Entry) -> Result<(), CommandError> {
+        use crate::GlassSetting as G;
+        match entry {
+            Entry::Baro { pressure_pa } => self.set_glass(G::Baro { pressure_pa }),
+            Entry::Heading { rad } => self.set_glass(G::HeadingBug { heading_rad: rad }),
+            Entry::Altitude { m } => self.set_glass(G::SelectedAltitude { altitude_m: m }),
+            Entry::Course { rad } => self.set_glass(G::Course { course_rad: rad }),
+            Entry::DirectTo { ident } => self.navigator_plan(vec![ident]),
+            Entry::ComStandby { khz } => self
+                .run(crate::CommsTune {
+                    radio: 1,
+                    standby: true,
+                    channel_khz: Some(khz),
+                    ..Default::default()
+                })
+                .map(|_| ()),
+            Entry::NavStandby { khz } => {
+                self.sim.set_avionics(crate::AvionicsSetting::NavRadio {
+                    setting: flightcraft_sim::avionics::radio::RadioSetting::Standby {
+                        radio: 1,
+                        frequency_hz: khz * 1000,
+                    },
+                })?;
+                Ok(())
+            }
+            Entry::Transponder { code } => {
+                let mode = self.glass.transponder_mode;
+                self.set_glass(G::Transponder { code, mode })
+            }
+        }
+    }
+    /// The shortcut buttons: Set To Current, Set To Standard, Set For Field.
+    fn apply_shortcut(&mut self, target: EntryTarget, shortcut: EntryShortcut) -> Result<(), CommandError> {
+        use crate::GlassSetting as G;
+        match (target, shortcut) {
+            (EntryTarget::Heading, EntryShortcut::SetToCurrent) => {
+                self.sim.set_avionics(crate::AvionicsSetting::HeadingBugSync {})?;
+                Ok(())
+            }
+            (EntryTarget::Altitude, EntryShortcut::SetToCurrent) => {
+                let m = touch_entry::current_altitude_m(self.sim.glass_computers().primary.altitude_msl_m);
+                self.set_glass(G::SelectedAltitude { altitude_m: m })
+            }
+            (EntryTarget::Course, EntryShortcut::SetToCurrent) => self.sync_course(),
+            (EntryTarget::Baro, EntryShortcut::SetToStandard) => self.set_glass(G::Baro {
+                pressure_pa: touch_entry::STANDARD_PRESSURE_PA,
+            }),
+            (EntryTarget::Baro, EntryShortcut::SetForField) => {
+                let pa = touch_entry::pressure_for_field(
+                    self.sim.systems().static_pressure_pa,
+                    self.sim.readout().altitude_msl_m,
+                )
+                .clamp(80000., 110000.);
+                self.set_glass(G::Baro { pressure_pa: pa })
+            }
+            _ => Err(invalid(
+                "equipment.set",
+                "that shortcut is not offered for this entry",
+            )),
+        }
+    }
+    /// A course-knob push, and Set To Current on the course keypad: the active leg's desired
+    /// track, else the current heading.
+    fn sync_course(&mut self) -> Result<(), CommandError> {
+        let state = self.glass_state();
+        let heading = state.air_data.heading_rad;
+        let rad = crate::touch_pfd::course_sync_target(state.gps.valid, state.gps.desired_track_rad, heading);
+        self.set_glass(GlassSetting::Course { course_rad: rad })
+    }
+    /// Each installed display's role and health, cheap enough to read every simulation step.
+    fn display_health(&self) -> Vec<crate::touch_pfd::DisplayHealth> {
+        let Some(p) = self
+            .aircraft_configuration()
+            .and_then(|c| c.panel.equipment.as_ref())
+        else {
+            return Vec::new();
+        };
+        let current = self.touch.generation == self.flight_generation;
+        let mut displays: Vec<(TouchLayout, bool)> = Vec::new();
+        for e in &p.elements {
+            if let PanelElement::TouchDisplay {
+                load,
+                layout,
+                default_page,
+                ..
+            } = &e.element
+            {
+                let failed = current && self.touch.displays.get(&e.id).is_some_and(|r| r.failed);
+                let powered = self
+                    .sim
+                    .systems()
+                    .electrical
+                    .loads
+                    .iter()
+                    .any(|l| &l.id == load && l.powered);
+                displays.push((default_page.unwrap_or(*layout), failed || !powered));
+            }
+        }
+        // A right-seat pilot of a two-screen installation has the two defaults exchanged.
+        let seat = self
+            .display_prefs
+            .get(self.callsign_variant())
+            .map_or(PilotSeat::Left, |p| p.seat);
+        if seat == PilotSeat::Right
+            && let [a, b] = displays.as_mut_slice()
+        {
+            std::mem::swap(&mut a.0, &mut b.0);
+        }
+        displays
+            .into_iter()
+            .map(|(page, lost)| crate::touch_pfd::DisplayHealth {
+                primary_pfd: page.is_pfd(),
+                lost,
+            })
+            .collect()
+    }
+    /// A lost primary flight display disconnects the autopilot once, as the unit's reversionary
+    /// mode does; a lost multi-function display does not. The autopilot can be engaged again.
+    pub(crate) fn apply_display_loss_rules(&mut self) {
+        let lost = crate::touch_pfd::primary_display_lost(&self.display_health());
+        if lost != self.touch.primary_lost {
+            self.reset_touch_generation();
+            self.touch.primary_lost = lost;
+            if lost && self.sim.installed_autopilot().is_some_and(|a| a.engaged) {
+                let _ = self
+                    .sim
+                    .set_autopilot_panel(flightcraft_sim::equipment::PanelSetting::Disconnect);
+            }
+        }
     }
 }
 fn radio_range(band: RadioBand) -> (u32, u32, u32) {

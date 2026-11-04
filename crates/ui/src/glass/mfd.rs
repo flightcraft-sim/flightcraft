@@ -136,6 +136,67 @@ pub(super) fn table(d: &mut DrawList, s: &GlassState, kind: ListKind, cx: f32, t
         );
     }
 }
+/// A page of the nearest group other than airports: VORs, NDBs, intersections, or airspace, each
+/// with the unit's empty-list text.
+pub(super) fn nearest_table(
+    d: &mut DrawList,
+    s: &GlassState,
+    page: flightcraft_aero::modern::NearestPage,
+    cx: f32,
+    top: f32,
+    unit: f32,
+) {
+    use flightcraft_aero::modern::NearestPage as P;
+    use flightcraft_control::touch_nearest as near;
+    label(d, [cx, top], page.label().to_uppercase(), 14. * unit, Ink::Text);
+    let (heading, rows): (&str, Vec<String>) = match page {
+        P::Airports => ("AIRPORT      NM     BRG    ETE", Vec::new()),
+        P::Vors => (
+            "VOR     BRG    NM      FREQ",
+            s.nearest_vors
+                .iter()
+                .map(|f| near::facility_row(page, f))
+                .collect(),
+        ),
+        P::Ndbs => (
+            "NDB     BRG    NM      FREQ",
+            s.nearest_ndbs
+                .iter()
+                .map(|f| near::facility_row(page, f))
+                .collect(),
+        ),
+        P::Intersections => (
+            "INT     BRG    NM",
+            s.nearest_intersections
+                .iter()
+                .map(|f| near::facility_row(page, f))
+                .collect(),
+        ),
+        P::Airspace => (
+            "AIRSPACE              STATUS",
+            s.nearest_airspace.iter().map(near::airspace_row).collect(),
+        ),
+    };
+    label(d, [cx, top + 26. * unit], heading, 11. * unit, Ink::Muted);
+    if rows.is_empty() {
+        label(
+            d,
+            [cx, top + 60. * unit],
+            page.empty_text(),
+            12. * unit,
+            Ink::Muted,
+        );
+    }
+    for (i, text) in rows.into_iter().take(10).enumerate() {
+        label(
+            d,
+            [cx, top + (54. + i as f32 * 29.) * unit],
+            text,
+            12. * unit,
+            Ink::Text,
+        );
+    }
+}
 fn map(d: &mut DrawList, s: &GlassState) {
     // Equal horizontal and vertical scales preserve range rings; clip to the full content area.
     let point = |[x, y]: [f64; 2]| [110. + x as f32 * 390., 9. + y as f32 * 390.];

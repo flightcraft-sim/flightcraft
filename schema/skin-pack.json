@@ -35,6 +35,33 @@
     "id": {
       "type": "string"
     },
+    "instruments": {
+      "description": "Instrument-face palette and typography (tapes, boxes, colour meanings, type sizes).",
+      "$ref": "#/$defs/InstrumentStyle",
+      "default": {
+        "palette": {
+          "box_border": null,
+          "box_fill": null,
+          "box_text": null,
+          "cyan": null,
+          "green": null,
+          "ground": null,
+          "magenta": null,
+          "red": null,
+          "sky": null,
+          "tape_fill": null,
+          "tape_text": null,
+          "white": null,
+          "yellow": null
+        },
+        "typography": {
+          "annunciation_text": null,
+          "box_text": null,
+          "data_bar_text": null,
+          "tape_text": null
+        }
+      }
+    },
     "kind": {
       "type": "string"
     },
@@ -86,6 +113,235 @@
           "const": "landscape_touch_efis"
         }
       ]
+    },
+    "InstrumentPalette": {
+      "description": "Colours for the instrument faces (tapes, boxes, attitude, compass). Every field is optional;\nomission keeps the built-in value. The colour fields that carry a meaning must keep it: the\nmanifest is rejected if a meaning colour has the wrong hue family.",
+      "type": "object",
+      "properties": {
+        "box_border": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "box_fill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "box_text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cyan": {
+          "description": "Selected values and their bugs: heading, altitude, and the cyan family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "green": {
+          "description": "Active modes and a valid VOR or localizer: the green family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ground": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "magenta": {
+          "description": "Trend vectors, flight director bars, and GPS course guidance: the magenta family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "red": {
+          "description": "Warnings and failure flags: the red family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sky": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tape_fill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tape_text": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "white": {
+          "description": "Scale marks, armed modes, and unselected values. Must be near white.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "yellow": {
+          "description": "Cautions and the aircraft symbol: the yellow family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SrgbHex"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstrumentStyle": {
+      "description": "Instrument-face style: palette and typography. No geometry: placement belongs to the model.",
+      "type": "object",
+      "properties": {
+        "palette": {
+          "$ref": "#/$defs/InstrumentPalette",
+          "default": {
+            "box_border": null,
+            "box_fill": null,
+            "box_text": null,
+            "cyan": null,
+            "green": null,
+            "ground": null,
+            "magenta": null,
+            "red": null,
+            "sky": null,
+            "tape_fill": null,
+            "tape_text": null,
+            "white": null,
+            "yellow": null
+          }
+        },
+        "typography": {
+          "$ref": "#/$defs/InstrumentTypography",
+          "default": {
+            "annunciation_text": null,
+            "box_text": null,
+            "data_bar_text": null,
+            "tape_text": null
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstrumentTypography": {
+      "description": "Type size multipliers for the instrument faces, each 0.7 to 1.4. Omission keeps 1.0.",
+      "type": "object",
+      "properties": {
+        "annunciation_text": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        },
+        "box_text": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        },
+        "data_bar_text": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        },
+        "tape_text": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "default": null
+        }
+      },
+      "additionalProperties": false
     },
     "SkinAsset": {
       "type": "object",

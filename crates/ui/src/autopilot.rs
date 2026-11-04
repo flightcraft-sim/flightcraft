@@ -173,6 +173,7 @@ pub fn mode_strip(ui: &mut egui::Ui, s: &EquipmentState) {
             id: "original".into(),
             colors: Vec::new(),
             face: Vec::new(),
+            rgb: Vec::new(),
         }
         .paint(p, &draw);
     });
