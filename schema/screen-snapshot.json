@@ -128,6 +128,14 @@
     "systems": {
       "$ref": "#/$defs/SystemsState"
     },
+    "traffic": {
+      "description": "The traffic display list, nearest first and at most [`MAX_SNAPSHOT_TRAFFIC`] aircraft, with each\ncontroller highlight already applied. A remote screen has no fleet, so this is its only source.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/TrafficTarget"
+      }
+    },
     "version": {
       "type": "integer",
       "format": "uint32",
@@ -11178,6 +11186,20 @@
         }
       ]
     },
+    "TrafficOrigin": {
+      "oneOf": [
+        {
+          "description": "Busy-airspace traffic controlled by the tower and approach rules.",
+          "type": "string",
+          "const": "fleet"
+        },
+        {
+          "description": "A circuit aircraft started by `traffic.set`.",
+          "type": "string",
+          "const": "circuit"
+        }
+      ]
+    },
     "TrafficState": {
       "type": "object",
       "properties": {
@@ -11202,6 +11224,194 @@
       },
       "required": [
         "aircraft"
+      ]
+    },
+    "TrafficTarget": {
+      "description": "One other aircraft as the displays see it, from either traffic source.",
+      "type": "object",
+      "properties": {
+        "address": {
+          "description": "Stable 24-bit address: `FLEET_ADDRESS_BASE + id` for the fleet. Also the GDL 90 address.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "aircraft_type": {
+          "type": "string"
+        },
+        "altitude_msl_ft": {
+          "type": "number",
+          "format": "double"
+        },
+        "assigned_altitude_ft": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "assigned_heading_deg": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "assigned_speed_kt": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        },
+        "bearing_true_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "callsign": {
+          "description": "Spoken, such as `Cessna Four Two Seven Kilo Papa`.",
+          "type": "string"
+        },
+        "class": {
+          "$ref": "#/$defs/TrafficClass"
+        },
+        "closing": {
+          "description": "The aircraft is on course to pass the user inside the alert volume soon.",
+          "type": "boolean"
+        },
+        "facility": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fleet_id": {
+          "description": "The fleet aircraft id that comms events carry (`target_aircraft`); none for circuit traffic.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "frequency_khz": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "ground_speed_kt": {
+          "type": "number",
+          "format": "double"
+        },
+        "highlight_remaining_s": {
+          "type": "number",
+          "format": "double"
+        },
+        "highlighted": {
+          "description": "A recent controller call named this aircraft.",
+          "type": "boolean"
+        },
+        "intent": {
+          "description": "Flow and phase, such as `arrival: final approach`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "latitude_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "longitude_deg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "on_ground": {
+          "type": "boolean"
+        },
+        "origin": {
+          "$ref": "#/$defs/TrafficOrigin"
+        },
+        "position_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "range_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "registration": {
+          "description": "Written, such as `N427KP`.",
+          "type": "string"
+        },
+        "relative_altitude_ft": {
+          "description": "Traffic minus the aircraft, feet.",
+          "type": "number",
+          "format": "double"
+        },
+        "squawk": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "track_grid_rad": {
+          "description": "Heading in the region's grid frame, for placing the symbol on a projected chart.",
+          "type": "number",
+          "format": "double"
+        },
+        "track_true_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "type_designator": {
+          "type": "string"
+        },
+        "vertical_rate_fpm": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "address",
+        "origin",
+        "callsign",
+        "registration",
+        "aircraft_type",
+        "type_designator",
+        "position_m",
+        "altitude_msl_ft",
+        "track_true_deg",
+        "track_grid_rad",
+        "ground_speed_kt",
+        "vertical_rate_fpm",
+        "on_ground",
+        "range_nm",
+        "bearing_true_deg",
+        "relative_altitude_ft",
+        "class",
+        "closing",
+        "highlighted",
+        "highlight_remaining_s"
       ]
     },
     "Transmission": {

@@ -296,3 +296,62 @@ fn equipment_gates_the_traffic_receiver() {
     assert!(glass.adsb_in_installed());
     assert!(glass.glass_state().traffic_installed);
 }
+
+#[test]
+fn a_remote_screen_snapshot_carries_the_busy_fleet_and_its_highlight() {
+    let mut owner = busy_session();
+    let named = owner
+        .traffic_targets()
+        .into_iter()
+        .find(|t| t.origin == TrafficOrigin::Fleet)
+        .unwrap();
+    let event = call(
+        &owner,
+        follow(&named.callsign, PatternEntry::LeftBase),
+        Reception::Heard,
+    );
+    owner.comms.record.events.push(event);
+    let snapshot = owner.screen_snapshot();
+    assert!(!snapshot.traffic.is_empty());
+    assert!(snapshot.traffic.len() <= flightcraft_control::presentation::MAX_SNAPSHOT_TRAFFIC);
+    assert!(
+        snapshot
+            .traffic
+            .windows(2)
+            .all(|w| w[0].range_nm <= w[1].range_nm)
+    );
+    let wire = serde_json::to_string(&snapshot).unwrap();
+    let mut remote = atc_session("KABE");
+    assert!(remote.traffic_targets().is_empty());
+    remote
+        .apply_screen_snapshot(serde_json::from_str(&wire).unwrap())
+        .unwrap();
+    let seen = remote.traffic_targets();
+    assert_eq!(
+        seen.iter().map(|t| t.address).collect::<Vec<_>>(),
+        snapshot.traffic.iter().map(|t| t.address).collect::<Vec<_>>()
+    );
+    let lit: Vec<u32> = seen.iter().filter(|t| t.highlighted).map(|t| t.address).collect();
+    assert_eq!(lit, vec![named.address]);
+}
+
+#[test]
+fn snapshot_traffic_is_capped_to_the_nearest_targets() {
+    let s = busy_session();
+    let all = s.traffic_targets();
+    let snapshot = s.screen_snapshot();
+    let cap = flightcraft_control::presentation::MAX_SNAPSHOT_TRAFFIC;
+    assert_eq!(snapshot.traffic.len(), all.len().min(cap));
+    // A hostile snapshot cannot grow a remote screen's list past the cap.
+    let mut big = s.screen_snapshot();
+    let template = big.traffic[0].clone();
+    big.traffic = (0..100)
+        .map(|i| TrafficTarget {
+            address: i,
+            ..template.clone()
+        })
+        .collect();
+    let mut remote = atc_session("KABE");
+    remote.apply_screen_snapshot(big).unwrap();
+    assert_eq!(remote.traffic_targets().len(), cap);
+}

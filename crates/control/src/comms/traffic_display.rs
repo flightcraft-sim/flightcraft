@@ -386,6 +386,10 @@ impl Session {
 
     /// Every other aircraft, nearest first, with its symbol class and any controller highlight.
     pub fn traffic_targets(&self) -> Vec<TrafficTarget> {
+        // A remote screen has no fleet: it shows the list its owner sent in the snapshot.
+        if let Some(targets) = &self.presentation_traffic {
+            return targets.clone();
+        }
         let [pn, pe, pd] = self.sim.state().position_m;
         let [vn, ve, vd] = self.sim.state().velocity_mps;
         let grid_north = self.sim.heading_reference().grid_north_true_rad;

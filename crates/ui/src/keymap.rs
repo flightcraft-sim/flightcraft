@@ -77,10 +77,12 @@ pub enum Action {
     GlassAltitudeDown,
     GlassCourseLeft,
     GlassCourseRight,
+    GlassTraffic,
+    GlassTrafficFilter,
 }
 
 impl Action {
-    pub const ALL: [Self; 71] = [
+    pub const ALL: [Self; 73] = [
         Self::CrewHandover,
         Self::RadioTransmit,
         Self::ComPtt,
@@ -152,6 +154,8 @@ impl Action {
         Self::GlassAltitudeDown,
         Self::GlassCourseLeft,
         Self::GlassCourseRight,
+        Self::GlassTraffic,
+        Self::GlassTrafficFilter,
     ];
     /// Systems shortcuts are optional, and can be bound in the same persisted keymap.
     pub const SYSTEMS: [Self; 18] = [
@@ -200,7 +204,7 @@ impl Action {
         Self::StandbyDirectTo,
     ];
 
-    pub const GLASS: [Self; 10] = [
+    pub const GLASS: [Self; 12] = [
         Self::GlassRangeIn,
         Self::GlassRangeOut,
         Self::GlassPage,
@@ -209,6 +213,8 @@ impl Action {
         Self::GlassAltitudeDown,
         Self::GlassCourseLeft,
         Self::GlassCourseRight,
+        Self::GlassTraffic,
+        Self::GlassTrafficFilter,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
     ];
@@ -285,6 +291,8 @@ impl Action {
             Self::GlassAltitudeDown => "Glass selected altitude down",
             Self::GlassCourseLeft => "Glass course left",
             Self::GlassCourseRight => "Glass course right",
+            Self::GlassTraffic => "Glass traffic on / off (TFC)",
+            Self::GlassTrafficFilter => "Glass traffic altitude filter (FLT)",
         }
     }
 }
@@ -553,6 +561,28 @@ mod tests {
             .gamepad_bindings
             .insert(Action::LookLeft, vec![Button::DPadLeft]);
         assert!(Keymap::from_json(&upgraded.json().expect("serialize")).is_err());
+    }
+
+    #[test]
+    fn glass_traffic_actions_are_bindable_and_old_maps_gain_them() {
+        let mut map = Keymap::default();
+        for action in [Action::GlassTraffic, Action::GlassTrafficFilter] {
+            assert!(Action::ALL.contains(&action) && Action::GLASS.contains(&action));
+            assert_eq!(map.bindings.get(&action), Some(&vec![]));
+        }
+        map.bindings.insert(Action::GlassTraffic, vec![Key::G]);
+        map.bindings.insert(Action::GlassTrafficFilter, vec![Key::Z]);
+        assert_eq!(
+            Keymap::from_json(&map.json().expect("serialize")).expect("parse"),
+            map
+        );
+        let mut saved = serde_json::to_value(Keymap::default()).expect("serialize");
+        let bindings = saved["bindings"].as_object_mut().expect("bindings");
+        bindings.remove("GlassTraffic");
+        bindings.remove("GlassTrafficFilter");
+        let upgraded = Keymap::from_json(&saved.to_string()).expect("upgrade");
+        assert_eq!(upgraded.bindings.get(&Action::GlassTraffic), Some(&vec![]));
+        assert_eq!(upgraded.bindings.get(&Action::GlassTrafficFilter), Some(&vec![]));
     }
 
     #[test]

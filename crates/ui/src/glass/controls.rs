@@ -1,7 +1,7 @@
 use crate::keymap::Action;
 use eframe::egui;
 use flightcraft_control::{
-    BearingPointer, GlassPage, GlassSetting as S, GlassState, MapOrientation, TransponderMode,
+    BearingPointer, GlassPage, GlassSetting as S, GlassState, MapOrientation, TrafficFilter, TransponderMode,
 };
 #[derive(Default)]
 pub struct GlassControls {
@@ -247,6 +247,19 @@ pub fn shortcut(action: Action, s: &GlassState) -> Option<S> {
                 MapOrientation::NorthUp => MapOrientation::TrackUp,
                 MapOrientation::TrackUp => MapOrientation::HeadingUp,
                 MapOrientation::HeadingUp => MapOrientation::NorthUp,
+            },
+        },
+        Action::GlassTraffic => S::Traffic {
+            shown: !s.settings.traffic_shown,
+        },
+        Action::GlassTrafficFilter => S::TrafficFilter {
+            filter: {
+                let all = TrafficFilter::ALL;
+                let at = all
+                    .iter()
+                    .position(|f| *f == s.settings.traffic_filter)
+                    .unwrap_or(0);
+                all.get((at + 1) % all.len()).copied().unwrap_or_default()
             },
         },
         Action::HeadingBugLeft | Action::HeadingBugRight => S::HeadingBug {

@@ -329,14 +329,7 @@ mod tests {
         assert!(close(heading_up(&target(0., 10.), 90., 10.), [-1., 0.]));
     }
 
-    #[test]
-    fn page_lists_nearby_traffic_by_range() {
-        let mut s = atc_session("KABE");
-        s.execute("traffic.density", json!({"density":"busy","airport":"KABE"}))
-            .unwrap();
-        let targets = s.traffic_targets();
-        assert!(!targets.is_empty());
-        let mut page = TrafficPage::default();
+    fn render_text(page: &mut TrafficPage, s: &Session) -> Vec<String> {
         let ctx = egui::Context::default();
         crate::theme::install(&ctx);
         let mut text = Vec::new();
@@ -348,7 +341,7 @@ mod tests {
                     ..Default::default()
                 },
                 |ctx| {
-                    egui::CentralPanel::default().show(ctx, |ui| page.show(ui, &s));
+                    egui::CentralPanel::default().show(ctx, |ui| page.show(ui, s));
                 },
             );
             fn collect(shape: &egui::Shape, text: &mut Vec<String>) {
@@ -362,6 +355,9 @@ mod tests {
                 collect(&shape.shape, &mut text);
             }
         }
+        text
+    }
+    fn assert_rows_in_range_order(targets: &[TrafficTarget], text: &[String]) {
         // Unrestricted filter by default: every aircraft inside 9,900 ft is listed.
         let listed: Vec<&TrafficTarget> = targets
             .iter()
@@ -380,5 +376,44 @@ mod tests {
             .collect();
         assert!(order.windows(2).all(|w| w[0] <= w[1]), "{order:?}");
         assert!(text.iter().any(|t| t.contains("heading up")));
+    }
+
+    #[test]
+    fn page_lists_nearby_traffic_by_range() {
+        let mut s = atc_session("KABE");
+        s.execute("traffic.density", json!({"density":"busy","airport":"KABE"}))
+            .unwrap();
+        let targets = s.traffic_targets();
+        assert!(!targets.is_empty());
+        let text = render_text(&mut TrafficPage::default(), &s);
+        assert_rows_in_range_order(&targets, &text);
+    }
+
+    #[test]
+    fn a_paired_browser_screen_renders_the_same_rows_from_its_snapshot() {
+        let mut owner = atc_session("KABE");
+        owner
+            .execute("traffic.density", json!({"density":"busy","airport":"KABE"}))
+            .unwrap();
+        let snapshot = owner.screen_snapshot();
+        assert!(!snapshot.traffic.is_empty());
+        let wire = serde_json::to_string(&snapshot).unwrap();
+        // The remote copy has no fleet of its own: only the snapshot feeds the page.
+        let mut remote = atc_session("KABE");
+        assert!(remote.traffic_targets().is_empty());
+        remote
+            .apply_screen_snapshot(serde_json::from_str(&wire).unwrap())
+            .unwrap();
+        let targets = remote.traffic_targets();
+        assert_eq!(targets.len(), snapshot.traffic.len());
+        let text = render_text(&mut TrafficPage::default(), &remote);
+        assert_rows_in_range_order(&targets, &text);
+        let owner_text = render_text(&mut TrafficPage::default(), &owner);
+        for t in &targets {
+            assert_eq!(
+                text.iter().any(|x| x.starts_with(&t.registration)),
+                owner_text.iter().any(|x| x.starts_with(&t.registration))
+            );
+        }
     }
 }

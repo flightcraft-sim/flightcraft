@@ -46,6 +46,8 @@ beside it a table lists the traffic by range with bearing, relative altitude, gr
 speed, frequency, and intent. Hover or click an aircraft or row for the full card. The altitude filter
 buttons match the glass units. An aircraft the controller just named pulses magenta for about 20 s.
 It needs `traffic.density` or `traffic.set`; see [traffic](traffic.md#displays).
+A paired browser screen renders the same page from the snapshot, which carries the traffic list
+(nearest 32 aircraft, with the controller highlights); see [traffic](traffic.md#displays).
 
 ## Arrange panel pieces
 

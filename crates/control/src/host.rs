@@ -55,6 +55,7 @@ impl Session {
             presentation_glass: self.presentation_glass.clone(),
             presentation_comms: self.presentation_comms.clone(),
             presentation_atc: self.presentation_atc.clone(),
+            presentation_traffic: self.presentation_traffic.clone(),
             presentation_efb: Some(self.efb_status()),
             screens: self.screens.clone(),
             layout_undo: self.layout_undo.clone(),

@@ -34,7 +34,13 @@ pub struct Snapshot {
     pub screens: ScreenSet,
     #[serde(default)]
     pub crew: crate::CrewState,
+    /// The traffic display list, nearest first and at most [`MAX_SNAPSHOT_TRAFFIC`] aircraft, with each
+    /// controller highlight already applied. A remote screen has no fleet, so this is its only source.
+    #[serde(default)]
+    pub traffic: Vec<crate::TrafficTarget>,
 }
+/// The most traffic targets a screen snapshot carries; the nearest are kept.
+pub const MAX_SNAPSHOT_TRAFFIC: usize = 32;
 impl Session {
     pub fn screen_snapshot(&self) -> Snapshot {
         let mut record = self.flight_record().clone();
@@ -75,6 +81,11 @@ impl Session {
             },
             screens: self.screens.clone(),
             crew: self.crew_state(),
+            traffic: self
+                .traffic_targets()
+                .into_iter()
+                .take(MAX_SNAPSHOT_TRAFFIC)
+                .collect(),
         }
     }
     pub fn apply_screen_snapshot(&mut self, snapshot: Snapshot) -> Result<(), String> {
@@ -137,6 +148,9 @@ impl Session {
             .map_err(|e| e.to_string())?;
         self.presentation_comms = Some(snapshot.comms);
         self.presentation_atc = Some(snapshot.atc);
+        let mut traffic = snapshot.traffic;
+        traffic.truncate(MAX_SNAPSHOT_TRAFFIC);
+        self.presentation_traffic = Some(traffic);
         self.map = snapshot.map;
         self.navigation.plan = snapshot.plan;
         self.navigation.pins = snapshot.pins;

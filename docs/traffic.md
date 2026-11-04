@@ -178,6 +178,17 @@ reference, nothing an AI pilot says names anyone, and blocked or unheard calls h
 `traffic_references` (in `comms`) extracts the names from any event, so a new `Meaning` that carries
 `target_aircraft` is highlighted with no display change.
 
+**Keys.** The keymap has two bindable glass actions, `GlassTraffic` (TFC: show or hide traffic) and
+`GlassTrafficFilter` (FLT: cycle normal, above, below, unrestricted). They start unassigned like the
+other glass shortcuts, appear in Settings under Controls (keyboard and gamepad), and run the same
+`avionics.set` settings (`traffic`, `traffic_filter`) as the soft keys while a glass display is active.
+
+**Remote screens.** A paired browser screen has no fleet, so the screen snapshot carries the list
+(`Snapshot.traffic`): the same `traffic_targets()` output, nearest first, capped at 32 aircraft, with
+each target's `highlighted` and `highlight_remaining_s` already applied. The remote session shows that
+list on its Traffic page, map, and glass, so they match the owner's. Older snapshots without the
+field show no traffic.
+
 ## Traffic advisories to the user
 
 The controller the user is working calls traffic in the words of JO 7110.65 2-1-21 and AIM 4-1-15

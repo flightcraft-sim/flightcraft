@@ -216,7 +216,8 @@ and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Uni
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
 
 The MFD accepts the mouse wheel for zoom. The keymap exposes unassigned bindings for map
-range, page, orientation, selected altitude, and course, and reuses heading bug bindings.
+range, page, orientation, selected altitude, course, traffic show/hide (TFC), and the traffic
+altitude filter (FLT), and reuses heading bug bindings.
 The PFD and MFD pop-out buttons open resizable displays for either window size. Pop-outs
 paint the same snapshot and remain available while the flight is paused.
 
