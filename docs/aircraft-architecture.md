@@ -112,8 +112,8 @@ reports, textbook aerodynamics, and the published performance figures used only 
    procedures, and failure logic) is one module with its tests. How it looks is a separate skin
    drawn on top, and both run on the same modules, so behaviour is written and tested once.
    - The engine's built-in skins are our own generic design on public FAA display conventions.
-   - A real unit's look ships as a separate **skin pack**, its own repository loaded like an
-     aircraft pack. It may match the real unit's layout geometry, element placement, colour
+   - A real unit's look ships as a **skin pack**: a subdirectory of the one shared skins repository
+     (`flightcraft-skins`), pinned and loaded like an aircraft pack. It may match the real unit's layout geometry, element placement, colour
      meanings, page, menu, and soft-key structure, knob behaviour, and short functional labels, all
      taken from public manufacturer documentation and cited.
    - Its artwork is drawn from scratch with an openly licensed font. It carries no manufacturer
