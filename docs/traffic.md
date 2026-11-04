@@ -6,8 +6,8 @@ using the same typed instructions, [shared phraseology](phraseology.md), and rea
 the user's own calls go through. You hear them when your radios can: each transmission passes the
 same tuning, power, range, and terrain line-of-sight test as every other [radio](radio.md) call.
 
-This is phase 1, the engine. Voices, glass and map displays, traffic advisories, and
-radio-discipline grading build on the data below and are separate work.
+This page covers the engine and the [displays](#displays). Voices, traffic advisories, and
+radio-discipline grading build on the same data and are separate work.
 
 ```json
 {"command":"traffic.density","input":{"density":"busy","airport":"KABE"}}
@@ -123,9 +123,43 @@ Transmissions are ordinary flight events with `meaning.type = "fleet"` and a `ca
 - `call.for_user` is false: simulated traffic never addresses the user. The user answers only calls
   that contain their own callsign.
 
+## Displays
+
+Every display reads one merged list (`Session::traffic_targets`): the busy-airspace fleet plus any
+`traffic.set` circuit aircraft, nearest first, each with its symbol class, a stable 24-bit address
+(`0xF20000 + aircraft id` for the fleet), relative altitude, and whether a controller just named it.
+
+**Symbols.** Other traffic is a hollow arrow along its track, proximate traffic (within 6 NM and
+1,200 ft) a filled arrow, and a traffic alert (within 2 NM and 500 ft, or on course to pass inside 1
+NM and 500 ft within 45 s) an amber filled symbol. The relative-altitude tag is in hundreds of feet
+with a sign, and a climb or descent arrow appears above 500 fpm. Aircraft on the ground never alert.
+
+| Where | What it shows |
+|---|---|
+| Glass MFD map | ADS-B symbols, tags, range ring, `TFC` filter (normal, above, below, unrestricted) and show/hide key. Only when the aircraft has an ADS-B In installation. See [glass](glass.md#traffic). |
+| Glass PFD | `TRAFFIC` annunciation while any alert is active. |
+| Planning map and PFD map inset | Arrow, registration and type, altitude and speed, a one-minute trend vector, and a hover or click card with callsign, type, altitude, speed, assigned altitude, heading and speed, frequency, squawk, and intent. The inset draws the symbol only. The planning map always shows traffic; the glass-hosted map shows it only with a receiver. |
+| Traffic screen page | A heading-up radar (2 to 80 NM, three rings, ownship at the centre) and a table sorted by range. Open it as a page in [multiple screens](multiple-screens.md#traffic-page) (`traffic`). Not gated by equipment, being an instructor-style aid. |
+| Tablet EFB | A GDL 90 Traffic Report (ID `0x14`) and an `XTRAFFIC` line per aircraft, once a second. See [EFB](efb-and-charts.md). |
+
+**Matching what the controller says.** When a heard call names an aircraft, that aircraft is
+highlighted on all three screens (magenta pulsing ring, magenta row on the Traffic page) from the
+start of the call until 20 s after it ends. A call names an aircraft through any of:
+
+- an aircraft id in a field named `target_aircraft`, `target_aircraft_id(s)`, `traffic_aircraft`, or
+  `aircraft_ids` (a number or a list, anywhere in the event's meaning);
+- a sequencing callsign: the `follow` of a pattern instruction (`Number two, follow the Cherokee on
+  left base`), or the `sequence.follows` of a fleet controller call;
+- the `callsign` of a `traffic_advisory`.
+
+Callsigns match the spoken callsign or the registration. A call's own speaker is never a
+reference, nothing an AI pilot says names anyone, and blocked or unheard calls highlight nothing.
+`traffic_references` (in `comms`) extracts the names from any event, so a new `Meaning` that carries
+`target_aircraft` is highlighted with no display change.
+
 ## Limits
 
 No wake model, wind, weather diversion, taxi movement (departures appear at the hold line and arrivals
 leave the runway), ground or clearance delivery exchanges, go-around sequencing beyond a simple
-circuit re-entry, or traffic advisories to the user. Separation is a training model, not a certified
+circuit re-entry, or spoken traffic advisories to the user. Separation is a training model, not a certified
 one. Traffic exists only around one airport at a time.

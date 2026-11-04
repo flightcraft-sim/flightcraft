@@ -4651,6 +4651,16 @@
         "synthetic_vision": {
           "type": "boolean"
         },
+        "traffic_filter": {
+          "description": "The altitude window traffic is shown in.",
+          "$ref": "#/$defs/TrafficFilter",
+          "default": "normal"
+        },
+        "traffic_shown": {
+          "description": "Traffic on the MFD map (needs an ADS-B In installation).",
+          "type": "boolean",
+          "default": true
+        },
         "transponder_code": {
           "type": "string"
         },
@@ -4774,6 +4784,16 @@
           "items": {
             "$ref": "#/$defs/MapTraffic"
           }
+        },
+        "traffic_alert": {
+          "description": "A traffic alert is active: the PFD shows the TRAFFIC annunciation.",
+          "type": "boolean",
+          "default": false
+        },
+        "traffic_installed": {
+          "description": "An ADS-B In (or TIS-B) receiver feeds this aircraft's glass displays.",
+          "type": "boolean",
+          "default": false
         },
         "wind_from_rad": {
           "type": "number",
@@ -6133,8 +6153,34 @@
     "MapTraffic": {
       "type": "object",
       "properties": {
+        "address": {
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
         "callsign": {
           "type": "string"
+        },
+        "chart_track_rad": {
+          "description": "Direction of travel on the chart, radians clockwise from the screen top.",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "class": {
+          "$ref": "#/$defs/TrafficClass",
+          "default": "other"
+        },
+        "ground_speed_kt": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "highlighted": {
+          "description": "A controller's call named this aircraft within the last 20 seconds.",
+          "type": "boolean",
+          "default": false
         },
         "position": {
           "type": "array",
@@ -6145,9 +6191,24 @@
           "maxItems": 2,
           "minItems": 2
         },
+        "range_nm": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
+        "registration": {
+          "description": "Written registration, the label glass units draw.",
+          "type": "string",
+          "default": ""
+        },
         "relative_altitude_m": {
           "type": "number",
           "format": "double"
+        },
+        "vertical_rate_fpm": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
         }
       },
       "required": [
@@ -7289,7 +7350,8 @@
         "switch",
         "breaker",
         "readout",
-        "image"
+        "image",
+        "traffic"
       ]
     },
     "Panel": {
@@ -10096,6 +10158,13 @@
     "SystemsDefinition": {
       "type": "object",
       "properties": {
+        "adsb_in": {
+          "description": "Whether the glass displays are fed by an ADS-B In (or TIS-B) traffic receiver. Omission means\nthe receiver is installed whenever the aircraft has a glass display; `false` declares none, so\nno glass page shows traffic or the TRAFFIC annunciation.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "electric_gyro_load": {
           "description": "Electric attitude/heading sensor; its installation must name an electrical load.",
           "type": [
@@ -10850,6 +10919,51 @@
         "leg",
         "sequence",
         "following_pilot"
+      ]
+    },
+    "TrafficClass": {
+      "description": "ADS-B traffic symbol class.",
+      "oneOf": [
+        {
+          "description": "Hollow arrow.",
+          "type": "string",
+          "const": "other"
+        },
+        {
+          "description": "Filled arrow.",
+          "type": "string",
+          "const": "proximate"
+        },
+        {
+          "description": "Amber filled symbol and the TRAFFIC annunciation.",
+          "type": "string",
+          "const": "alert"
+        }
+      ]
+    },
+    "TrafficFilter": {
+      "description": "The altitude window a glass unit shows traffic in, relative to the aircraft.",
+      "oneOf": [
+        {
+          "description": "2,700 ft above to 2,700 ft below.",
+          "type": "string",
+          "const": "normal"
+        },
+        {
+          "description": "9,900 ft above to 2,700 ft below.",
+          "type": "string",
+          "const": "above"
+        },
+        {
+          "description": "2,700 ft above to 9,900 ft below.",
+          "type": "string",
+          "const": "below"
+        },
+        {
+          "description": "9,900 ft above to 9,900 ft below.",
+          "type": "string",
+          "const": "unrestricted"
+        }
       ]
     },
     "TrafficState": {

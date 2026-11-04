@@ -29,12 +29,23 @@ Every new map/chart canvas inherits the configured terrain root; opening windows
 the process working directory or requires a second copy of the packs.
 
 Pages include the shared tower/approach ATC controls, outside views, the aircraft panel or selected instruments, PFD, MFD, navigator,
-planning map, regional EFB charts, instructor station, radio/kneeboard, and debrief. Each outside
+planning map, regional EFB charts, instructor station, radio/kneeboard, debrief, and traffic. Each outside
 page has its own forward, left, right, chase, tower, or top-down view, vertical field of view, and
 heading offset. Adjacent wrap-around views should use matching FOV and suitable heading offsets;
 the example uses −60°, 0°, and +60°. There is no automatic projector edge blending.
 The main combined-screen examples set `follow_main_camera` so cockpit-look shortcuts and the
 chase-camera command still work; independent wrap-around views leave it disabled.
+
+## Traffic page
+
+The `traffic` page (**Traffic** in the page list) is a dedicated display for a second monitor. A
+heading-up radar centres the aircraft, with rings at a third, two thirds, and the full selected range
+(2, 5, 10, 20, 40, or 80 NM). Each aircraft is an arrow along its track in the glass colours (hollow,
+filled, or amber for a traffic alert) with its registration, type, and relative-altitude tag. Below or
+beside it a table lists the traffic by range with bearing, relative altitude, ground speed, vertical
+speed, frequency, and intent. Hover or click an aircraft or row for the full card. The altitude filter
+buttons match the glass units. An aircraft the controller just named pulses magenta for about 20 s.
+It needs `traffic.density` or `traffic.set`; see [traffic](traffic.md#displays).
 
 ## Arrange panel pieces
 

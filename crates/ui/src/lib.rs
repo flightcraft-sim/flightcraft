@@ -31,6 +31,7 @@ pub mod screens;
 pub mod script;
 pub mod speech_input;
 pub mod theme;
+pub mod traffic_page;
 mod weather;
 mod weather_live;
 

@@ -61,6 +61,41 @@ warning system. Range rings and the scale bar preserve their shape on rectangula
 Standalone `GlassState` instrument snapshots retain their 64–256-interval elevation raster and
 legacy procedural map artwork for consumers that do not host the interactive widget.
 
+### Traffic
+
+Aircraft with a traffic receiver show other aircraft on the MFD map and annunciate alerts on the
+PFD. The receiver is the aircraft's ADS-B In (or TIS-B) installation: the pack's
+`systems.definition.adsb_in` boolean. Omission means installed whenever the aircraft has a glass
+display (a `glass_pfd` or `glass_mfd` load, or an installed touch display), so the Sling's glass
+installation has it with no pack change; `false` declares an aircraft with displays but no
+receiver, and then no glass page shows traffic, the TFC keys are absent, and `traffic_installed`
+in the glass state is false. The conventional analog panels have none.
+
+Symbols follow the common Garmin and Dynon ADS-B convention, from the simulator's busy-airspace
+traffic and circuit traffic, in one merged list:
+
+| Class | Rule | Symbol |
+|---|---|---|
+| Other | everything else | hollow arrow along its track |
+| Proximate | within 6 NM and 1,200 ft | filled white arrow |
+| Alert | within 2 NM and 500 ft, or on course to pass inside 1 NM and 500 ft within 45 s (straight-line closest point of approach, inside 6 NM) | amber filled circle with the arrow, and TRAFFIC on the PFD |
+
+Aircraft on the ground never alert. Each symbol has a relative-altitude tag in hundreds of feet
+with a sign (`+05`, `-12`), and an arrow beside it when the vertical rate exceeds 500 fpm.
+Alert and controller-named aircraft also show their registration. The map footer shows the range
+ring and `TFC <filter>`. The filter is the altitude window, as on glass units: **normal**
+(2,700 ft above to 2,700 ft below), **above** (9,900 / 2,700), **below** (2,700 / 9,900), and
+**unrestricted** (9,900 / 9,900). An alert is always drawn, whatever the filter, and the TRAFFIC
+annunciation ignores the map toggle. A failed PFD removes the annunciation; a failed MFD removes
+the map traffic.
+
+Controls: the TFC key shows or hides traffic, and FLT cycles the filter. Both send
+`avionics.set` glass settings `traffic` (`shown`) and `traffic_filter` (`filter`: `normal`,
+`above`, `below`, `unrestricted`). The PFD map inset and the pop-out MFD use the shared moving
+map, which draws the same arrows. When a controller names an aircraft (a sequencing call such as
+`Number two, follow the Cessna on left base`, or a traffic advisory), that aircraft gets a magenta
+ring on the MFD for about 20 s. See [busy-airspace traffic](traffic.md#displays).
+
 ### Synthetic vision
 
 Synthetic vision ignores [visual weather](weather.md), cloud, visibility, and night. The cockpit
@@ -176,7 +211,7 @@ oversized plans, and non-octal squawks return errors.
 Other settings are `heading_bug` (`heading_rad`), `course` (`course_rad`), `selected_altitude`
 (`altitude_m`), `baro` (`pressure_pa`), `pressure_units` (`hpa`), `bearing_pointer`
 (`source`: `off` or `gps`), `map_range` (`range_nm`: 1–200), `orientation` (`north_up` or
-`track_up`), `page` (`map`, `nearest`, or `flight_plan`), `active_leg` (`index`, zero-based),
+`track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, or `flight_plan`), `active_leg` (`index`, zero-based),
 and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Units are SI
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
 

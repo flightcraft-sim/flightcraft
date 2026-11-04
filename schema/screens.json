@@ -319,7 +319,8 @@
         "switch",
         "breaker",
         "readout",
-        "image"
+        "image",
+        "traffic"
       ]
     },
     "Screen": {

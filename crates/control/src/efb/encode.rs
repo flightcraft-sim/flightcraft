@@ -76,10 +76,50 @@ pub fn pressure_altitude(metres: Option<f64>) -> u16 {
     })
 }
 
+/// One other aircraft for a Traffic Report (ID 20, `0x14`).
+#[derive(Clone, Debug)]
+pub struct Traffic {
+    pub aircraft: Aircraft,
+    /// 24-bit self-assigned address; the fleet derives it from the aircraft id.
+    pub address: u32,
+    pub callsign: String,
+    /// GDL 90 emitter category (table 11 of the specification), such as 1 for a light aircraft.
+    pub emitter: u8,
+    /// Traffic alert status bit: the aircraft is a TRAFFIC alert on the display.
+    pub alert: bool,
+}
+/// Emitter category for a maximum takeoff weight in pounds: 1 light (under 15,500 lb), 2 small
+/// (15,500 to 75,000 lb), 3 large (75,000 to 300,000 lb), 5 heavy (over 300,000 lb).
+pub fn emitter_category(max_takeoff_lb: f64) -> u8 {
+    if max_takeoff_lb < 15_500. {
+        1
+    } else if max_takeoff_lb < 75_000. {
+        2
+    } else if max_takeoff_lb <= 300_000. {
+        3
+    } else {
+        5
+    }
+}
+/// The Traffic Report for one aircraft.
+pub fn traffic_report(t: &Traffic) -> Vec<u8> {
+    report_with(&t.aircraft, false, t.address, &t.callsign, t.emitter, t.alert)
+}
 /// IDs 10 and 20 share the FAA's 28-byte report layout. Address is self-assigned,
 /// NIC/NACp are unknown (zero); simulated truth carries no certified integrity claim.
 pub fn report(aircraft: &Aircraft, ownship: bool, address: u32, callsign: &str) -> Vec<u8> {
-    let mut result = vec![if ownship { 10 } else { 20 }, 1];
+    report_with(aircraft, ownship, address, callsign, 1, false)
+}
+fn report_with(
+    aircraft: &Aircraft,
+    ownship: bool,
+    address: u32,
+    callsign: &str,
+    emitter: u8,
+    alert: bool,
+) -> Vec<u8> {
+    // Byte 1: traffic alert status in the high nibble, address type 1 (ADS-B, self-assigned) below.
+    let mut result = vec![if ownship { 10 } else { 20 }, 1 | (u8::from(alert) << 4)];
     let [_, a, b, c] = address.to_be_bytes();
     result.extend([a, b, c]);
     result.extend(semicircle(aircraft.latitude_deg));
@@ -109,7 +149,7 @@ pub fn report(aircraft: &Aircraft, ownship: bool, address: u32, callsign: &str) 
         vertical as u8,
     ]);
     result.push((aircraft.track_deg.rem_euclid(360.0) * 256.0 / 360.0).round() as u16 as u8);
-    result.push(1); // Light aircraft, < 15,500 lb.
+    result.push(emitter);
     result.extend(
         callsign
             .bytes()

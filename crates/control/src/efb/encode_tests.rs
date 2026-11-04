@@ -125,3 +125,70 @@ fn simulator_text_units_order_and_termination() {
         "XTRAFFICFlightCraft,42,45.0000000,-90.0000000,1000.0,-640.0,1,180.00,100.00\n"
     );
 }
+#[test]
+fn traffic_report_id_20_exact_layout_with_alert_and_emitter() {
+    // FAA 560-1058-00 Rev A, Traffic Report: byte 0 is ID 20 (0x14); byte 1 holds the traffic alert
+    // status in its high nibble and the address type (1, ADS-B self-assigned) in its low nibble;
+    // bytes 2-4 are the address; 5-7 latitude and 8-10 longitude in 24-bit semicircles; 11-12 and the
+    // top nibble of byte 12 hold altitude in 25 ft steps from -1000 ft (2000 ft / 25 = 80 = 0x050);
+    // the low nibble of byte 12 is the misc field (airborne, true track) = 9; byte 13 is NIC and
+    // NACp; 14-16 pack a 12-bit horizontal velocity (100 kt = 0x064) and a 12-bit vertical
+    // velocity in 64 fpm steps (-640 fpm = -10 = 0xff6); byte 17 is the track in 360/256 degree
+    // steps (east = 64); byte 18 the emitter category; 19-26 the callsign; byte 27 priority/spare.
+    let traffic = Traffic {
+        aircraft: truth(),
+        address: 0xf2_0005,
+        callsign: "N427KP".into(),
+        emitter: 1,
+        alert: true,
+    };
+    let expected = [
+        20, 0x11, 0xf2, 0, 5, 0x20, 0, 0, 0xc0, 0, 0, 5, 9, 0, 6, 0x4f, 0xf6, 64, 1, b'N', b'4', b'2', b'7',
+        b'K', b'P', b' ', b' ', 0,
+    ];
+    assert_eq!(traffic_report(&traffic), expected);
+    assert_eq!(traffic_report(&traffic).len(), 28);
+    // No alert, a larger emitter, and on the ground: status nibble clear, misc 1, category 2.
+    let mut ground = traffic.clone();
+    ground.alert = false;
+    ground.emitter = 2;
+    ground.aircraft.airborne = false;
+    let packet = traffic_report(&ground);
+    assert_eq!((packet[1], packet[12], packet[18]), (0x01, 1, 2));
+    // The plain `report` keeps the light-aircraft category and no alert.
+    let plain = report(&truth(), false, 0xf2_0005, "N427KP");
+    assert_eq!((plain[0], plain[1], plain[18]), (20, 1, 1));
+}
+#[test]
+fn traffic_report_addresses_and_framing_are_independent_per_aircraft() {
+    let make = |address| Traffic {
+        aircraft: truth(),
+        address,
+        callsign: "TAM123".into(),
+        emitter: 1,
+        alert: false,
+    };
+    let a = traffic_report(&make(0xf2_0001));
+    let b = traffic_report(&make(0xf2_0002));
+    assert_eq!(&a[2..5], &[0xf2, 0, 1]);
+    assert_eq!(&b[2..5], &[0xf2, 0, 2]);
+    // Everything except the address is identical, and each frames with its own CRC.
+    assert_eq!(a[5..], b[5..]);
+    assert_ne!(frame(&a), frame(&b));
+    // The framed message starts with the flag byte, ID 0x14, and ends with a flag.
+    let framed = frame(&a);
+    assert_eq!(
+        (framed[0], framed[1], *framed.last().unwrap()),
+        (0x7e, 0x14, 0x7e)
+    );
+}
+#[test]
+fn emitter_categories_follow_the_weight_classes() {
+    assert_eq!(emitter_category(2550.), 1);
+    assert_eq!(emitter_category(15_499.), 1);
+    assert_eq!(emitter_category(15_500.), 2);
+    assert_eq!(emitter_category(74_999.), 2);
+    assert_eq!(emitter_category(75_000.), 3);
+    assert_eq!(emitter_category(300_000.), 3);
+    assert_eq!(emitter_category(300_001.), 5);
+}

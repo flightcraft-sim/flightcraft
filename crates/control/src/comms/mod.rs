@@ -23,11 +23,13 @@ pub use weather::ReportedLayer;
 mod fleet;
 mod record;
 mod traffic;
+mod traffic_display;
 pub use fleet::*;
 pub use record::*;
 use std::collections::VecDeque;
 use traffic::Pattern;
 pub use traffic::*;
+pub use traffic_display::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

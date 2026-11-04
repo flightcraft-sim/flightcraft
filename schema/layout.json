@@ -249,7 +249,8 @@
         "switch",
         "breaker",
         "readout",
-        "image"
+        "image",
+        "traffic"
       ]
     },
     "TouchControl": {

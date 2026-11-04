@@ -1,5 +1,5 @@
 //! Integrated glass behaviour. The same snapshot drives public skins and command clients.
-use crate::{CommandError, Session, invalid, range};
+use crate::{CommandError, Session, TrafficClass, invalid, range};
 use flightcraft_sim::avionics::navigation::{desired_track, inverse, track};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -24,8 +24,17 @@ pub struct GlassSettings {
     pub waypoints: Vec<GpsWaypoint>,
     pub active_leg: usize,
     pub leg_origin_deg: Option<[f64; 2]>,
+    /// Traffic on the MFD map (needs an ADS-B In installation).
+    #[serde(default = "traffic_shown")]
+    pub traffic_shown: bool,
+    /// The altitude window traffic is shown in.
+    #[serde(default)]
+    pub traffic_filter: TrafficFilter,
     #[serde(skip)]
     pub generation: u64,
+}
+fn traffic_shown() -> bool {
+    true
 }
 impl Default for GlassSettings {
     fn default() -> Self {
@@ -46,6 +55,8 @@ impl Default for GlassSettings {
             waypoints: Vec::new(),
             active_leg: 0,
             leg_origin_deg: None,
+            traffic_shown: true,
+            traffic_filter: TrafficFilter::Normal,
             generation: 0,
         }
     }
@@ -135,13 +146,38 @@ pub struct EngineValue {
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct MapTraffic {
     pub callsign: String,
+    /// Written registration, the label glass units draw.
+    #[serde(default)]
+    pub registration: String,
     pub position: [f64; 2],
     pub relative_altitude_m: f64,
+    #[serde(default)]
+    pub address: u32,
+    #[serde(default)]
+    pub class: TrafficClass,
+    /// Direction of travel on the chart, radians clockwise from the screen top.
+    #[serde(default)]
+    pub chart_track_rad: f64,
+    #[serde(default)]
+    pub vertical_rate_fpm: f64,
+    #[serde(default)]
+    pub ground_speed_kt: f64,
+    #[serde(default)]
+    pub range_nm: f64,
+    /// A controller's call named this aircraft within the last 20 seconds.
+    #[serde(default)]
+    pub highlighted: bool,
 }
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassState {
     pub comms: crate::CommsSnapshot,
     pub traffic: Vec<MapTraffic>,
+    /// An ADS-B In (or TIS-B) receiver feeds this aircraft's glass displays.
+    #[serde(default)]
+    pub traffic_installed: bool,
+    /// A traffic alert is active: the PFD shows the TRAFFIC annunciation.
+    #[serde(default)]
+    pub traffic_alert: bool,
     pub touch: crate::TouchState,
     pub settings: GlassSettings,
     pub air_data: flightcraft_sim::avionics::sensor::AirDataComputer,
@@ -216,6 +252,8 @@ impl Session {
                 self.map.orientation = orientation.into();
             }
             GlassSetting::Page { page } => self.glass.page = page,
+            GlassSetting::Traffic { shown } => self.glass.traffic_shown = shown,
+            GlassSetting::TrafficFilter { filter } => self.glass.traffic_filter = filter,
             GlassSetting::DirectTo { airport } => self.set_glass_plan(vec![airport])?,
             GlassSetting::FlightPlan { airports } => self.set_glass_plan(airports)?,
             GlassSetting::FlightPlanWaypoints { waypoints } => self.set_gps_waypoints(waypoints)?,
@@ -600,21 +638,43 @@ impl Session {
         let pfd_failed = computers.pfd_failed || !installed_power("glass_pfd");
         let mfd_failed = computers.mfd_failed || !installed_power("glass_mfd");
         let [wind_n, wind_e, _] = r.wind_ned_mps;
+        let traffic_installed = self.adsb_in_installed();
+        let targets = if traffic_installed && !pfd_failed {
+            self.traffic_targets()
+        } else {
+            Vec::new()
+        };
+        let traffic_alert = targets.iter().any(|t| t.class == TrafficClass::Alert);
+        let traffic_map: Vec<MapTraffic> = targets
+            .into_iter()
+            .filter(|t| {
+                !mfd_failed
+                    && settings.traffic_shown
+                    && (settings.traffic_filter.shows(t.relative_altitude_ft)
+                        || t.class == TrafficClass::Alert)
+            })
+            .map(|t| {
+                let [north, east, _] = t.position_m;
+                MapTraffic {
+                    position: project([north, east]),
+                    relative_altitude_m: t.relative_altitude_ft * 0.3048,
+                    chart_track_rad: t.track_grid_rad - angle,
+                    address: t.address,
+                    class: t.class,
+                    vertical_rate_fpm: t.vertical_rate_fpm,
+                    ground_speed_kt: t.ground_speed_kt,
+                    range_nm: t.range_nm,
+                    highlighted: t.highlighted,
+                    registration: t.registration,
+                    callsign: t.callsign,
+                }
+            })
+            .collect();
         GlassState {
             comms: self.comms_state(),
-            traffic: self
-                .traffic_state()
-                .aircraft
-                .into_iter()
-                .map(|a| {
-                    let [north, east, _] = a.position_m;
-                    MapTraffic {
-                        callsign: a.callsign,
-                        position: project([north, east]),
-                        relative_altitude_m: a.altitude_msl_m - r.altitude_msl_m,
-                    }
-                })
-                .collect(),
+            traffic: traffic_map,
+            traffic_installed,
+            traffic_alert,
             touch: self.touch_state(),
             settings,
             air_data: computers.primary.clone(),

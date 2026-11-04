@@ -4,6 +4,29 @@ include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/region_data.rs"));
 use super::*;
 use eframe::egui::{self, Align2, FontId, Pos2, Rect};
 use flightcraft_control::{GlassFailure, GlassSetting, Session};
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/atc_fixture.rs"));
+/// A glass aircraft 4 NM west of Allentown on the committed flat ATC fixture (needs no tile data).
+pub(super) fn fixture_flight() -> Session {
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    s.install_region(atc_world()).unwrap();
+    s.execute("sim.reset",serde_json::json!({"world":"atc-fixture","start":{"air":{"airport":"KABE","distance_m":7000.,"bearing_deg":240.,"height_m":900.,"airspeed_mps":50.,"heading_rad":0.}}})).unwrap();
+    s.execute(
+        "autopilot.set",
+        serde_json::json!({"altitude_m":914.4,"heading_rad":0.,"airspeed_mps":50.}),
+    )
+    .unwrap();
+    s.execute(
+        "atc.configure",
+        serde_json::json!({"airport":"KABE","destination":"KMMU"}),
+    )
+    .unwrap();
+    s
+}
 pub(super) fn flight() -> Session {
     let mut s = Session::new().unwrap();
     s.execute(
@@ -425,4 +448,152 @@ fn engine_strip_captions_do_not_overlap_each_other_or_round_gauges() {
             }
         }
     }
+}
+
+fn labels(d: &DrawList) -> Vec<String> {
+    d.items
+        .iter()
+        .filter_map(|i| match i {
+            DrawItem::Label { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .collect()
+}
+fn target(address: u32, class: flightcraft_control::TrafficClass, x: f64) -> flightcraft_control::MapTraffic {
+    flightcraft_control::MapTraffic {
+        callsign: format!("Cessna {address}"),
+        registration: format!("N{address}"),
+        position: [x, 0.4],
+        relative_altitude_m: 500. * 0.3048,
+        address,
+        class,
+        chart_track_rad: 0.5,
+        vertical_rate_fpm: 800.,
+        ground_speed_kt: 100.,
+        range_nm: 3.,
+        highlighted: false,
+    }
+}
+
+#[test]
+fn mfd_traffic_symbols_follow_class_and_annunciation_follows_alert() {
+    use flightcraft_control::TrafficClass::{Alert, Other, Proximate};
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    let mut g = s.glass_state();
+    g.traffic_installed = true;
+    let polygons = |d: &DrawList, ink: Ink| {
+        d.items
+            .iter()
+            .filter(|i| matches!(i, DrawItem::Polygon { ink: i2, .. } if *i2 == ink))
+            .count()
+    };
+    let base = mfd::draw(&g, Default::default());
+    // Other traffic is a hollow arrow, so it adds lines but no filled arrow.
+    g.traffic = vec![target(1, Other, 0.3)];
+    let other = mfd::draw(&g, Default::default());
+    assert_eq!(polygons(&other, Ink::Text), polygons(&base, Ink::Text));
+    assert!(other.items.len() > base.items.len() + 4);
+    // Proximate traffic is a filled arrow in the text ink.
+    g.traffic = vec![target(1, Proximate, 0.3)];
+    let proximate = mfd::draw(&g, Default::default());
+    assert_eq!(polygons(&proximate, Ink::Text), polygons(&base, Ink::Text) + 1);
+    // An alert is amber with a filled circle, and names itself.
+    g.traffic = vec![target(1, Alert, 0.3)];
+    let alert = mfd::draw(&g, Default::default());
+    assert!(alert.items.iter().any(|i| matches!(
+        i,
+        DrawItem::Circle {
+            ink: Ink::Warning,
+            ..
+        }
+    )));
+    assert!(labels(&alert).contains(&"N1".to_string()));
+    // Relative altitude tag in hundreds of feet with a sign, and a climb arrow above 500 fpm.
+    assert!(labels(&proximate).contains(&"+05".to_string()));
+    let climbing = alert.items.len();
+    g.traffic[0].vertical_rate_fpm = 0.;
+    assert!(mfd::draw(&g, Default::default()).items.len() < climbing);
+    // The footer shows the filter, and TFC OFF when hidden.
+    assert!(labels(&alert).iter().any(|l| l.contains("TFC NORMAL")));
+    g.settings.traffic_shown = false;
+    assert!(
+        labels(&mfd::draw(&g, Default::default()))
+            .iter()
+            .any(|l| l.contains("TFC OFF"))
+    );
+    // Without a receiver, no TFC text.
+    g.traffic_installed = false;
+    assert!(
+        !labels(&mfd::draw(&g, Default::default()))
+            .iter()
+            .any(|l| l.contains("TFC"))
+    );
+    // Highlighted traffic gets the magenta ring and its registration.
+    g.traffic_installed = true;
+    g.settings.traffic_shown = true;
+    g.traffic = vec![target(7, Other, 0.3)];
+    g.traffic[0].highlighted = true;
+    let named = mfd::draw(&g, Default::default());
+    assert!(
+        named
+            .items
+            .iter()
+            .any(|i| matches!(i, DrawItem::Line { ink: Ink::Gps, .. }))
+    );
+    assert!(labels(&named).contains(&"N7".to_string()));
+    // The PFD annunciates TRAFFIC only for an alert.
+    let annunciated = |g: &GlassState| {
+        let input = InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+            .with_glass(g)
+            .with_aircraft(s.aircraft_configuration().unwrap());
+        labels(&pfd::draw(g, input, false)).contains(&"TRAFFIC".to_string())
+    };
+    assert!(!annunciated(&g));
+    g.traffic_alert = true;
+    assert!(annunciated(&g));
+}
+
+#[test]
+fn live_fleet_traffic_reaches_the_glass_state_and_obeys_the_filter() {
+    let mut s = fixture_flight();
+    assert!(s.glass_state().traffic_installed);
+    assert!(s.glass_state().traffic.is_empty());
+    s.execute(
+        "traffic.density",
+        serde_json::json!({"density":"busy","airport":"KABE"}),
+    )
+    .unwrap();
+    s.run(flightcraft_control::Step { steps: 120 * 5 }).unwrap();
+    s.set_glass(GlassSetting::MapRange { range_nm: 40. }).unwrap();
+    s.set_glass(GlassSetting::TrafficFilter {
+        filter: flightcraft_control::TrafficFilter::Unrestricted,
+    })
+    .unwrap();
+    let all = s.glass_state().traffic.len();
+    assert!(all > 0, "busy traffic around the field must reach the MFD");
+    s.set_glass(GlassSetting::TrafficFilter {
+        filter: flightcraft_control::TrafficFilter::Normal,
+    })
+    .unwrap();
+    let state = s.glass_state();
+    assert!(state.traffic.len() <= all);
+    assert!(
+        state
+            .traffic
+            .iter()
+            .all(|t| t.relative_altitude_m / 0.3048 <= 2700.
+                || t.class == flightcraft_control::TrafficClass::Alert)
+    );
+    s.set_glass(GlassSetting::Traffic { shown: false }).unwrap();
+    let hidden = s.glass_state();
+    assert!(hidden.traffic.is_empty());
+    assert_eq!(
+        hidden.traffic_alert, state.traffic_alert,
+        "alerts ignore the map toggle"
+    );
 }

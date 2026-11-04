@@ -3,6 +3,7 @@ use eframe::egui;
 mod controls;
 mod mfd;
 mod pfd;
+mod traffic;
 use crate::instruments::{DrawItem, DrawList, Ink, Instrument, InstrumentInput};
 pub use controls::{GlassControls, shortcut};
 use flightcraft_control::GlassState;

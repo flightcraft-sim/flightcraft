@@ -14,7 +14,7 @@ use std::{
 struct Shared {
     status: EfbStatus,
     aircraft: Option<(encode::Aircraft, Instant)>,
-    traffic: Vec<(encode::Aircraft, u32, String)>,
+    traffic: Vec<encode::Traffic>,
 }
 #[derive(Debug)]
 pub(crate) struct Sender {
@@ -62,7 +62,7 @@ impl Sender {
             shared.status.reason = reason(&shared, Instant::now());
         }
     }
-    pub fn update_traffic(&self, traffic: Vec<(encode::Aircraft, u32, String)>) {
+    pub fn update_traffic(&self, traffic: Vec<encode::Traffic>) {
         if let Ok(mut shared) = self.shared.lock() {
             shared.traffic = traffic;
         }
@@ -179,9 +179,20 @@ fn worker(
                             attitude,
                         );
                         if second && shared.status.settings.gdl90 {
-                            outgoing.extend(shared.traffic.iter().map(|(a, address, callsign)| {
-                                (true, encode::frame(&encode::report(a, false, *address, callsign)))
-                            }));
+                            outgoing.extend(
+                                shared
+                                    .traffic
+                                    .iter()
+                                    .map(|t| (true, encode::frame(&encode::traffic_report(t)))),
+                            );
+                        }
+                        if second && shared.status.settings.simulator {
+                            outgoing.extend(
+                                shared
+                                    .traffic
+                                    .iter()
+                                    .map(|t| (false, encode::xtraffic(&t.aircraft, t.address).into_bytes())),
+                            );
                         }
                         for (gdl, bytes) in outgoing {
                             let port = if gdl { gdl_port } else { simulator_port };
@@ -295,10 +306,14 @@ mod tests {
         let sender = Sender::with_ports(42, socket.local_addr().unwrap().port(), 49002).unwrap();
         let truth = super::super::encode_tests::truth();
         sender.update(Some(truth));
-        sender.update_traffic(vec![
-            (truth, 0xf10001, "TRAINER1".into()),
-            (truth, 0xf10002, "TRAINER2".into()),
-        ]);
+        let traffic = |address, callsign: &str| encode::Traffic {
+            aircraft: truth,
+            address,
+            callsign: callsign.into(),
+            emitter: 1,
+            alert: false,
+        };
+        sender.update_traffic(vec![traffic(0xf10001, "TRAINER1"), traffic(0xf10002, "TRAINER2")]);
         sender
             .configure(EfbSettings {
                 enabled: true,

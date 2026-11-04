@@ -118,6 +118,10 @@ pub(super) fn draw_composed(
             Ink::Needle,
         );
     }
+    if s.traffic_alert {
+        rect(&mut d, [205., 31., 90., 15.], Ink::Warning);
+        label(&mut d, [250., 38.5], "TRAFFIC", 10., Ink::Face);
+    }
     if a.attitude_valid {
         for degrees in [-30_i32, -20, -10, -5, 0, 5, 10, 20, 30] {
             let y = flightcraft_render::pfd_pitch_y(a.pitch_rad - f64::from(degrees).to_radians());

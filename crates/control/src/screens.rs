@@ -27,9 +27,10 @@ pub enum PageKind {
     Breaker,
     Readout,
     Image,
+    Traffic,
 }
 impl PageKind {
-    pub const ALL: [Self; 20] = [
+    pub const ALL: [Self; 21] = [
         Self::Outside,
         Self::FlyMe,
         Self::Director,
@@ -50,6 +51,7 @@ impl PageKind {
         Self::Breaker,
         Self::Readout,
         Self::Image,
+        Self::Traffic,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -73,6 +75,7 @@ impl PageKind {
             Self::Breaker => "Breaker",
             Self::Readout => "Variable readout",
             Self::Image => "Image / placard",
+            Self::Traffic => "Traffic",
         }
     }
 }

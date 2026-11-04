@@ -405,7 +405,7 @@ impl PlanningMap {
         if raster && state.opacity(Overlay::TerrainWarnings) > 0. {
             terrain(&p, &view, s, &state, true, compact);
         }
-        let features = paint_features(&p, &view, s, &state);
+        let features = paint_features_for(&p, &view, s, &state, compact);
         self.paint_track(&p, &view, &state);
         route(&p, &view, s, &state, self.options.engine);
         if let Some(point) = aircraft
@@ -474,6 +474,13 @@ impl PlanningMap {
                 ),
                 FontId::monospace(11.),
             );
+        }
+        if let Some(f) = response
+            .hover_pos()
+            .and_then(|pos| hit(&features, pos))
+            .filter(|f| f.kind == "traffic")
+        {
+            response.clone().on_hover_text_at_pointer(f.details.clone());
         }
         self.gestures(ui, s, &view, &response, &features, compact);
     }
@@ -618,6 +625,7 @@ impl PlanningMap {
         egui::Window::new(format!("{} · {}",feature.ident,feature.kind)).id(ui.id().with("map_details")).open(&mut open).resizable(false).constrain_to(rect).default_pos(rect.left_top()+egui::vec2(12.,60.)).max_width((rect.width()-24.).max(100.)).max_height((rect.height()-24.).max(100.)).show(ui.ctx(),|ui|{
             ui.label(&feature.details);
             ui.label(format!("{:.5}, {:.5}",feature.position.latitude_deg,feature.position.longitude_deg));
+            if feature.kind=="traffic"{return;}
             let waypoint=json!({"ident":feature.ident,"kind":feature.kind,"position":feature.position});
             ui.horizontal_wrapped(|ui|{
                 if ui.button("Direct to").clicked(){self.command(s,"avionics.set",json!({"setting":{"kind":"glass","setting":{"kind":"direct_to_waypoint","waypoint":waypoint}}}));}
@@ -931,6 +939,15 @@ fn map_label(p: &egui::Painter, at: Pos2, anchor: Align2, text: impl ToString, f
     rect
 }
 fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState) -> Vec<Feature> {
+    paint_features_for(p, v, s, state, false)
+}
+fn paint_features_for(
+    p: &egui::Painter,
+    v: &View,
+    s: &mut Session,
+    state: &MapState,
+    compact: bool,
+) -> Vec<Feature> {
     let mut features = Vec::new();
     let text = if state.night {
         theme::TEXT
@@ -1226,43 +1243,117 @@ fn paint_features(p: &egui::Painter, v: &View, s: &mut Session, state: &MapState
             }
         }
     }
-    for traffic in s.traffic_state().aircraft {
-        if let Some((latitude_deg, longitude_deg)) = traffic.latitude_deg.zip(traffic.longitude_deg)
-            && let Some(pos) = v
-                .point(GeoPoint {
-                    latitude_deg,
-                    longitude_deg,
-                })
-                .filter(|p| v.rect.contains(*p))
-        {
-            let color = if state.night {
-                theme::ACCENT
-            } else {
-                theme::MAP_DAY_TEXT
-            };
-            p.add(egui::Shape::closed_line(
-                vec![
-                    pos + egui::vec2(0., -6.),
-                    pos + egui::vec2(6., 0.),
-                    pos + egui::vec2(0., 6.),
-                    pos + egui::vec2(-6., 0.),
-                ],
-                Stroke::new(1.5_f32, color),
-            ));
-            map_label(
-                p,
-                pos + egui::vec2(9., 0.),
-                Align2::LEFT_CENTER,
-                format!(
-                    "{} {:+.0}",
-                    traffic.callsign,
-                    (traffic.altitude_msl_m - s.sim().readout().altitude_msl_m) / 30.48
-                ),
-                FontId::proportional(11.),
-            );
-        }
+    // The glass map and its PFD inset show traffic only with an ADS-B In installation; the planning
+    // map is a simulator aid and always does.
+    if !compact || s.adsb_in_installed() {
+        traffic(p, v, s, state, inset, &mut features);
     }
     features
+}
+/// Seconds of travel a traffic trend vector shows.
+const TREND_VECTOR_S: f64 = 60.;
+/// Other aircraft: ADS-B arrows, callsign and type, altitude and speed, a one-minute trend vector,
+/// and a ring on any aircraft a controller just named. Each is also a hoverable, clickable feature.
+fn traffic(
+    p: &egui::Painter,
+    v: &View,
+    s: &Session,
+    state: &MapState,
+    inset: bool,
+    features: &mut Vec<Feature>,
+) {
+    let readout_hundreds = |ft: f64| format!("{:+.0}", ft / 100.);
+    for t in s.traffic_targets() {
+        let Some(geo) = t
+            .latitude_deg
+            .zip(t.longitude_deg)
+            .map(|(latitude_deg, longitude_deg)| GeoPoint {
+                latitude_deg,
+                longitude_deg,
+            })
+        else {
+            continue;
+        };
+        let Some(pos) = v.point(geo).filter(|q| v.rect.contains(*q)) else {
+            continue;
+        };
+        let [n, e, _] = t.position_m;
+        let ahead = t.ground_speed_kt * 0.514_444 * TREND_VECTOR_S;
+        let tip = v.local([
+            n + ahead * t.track_grid_rad.cos(),
+            e + ahead * t.track_grid_rad.sin(),
+        ]);
+        let unit = v.local([
+            n + 100. * t.track_grid_rad.cos(),
+            e + 100. * t.track_grid_rad.sin(),
+        ]) - pos;
+        let direction = if unit.length() > 0. {
+            unit.normalized()
+        } else {
+            egui::vec2(0., -1.)
+        };
+        let side = egui::vec2(-direction.y, direction.x);
+        let ink = match t.class {
+            flightcraft_control::TrafficClass::Alert => theme::AMBER,
+            _ if state.night => theme::ACCENT,
+            _ => theme::MAP_DAY_TEXT,
+        };
+        let size = if inset { 4. } else { 7. };
+        let outline = vec![
+            pos + direction * size * 1.4,
+            pos - direction * size + side * size * 0.9,
+            pos - direction * size * 0.4,
+            pos - direction * size - side * size * 0.9,
+        ];
+        if !inset && t.ground_speed_kt > 5. && !t.on_ground {
+            p.line_segment([pos, tip], Stroke::new(1.2_f32, ink.linear_multiply(0.8)));
+        }
+        match t.class {
+            flightcraft_control::TrafficClass::Other => {
+                p.add(egui::Shape::closed_line(outline, Stroke::new(1.5_f32, ink)));
+            }
+            _ => {
+                p.add(egui::Shape::convex_polygon(outline, ink, Stroke::NONE));
+            }
+        }
+        if t.highlighted {
+            let pulse = 0.5 + 0.5 * (s.sim().state().time_s * 4.).sin() as f32;
+            p.circle_stroke(
+                pos,
+                size * 2.4,
+                Stroke::new(2.0_f32, theme::GLASS_GPS.linear_multiply(0.55 + 0.45 * pulse)),
+            );
+        }
+        if !inset {
+            let climb = match t.trend() {
+                1 => "↑",
+                -1 => "↓",
+                _ => "",
+            };
+            map_label(
+                p,
+                pos + egui::vec2(11., 0.),
+                Align2::LEFT_CENTER,
+                format!(
+                    "{}\n{:.0} ft {}{} {:.0} kt",
+                    t.short_label(),
+                    t.altitude_msl_ft,
+                    readout_hundreds(t.relative_altitude_ft),
+                    climb,
+                    t.ground_speed_kt
+                ),
+                FontId::proportional(10.),
+            );
+        }
+        features.push(Feature {
+            position: geo,
+            pixel: pos,
+            ident: t.registration.clone(),
+            kind: "traffic",
+            details: t.details(),
+            airport: false,
+        });
+    }
 }
 fn route(
     p: &egui::Painter,

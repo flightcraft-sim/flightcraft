@@ -2599,6 +2599,13 @@
     "SystemsDefinition": {
       "type": "object",
       "properties": {
+        "adsb_in": {
+          "description": "Whether the glass displays are fed by an ADS-B In (or TIS-B) traffic receiver. Omission means\nthe receiver is installed whenever the aircraft has a glass display; `false` declares none, so\nno glass page shows traffic or the TRAFFIC annunciation.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "electric_gyro_load": {
           "description": "Electric attitude/heading sensor; its installation must name an electrical load.",
           "type": [

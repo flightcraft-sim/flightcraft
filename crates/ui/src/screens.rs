@@ -23,6 +23,7 @@ pub struct PageUi {
     camera_generation: Option<u64>,
     panel: instruments::InstrumentPanel,
     map: map::PlanningMap,
+    traffic: crate::traffic_page::TrafficPage,
     instructor: scenario::ScenarioUi,
     instrument: crate::ifr::InstrumentUi,
     navigation: navigation::SearchPanel,
@@ -964,6 +965,9 @@ impl PageUi {
             }
             PageKind::Navigator => {
                 self.navigation.show(ui, s);
+            }
+            PageKind::Traffic => {
+                self.traffic.show(ui, s);
             }
             PageKind::Charts => {
                 ui.heading("EFB / charts");

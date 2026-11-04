@@ -22,6 +22,50 @@ fn render_glass_preview() {
     }
 }
 #[test]
+#[ignore = "manual traffic MFD preview"]
+fn render_traffic_glass_preview() {
+    let mut s = tests::fixture_flight();
+    s.execute(
+        "traffic.density",
+        serde_json::json!({"density":"busy","airport":"KABE"}),
+    )
+    .unwrap();
+    s.run(flightcraft_control::Step { steps: 120 * 20 }).unwrap();
+    for setting in [
+        flightcraft_control::GlassSetting::MapRange { range_nm: 15. },
+        flightcraft_control::GlassSetting::TrafficFilter {
+            filter: flightcraft_control::TrafficFilter::Unrestricted,
+        },
+    ] {
+        s.set_glass(setting).unwrap();
+    }
+    let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/traffic");
+    std::fs::create_dir_all(&directory).unwrap();
+    let live = s.glass_state();
+    eprintln!(
+        "{} targets on the MFD, alert {}",
+        live.traffic.len(),
+        live.traffic_alert
+    );
+    capture(&s, &live, "glass_mfd", 1000, 760)
+        .save(directory.join("mfd-traffic.png"))
+        .unwrap();
+    // The same display with the nearest target moved inside the alert volume, to show the alert
+    // symbology and the PFD TRAFFIC annunciation. Synthetic: it changes only this snapshot.
+    let mut alert = live.clone();
+    if let Some(t) = alert.traffic.first_mut() {
+        t.class = flightcraft_control::TrafficClass::Alert;
+        t.highlighted = true;
+    }
+    alert.traffic_alert = true;
+    capture(&s, &alert, "glass_mfd", 1000, 760)
+        .save(directory.join("mfd-traffic-synthetic-alert.png"))
+        .unwrap();
+    capture(&s, &alert, "glass_pfd", 1000, 880)
+        .save(directory.join("pfd-traffic-synthetic-alert.png"))
+        .unwrap();
+}
+#[test]
 #[ignore = "manual integrated autopilot PFD preview"]
 fn render_autopilot_glass_preview() {
     let mut s = tests::flight();

@@ -136,42 +136,51 @@ impl Session {
     pub fn update_efb(&self) {
         if let Some(sender) = &self.efb {
             sender.update(aircraft(self));
-            let traffic = self
-                .traffic_state()
-                .aircraft
-                .into_iter()
-                .filter_map(|a| {
-                    let [n, e, _] = a.position_m;
-                    let reference = flightcraft_sim::magnetic::reference_at(
-                        self.sim.world(),
-                        [n, e, -a.altitude_msl_m],
-                        self.simulation_date(),
-                    )
-                    .ok()?;
-                    let heading = reference
-                        .magnetic_to_true(reference.grid_to_magnetic(a.heading_grid_rad))
-                        .to_degrees();
-                    Some((
-                        encode::Aircraft {
-                            latitude_deg: a.latitude_deg?,
-                            longitude_deg: a.longitude_deg?,
-                            altitude_msl_m: a.altitude_msl_m,
-                            pressure_altitude_m: Some(a.altitude_msl_m),
-                            track_deg: heading,
-                            heading_deg: heading,
-                            ground_speed_mps: a.speed_mps,
-                            vertical_speed_mps: a.vertical_speed_mps,
-                            pitch_deg: 0.0,
-                            roll_deg: 0.0,
-                            airborne: true,
-                        },
-                        a.address,
-                        a.registration,
-                    ))
-                })
-                .collect();
+            let traffic = self.traffic_targets().iter().map(efb_traffic).collect();
             sender.update_traffic(traffic);
         }
+    }
+}
+
+/// Maximum takeoff weights, pounds, of the busy-airspace types; they set the GDL 90 emitter category.
+const MAX_TAKEOFF_LB: &[(&str, f64)] = &[
+    ("C172", 2550.),
+    ("C182", 3100.),
+    ("PA28", 2440.),
+    ("SR22", 3600.),
+    ("BE36", 3650.),
+    ("M20P", 2900.),
+    ("DA40", 2650.),
+    ("BE58", 5500.),
+    ("BE20", 12500.),
+    ("PC12", 10450.),
+    ("C525", 10700.),
+];
+/// A display target as a GDL 90 Traffic Report source. The address is the fleet's own, derived from
+/// the aircraft id, so it is stable across frames and runs. Unknown types are light aircraft.
+pub fn efb_traffic(t: &crate::TrafficTarget) -> encode::Traffic {
+    let weight = MAX_TAKEOFF_LB
+        .iter()
+        .find(|(designator, _)| *designator == t.type_designator)
+        .map_or(2500., |(_, lb)| *lb);
+    encode::Traffic {
+        aircraft: encode::Aircraft {
+            latitude_deg: t.latitude_deg.unwrap_or(0.),
+            longitude_deg: t.longitude_deg.unwrap_or(0.),
+            altitude_msl_m: t.altitude_msl_ft * 0.3048,
+            pressure_altitude_m: t.latitude_deg.map(|_| t.altitude_msl_ft * 0.3048),
+            track_deg: t.track_true_deg,
+            heading_deg: t.track_true_deg,
+            ground_speed_mps: t.ground_speed_kt * 0.514_444,
+            vertical_speed_mps: t.vertical_rate_fpm * 0.3048 / 60.,
+            pitch_deg: 0.,
+            roll_deg: 0.,
+            airborne: !t.on_ground,
+        },
+        address: t.address & 0xff_ffff,
+        callsign: t.registration.clone(),
+        emitter: encode::emitter_category(weight),
+        alert: t.class == crate::TrafficClass::Alert,
     }
 }
 

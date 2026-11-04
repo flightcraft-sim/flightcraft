@@ -66,6 +66,7 @@ GDL 90 uses one framed message per UDP datagram, to destination port **4000**:
 | Ownship geometric altitude | 11 | 1 Hz |
 | Device identification, version 1 | 0x65, sub-ID 0 | 1 Hz |
 | AHRS attitude | 0x65, sub-ID 1 | 5 Hz |
+| Traffic report, one per other aircraft | 20 (`0x14`) | 1 Hz each |
 
 The original encoder follows FAA **GDL 90 Data Interface Specification, 560-1058-00 Rev A**:
 24-bit signed semicircles, nearest-step quantization, 25 ft pressure-altitude steps with a
@@ -99,9 +100,28 @@ track and heading are clockwise from true north, vertical speed is positive clim
 is `1` in flight or `0` on the ground. This follows the public simulator-message field conventions;
 FlightCraft is the source suffix. Compatibility with a particular tablet app is not claimed.
 
-Traffic encoders support GDL ID 20 and the XTRAFFIC line above. The current simulator has no
-traffic aircraft source, so the sender emits neither traffic reports nor fictitious targets.
-A future traffic source can use `efb::encode::report` and `efb::encode::xtraffic` in control.
+Every busy-airspace aircraft and every `traffic.set` circuit aircraft is sent as a Traffic Report
+(and as an `XTRAFFIC` line when the simulator protocol is on), once a second, so a tablet shows the
+same traffic as the [glass displays](traffic.md#displays). The 28-byte report follows the FAA layout
+exactly:
+
+| Bytes | Content |
+|---|---|
+| 0 | ID 20 |
+| 1 | traffic alert status in the high nibble (1 while the glass would show a TRAFFIC alert), address type 1 (ADS-B, self-assigned) in the low nibble |
+| 2-4 | address: `0xF20000` plus the fleet aircraft id, so it is stable per aircraft and run, and cannot be a real ICAO address; circuit traffic keeps its own address |
+| 5-10 | latitude and longitude, 24-bit signed semicircles |
+| 11-12 | pressure altitude in 25 ft steps from -1,000 ft (12 bits), then the misc nibble: airborne and true track |
+| 13 | NIC and NACp, zero: simulated truth is not an integrity source |
+| 14-16 | horizontal velocity in knots (12 bits) and vertical velocity in 64 fpm steps (12 bits, signed) |
+| 17 | true track in 360/256 degree steps |
+| 18 | emitter category from the type's maximum takeoff weight: 1 light under 15,500 lb, 2 small to 75,000 lb, 3 large, 5 heavy (every current type is 1) |
+| 19-26 | callsign: the written registration, upper case, space padded |
+| 27 | priority code zero |
+
+`efb::encode::traffic_report` builds one, with exact-byte tests in `encode_tests.rs`. Traffic is
+sent whenever broadcasting is on, whether or not the simulated aircraft has an ADS-B In receiver,
+because the tablet is its own receiver. The aircraft's own equipment gates only the glass displays.
 
 The app publishes a latest-value truth snapshot each frame to a dedicated sender thread.
 Position comes from the active region's geodesy; pressure altitude inverts the simulator's ISA

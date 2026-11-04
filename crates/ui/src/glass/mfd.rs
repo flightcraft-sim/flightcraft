@@ -145,23 +145,11 @@ fn map(d: &mut DrawList, s: &GlassState) {
         }
     }
     for traffic in &s.traffic {
-        if traffic.position.iter().all(|v| (0.0..=1.0).contains(v)) {
-            let [x, y] = point(traffic.position);
-            for (a, b) in [
-                ([x, y - 5.], [x + 5., y]),
-                ([x + 5., y], [x, y + 5.]),
-                ([x, y + 5.], [x - 5., y]),
-                ([x - 5., y], [x, y - 5.]),
-            ] {
-                line(d, a, b, Ink::Needle, 1.2);
-            }
-            label(
-                d,
-                [x, y - 13.],
-                format!("{} {:+.0}", traffic.callsign, traffic.relative_altitude_m / 30.48),
-                8.,
-                Ink::Text,
-            );
+        let [x, y] = point(traffic.position);
+        if (bounds[0] + 8. ..bounds[0] + bounds[2] - 8.).contains(&x)
+            && (bounds[1] + 8. ..bounds[1] + bounds[3] - 8.).contains(&y)
+        {
+            super::traffic::symbol(d, traffic, [x, y]);
         }
     }
     let center = point([0.5, 0.5]);
@@ -203,10 +191,15 @@ fn map(d: &mut DrawList, s: &GlassState) {
         d,
         [305., 350.],
         format!(
-            "{:?}   {:.0} NM   RING {:.0}",
+            "{:?}   {:.0} NM   RING {:.0}{}",
             s.settings.orientation,
             s.settings.range_nm,
-            s.settings.range_nm * 0.75
+            s.settings.range_nm * 0.75,
+            match (s.traffic_installed, s.settings.traffic_shown) {
+                (false, _) => String::new(),
+                (true, false) => "   TFC OFF".into(),
+                (true, true) => format!("   TFC {}", s.settings.traffic_filter.label()),
+            }
         )
         .to_uppercase(),
         10.,

@@ -335,3 +335,10 @@ The optional `systems.definition.sliding_canopy` boolean declares the aircraft m
 of its identity and exterior availability. Omission is false. `systems.canopy` in simulation and screen
 snapshots reports `sliding`, `open_fraction` and `latched`. The Sling V9 installer enables the capability
 and upgrades its manifest to format 3 only after all new GLBs pass validation.
+
+The optional `systems.definition.adsb_in` boolean declares whether the glass displays have an ADS-B In
+(or TIS-B) traffic receiver. Omission means the receiver is installed wherever the aircraft has a
+glass display (a `glass_pfd` or `glass_mfd` load, or an installed touch display), so existing glass packs
+such as the Sling 2 show traffic with no change. `false` removes it: no traffic on the glass map or
+inset, no TFC keys, and no TRAFFIC annunciation. It needs no format-version change; an older build
+rejects a pack that sets it as an unknown field. See [glass traffic](glass.md#traffic).

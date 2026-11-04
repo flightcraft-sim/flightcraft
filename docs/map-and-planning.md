@@ -145,7 +145,7 @@ overlays. The picker sits on the map itself, so switching from "Aero" to "Sectio
 - user pins;
 - your location;
 - the aircraft and its track;
-- simulated traffic.
+- simulated traffic: ADS-B arrows with registration, type, altitude, speed, a one-minute trend vector, and a hover card; see [traffic](traffic.md#displays).
 
 **Map behaviour:**
 - **Orientation:** north-up, track-up, or heading-up.

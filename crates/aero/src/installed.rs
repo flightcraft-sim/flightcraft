@@ -40,6 +40,11 @@ pub struct SystemsDefinition {
     /// POH-declared cabin mechanism, independent of aircraft identity or artwork.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub sliding_canopy: bool,
+    /// Whether the glass displays are fed by an ADS-B In (or TIS-B) traffic receiver. Omission means
+    /// the receiver is installed whenever the aircraft has a glass display; `false` declares none, so
+    /// no glass page shows traffic or the TRAFFIC annunciation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adsb_in: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modern: Option<crate::modern::ModernSystems>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -128,6 +133,10 @@ pub struct EngineOperationDefinition {
 }
 
 impl SystemsDefinition {
+    /// Whether a traffic receiver feeds the glass displays, given whether the aircraft has any.
+    pub fn adsb_in_installed(&self, has_glass_display: bool) -> bool {
+        has_glass_display && self.adsb_in.unwrap_or(true)
+    }
     pub fn validate(&self) -> Result<(), AircraftError> {
         // LayerFile also checks finite numbers. This method is safe for direct Rust callers.
         crate::aircraft::finite_tree(

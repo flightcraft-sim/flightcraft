@@ -33,6 +33,26 @@ impl GlassControls {
                     range_nm: (state.settings.range_nm * 1.5).min(200.),
                 });
             }
+            if state.traffic_installed {
+                if ui
+                    .selectable_label(state.settings.traffic_shown, "TFC")
+                    .on_hover_text("Show traffic on the map")
+                    .clicked()
+                {
+                    commands.push(S::Traffic {
+                        shown: !state.settings.traffic_shown,
+                    });
+                }
+                if ui
+                    .button(format!("FLT {}", state.settings.traffic_filter.label()))
+                    .on_hover_text("Traffic altitude filter: normal, above, below, unrestricted")
+                    .clicked()
+                {
+                    commands.push(S::TrafficFilter {
+                        filter: state.settings.traffic_filter.next(),
+                    });
+                }
+            }
             if ui.button("N/TRK/HDG").clicked() {
                 commands.push(S::Orientation {
                     orientation: match state.settings.orientation {

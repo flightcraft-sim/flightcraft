@@ -11,6 +11,53 @@ pub enum GlassPage {
     Nearest,
     FlightPlan,
 }
+/// The altitude window a glass unit shows traffic in, relative to the aircraft.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TrafficFilter {
+    /// 2,700 ft above to 2,700 ft below.
+    #[default]
+    Normal,
+    /// 9,900 ft above to 2,700 ft below.
+    Above,
+    /// 2,700 ft above to 9,900 ft below.
+    Below,
+    /// 9,900 ft above to 9,900 ft below.
+    Unrestricted,
+}
+impl TrafficFilter {
+    pub const ALL: [Self; 4] = [Self::Normal, Self::Above, Self::Below, Self::Unrestricted];
+    /// Limits in feet: (most below, most above) the aircraft.
+    pub fn window_ft(self) -> (f64, f64) {
+        match self {
+            Self::Normal => (-2700., 2700.),
+            Self::Above => (-2700., 9900.),
+            Self::Below => (-9900., 2700.),
+            Self::Unrestricted => (-9900., 9900.),
+        }
+    }
+    pub fn shows(self, relative_altitude_ft: f64) -> bool {
+        let (low, high) = self.window_ft();
+        (low..=high).contains(&relative_altitude_ft)
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Normal => "NORMAL",
+            Self::Above => "ABOVE",
+            Self::Below => "BELOW",
+            Self::Unrestricted => "UNRESTRICTED",
+        }
+    }
+    /// The next filter in the soft-key cycle.
+    pub fn next(self) -> Self {
+        match self {
+            Self::Normal => Self::Above,
+            Self::Above => Self::Below,
+            Self::Below => Self::Unrestricted,
+            Self::Unrestricted => Self::Normal,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MapOrientation {
@@ -97,6 +144,13 @@ pub enum GlassSetting {
     },
     Page {
         page: GlassPage,
+    },
+    /// Show or hide traffic on the MFD map (the TRAFFIC annunciation is not affected).
+    Traffic {
+        shown: bool,
+    },
+    TrafficFilter {
+        filter: TrafficFilter,
     },
     DirectTo {
         airport: String,
