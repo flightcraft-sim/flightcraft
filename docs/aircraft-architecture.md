@@ -110,6 +110,14 @@ reports, textbook aerodynamics, and the published performance figures used only 
    affiliated with or endorsed by the manufacturer.
 2. **Avionics are behaviour plus a skin.** Every unit's behaviour (buttons, knobs, modes, pages,
    procedures, and failure logic) is one module with its tests. How it looks is a separate skin
-   drawn on top. Public skins are our own design built on public FAA display conventions; a skin
-   that reproduces a manufacturer's screens exactly is kept private and never published. Both skins
-   run on the same modules, so behaviour is written and tested once.
+   drawn on top, and both run on the same modules, so behaviour is written and tested once.
+   - The engine's built-in skins are our own generic design on public FAA display conventions.
+   - A real unit's look ships as a separate **skin pack**, its own repository loaded like an
+     aircraft pack. It may match the real unit's layout geometry, element placement, colour
+     meanings, page, menu, and soft-key structure, knob behaviour, and short functional labels, all
+     taken from public manufacturer documentation and cited.
+   - Its artwork is drawn from scratch with an openly licensed font. It carries no manufacturer
+     logos or trademarks in the interface, no proprietary fonts, and no traced or copied graphics.
+     Its README names the real unit only to say what it trains for, and that it is not affiliated.
+   - A pixel-exact reproduction (logos, fonts, original graphics) needs the manufacturer's written
+     permission and is not published without it.
