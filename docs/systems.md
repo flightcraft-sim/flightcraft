@@ -27,6 +27,11 @@ Every action uses `systems.set` with a tagged `setting`:
 | `switch` | `switch`: `master`, `avionics`, `alternator`, `lights`, `fuel_pump`, `pitot_heat`, `alternate_static`, `carb_heat`, or `starter`; `on`: boolean |
 | `magnetos` | `position`: `off`, `left`, `right`, or `both` |
 | `fuel_selector` | `position`: `off`, `left`, `right`, or `both` |
+| `trim` | `value`: -0.3–0.3; elevator trim, positive nose up |
+| `throttle` | `value`: 0–1; the pilot's throttle lever (the same control as `sim.set_controls`) |
+| `flaps` | `value`: 0–1; the pilot's flap selector, normalised to full travel |
+| `wheel_brake` | `value`: 0–1; the hand brake lever |
+| `park_brake` | `on`: boolean; the brake intercept valve, which holds full brake pressure with the lever released |
 | `mixture` | `value`: 0–1; zero is idle cutoff |
 | `altimeter` | `pressure_pa`: 80000–110000; Kollsman setting |
 | `heading_bug` | `heading_rad`: 0–2π; displayed heading reference |

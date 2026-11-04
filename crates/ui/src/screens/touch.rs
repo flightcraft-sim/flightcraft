@@ -474,7 +474,10 @@ pub fn lever_command(kind: ControlKind, value: f64, item: Option<&str>) -> (&'st
             json!({"setting":{"kind":"trim","value":value*0.6-0.3}}),
         ),
         ControlKind::Flaps => ("sim.set_controls", json!({"flaps":value})),
-        ControlKind::ParkingBrake => ("sim.set_controls", json!({"brake":value})),
+        ControlKind::ParkingBrake => (
+            "systems.set",
+            json!({"setting":{"kind":"park_brake","on":value>=0.5}}),
+        ),
         ControlKind::FuelSelector => {
             let position = if value < 0.2 {
                 "off"

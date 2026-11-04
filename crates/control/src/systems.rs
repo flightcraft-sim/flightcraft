@@ -371,7 +371,7 @@ pub struct SetSystems {
 }
 impl Command for SetSystems {
     const NAME: &'static str = "systems.set";
-    const DESCRIPTION: &'static str = "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.";
+    const DESCRIPTION: &'static str = "Set an aircraft switch, selector, trim, throttle, flaps, hand brake, park brake, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
         session.sim_mut().set_systems(self.setting)?;

@@ -144,8 +144,12 @@ pub enum Verify {
     Starter {
         engaged: bool,
     },
-    /// Wheel brakes at or above half pressure; the simulator has no separate park-brake valve.
+    /// Wheel brakes applied at or above half pressure, by the lever or by the park-brake valve.
     Brake {
+        set: bool,
+    },
+    /// The brake intercept valve (the "park brake") is closed (`set`) or open.
+    ParkBrake {
         set: bool,
     },
     /// Flap position as a fraction of full travel.
@@ -323,6 +327,7 @@ impl Verify {
             | Self::EngineRunning { .. }
             | Self::Starter { .. }
             | Self::Brake { .. }
+            | Self::ParkBrake { .. }
             | Self::CanopyLatched { .. } => true,
             Self::BackupBattery { min_voltage, .. } => range_ok(*min_voltage, 0., 60.),
             Self::FuelSelector { positions } => {

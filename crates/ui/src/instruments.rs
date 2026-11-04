@@ -37,6 +37,8 @@ pub struct InstrumentInput<'a> {
     pub registration: Option<&'a str>,
     /// Installed skin packs, for displays that name one.
     pub skins: &'a [&'a flightcraft_control::SkinContents],
+    /// The pilot's throttle, flap, and brake controls, for the cockpit levers and selectors.
+    pub pilot: Option<flightcraft_sim::Controls>,
 }
 impl<'a> InstrumentInput<'a> {
     pub fn new(systems: &'a SystemsState, time_s: f64) -> Self {
@@ -51,7 +53,12 @@ impl<'a> InstrumentInput<'a> {
             airports: None,
             registration: None,
             skins: &[],
+            pilot: None,
         }
+    }
+    pub fn with_pilot(mut self, pilot: flightcraft_sim::Controls) -> Self {
+        self.pilot = Some(pilot);
+        self
     }
     pub fn with_skins(mut self, skins: &'a [&'a flightcraft_control::SkinContents]) -> Self {
         self.skins = skins;

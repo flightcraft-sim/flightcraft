@@ -2959,6 +2959,96 @@
           "required": [
             "kind"
           ]
+        },
+        {
+          "description": "Throttle lever on the cabin centre console. Forward (up) is more power; it sets the pilot's\nthrottle, as the keyboard, joystick, and `sim.set_controls` do.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "throttle"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "description": "Hand brake lever on the centre console: held, it applies the wheel brakes.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "brake_lever"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "description": "Brake intercept valve handle, the parking brake: closed, it keeps the brakes applied.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "park_brake"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "description": "Rotary flap selector with one detent at each of the aircraft's flap stages.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "flap_selector"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
+        },
+        {
+          "description": "The pilot's control-stick grip seen from above, nose up the page, with the POH button\nallocation: 1 trim down (forward), 3 trim up (aft), 2 autopilot, 4 not allocated, 5 push to\ntalk. The trim buttons are live; the sticks themselves are flown with the flight controls.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "control_stick"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "label"
+          ]
         }
       ]
     },
@@ -4243,12 +4333,30 @@
           ]
         },
         {
-          "description": "Wheel brakes at or above half pressure; the simulator has no separate park-brake valve.",
+          "description": "Wheel brakes applied at or above half pressure, by the lever or by the park-brake valve.",
           "type": "object",
           "properties": {
             "kind": {
               "type": "string",
               "const": "brake"
+            },
+            "set": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "set"
+          ]
+        },
+        {
+          "description": "The brake intercept valve (the \"park brake\") is closed (`set`) or open.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "park_brake"
             },
             "set": {
               "type": "boolean"

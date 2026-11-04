@@ -371,6 +371,82 @@ fn the_current_items_control_gets_a_pulsing_outline_on_the_dash() {
     assert!(!around(&missing));
 }
 
+/// Every control a Sling 2 checklist item names resolves on the dash: a pulsing outline around the
+/// control itself when it is on the dash, or around the Console button when it is on the lower
+/// console. Checked at a desktop and a phone size.
+#[test]
+fn every_checklist_control_resolves_to_a_pulse_on_the_dash_or_the_console_button() {
+    let systems: serde_json::Value = serde_json::from_str(include_str!(
+        "../../control/tests/fixtures/sling-pack/systems.json"
+    ))
+    .unwrap();
+    let mut controls = std::collections::BTreeSet::new();
+    let mut items = 0;
+    for list in systems["procedures"]["checklists"].as_array().unwrap() {
+        for item in list["items"].as_array().unwrap() {
+            if let Some(c) = item["control"].as_str() {
+                controls.insert(c.to_owned());
+                items += 1;
+            }
+        }
+    }
+    assert!(items > 40 && controls.len() >= 14, "{items} items, {controls:?}");
+    for id in [
+        "master_switch",
+        "throttle",
+        "park_brake",
+        "brake_lever",
+        "flap_selector",
+        "pilot_stick",
+        "fuel_selector",
+    ] {
+        assert!(controls.contains(id), "{id} is highlighted by no item");
+    }
+    let panel = crate::layout_tests::sling_panel();
+    let equipment = panel.equipment.as_ref().unwrap();
+    let dash = crate::panel_art::dash_bounds(equipment).unwrap();
+    for size in [(1440., 900.), (390., 844.)] {
+        let plain = render(size, ground, None);
+        for id in &controls {
+            let e = equipment.elements.iter().find(|e| &e.id == id).unwrap();
+            let lit = render(size, ground, Some(id));
+            let transform = crate::panel_art::dash_bounds(equipment)
+                .map(|_| crate::panel_preview::dash_rect(equipment, lit.host));
+            let transform = transform.unwrap();
+            let scale = transform.width() / equipment.size[0] as f32;
+            let on_dash = dash
+                .expand(0.01)
+                .contains_rect(crate::panel_art::installation_rect(e));
+            let target = if on_dash {
+                egui::Rect::from_min_size(
+                    transform.min + egui::vec2(e.position[0] as f32, e.position[1] as f32) * scale,
+                    egui::vec2(e.size[0] as f32, e.size[1] as f32) * scale,
+                )
+            } else {
+                egui::Rect::from_min_size(
+                    lit.host.right_bottom() - egui::vec2(94., 31.),
+                    egui::vec2(88., 25.),
+                )
+            };
+            let around = |f: &Frame| {
+                f.outlines
+                    .iter()
+                    .any(|r| r.expand(1.).contains_rect(target) && r.width() < target.width() * 2.)
+            };
+            assert!(
+                lit.host.expand(0.1).contains_rect(target),
+                "{size:?}: {id} (or the Console button) is on screen"
+            );
+            assert!(
+                around(&lit),
+                "{size:?}: no pulse for {id}: {:?} vs {target:?}",
+                lit.outlines
+            );
+            assert!(!around(&plain), "{size:?}: pulse without a current control");
+        }
+    }
+}
+
 /// CPU render of the ground layout with the real Sling 2 pack data (fixture copy): checklist on
 /// the left with the run-up current, the exterior box on the right (blank here: the 3D scene needs
 /// a GPU), and the whole dash below.

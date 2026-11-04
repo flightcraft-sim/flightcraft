@@ -775,3 +775,60 @@ fn commands_are_registered() {
         assert!(names.contains(&n), "{n}");
     }
 }
+
+#[test]
+fn the_park_brake_valve_is_verified_and_shown_apart_from_the_hand_brake() {
+    let mut s = session();
+    // Securing: "Parking brake" ticks from the valve alone, and Show me sets the valve.
+    run(&mut s, "checklist.select", json!({"id":"securing"}));
+    let st = state(&mut s);
+    assert_eq!(item(&st, "parking_brake")["control"], "park_brake");
+    run(&mut s, "checklist.complete", json!({"item":"site"}));
+    for id in ["ignition", "master", "fuel_selector"] {
+        show(&mut s, id, 5.);
+    }
+    assert_eq!(status(&mut s, "parking_brake"), "current");
+    run(&mut s, "sim.set_controls", json!({"brake": 1.0}));
+    step(&mut s, 0.5);
+    assert_ne!(
+        status(&mut s, "parking_brake"),
+        "done",
+        "the hand lever is not the valve"
+    );
+    run(&mut s, "sim.set_controls", json!({"brake": 0.0}));
+    set(&mut s, json!({"kind":"park_brake","on":true}));
+    step(&mut s, 0.5);
+    assert_eq!(status(&mut s, "parking_brake"), "done");
+    // Show me closes the valve.
+    set(&mut s, json!({"kind":"park_brake","on":false}));
+    run(&mut s, "checklist.select", json!({"id":"securing"}));
+    run(&mut s, "checklist.complete", json!({"item":"site"}));
+    for id in ["ignition", "master", "fuel_selector", "parking_brake"] {
+        show(&mut s, id, 5.);
+    }
+    assert!(s.sim().systems().controls.park_brake, "Show me closes the valve");
+    // Taxi: "Brakes off" needs the valve open as well as the lever released; Show me does both.
+    run(&mut s, "checklist.select", json!({"id":"taxi"}));
+    run(&mut s, "sim.set_controls", json!({"brake": 0.0}));
+    let st = state(&mut s);
+    assert_eq!(item(&st, "brakes_off")["control"], "park_brake");
+    assert_eq!(item(&st, "brakes_check")["control"], "brake_lever");
+    assert_eq!(item(&st, "flaps_up")["control"], "flap_selector");
+    show(&mut s, "fuel_selector", 3.);
+    show(&mut s, "flaps_up", 3.);
+    assert_eq!(status(&mut s, "brakes_off"), "current");
+    step(&mut s, 0.5);
+    assert_eq!(
+        status(&mut s, "brakes_off"),
+        "current",
+        "the valve still holds the brakes with the lever released"
+    );
+    show(&mut s, "brakes_off", 3.);
+    assert_eq!(status(&mut s, "brakes_off"), "done");
+    assert!(!s.sim().systems().controls.park_brake);
+    // Before take-off: the trim and flap items point at their controls.
+    run(&mut s, "checklist.select", json!({"id":"before_takeoff"}));
+    let st = state(&mut s);
+    assert_eq!(item(&st, "trim")["control"], "pilot_stick");
+    assert_eq!(item(&st, "flaps")["control"], "flap_selector");
+}

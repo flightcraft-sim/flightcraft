@@ -99184,6 +99184,11 @@
               "format": "double",
               "type": "number"
             },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
+            },
             "pitot_heat": {
               "type": "boolean"
             },
@@ -103273,6 +103278,11 @@
             "mixture": {
               "format": "double",
               "type": "number"
+            },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
             },
             "pitot_heat": {
               "type": "boolean"
@@ -111203,6 +111213,11 @@
               "format": "double",
               "type": "number"
             },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
+            },
             "pitot_heat": {
               "type": "boolean"
             },
@@ -112605,6 +112620,11 @@
             "mixture": {
               "format": "double",
               "type": "number"
+            },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
             },
             "pitot_heat": {
               "type": "boolean"
@@ -114017,6 +114037,11 @@
               "format": "double",
               "type": "number"
             },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
+            },
             "pitot_heat": {
               "type": "boolean"
             },
@@ -114378,7 +114403,7 @@
   },
   {
     "name": "systems.set",
-    "description": "Set an aircraft switch, selector, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.",
+    "description": "Set an aircraft switch, selector, trim, throttle, flaps, hand brake, park brake, mixture, primer, altimeter, breaker, load fault, tank quantity, or local icing environment.",
     "input_schema": {
       "$defs": {
         "BackupCircuit": {
@@ -114852,6 +114877,87 @@
               "required": [
                 "kind",
                 "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Throttle lever, 0 (idle) to 1 (full). Sets the pilot's throttle control.",
+              "properties": {
+                "kind": {
+                  "const": "throttle",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Flap selector, 0 (up) to 1 (fully down). Sets the pilot's flap control.",
+              "properties": {
+                "kind": {
+                  "const": "flaps",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Hand brake lever, 0 (released) to 1 (fully squeezed). Sets the pilot's brake control.",
+              "properties": {
+                "kind": {
+                  "const": "wheel_brake",
+                  "type": "string"
+                },
+                "value": {
+                  "format": "double",
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Brake intercept valve (\"park brake\"): on holds full brake pressure with the lever released.",
+              "properties": {
+                "kind": {
+                  "const": "park_brake",
+                  "type": "string"
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on"
               ],
               "type": "object"
             },
@@ -116119,6 +116225,11 @@
             "mixture": {
               "format": "double",
               "type": "number"
+            },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
             },
             "pitot_heat": {
               "type": "boolean"
@@ -125374,6 +125485,11 @@
               "format": "double",
               "type": "number"
             },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
+            },
             "pitot_heat": {
               "type": "boolean"
             },
@@ -126809,6 +126925,11 @@
             "mixture": {
               "format": "double",
               "type": "number"
+            },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
             },
             "pitot_heat": {
               "type": "boolean"
@@ -129561,6 +129682,11 @@
             "mixture": {
               "format": "double",
               "type": "number"
+            },
+            "park_brake": {
+              "default": false,
+              "description": "Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.",
+              "type": "boolean"
             },
             "pitot_heat": {
               "type": "boolean"

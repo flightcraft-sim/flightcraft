@@ -83,6 +83,7 @@ fn render_layout_previews() {
                     ui,
                     &config.panel,
                     InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+                        .with_pilot(s.sim().controls())
                         .with_aircraft(&config)
                         .with_skins(&skins)
                         .with_glass(&state)

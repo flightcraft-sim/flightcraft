@@ -197,6 +197,24 @@ placard with the full N number, so a pack should include one, for example
 `{"kind":"placard","text":"{registration}","font_size_mm":9,"color":"white"}`. Registrations are
 at most 12 characters; the 128-character text limit applies to the raw text, and expansion never
 makes it longer. Toggles declare `label`, `guarded`, and `lamp`.
+
+Five cockpit flight-control kinds drive the pilot's own controls through `systems.set` (`throttle`,
+`flaps`, `wheel_brake`, `park_brake`, and `trim` settings), so a click, the keyboard, a joystick
+binding, MCP, and a checklist's Show me all move the same state. Each declares a `label`.
+
+| Kind | Face and operation | Setting it emits |
+|---|---|---|
+| `throttle` | Lever in a slot, idle at the bottom and full at the top; drag, click, or scroll over it | `throttle` |
+| `brake_lever` | Hand brake lever; the brakes are on while the pointer holds it | `wheel_brake` |
+| `park_brake` | Brake intercept valve handle; click toggles it | `park_brake` |
+| `flap_selector` | Rotary selector with one numbered detent per flap stage of the aircraft's variant layer; click a detent or scroll | `flaps` |
+| `control_stick` | The pilot's stick grip seen from above with the five buttons of a Sling-style grip: 1 trim down (forward), 3 trim up (aft), 2 autopilot, 4 unallocated, 5 push to talk. Holding 1 or 3 runs the trim at 0.15 of its range per second; 2, 4 and 5 are drawn but not wired | `trim` |
+
+The keyboard and gamepad bindings are the existing throttle, flap, brake, and trim actions, plus a
+`ParkBrake` action (default key N) that toggles the valve. The flap action steps through the
+aircraft's flap detents. A control that a checklist item names with `control` is outlined on the
+dash; when it sits below the dash outline, the dash's Console button is outlined instead and the
+lower console window outlines the control itself.
 Rockers support `backlit` labels and an optional `sublabel`; bracket elements label groups.
 Individual beacon, navigation, strobe, taxi, and landing switches have independent electrical
 loads. Breakers read their amp ratings from the electrical layer and show a white collar and

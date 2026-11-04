@@ -937,6 +937,7 @@ impl PageUi {
                     ui,
                     &configuration.panel,
                     instruments::InstrumentInput::new(s.sim().systems(), readout.time_s)
+                        .with_pilot(s.sim().controls())
                         .with_skins(&skins)
                         .with_aircraft(&configuration)
                         .with_registration(&registration)
@@ -1243,7 +1244,7 @@ fn control_value(s: &Session, kind: ControlKind) -> f64 {
         ControlKind::Trim => (systems.controls.trim + 0.3) / 0.6,
         ControlKind::CarbHeat => f64::from(systems.controls.carb_heat),
         ControlKind::Flaps => c.flaps,
-        ControlKind::ParkingBrake => c.brake,
+        ControlKind::ParkingBrake => f64::from(systems.controls.park_brake || c.brake >= 0.5),
         ControlKind::Heading => s.glass_state().settings.heading_bug_rad,
         ControlKind::Altitude => s.glass_state().settings.selected_altitude_m,
         ControlKind::Range => s.glass_state().settings.range_nm,

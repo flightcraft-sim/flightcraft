@@ -22,6 +22,7 @@ pub enum Action {
     ThrottleDown,
     Flaps,
     Brakes,
+    ParkBrake,
     Pause,
     Reset,
     Camera,
@@ -82,7 +83,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub const ALL: [Self; 73] = [
+    pub const ALL: [Self; 74] = [
         Self::CrewHandover,
         Self::RadioTransmit,
         Self::ComPtt,
@@ -99,6 +100,7 @@ impl Action {
         Self::ThrottleDown,
         Self::Flaps,
         Self::Brakes,
+        Self::ParkBrake,
         Self::Pause,
         Self::Reset,
         Self::Camera,
@@ -236,6 +238,7 @@ impl Action {
             Self::ThrottleDown => "Throttle down",
             Self::Flaps => "Cycle flaps",
             Self::Brakes => "Hold brakes",
+            Self::ParkBrake => "Park brake on / off",
             Self::Pause => "Pause / resume",
             Self::Reset => "Reset flight",
             Self::Hood => "View-limiting hood",
@@ -324,6 +327,7 @@ impl Default for Keymap {
                 (ThrottleDown, vec![Key::PageDown]),
                 (Flaps, vec![Key::F]),
                 (Brakes, vec![Key::B]),
+                (ParkBrake, vec![Key::N]),
                 (Pause, vec![Key::Space, Key::P]),
                 (Reset, vec![Key::R]),
                 (Camera, vec![Key::C]),
@@ -447,6 +451,7 @@ impl Keymap {
             Action::RadioPanel,
             Action::Kneeboard,
             Action::RadioTransmit,
+            Action::ParkBrake,
         ] {
             if !value.bindings.contains_key(&action) {
                 let keys = Self::default()
@@ -489,6 +494,7 @@ impl Keymap {
                     Action::RadioPanel,
                     Action::Kneeboard,
                     Action::RadioTransmit,
+                    Action::ParkBrake,
                 ]
                 .contains(&action)
                 && !Action::GLASS.contains(&action)

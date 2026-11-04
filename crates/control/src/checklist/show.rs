@@ -25,6 +25,7 @@ enum Action {
     Key(KeyPosition),
     Starter(bool),
     Brake(f64),
+    ParkBrake(bool),
     Flaps(f64),
     Trim,
     Throttle(f64),
@@ -107,7 +108,13 @@ fn simple(v: &Verify, out: &mut VecDeque<Step>) {
             })));
             out.push_back(Do(Action::Starter(*engaged)));
         }
-        Verify::Brake { set } => out.push_back(Do(Action::Brake(if *set { 1. } else { 0. }))),
+        Verify::Brake { set } => {
+            out.push_back(Do(Action::Brake(if *set { 1. } else { 0. })));
+            if !*set {
+                out.push_back(Do(Action::ParkBrake(false)));
+            }
+        }
+        Verify::ParkBrake { set } => out.push_back(Do(Action::ParkBrake(*set))),
         Verify::Flaps { min, max } => {
             let down = min.is_some_and(|m| m > 0.1) && max.is_none();
             out.push_back(Do(Action::Flaps(if down { 0.5 } else { 0. })));
@@ -385,6 +392,9 @@ fn apply(s: &mut Session, a: &Action) {
         Action::Brake(v) => {
             controls.brake = *v;
             s.sim.set_controls(controls);
+        }
+        Action::ParkBrake(on) => {
+            let _ = s.sim.set_systems(SystemSetting::ParkBrake { on: *on });
         }
         Action::Flaps(v) => {
             controls.flaps = *v;

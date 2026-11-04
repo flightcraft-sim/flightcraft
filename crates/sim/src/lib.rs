@@ -657,6 +657,22 @@ impl Sim {
                 degrees: heading_rad.to_degrees(),
             });
         }
+        if let systems::SystemSetting::Throttle { value }
+        | systems::SystemSetting::Flaps { value }
+        | systems::SystemSetting::WheelBrake { value } = &setting
+        {
+            if !value.is_finite() || !(0. ..=1.).contains(value) {
+                return Err(SimError::InvalidSystems("control outside 0 to 1".into()));
+            }
+            let mut controls = self.controls();
+            match &setting {
+                systems::SystemSetting::Throttle { value } => controls.throttle = *value,
+                systems::SystemSetting::Flaps { value } => controls.flaps = *value,
+                _ => controls.brake = *value,
+            }
+            self.set_controls(controls);
+            return Ok(());
+        }
         let previous = self.systems.clone();
         self.systems.set(setting, self.systems_model.as_ref())?;
         self.systems_changed |= self.systems != previous;
@@ -976,6 +992,9 @@ impl Sim {
     #[must_use]
     fn trimmed_controls(&self) -> Controls {
         let mut controls = self.controls;
+        if self.systems.controls.park_brake {
+            controls.brake = 1.0;
+        }
         if self.systems.controls.trim != 0.0 {
             controls.elevator = (controls.elevator + self.systems.controls.trim).clamp(-1.0, 1.0);
         }

@@ -37,6 +37,10 @@ pub struct Input {
     gamepad: Option<Gilrs>,
     pub gamepad_status: String,
     pub trim: f64,
+    /// Normalised flap detents of the loaded aircraft; the flap action steps through them.
+    pub flap_stages: Vec<f64>,
+    /// The dash hand brake lever is held; the brakes apply as for a held brake key.
+    pub panel_brake: bool,
 }
 
 impl Default for Input {
@@ -49,6 +53,8 @@ impl Default for Input {
             gamepad,
             gamepad_status,
             trim: 0.0,
+            flap_stages: Vec::new(),
+            panel_brake: false,
         }
     }
 }
@@ -133,6 +139,23 @@ impl Input {
         frame
     }
 
+    /// The next flap detent down, wrapping to up after the last; quarter steps without detents.
+    fn next_flap_stage(&self, current: f64) -> f64 {
+        if self.flap_stages.len() >= 2 {
+            return self
+                .flap_stages
+                .iter()
+                .copied()
+                .find(|stage| *stage > current + 1e-6)
+                .unwrap_or(self.flap_stages.first().copied().unwrap_or(0.));
+        }
+        if current >= 0.99 {
+            0.0
+        } else {
+            (current + 0.25).min(1.0)
+        }
+    }
+
     pub fn controls(&mut self, frame: &ActionFrame, current: Controls, dt: f64) -> Controls {
         let dt = dt.clamp(0.0, 0.25);
         let axis = |value: f64, positive, negative| {
@@ -143,6 +166,9 @@ impl Input {
             let target = frame.value(positive) - frame.value(negative);
             value + (target - value).clamp(-2.5 * dt, 2.5 * dt)
         };
+        let brake = frame
+            .value(Action::Brakes)
+            .max(if self.panel_brake { 1. } else { 0. });
         self.trim = (self.trim + (frame.value(Action::TrimUp) - frame.value(Action::TrimDown)) * dt * 0.15)
             .clamp(-0.3, 0.3);
         Controls {
@@ -152,15 +178,11 @@ impl Input {
             throttle: current.throttle
                 + (frame.value(Action::ThrottleUp) - frame.value(Action::ThrottleDown)) * dt * 0.35,
             flaps: if frame.pressed(Action::Flaps) {
-                if current.flaps >= 0.99 {
-                    0.0
-                } else {
-                    (current.flaps + 0.25).min(1.0)
-                }
+                self.next_flap_stage(current.flaps)
             } else {
                 current.flaps
             },
-            brake: frame.value(Action::Brakes),
+            brake,
         }
         .clamped()
     }
@@ -175,6 +197,8 @@ mod tests {
             gamepad: None,
             gamepad_status: String::new(),
             trim: 0.0,
+            flap_stages: Vec::new(),
+            panel_brake: false,
         }
     }
 

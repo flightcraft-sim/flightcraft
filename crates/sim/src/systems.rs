@@ -58,6 +58,25 @@ pub enum SystemSetting {
         #[schemars(range(min=-0.3,max=0.3))]
         value: f64,
     },
+    /// Throttle lever, 0 (idle) to 1 (full). Sets the pilot's throttle control.
+    Throttle {
+        #[schemars(range(min = 0, max = 1))]
+        value: f64,
+    },
+    /// Flap selector, 0 (up) to 1 (fully down). Sets the pilot's flap control.
+    Flaps {
+        #[schemars(range(min = 0, max = 1))]
+        value: f64,
+    },
+    /// Hand brake lever, 0 (released) to 1 (fully squeezed). Sets the pilot's brake control.
+    WheelBrake {
+        #[schemars(range(min = 0, max = 1))]
+        value: f64,
+    },
+    /// Brake intercept valve ("park brake"): on holds full brake pressure with the lever released.
+    ParkBrake {
+        on: bool,
+    },
     Mixture {
         #[schemars(range(min = 0, max = 1))]
         value: f64,
@@ -120,6 +139,9 @@ pub struct SystemControls {
     pub mixture: f64,
     #[serde(default)]
     pub trim: f64,
+    /// Brake intercept valve closed: stops pressure relief so the wheel brakes stay applied.
+    #[serde(default)]
+    pub park_brake: bool,
     pub fuel_selector: FuelSelector,
     pub altimeter_setting_pa: f64,
     pub temperature_c: f64,
@@ -141,6 +163,7 @@ impl Default for SystemControls {
             magnetos: Magnetos::Both,
             mixture: 1.0,
             trim: 0.0,
+            park_brake: false,
             fuel_selector: FuelSelector::Both,
             altimeter_setting_pa: 101325.0,
             temperature_c: 15.0,
@@ -364,6 +387,9 @@ impl SystemsState {
         }
         if c.trim != 0.0 {
             words.extend([0x7472696d, c.trim.to_bits()]);
+        }
+        if c.park_brake {
+            words.extend([0x7061726b, 1]);
         }
         if self.smoke_density > 0.0 {
             words.extend([0x736d6f6b65, self.smoke_density.to_bits()]);
@@ -647,6 +673,12 @@ impl SystemsState {
                 bounded(value, -0.3, 0.3)?;
                 self.controls.trim = value;
             }
+            SystemSetting::ParkBrake { on } => self.controls.park_brake = on,
+            // The pilot's throttle, flap, and brake controls belong to the simulation, which
+            // routes these before they reach the systems model.
+            SystemSetting::Throttle { .. }
+            | SystemSetting::Flaps { .. }
+            | SystemSetting::WheelBrake { .. } => {}
             SystemSetting::Mixture { value } => {
                 if self.modern.as_ref().is_some_and(|s| s.electronic) {
                     return Err(invalid("mixture is electronically controlled"));

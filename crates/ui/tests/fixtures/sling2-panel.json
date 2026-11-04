@@ -2348,6 +2348,101 @@
           "font_size_mm": 4.235,
           "color": "white"
         }
+      },
+      {
+        "id": "master_switch",
+        "position": [
+          68.0,
+          335.0
+        ],
+        "size": [
+          30.8,
+          34.65
+        ],
+        "element": {
+          "kind": "rocker",
+          "switch": "master",
+          "label": "MASTER",
+          "backlit": false
+        },
+        "appearance": {
+          "style": "black_rocker"
+        }
+      },
+      {
+        "id": "flap_selector",
+        "position": [
+          579.0,
+          478.0
+        ],
+        "size": [
+          42.0,
+          34.0
+        ],
+        "element": {
+          "kind": "flap_selector",
+          "label": "FLAPS"
+        }
+      },
+      {
+        "id": "pilot_stick",
+        "position": [
+          542.0,
+          670.0
+        ],
+        "size": [
+          52.0,
+          68.0
+        ],
+        "element": {
+          "kind": "control_stick",
+          "label": "STICK"
+        }
+      },
+      {
+        "id": "throttle",
+        "position": [
+          606.0,
+          670.0
+        ],
+        "size": [
+          40.0,
+          68.0
+        ],
+        "element": {
+          "kind": "throttle",
+          "label": "THROTTLE"
+        }
+      },
+      {
+        "id": "brake_lever",
+        "position": [
+          652.0,
+          670.0
+        ],
+        "size": [
+          40.0,
+          68.0
+        ],
+        "element": {
+          "kind": "brake_lever",
+          "label": "BRAKE"
+        }
+      },
+      {
+        "id": "park_brake",
+        "position": [
+          698.0,
+          670.0
+        ],
+        "size": [
+          44.0,
+          68.0
+        ],
+        "element": {
+          "kind": "park_brake",
+          "label": "PARK BRAKE"
+        }
       }
     ]
   },

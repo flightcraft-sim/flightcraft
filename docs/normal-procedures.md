@@ -49,7 +49,8 @@ Items without a `verify` ("Passenger: briefed") are ticked by the pilot.
 | `panel` | a panel control's 0..1 value is within `min`/`max` |
 | `rpm`, `oil_temp`, `oil_pressure`, `fuel_pressure`, `bus_voltage`, `throttle`, `flaps` | the reading is within the given bounds (crank rpm; bar; kPa; volts; 0..1) |
 | `engine_running`, `starter` | the engine runs / the starter is engaged |
-| `brake` | wheel brakes at or above half (there is no separate park-brake valve) |
+| `brake` | wheel brakes at or above half, by the hand lever or the park-brake valve |
+| `park_brake` | the brake intercept valve (the park brake) is closed (`set`) or open |
 | `trim_neutral` | pitch trim within `tolerance` of neutral |
 | `canopy_latched` | a sliding canopy is closed and latched (always true without one) |
 | `check` | a run-up check the simulator observed and found within limits (below) |
@@ -93,9 +94,14 @@ two minutes (4.5.3), though supplement 9.4.12 item 14 allows one; then, as the s
 raise rpm until the main bus shows 13.8 to 14.4 V (alternator B online; the model needs about
 3,000 rpm for that), then 2,500 rpm until the oil is at 50 C, then the EMS back-up off.
 
-The Sling's dash has no master switch or throttle, brake, flap, or trim control, so those items
-carry no `control` outline. A cold-and-dark lesson therefore leaves it to Show me to switch the
-master on. The Corvid has a short original fictional set (before start, start, run-up, shutdown).
+The Sling pack places every control a list operates: the master switch and flap selector on the
+dash, and the throttle, hand brake lever, park-brake valve, and the pilot's stick (trim buttons)
+below it, as POH 7.2, 7.4, 7.9, 7.10 and 7.11 describe (see [equipment](equipment.md) for the element
+kinds). The items that use them name them in `control`, so the pulse leads the student to each one,
+and the cold-and-dark lesson can be worked from the panel alone, without Show me
+(`crates/ui/src/cockpit_tests.rs` does exactly that). Controls below the dash outline are reached
+with the dash's Console button, which pulses while such an item is current. The Corvid has a short
+original fictional set (before start, start, run-up, shutdown).
 
 ## The checklist runtime
 

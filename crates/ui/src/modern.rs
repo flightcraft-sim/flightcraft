@@ -12,6 +12,11 @@ use flightcraft_sim::{
     systems::{FuelSelector, SystemSetting, SystemSwitch},
 };
 
+pub(crate) mod cockpit;
+
+/// egui data key: the dash hand brake lever is held, so the app's keyboard path leaves the brakes on.
+pub(crate) const PANEL_BRAKE_HELD: &str = "panel-brake-held";
+
 #[derive(Default)]
 pub(crate) struct PanelUi {
     pub dash_only: bool,
@@ -26,6 +31,8 @@ pub(crate) struct PanelUi {
     pub procedures: crate::procedures::Controls,
     pull_owned: bool,
     key_owned: bool,
+    /// The hand brake lever is held by the pointer on this panel.
+    brake_owned: bool,
     entry: String,
 }
 fn text(ui: &egui::Ui, rect: Rect, label: &str, size: f32, color: egui::Color32) {
@@ -1073,6 +1080,13 @@ impl PanelUi {
                             }
                         }
                     }
+                    PanelElement::Throttle { .. }
+                    | PanelElement::BrakeLever { .. }
+                    | PanelElement::ParkBrake { .. }
+                    | PanelElement::FlapSelector { .. }
+                    | PanelElement::ControlStick { .. } => {
+                        self.cockpit_control(ui, cell, &e.element, input, font, scale, &mut settings);
+                    }
                     _ => {
                         if let Some(setting) = crate::panel_art::primitive(
                             ui,
@@ -1115,14 +1129,18 @@ impl PanelUi {
             });
             self.key_owned = false;
         }
-        if let Some(id) = ui
+        let highlighted = ui
             .ctx()
             .data(|d| d.get_temp::<String>(egui::Id::new(crate::checklist::HIGHLIGHT_KEY)))
-            && let Some(e) = panel.elements.iter().find(|e| e.id == id)
-            && dash.is_none_or(|r| {
-                r.expand(0.01)
+            .and_then(|id| panel.elements.iter().find(|e| e.id == id));
+        let below_dash = |e: &EquipmentInstallation| {
+            dash.is_some_and(|r| {
+                !r.expand(0.01)
                     .contains_rect(crate::panel_art::installation_rect(e))
             })
+        };
+        if let Some(e) = highlighted
+            && !below_dash(e)
         {
             let [x, y] = e.position;
             let [w, h] = e.size;
@@ -1139,6 +1157,10 @@ impl PanelUi {
             );
             if ui.put(button, egui::Button::new("Console")).clicked() {
                 self.console_open = true;
+            }
+            // The current item's control is on the lower console: point at the way to it.
+            if !self.console_open && highlighted.is_some_and(below_dash) {
+                crate::checklist::pulse(ui, button.expand(3.));
             }
             if self.console_open {
                 let console = crate::panel_art::console_panel(panel, dash);

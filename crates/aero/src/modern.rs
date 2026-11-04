@@ -637,6 +637,29 @@ pub enum PanelElement {
     Key,
     FuelSelector,
     Parachute,
+    /// Throttle lever on the cabin centre console. Forward (up) is more power; it sets the pilot's
+    /// throttle, as the keyboard, joystick, and `sim.set_controls` do.
+    Throttle {
+        label: String,
+    },
+    /// Hand brake lever on the centre console: held, it applies the wheel brakes.
+    BrakeLever {
+        label: String,
+    },
+    /// Brake intercept valve handle, the parking brake: closed, it keeps the brakes applied.
+    ParkBrake {
+        label: String,
+    },
+    /// Rotary flap selector with one detent at each of the aircraft's flap stages.
+    FlapSelector {
+        label: String,
+    },
+    /// The pilot's control-stick grip seen from above, nose up the page, with the POH button
+    /// allocation: 1 trim down (forward), 3 trim up (aft), 2 autopilot, 4 not allocated, 5 push to
+    /// talk. The trim buttons are live; the sticks themselves are flown with the flight controls.
+    ControlStick {
+        label: String,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -832,6 +855,11 @@ impl EquipmentPanel {
                 | PanelElement::PushPull { label }
                 | PanelElement::Elt { label }
                 | PanelElement::PitchWheel { label }
+                | PanelElement::Throttle { label }
+                | PanelElement::BrakeLever { label }
+                | PanelElement::ParkBrake { label }
+                | PanelElement::FlapSelector { label }
+                | PanelElement::ControlStick { label }
                 | PanelElement::Lamp { label, .. }
                 | PanelElement::Bracket { label }
                 | PanelElement::Toggle { label, .. } => {

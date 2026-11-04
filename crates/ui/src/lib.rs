@@ -1323,6 +1323,21 @@ impl FlightCraftApp {
             Ok(())
         } else {
             self.input.trim = self.session.sim().systems().controls.trim;
+            self.input.flap_stages = self.session.aircraft_configuration().map_or_else(Vec::new, |c| {
+                c.variant.flap_stages.iter().map(|s| s.position).collect()
+            });
+            self.input.panel_brake = ctx.data(|d| {
+                d.get_temp::<bool>(egui::Id::new(modern::PANEL_BRAKE_HELD))
+                    .unwrap_or(false)
+            });
+            if frame.pressed(Action::ParkBrake) {
+                let on = !self.session.sim().systems().controls.park_brake;
+                if let Err(e) = self.session.run(flightcraft_control::SetSystems {
+                    setting: flightcraft_sim::systems::SystemSetting::ParkBrake { on },
+                }) {
+                    self.error = Some(e.to_string());
+                }
+            }
             let controls = self
                 .input
                 .controls(&frame, self.session.sim().controls(), elapsed);
@@ -1664,6 +1679,8 @@ fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bo
     ))
 }
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod cockpit_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod ground_layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
