@@ -376,6 +376,67 @@ fn class_b_c_d_entry_is_graded_from_position_and_controlling_contact() {
         );
     }
 }
+fn airspace_grades(s: &Session) -> Vec<bool> {
+    s.comms
+        .atc
+        .compliance
+        .iter()
+        .filter(|g| g.item.starts_with("airspace:"))
+        .map(|g| g.passed)
+        .collect()
+}
+#[test]
+fn an_air_start_inside_class_c_is_not_a_violation() {
+    let mut s = atc_session("KABE");
+    // A reset starts a new flight generation; the aircraft begins inside the shelf.
+    s.flight_generation += 1;
+    move_airborne(&mut s, 40.65, -75.44, 400.);
+    for _ in 0..5 {
+        s.monitor_atc();
+    }
+    assert!(airspace_grades(&s).is_empty(), "{:?}", s.comms.atc.compliance);
+    // Flying on inside the same airspace without contact still invents no fault.
+    move_airborne(&mut s, 40.66, -75.42, 600.);
+    s.monitor_atc();
+    assert!(airspace_grades(&s).is_empty(), "{:?}", s.comms.atc.compliance);
+}
+#[test]
+fn a_real_crossing_without_contact_faults_once() {
+    let mut s = atc_session("KABE");
+    s.flight_generation += 1;
+    move_airborne(&mut s, 40.65, -75.95, 400.);
+    s.monitor_atc();
+    assert!(airspace_grades(&s).is_empty());
+    move_airborne(&mut s, 40.65, -75.44, 400.);
+    for _ in 0..5 {
+        s.monitor_atc();
+    }
+    assert_eq!(airspace_grades(&s), [false], "{:?}", s.comms.atc.compliance);
+    // Moving between shelves of the same airspace is not another entry.
+    for (lat, lon, alt) in [
+        (40.66, -75.42, 800.),
+        (40.65, -75.44, 1200.),
+        (40.65, -75.44, 400.),
+    ] {
+        move_airborne(&mut s, lat, lon, alt);
+        s.monitor_atc();
+    }
+    assert_eq!(airspace_grades(&s), [false], "{:?}", s.comms.atc.compliance);
+    // Leaving and entering again is a second crossing.
+    move_airborne(&mut s, 40.65, -75.95, 400.);
+    s.monitor_atc();
+    move_airborne(&mut s, 40.65, -75.44, 400.);
+    s.monitor_atc();
+    assert_eq!(airspace_grades(&s), [false, false]);
+}
+#[test]
+fn taking_off_from_the_towered_field_inside_class_c_without_contact_still_faults() {
+    let mut s = atc_session("KABE");
+    s.monitor_atc();
+    move_airborne(&mut s, 40.65, -75.44, 400.);
+    s.monitor_atc();
+    assert_eq!(airspace_grades(&s), [false]);
+}
 #[test]
 fn compliance_observes_heading_altitude_hold_short_squawk_and_frequency() {
     let mut s = atc_session("KABE");
@@ -702,8 +763,17 @@ fn natural_craft_readbacks_and_ifr_bravo_authority() {
             .filter(|g| g.item.starts_with("airspace:"))
             .all(|g| g.passed)
     );
+    assert!(
+        s.atc_state()
+            .compliance
+            .iter()
+            .any(|g| g.item.starts_with("airspace:") && g.passed)
+    );
+    // Leave the Bravo shelf, lose the clearance, and enter again: a new crossing without authority.
     s.comms.atc.ifr_clearance = false;
-    s.comms.atc.last_observed.clear();
+    move_airborne(&mut s, 40.69, -74.17, 6000.);
+    s.monitor_atc();
+    move_airborne(&mut s, 40.69, -74.17, 700.);
     s.monitor_atc();
     assert!(
         s.atc_state()

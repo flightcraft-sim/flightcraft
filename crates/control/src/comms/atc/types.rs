@@ -235,6 +235,8 @@ pub(crate) struct Atc {
     pub closed_traffic: bool,
     pub was_airborne: bool,
     pub last_ground: Option<bool>,
+    /// Flight generation and the airspace (key to grade item) the aircraft was last inside.
+    pub airspace_inside: Option<(u64, std::collections::BTreeMap<String, String>)>,
     pub last_sector: Option<String>,
     pub next_check: f64,
     pub info_epochs: std::collections::BTreeMap<String, (String, u64)>,

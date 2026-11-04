@@ -627,7 +627,9 @@ impl Command for Reset {
         if let Some(configuration) = &session.selected_configuration {
             replacement.configure_systems(configuration)?;
         }
-        if matches!(start, Start::Runway | Start::RunwayAt { .. }) {
+        // Runway and airborne starts are already-prepared aircraft: attitude sources aligned and valid.
+        // Only a parked (cold) start keeps the realistic power-up alignment delay.
+        if !matches!(start, Start::ParkedAt { .. }) {
             replacement.prepare_departure();
         }
         if session.flight_archive.autosave_enabled {

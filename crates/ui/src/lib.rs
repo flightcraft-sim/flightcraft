@@ -5,6 +5,7 @@ pub mod autopilot;
 #[cfg(not(target_arch = "wasm32"))]
 mod bridge;
 mod callsign_preferences;
+mod canopy_panel;
 pub mod clock;
 pub mod crew;
 #[cfg(test)]

@@ -21,6 +21,9 @@ with a 45-second alignment after power-up or an AHRS failure. Alignment advances
 simulation steps. Paused frames and state queries consume no alignment or battery time. A runway
 `sim.reset` (including a named airport runway) starts ready for departure, with the engine running,
 avionics powered, and primary and standby attitude sources already aligned to the starting attitude.
+An airborne `sim.reset` (`air`, `airport_air`, `geographic_air`) is an aircraft already flying and starts
+the same way: engine running, avionics powered, AHRS aligned and valid, so no red X or "ALIGNING"
+appears at t=0. A `parked` start is a cold aircraft and keeps the 45-second alignment after power-up.
 
 The ADC consumes `systems.sensed` pressure airspeed, altitude, and vertical speed. Sealed
 pitot and static lines therefore give physically consistent wrong indications. A blocked port

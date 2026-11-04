@@ -560,7 +560,7 @@ impl Sim {
         Ok(())
     }
 
-    /// A runway reset represents completed departure preparation. Power-cycle and
+    /// A runway or airborne reset represents completed departure preparation. Power-cycle and
     /// cold instrument installation still use their normal fixed-step alignment delay.
     pub fn prepare_departure(&mut self) {
         self.glass.primary.sensor.align(self.state);

@@ -306,3 +306,43 @@ fn named_airport_runway_reset_aligns_sources_at_the_runway_attitude() {
     assert!((state.air_data.heading_rad - s.sim().readout().heading_rad).abs() < 1e-6);
     assert_eq!(s.sim().state().time_s, 0.);
 }
+
+#[test]
+fn airborne_start_is_aligned_and_running_but_a_parked_start_aligns_over_time() {
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "aircraft.load",
+        json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    s.execute(
+        "sim.reset",
+        json!({"start":{"kind":"air","height_m":900.,"airspeed_mps":52.,"heading_rad":1.047},"paused":false}),
+    )
+    .unwrap();
+    assert_eq!(s.sim().state().time_s, 0.);
+    let systems = s.sim().systems();
+    assert!(systems.engine_running && systems.controls.master && systems.controls.avionics);
+    let state = s.glass_state();
+    for unit in [&state.air_data, &state.standby] {
+        assert!(unit.powered && unit.attitude_valid, "{unit:?}");
+        assert_eq!(unit.alignment_remaining_s, 0.);
+    }
+    assert!(!state.pfd_failed);
+    // A cold, parked start keeps the realistic alignment delay.
+    s.execute(
+        "sim.reset",
+        json!({"start":{"kind":"parked","north_m":0.,"east_m":0.,"heading_rad":0.5}}),
+    )
+    .unwrap();
+    s.execute(
+        "systems.set",
+        json!({"setting":{"kind":"switch","switch":"avionics","on":true}}),
+    )
+    .unwrap();
+    s.execute("sim.step", json!({"steps":10})).unwrap();
+    let state = s.glass_state();
+    assert!(!state.air_data.attitude_valid && state.air_data.alignment_remaining_s > 0.);
+    s.execute("sim.step", json!({"steps":5400})).unwrap();
+    assert!(s.glass_state().air_data.attitude_valid);
+}

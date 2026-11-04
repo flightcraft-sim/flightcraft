@@ -256,44 +256,7 @@ impl Session {
                     .is_some_and(|r| r.active_khz == khz)
             })
         });
-        if !r.on_ground
-            && let Ok(query) = self.sim.world().airspace_at(n, e, -d)
-        {
-            for volume in query.containing {
-                let item = format!("airspace:{}", volume.id);
-                let passed = match volume.class {
-                    Some(AirspaceClass::B) => {
-                        self.comms.atc.ifr_clearance
-                            || self.comms.atc.bravo.as_ref().is_some_and(|p| {
-                                p == "NEW YORK CLASS B" && volume.name.to_uppercase().contains("NEW YORK")
-                            })
-                    }
-                    Some(AirspaceClass::C | AirspaceClass::D) => self.provider_contact_for(&volume.name),
-                    _ => continue,
-                };
-                self.observation(
-                    None,
-                    &item,
-                    passed,
-                    if passed {
-                        format!(
-                            "Your clearance or contact covers {}.",
-                            phraseology::normal_case(&volume.name)
-                        )
-                    } else {
-                        format!(
-                            "You entered {} without {}.",
-                            phraseology::normal_case(&volume.name),
-                            if volume.class == Some(AirspaceClass::B) {
-                                "a Class Bravo clearance"
-                            } else {
-                                "two-way communication with the controlling facility"
-                            }
-                        )
-                    },
-                );
-            }
-        }
+        self.monitor_airspace_entry(r.on_ground, [n, e, d]);
         self.comms.atc.was_airborne |= !r.on_ground && r.height_agl_m > 10.;
         let towered_touchdown = r.on_ground
             && self.comms.atc.last_ground == Some(false)
@@ -493,6 +456,100 @@ impl Session {
                 format!("You are level at the assigned altitude of {assigned} feet.")
             } else {
                 format!("Assigned altitude {assigned} feet; you're at {feet:.0} feet.")
+            },
+        );
+    }
+    /// Grades real boundary crossings into Class B, C and D airspace, once per entry.
+    ///
+    /// The set of volumes the aircraft is inside is the baseline. A reset, load or air start
+    /// (a new flight generation) adopts whatever the aircraft starts in without a fault, since the
+    /// student did not fly into it. On the ground nothing is inside, so a departure from a
+    /// towered field is graded when it lifts off. Shelves of one facility count as one airspace,
+    /// so passing between them is not a new entry.
+    fn monitor_airspace_entry(&mut self, on_ground: bool, [n, e, d]: [f64; 3]) {
+        let generation = self.flight_generation;
+        if on_ground {
+            self.comms.atc.airspace_inside = Some((generation, Default::default()));
+            return;
+        }
+        let Ok(query) = self.sim.world().airspace_at(n, e, -d) else {
+            return;
+        };
+        let mut current = std::collections::BTreeMap::new();
+        for volume in query.containing {
+            if matches!(
+                volume.class,
+                Some(AirspaceClass::B | AirspaceClass::C | AirspaceClass::D)
+            ) {
+                current
+                    .entry(format!("{:?}:{}", volume.class, volume.name))
+                    .or_insert(volume);
+            }
+        }
+        let known = match self.comms.atc.airspace_inside.take() {
+            Some((g, known)) if g == generation => Some(known),
+            _ => None,
+        };
+        let Some(known) = known else {
+            let baseline = current
+                .iter()
+                .map(|(k, v)| (k.clone(), format!("airspace:{}", v.id)))
+                .collect();
+            self.comms.atc.airspace_inside = Some((generation, baseline));
+            return;
+        };
+        let mut inside = std::collections::BTreeMap::new();
+        for (key, volume) in &current {
+            let (item, entered) = match known.get(key) {
+                Some(item) => (item.clone(), false),
+                None => (format!("airspace:{}", volume.id), true),
+            };
+            // An unresolved fault is re-checked so that making contact clears it.
+            let unresolved = self.comms.atc.last_observed.get(&format!("None:{item}")) == Some(&false);
+            if entered || unresolved {
+                if entered {
+                    self.comms.atc.last_observed.remove(&format!("None:{item}"));
+                }
+                self.grade_airspace(&item, volume);
+            }
+            inside.insert(key.clone(), item);
+        }
+        for (key, item) in &known {
+            if !current.contains_key(key) {
+                self.comms.atc.last_observed.remove(&format!("None:{item}"));
+            }
+        }
+        self.comms.atc.airspace_inside = Some((generation, inside));
+    }
+    fn grade_airspace(&mut self, item: &str, volume: &flightcraft_world::AirspaceVolume) {
+        let passed = match volume.class {
+            Some(AirspaceClass::B) => {
+                self.comms.atc.ifr_clearance
+                    || self.comms.atc.bravo.as_ref().is_some_and(|p| {
+                        p == "NEW YORK CLASS B" && volume.name.to_uppercase().contains("NEW YORK")
+                    })
+            }
+            _ => self.provider_contact_for(&volume.name),
+        };
+        self.observation(
+            None,
+            item,
+            passed,
+            if passed {
+                format!(
+                    "Your clearance or contact covers {}.",
+                    phraseology::normal_case(&volume.name)
+                )
+            } else {
+                format!(
+                    "You entered {} without {}.",
+                    phraseology::normal_case(&volume.name),
+                    if volume.class == Some(AirspaceClass::B) {
+                        "a Class Bravo clearance"
+                    } else {
+                        "two-way communication with the controlling facility"
+                    }
+                )
             },
         );
     }

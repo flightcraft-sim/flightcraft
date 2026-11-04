@@ -104,8 +104,14 @@ Unanswered, blocked, and untuned calls do not establish contact.
 A heard IFR clearance carries implicit Class B authority along the cleared flight. It does not
 require the VFR Bravo-transition words. VFR flights still require the explicit clearance.
 The live [airspace query](airspace.md) grades airborne VFR entry into B without explicit clearance,
-C without controlling two-way communications, and D without controlling contact. Grades are
-recorded on changes of compliance. Newark Bravo permission is scoped to the New York Class B;
+C without controlling two-way communications, and D without controlling contact. Only a real
+boundary crossing from outside to inside is graded, once per entry: the shelves of one named
+airspace count as a single airspace, so moving between them is not another entry. A reset, load
+or air start adopts whatever airspace the aircraft begins in as its baseline without a fault (the
+student did not fly into it), and flying on inside it without contact is not faulted either. On the
+ground nothing counts as inside, so lifting off from a towered field inside Class C/D without contact
+is graded at liftoff. A fault is re-checked while inside so that making contact clears it, and
+leaving and entering again is a new crossing. Newark Bravo permission is scoped to the New York Class B;
 provider/contact matching for C/D uses imported facility calls and airspace names.
 
 Load a CIFP approach using the existing [GPS procedure command](procedures.md), then request it:

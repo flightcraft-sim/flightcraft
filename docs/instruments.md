@@ -205,7 +205,7 @@ Distance and bearing use a bounded WGS84 inverse geodesic. CDI is signed great-c
 distance from that origin along the selected course, positive to the right; the needle points
 toward the path. Full scale is 5 nm en route and 1 nm at or within 30 nm of the destination.
 Selecting a new course rotates the reference through the captured leg origin. Selecting a new
-direct-to captures a new origin. Reset clears the destination. Runway resets represent a ready-for-departure
+direct-to captures a new origin. Reset clears the destination. Runway and airborne resets represent a ready-for-departure or already-flying
 aircraft with aligned attitude sources; power-up after a cold installation or power loss retains
 the 45 s alignment delay.
 

@@ -635,3 +635,9 @@ are local ground metres and heading is magnetic radians. Terrain supplies ground
 A parked sliding-canopy aircraft starts fully open and unlatched with brakes held; runway and
 air starts are closed and latched. The virtual pilot closes and latches before applying ground
 power and announces “Before taxi: canopy closed and latched” on intercom.
+
+In the cockpit view the on-screen canopy controls follow the same logic as the real aircraft: on the
+ground they are always drawn; in flight with the canopy latched nothing is drawn. They appear (and fade
+after about four seconds) when the pilot hovers or clicks the inside latch or the canopy frame, or after any
+canopy change. An unlatched canopy in flight shows a small amber “CANOPY UNLATCHED” line instead. The
+position reads “Closed” or “Open 40%”.

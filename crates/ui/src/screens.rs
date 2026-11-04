@@ -35,6 +35,7 @@ pub struct PageUi {
     canopy_message: String,
     canopy_drag_origin: f64,
     canopy_drag_target: Option<(egui::Pos2, egui::Vec2)>,
+    canopy_reveal: crate::canopy_panel::Reveal,
 }
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1588,7 +1589,11 @@ mod preview;
 
 impl PageUi {
     fn canopy_controls(&mut self, ui: &mut egui::Ui, s: &mut Session) {
+        use crate::canopy_panel::{CanopyPanel, position_text, visibility};
         let canopy = s.sim().canopy();
+        let now = ui.ctx().input(|i| i.time);
+        self.canopy_reveal
+            .observe(now, canopy.latched, canopy.open_fraction);
         let mut action = None;
         if let Some(point) = self.scene.canopy_latch_screen() {
             let response = ui.interact(
@@ -1598,6 +1603,9 @@ impl PageUi {
             );
             if response.clicked() {
                 action = Some(if canopy.latched { "unlatch" } else { "latch" });
+            }
+            if response.hovered() || response.clicked() {
+                self.canopy_reveal.touch(now);
             }
             response.on_hover_text("Inside canopy latch · top centre of roll-over bar");
         }
@@ -1611,6 +1619,9 @@ impl PageUi {
                 ui.id().with("canopy-front-bow"),
                 Sense::drag(),
             );
+            if response.hovered() || response.dragged() {
+                self.canopy_reveal.touch(now);
+            }
             if response.drag_started() {
                 self.canopy_drag_origin = canopy.open_fraction;
             }
@@ -1625,59 +1636,89 @@ impl PageUi {
             }
             response.on_hover_text("Drag the canopy frame along its rails; release the latch first");
         }
-        // Overhead control remains reachable while looking forward. The same latch also
-        // has a physical hit target when the recorded cockpit camera sees it.
+        // The overhead control is only drawn when it is useful: on the ground, while the latch or
+        // frame is hovered or clicked, or briefly after a canopy change.
         let rect = Rect::from_min_size(ui.max_rect().min + egui::vec2(12., 12.), egui::vec2(340., 118.));
-        ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
-            egui::Frame::new()
-                .fill(theme::PANEL)
-                .inner_margin(8.)
-                .show(ui, |ui| {
-                    ui.label("Roll-over bar · canopy");
-                    ui.horizontal(|ui| {
-                        if ui
-                            .button(if canopy.latched { "Unlatch" } else { "Latch" })
-                            .clicked()
-                        {
-                            action = Some(if canopy.latched { "unlatch" } else { "latch" });
-                        }
-                        if ui.button("Close").clicked() {
-                            action = Some("close");
-                        }
-                        ui.label(if canopy.latched { "Latched" } else { "Unlatched" });
-                    });
-                    let mut fraction = canopy.open_fraction;
-                    if ui
-                        .add_enabled(
-                            !canopy.latched,
-                            egui::Slider::new(&mut fraction, 0. ..=1.).text("Slide aft"),
-                        )
-                        .changed()
-                    {
-                        self.canopy_message = match s
-                            .execute("aircraft.canopy", json!({"action":"open","fraction":fraction}))
-                        {
-                            Ok(_) => String::new(),
-                            Err(e) => e.to_string(),
-                        };
-                    }
-                    ui.colored_label(
-                        if canopy.secure() {
-                            theme::TEXT
-                        } else {
-                            theme::AMBER
-                        },
-                        if canopy.secure() {
-                            "Before takeoff / securing: canopy checked"
-                        } else {
-                            "Before takeoff / securing: close and latch canopy"
-                        },
-                    );
-                    if !self.canopy_message.is_empty() {
-                        ui.colored_label(theme::AMBER, &self.canopy_message);
-                    }
+        let panel_hovered = ui
+            .input(|i| i.pointer.hover_pos())
+            .is_some_and(|p| rect.contains(p));
+        let on_ground = s.sim().readout().on_ground;
+        let mut shown = visibility(on_ground, canopy.latched, self.canopy_reveal.remaining_s(now));
+        if panel_hovered && !on_ground && matches!(shown, CanopyPanel::Controls(_)) {
+            self.canopy_reveal.touch(now);
+            shown = CanopyPanel::Controls(1.);
+        }
+        match shown {
+            CanopyPanel::Hidden => {}
+            CanopyPanel::Unlatched => {
+                ui.painter().text(
+                    ui.max_rect().min + egui::vec2(14., 14.),
+                    Align2::LEFT_TOP,
+                    "CANOPY UNLATCHED",
+                    FontId::monospace(13.),
+                    theme::AMBER,
+                );
+            }
+            CanopyPanel::Controls(opacity) => {
+                if opacity < 1. {
+                    ui.ctx().request_repaint();
+                }
+                ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+                    ui.set_opacity(opacity);
+                    egui::Frame::new()
+                        .fill(theme::PANEL)
+                        .inner_margin(8.)
+                        .show(ui, |ui| {
+                            ui.label("Roll-over bar · canopy");
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .button(if canopy.latched { "Unlatch" } else { "Latch" })
+                                    .clicked()
+                                {
+                                    action = Some(if canopy.latched { "unlatch" } else { "latch" });
+                                }
+                                if ui.button("Close").clicked() {
+                                    action = Some("close");
+                                }
+                                ui.label(if canopy.latched { "Latched" } else { "Unlatched" });
+                                ui.label(position_text(canopy.open_fraction));
+                            });
+                            let mut fraction = canopy.open_fraction;
+                            if ui
+                                .add_enabled(
+                                    !canopy.latched,
+                                    egui::Slider::new(&mut fraction, 0. ..=1.)
+                                        .show_value(false)
+                                        .text("Slide aft"),
+                                )
+                                .changed()
+                            {
+                                self.canopy_message = match s
+                                    .execute("aircraft.canopy", json!({"action":"open","fraction":fraction}))
+                                {
+                                    Ok(_) => String::new(),
+                                    Err(e) => e.to_string(),
+                                };
+                            }
+                            ui.colored_label(
+                                if canopy.secure() {
+                                    theme::TEXT
+                                } else {
+                                    theme::AMBER
+                                },
+                                if canopy.secure() {
+                                    "Canopy closed and latched"
+                                } else {
+                                    "Close and latch the canopy before takeoff"
+                                },
+                            );
+                            if !self.canopy_message.is_empty() {
+                                ui.colored_label(theme::AMBER, &self.canopy_message);
+                            }
+                        });
                 });
-        });
+            }
+        }
         if let Some(action) = action {
             self.canopy_message = match s.execute("aircraft.canopy", json!({"action":action})) {
                 Ok(_) => String::new(),
