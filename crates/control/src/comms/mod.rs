@@ -24,12 +24,14 @@ mod fleet;
 mod record;
 mod traffic;
 mod traffic_display;
+mod voices;
 pub use fleet::*;
 pub use record::*;
 use std::collections::VecDeque;
 use traffic::Pattern;
 pub use traffic::*;
 pub use traffic_display::*;
+pub use voices::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -729,6 +731,8 @@ impl Session {
         let now = self.sim.state().time_s;
         let duration = if let Meaning::Ident { morse, .. } = &meaning {
             morse_duration(morse)
+        } else if let Meaning::Fleet { call } = &meaning {
+            fleet_call_duration(&text, call)
         } else {
             (text.split_whitespace().count() as f64 / 2.7).clamp(1.0, 40.0)
         };

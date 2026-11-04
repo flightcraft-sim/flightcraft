@@ -6,7 +6,7 @@ using the same typed instructions, [shared phraseology](phraseology.md), and rea
 the user's own calls go through. You hear them when your radios can: each transmission passes the
 same tuning, power, range, and terrain line-of-sight test as every other [radio](radio.md) call.
 
-This page covers the engine and the [displays](#displays). Voices, traffic advisories, and
+This page covers the engine, its [displays](#displays), and its voices. Traffic advisories and
 radio-discipline grading build on the same data and are separate work.
 
 ```json
@@ -104,6 +104,27 @@ while the user (or a queued reply to the user) occupies the carrier. The user ca
 The traffic keeps running when its transmissions cannot be heard, but only heard transmissions become
 events.
 
+## Voices
+
+Each aircraft and each facility has its own stable voice, so you hear different people on the
+frequency. `call.voice` (0-7) is the aircraft's palette entry for a pilot and the facility's for a
+controller; together with `call.aircraft` it fixes gender, timbre, pitch, speaking rate and the
+character of the simulated radio (see [radio](radio.md#voices)). Pilots on the same base voice differ by
+a per-aircraft pitch and rate step; no two of thirty aircraft share a voice. Controllers use a
+separate, faster palette: a facility's voice is its kind (Tower, Ground, Departure, Approach, ...), and
+approach high and low differ.
+
+Transmissions last as long as the voice takes to say them (`speech_duration_s` with the voice's words
+per minute, for both the recorded `duration_s` and the frequency schedule). A call does not start if it
+would finish before the audio of the previous call on that frequency, so speech never overlaps.
+
+If you key the mic over a traffic call you hear a heterodyne squeal and the call is recorded as
+`blocked`. The engine notices (the recorded event is the authority), puts the call back in the queue,
+and says it again after the usual 1.5 to 3.5 s gap, introduced by `Blocked, I say again.` (controller)
+or `Blocked, say again.` (pilot). The aircraft waits for it, so nothing the call carried takes effect
+until it is heard, and `stats.stepped_on` counts the repeats. Calls you cannot hear are never blocked by
+you; the traffic carries on.
+
 ## Data for other features
 
 `traffic.state` returns for every aircraft: `callsign`, `registration`, `aircraft_type`, latitude and
@@ -118,7 +139,7 @@ Transmissions are ordinary flight events with `meaning.type = "fleet"` and a `ca
 - `speaker` is `facility` for the controller and `traffic` (with the spoken callsign) for the pilot;
   `speaker_name` is the spoken facility or callsign.
 - `call.exchange` links an instruction, its readback, any correction, and the second readback.
-- `call.callsign`, `call.aircraft`, `call.voice` (0-7, stable per aircraft or facility), `call.role`,
+- `call.callsign`, `call.aircraft`, `call.voice` (0-7, stable per aircraft or facility, see Voices), `call.role`,
   `call.kind`, `call.instructions` (typed), `call.facility`, `call.frequency_khz`, and `call.sequence`.
 - `call.for_user` is false: simulated traffic never addresses the user. The user answers only calls
   that contain their own callsign.

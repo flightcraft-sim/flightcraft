@@ -222,21 +222,77 @@ Desktop speech uses an original Rust adapter to local operating-system tools: `s
 System.Speech through PowerShell on Windows, and espeak-ng/espeak on Linux. Linux needs one of those
 programs installed separately. No speech engine code or voice asset is bundled or linked. Desktop
 synthesis runs on a bounded worker, with a timeout and bounded PCM import, and plays through CPAL.
-COM PCM receives a 300–3000 Hz high/low cut, compression, quiet procedural static, and a squelch tail.
-Intercom bypasses that effect. Role selection changes installed voices on Windows and Linux, and
-speaking rate on macOS. macOS currently uses its default voice; distinct installed voice selection
-there is follow-up work. This implementation does not add the requested third-party cross-platform
-TTS crate, because it was unavailable offline.
+Intercom bypasses the radio effect. This implementation does not add a third-party cross-platform
+TTS crate, because none was available offline under a permissive licence.
 
-The browser uses `speechSynthesis`, choosing installed voices by role. Its `speak(utterance)` API
-routes speech to the browser/operating-system audio sink and exposes neither PCM samples, an
-`AudioNode`, an `HTMLMediaElement`, nor a `MediaStream` for the utterance. WebAudio's buffer, media
-element, and stream source nodes therefore cannot accept this speech. Adding a band-pass or
-compressor to the separate AudioContext cannot affect it. Applying the same COM filter would
-require a speech engine that returns PCM (for example a separately licensed, bundled WASM voice),
-or recording system playback with browser-specific capture and user permission. No such PCM engine
-or voice asset is available in this repository; platform speech remains explicitly **unfiltered**.
-Morse uses WebAudio directly. Browser voice availability and audio activation depend on the platform.
+### Voices
+
+Every spoken event gets a `VoiceProfile` from `flightcraft_control::speaker_voice` (gender, timbre
+variant, pitch, words per minute, and a radio character). It is a pure function of the speaker, so it
+never changes during a flight, and the user's own transmissions are never re-voiced.
+
+- **Simulated traffic** ([busy-airspace traffic](traffic.md)): a pilot's profile is one of eight pilot
+  palette entries (`call.voice`) shifted by a per-aircraft pitch and rate step (`call.aircraft`), so
+  two aircraft on the same base voice still differ; a controller's is one of eight controller
+  entries chosen by facility (`call.voice`): Tower, Ground, Departure, Approach (high and low sectors
+  differ), Clearance, ATIS, AWOS, CTAF never share a voice at one airport. Controllers speak faster
+  and in a different palette than pilots.
+- **Other speakers**: scenario ATC uses the voice of its facility kind; circuit traffic hashes its
+  callsign; the instructor and crew have fixed voices.
+- **Linux** passes the profile to espeak as `-v en-us+m1..m7/f1..f5`, `-p` pitch, and `-s` rate.
+  **macOS** picks an installed stock voice of the right gender (from `say -v ?`) and sets `-r`.
+  **Windows** picks an installed voice of the right gender by timbre number and sets `Rate`. Pitch is
+  not adjustable through `say` or System.Speech, so on those two platforms voices differ by voice,
+  gender and rate.
+- **Browser**: `speechSynthesis` voices are not labelled by gender, so the profile is spread over the
+  installed English voices and expressed through `pitch` and `rate`.
+
+### Radio character
+
+Every COM transmission (not intercom) passes through `radio_speech::dsp`, original DSP shared by
+desktop and browser:
+
+- a **squelch break** (45 ms carrier click and noise burst) before the voice and a 120 ms **squelch
+  tail** with a closing click after it;
+- a 300 Hz high cut and two low-pass sections near 3 kHz (each radio's edges, drive and hiss differ by
+  voice) with soft compression, so every voice sounds like a different radio;
+- a noise floor that rises with the square of the transmitter's distance as a fraction of its service
+  range (`Session::transmission_distance_fraction`: the station's range for a controller, the 40 NM pilot
+  range for traffic), crackling in bursts past half range, while the voice weakens up to 45%;
+- a **heterodyne squeal** (two tones a few tens of hertz apart over garbled static, capped at four
+  seconds) for a call that was **blocked** by overlapping carriers. When you key the mic over a
+  traffic or ATC call, you hear the squeal instead of either voice; your own call is not voiced.
+  The traffic engine sees the block and repeats the call after "Blocked, I say again" (controller) or
+  "Blocked, say again" (pilot); see [traffic](traffic.md).
+
+Volume follows the COM volume on the audio panel and the global gain; speech is silent when the audio
+panel's speech switch is off, the radios are unpowered, or the receiver is not selected. Squelch
+shortens service range as before.
+
+### Speech duration and pacing
+
+Radio speech is heard once its transmission completes, in the order calls complete. The simulation must
+therefore hold a frequency for as long as the voice takes. `speech_duration_s(text, wpm)` is the
+deterministic estimate (0.2 s, plus words at the voice's rate, plus 0.08 s per comma and 0.2 s per
+sentence end; 1 to 45 s). Simulated-traffic transmissions use it with their voice's rate for both the
+recorded `duration_s` and the scheduler, and the scheduler does not start a call that would end before
+the previous call's audio has finished. The desktop renderer synthesizes at the same rate and, if the
+engine runs more than 2% over the call's slot, renders again faster (up to 1.8x), so audio never runs
+into the next call. Calls from the older CTAF circuit traffic and ATC rules keep their previous
+2.7 words-a-second estimate.
+
+The browser's `speak(utterance)` API routes speech to the browser/operating-system audio sink and
+exposes neither PCM samples, an `AudioNode`, an `HTMLMediaElement`, nor a `MediaStream`. The browser
+voice is therefore unfiltered and cannot be time-fitted; its squelch break, noise (rising with
+distance) and tail play from a WebAudio buffer sized to the call's duration alongside it, and a blocked
+call plays the same squeal. Applying the band-pass to the voice would require a speech engine that
+returns PCM (for example a separately licensed, bundled WASM voice). None is available in this
+repository. Browser voice availability and audio activation depend on the platform.
+
+Offline checks: `cargo test -p flightcraft-ui --features desktop-audio --lib radio_speech` runs the DSP
+tests (band limit, squelch lead and tail, noise growing with distance, squeal determinism) and, where
+espeak is installed, renders two different voices through the engine and the radio and checks the audio
+fits the call's slot.
 
 NAV Morse is original 1020 Hz tone synthesis on both
 platforms. Tuned usable VOR/localizer receivers supply identifiers; optional `adf_khz` in `comms.tune`

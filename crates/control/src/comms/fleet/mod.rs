@@ -139,6 +139,8 @@ pub struct FleetStats {
     pub readbacks_corrected: u32,
     /// Times the physics guard had to slow an aircraft; the controllers aim to keep this at zero.
     pub safety_slowdowns: u64,
+    /// Calls the user keyed over, which were therefore sent again.
+    pub stepped_on: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct FleetFrequency {
@@ -415,14 +417,33 @@ impl Session {
                         .any(|c| carrier_thirds_hz(c.khz) == carrier)
             })
             .collect();
+        // A call the user keyed over was blocked: the fleet sends it again once the channel clears.
+        let blocked: Vec<u32> = fleet
+            .chans
+            .iter()
+            .filter_map(|(khz, c)| {
+                let (end, _) = c.inflight.as_ref()?;
+                let id = c.event?;
+                (*end <= now + 1e-9
+                    && self
+                        .comms
+                        .record
+                        .events
+                        .iter()
+                        .rev()
+                        .any(|e| e.id == id && e.reception == Reception::Blocked))
+                .then_some(*khz)
+            })
+            .collect();
+        fleet.repeat_blocked(&blocked);
         let transmissions = fleet.tick(now, dt, &busy);
         for tx in transmissions {
-            self.emit_fleet(&fleet, tx);
+            self.emit_fleet(&mut fleet, tx);
         }
         self.comms.fleet = Some(fleet);
     }
 
-    fn emit_fleet(&mut self, fleet: &Fleet, tx: Tx) {
+    fn emit_fleet(&mut self, fleet: &mut Fleet, tx: Tx) {
         let station = fleet.field.st(tx.station).clone();
         let (origin, range, speaker) = match tx.role {
             FleetRole::Controller => {
@@ -456,7 +477,8 @@ impl Session {
         if !self.listening(carrier, origin, range) {
             return;
         }
-        self.start_com(
+        let freq = tx.freq;
+        let id = self.start_com(
             tx.freq,
             speaker,
             tx.text,
@@ -465,6 +487,9 @@ impl Session {
             origin,
             range,
         );
+        if let Some(c) = fleet.chans.get_mut(&freq) {
+            c.event = Some(id);
+        }
     }
 }
 

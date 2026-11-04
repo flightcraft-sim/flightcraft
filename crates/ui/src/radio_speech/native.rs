@@ -1,5 +1,7 @@
+use super::dsp::{RadioParams, blocked_garble, radio_effect};
 use super::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use flightcraft_control::{Gender, VoiceProfile};
 use std::{
     collections::VecDeque,
     process::{Command, Stdio},
@@ -8,9 +10,15 @@ use std::{
 };
 struct Request {
     text: String,
-    role: usize,
+    voice: VoiceProfile,
     com: bool,
     morse: Option<String>,
+    /// Two carriers keyed together: a heterodyne squeal of this many seconds instead of speech.
+    garble: Option<f32>,
+    /// Seconds the simulation allotted the call; speech that runs long is re-rendered faster to fit.
+    slot_s: f32,
+    distance: f32,
+    seed: u32,
     volume: f32,
     epoch: u64,
 }
@@ -60,20 +68,48 @@ impl Output {
             epoch: 0,
         })
     }
-    pub fn say(&mut self, event: &flightcraft_control::Transmission, volume: f32) -> Result<(), String> {
+    pub fn say(
+        &mut self,
+        event: &flightcraft_control::Transmission,
+        volume: f32,
+        voice: VoiceProfile,
+        distance: f32,
+    ) -> Result<(), String> {
+        self.request(Request {
+            text: event.text.clone(),
+            voice,
+            com: event.channel == Channel::Com,
+            morse: if let Meaning::Ident { morse, .. } = &event.meaning {
+                Some(morse.clone())
+            } else {
+                None
+            },
+            garble: None,
+            slot_s: event.duration_s as f32,
+            distance,
+            seed: event.id as u32,
+            volume,
+            epoch: self.epoch,
+        })
+    }
+    /// The squeal of two transmissions on one frequency.
+    pub fn garble(&mut self, event: &flightcraft_control::Transmission, volume: f32) -> Result<(), String> {
+        self.request(Request {
+            text: String::new(),
+            voice: flightcraft_control::pilot_voice(0, 0),
+            com: true,
+            morse: None,
+            garble: Some(event.duration_s as f32),
+            slot_s: event.duration_s as f32,
+            distance: 0.0,
+            seed: event.id as u32,
+            volume,
+            epoch: self.epoch,
+        })
+    }
+    fn request(&mut self, request: Request) -> Result<(), String> {
         self.requests
-            .try_send(Request {
-                text: event.text.clone(),
-                role: role(&event.speaker),
-                com: event.channel == Channel::Com,
-                morse: if let Meaning::Ident { morse, .. } = &event.meaning {
-                    Some(morse.clone())
-                } else {
-                    None
-                },
-                volume,
-                epoch: self.epoch,
-            })
+            .try_send(request)
             .map_err(|_| "Speech queue full; captions contain every call".into())
     }
     pub fn stop(&mut self) {
@@ -128,32 +164,62 @@ fn stream<T: cpal::SizedSample + cpal::FromSample<f32>>(
         )
         .map_err(|e| e.to_string())
 }
+/// Seconds of speech that fit a call's slot after the squelch break and tail.
+fn speech_budget(slot_s: f32) -> f32 {
+    (slot_s - (dsp::SQUELCH_BREAK_S + dsp::SQUELCH_TAIL_S)).max(0.8)
+}
 fn render(request: &Request, rate: u32) -> Result<Vec<f32>, String> {
-    let mut samples = if let Some(code) = &request.morse {
-        morse_samples(code, rate)
+    let mut samples = if let Some(seconds) = request.garble {
+        blocked_garble(seconds, rate, request.seed)
+    } else if let Some(code) = &request.morse {
+        let mut tones = morse_samples(code, rate);
+        if request.com {
+            radio_effect(&mut tones, rate, &params(request));
+        }
+        tones
     } else {
-        let (pcm, source_rate) = synthesize(&request.text, request.role)?;
-        let len = ((pcm.len() as u64 * u64::from(rate)) / u64::from(source_rate.max(1)))
-            .min(u64::from(rate) * 60) as usize;
-        (0..len)
-            .map(|i| {
-                let position = i as f64 * f64::from(source_rate) / f64::from(rate);
-                let at = position as usize;
-                let fraction = position.fract() as f32;
-                pcm.get(at).copied().unwrap_or(0.0) * (1.0 - fraction)
-                    + pcm.get(at + 1).copied().unwrap_or(0.0) * fraction
-            })
-            .collect()
+        let mut voice = request.voice;
+        let mut resampled = resample(synthesize(&request.text, &voice)?, rate);
+        // The simulation held the frequency for the estimated speech time; never run past it.
+        let budget = speech_budget(request.slot_s);
+        let seconds = resampled.len() as f32 / rate as f32;
+        if seconds > budget * 1.02 {
+            voice.wpm = (f32::from(voice.wpm) * (seconds / budget).min(1.8)).min(320.0) as u16;
+            if let Ok(faster) = synthesize(&request.text, &voice) {
+                resampled = resample(faster, rate);
+            }
+        }
+        if request.com {
+            radio_effect(&mut resampled, rate, &params(request));
+        }
+        resampled
     };
-    if request.com {
-        radio_effect(&mut samples, rate);
-    }
     for sample in &mut samples {
         *sample *= request.volume;
     }
     Ok(samples)
 }
-fn synthesize(text: &str, voice: usize) -> Result<(Vec<f32>, u32), String> {
+fn params(request: &Request) -> RadioParams {
+    RadioParams {
+        radio: request.voice.radio,
+        distance: request.distance,
+        seed: request.seed,
+    }
+}
+fn resample((pcm, source_rate): (Vec<f32>, u32), rate: u32) -> Vec<f32> {
+    let len = ((pcm.len() as u64 * u64::from(rate)) / u64::from(source_rate.max(1))).min(u64::from(rate) * 60)
+        as usize;
+    (0..len)
+        .map(|i| {
+            let position = i as f64 * f64::from(source_rate) / f64::from(rate);
+            let at = position as usize;
+            let fraction = position.fract() as f32;
+            pcm.get(at).copied().unwrap_or(0.0) * (1.0 - fraction)
+                + pcm.get(at + 1).copied().unwrap_or(0.0) * fraction
+        })
+        .collect()
+}
+fn synthesize(text: &str, voice: &VoiceProfile) -> Result<(Vec<f32>, u32), String> {
     static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let number = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let directory = std::env::temp_dir().join(format!("flightcraft-speech-{}-{number}", std::process::id()));
@@ -194,7 +260,11 @@ fn synthesize(text: &str, voice: usize) -> Result<(Vec<f32>, u32), String> {
     result
 }
 #[cfg(target_os = "linux")]
-fn platform_command(text: &std::path::Path, wave: &std::path::Path, voice: usize) -> Result<Command, String> {
+fn platform_command(
+    text: &std::path::Path,
+    wave: &std::path::Path,
+    voice: &VoiceProfile,
+) -> Result<Command, String> {
     let available = |name: &str| {
         std::env::var_os("PATH")
             .is_some_and(|paths| std::env::split_paths(&paths).any(|p| p.join(name).is_file()))
@@ -210,18 +280,53 @@ fn platform_command(text: &std::path::Path, wave: &std::path::Path, voice: usize
         .arg("-w")
         .arg(wave)
         .arg("-v")
-        .arg(format!(
-            "en-us+{}{}",
-            if voice.is_multiple_of(2) { "m" } else { "f" },
-            voice % 4 + 1
-        ))
+        .arg(espeak_voice(voice))
+        .arg("-p")
+        .arg(voice.pitch.min(99).to_string())
         .arg("-s")
-        .arg((150 + voice % 5 * 9).to_string());
+        .arg(voice.wpm.to_string());
     Ok(command)
 }
+/// espeak's male (m1-m7) and female (f1-f5) timbre variants.
+#[cfg(target_os = "linux")]
+fn espeak_voice(voice: &VoiceProfile) -> String {
+    match voice.gender {
+        Gender::Male => format!("en-us+m{}", voice.variant.clamp(1, 7)),
+        Gender::Female => format!("en-us+f{}", voice.variant.clamp(1, 5)),
+    }
+}
 #[cfg(target_os = "macos")]
-fn platform_command(text: &std::path::Path, wave: &std::path::Path, voice: usize) -> Result<Command, String> {
+fn platform_command(
+    text: &std::path::Path,
+    wave: &std::path::Path,
+    voice: &VoiceProfile,
+) -> Result<Command, String> {
+    // Stock macOS voices, filtered to the ones installed (`say -v ?`); with none, the default voice.
+    const MALE: [&str; 5] = ["Alex", "Daniel", "Fred", "Tom", "Aaron"];
+    const FEMALE: [&str; 5] = ["Samantha", "Karen", "Victoria", "Moira", "Allison"];
+    static INSTALLED: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let installed = INSTALLED.get_or_init(|| {
+        Command::new("say")
+            .args(["-v", "?"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default()
+    });
+    let names: Vec<&str> = (if voice.gender == Gender::Male {
+        &MALE
+    } else {
+        &FEMALE
+    })
+    .iter()
+    .copied()
+    .filter(|n| installed.lines().any(|l| l.split_whitespace().next() == Some(*n)))
+    .collect();
     let mut command = Command::new("say");
+    if !names.is_empty() {
+        command
+            .arg("-v")
+            .arg(names[usize::from(voice.variant) % names.len()]);
+    }
     command
         .arg("-f")
         .arg(text)
@@ -230,19 +335,28 @@ fn platform_command(text: &std::path::Path, wave: &std::path::Path, voice: usize
         .arg("--file-format=WAVE")
         .arg("--data-format=LEI16@22050")
         .arg("-r")
-        .arg((155 + voice % 5 * 12).to_string());
+        .arg(voice.wpm.to_string());
     Ok(command)
 }
 #[cfg(target_os = "windows")]
-fn platform_command(text: &std::path::Path, wave: &std::path::Path, voice: usize) -> Result<Command, String> {
-    // User text is read from a file, never interpolated into executable PowerShell.
+fn platform_command(
+    text: &std::path::Path,
+    wave: &std::path::Path,
+    voice: &VoiceProfile,
+) -> Result<Command, String> {
+    // User text is read from a file, never interpolated into executable PowerShell. Installed voices of
+    // the wanted gender are chosen by timbre number; rate maps 160 wpm to 0 and 12 wpm to one step.
     let mut command = Command::new("powershell");
-    command.arg("-NoProfile").arg("-NonInteractive").arg("-Command").arg("Add-Type -AssemblyName System.Speech; $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; $v=$s.GetInstalledVoices(); if($v.Count -gt 0){$s.SelectVoice($v[[int]$env:FC_SPEECH_VOICE % $v.Count].VoiceInfo.Name)}; $s.SetOutputToWaveFile($env:FC_SPEECH_WAVE); $s.Speak([IO.File]::ReadAllText($env:FC_SPEECH_TEXT)); $s.Dispose()")
-        .env("FC_SPEECH_TEXT", text).env("FC_SPEECH_WAVE", wave).env("FC_SPEECH_VOICE", voice.to_string());
+    command.arg("-NoProfile").arg("-NonInteractive").arg("-Command").arg("Add-Type -AssemblyName System.Speech; $s=New-Object System.Speech.Synthesis.SpeechSynthesizer; $all=$s.GetInstalledVoices(); $g=$all | Where-Object { $_.VoiceInfo.Gender -eq $env:FC_SPEECH_GENDER }; if($g.Count -eq 0){$g=$all}; if($g.Count -gt 0){$s.SelectVoice($g[[int]$env:FC_SPEECH_VARIANT % $g.Count].VoiceInfo.Name)}; $s.Rate=[int]$env:FC_SPEECH_RATE; $s.SetOutputToWaveFile($env:FC_SPEECH_WAVE); $s.Speak([IO.File]::ReadAllText($env:FC_SPEECH_TEXT)); $s.Dispose()")
+        .env("FC_SPEECH_TEXT", text)
+        .env("FC_SPEECH_WAVE", wave)
+        .env("FC_SPEECH_GENDER", if voice.gender == Gender::Male { "Male" } else { "Female" })
+        .env("FC_SPEECH_VARIANT", voice.variant.to_string())
+        .env("FC_SPEECH_RATE", ((i32::from(voice.wpm) - 160) / 12).clamp(-10, 10).to_string());
     Ok(command)
 }
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-fn platform_command(_: &std::path::Path, _: &std::path::Path, _: usize) -> Result<Command, String> {
+fn platform_command(_: &std::path::Path, _: &std::path::Path, _: &VoiceProfile) -> Result<Command, String> {
     Err("No platform speech adapter".into())
 }
 fn decode_wave(bytes: &[u8]) -> Result<(Vec<f32>, u32), String> {
@@ -305,6 +419,54 @@ fn decode_wave(bytes: &[u8]) -> Result<(Vec<f32>, u32), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn have_espeak() -> bool {
+        std::env::var_os("PATH").is_some_and(|paths| {
+            std::env::split_paths(&paths).any(|p| p.join("espeak-ng").is_file() || p.join("espeak").is_file())
+        })
+    }
+    /// Offline: two different voices say the same call through the engine and the radio. Skipped where no
+    /// local speech tool is installed.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn voices_render_different_audio_that_fits_the_call_slot() {
+        if !have_espeak() {
+            return;
+        }
+        let text = "Cessna four two seven kilo papa, descend and maintain three thousand.";
+        let rate = 22050;
+        let request = |voice: VoiceProfile| Request {
+            text: text.into(),
+            voice,
+            com: true,
+            morse: None,
+            garble: None,
+            slot_s: voice.duration_s(text) as f32,
+            distance: 0.3,
+            seed: 5,
+            volume: 1.0,
+            epoch: 0,
+        };
+        let controller = flightcraft_control::controller_voice(0);
+        let pilot = flightcraft_control::pilot_voice(2, 7);
+        let a = render(&request(controller), rate).unwrap();
+        let b = render(&request(pilot), rate).unwrap();
+        assert_ne!(a, b);
+        assert!(a.iter().chain(&b).all(|s| s.is_finite() && s.abs() <= 1.0));
+        for (samples, voice) in [(&a, controller), (&b, pilot)] {
+            let seconds = samples.len() as f64 / f64::from(rate);
+            // Speech plus squelch break and tail stays within the time the simulation allotted.
+            assert!(
+                seconds <= voice.duration_s(text) + 0.35,
+                "{seconds} vs {}",
+                voice.duration_s(text)
+            );
+            assert!(seconds > 1.0);
+        }
+        // Blocked: a squeal, whatever the text.
+        let mut squeal = request(controller);
+        squeal.garble = Some(1.0);
+        assert!(render(&squeal, rate).unwrap().len() >= rate as usize);
+    }
     #[test]
     fn hostile_wave_is_an_error() {
         for input in [vec![], vec![0; 50], b"RIFFxxxxWAVEdata\xff\xff\xff\xff".to_vec()] {
@@ -336,16 +498,27 @@ mod preview {
         }
         output
     }
+    fn preview_params(voice: &VoiceProfile, distance: f32) -> RadioParams {
+        RadioParams {
+            radio: voice.radio,
+            distance,
+            seed: 1,
+        }
+    }
     #[test]
     #[ignore = "requires a platform speech tool and writes audio previews"]
     fn render_radio_audio_preview() {
         let (mut pcm, rate) = synthesize(
             "Blairstown traffic, Cherokee eight one Foxtrot, downwind runway two five, Blairstown.",
-            6,
+            &flightcraft_control::pilot_voice(6, 0),
         )
         .unwrap();
         assert!(pcm.iter().any(|s| s.abs() > 0.01));
-        radio_effect(&mut pcm, rate);
+        radio_effect(
+            &mut pcm,
+            rate,
+            &preview_params(&flightcraft_control::pilot_voice(6, 0), 0.2),
+        );
         let encoded = wave(&pcm, rate);
         let (decoded, decoded_rate) = decode_wave(&encoded).unwrap();
         assert_eq!(decoded_rate, rate);
@@ -356,8 +529,9 @@ mod preview {
         if let Ok(report) = std::fs::read_to_string(directory.join("awos-ifr.txt"))
             && let Some(text) = report.lines().nth(1)
         {
-            let (mut pcm, rate) = synthesize(text, 5).unwrap();
-            radio_effect(&mut pcm, rate);
+            let voice = flightcraft_control::controller_voice(6);
+            let (mut pcm, rate) = synthesize(text, &voice).unwrap();
+            radio_effect(&mut pcm, rate, &preview_params(&voice, 0.1));
             std::fs::write(directory.join("awos-ifr.wav"), wave(&pcm, rate)).unwrap();
         }
         std::fs::write(
@@ -390,14 +564,20 @@ mod preview {
             .text
             .clone();
         assert!(radio.contains("Sling Three Seven One Foxtrot Charlie"));
+        let crew = flightcraft_control::speaker_voice(&Speaker::Crew, &Meaning::Text).unwrap();
         for (name, text, voice, radio) in [
-            ("intercom", intercom.as_str(), 10, false),
-            ("pilot-ctaf", radio.as_str(), 0, true),
+            ("intercom", intercom.as_str(), crew, false),
+            (
+                "pilot-ctaf",
+                radio.as_str(),
+                flightcraft_control::pilot_voice(0, 0),
+                true,
+            ),
         ] {
-            let (mut pcm, rate) = synthesize(text, voice).unwrap();
+            let (mut pcm, rate) = synthesize(text, &voice).unwrap();
             assert!(pcm.iter().any(|s| s.abs() > 0.01));
             if radio {
-                radio_effect(&mut pcm, rate);
+                radio_effect(&mut pcm, rate, &preview_params(&voice, 0.2));
             }
             std::fs::write(directory.join(format!("{name}.wav")), wave(&pcm, rate)).unwrap();
         }

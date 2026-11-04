@@ -58149,6 +58149,12 @@
               "minimum": 0,
               "type": "integer"
             },
+            "stepped_on": {
+              "description": "Calls the user keyed over, which were therefore sent again.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
             "transmissions": {
               "format": "uint64",
               "minimum": 0,
@@ -58161,7 +58167,8 @@
             "transmissions",
             "readbacks_accepted",
             "readbacks_corrected",
-            "safety_slowdowns"
+            "safety_slowdowns",
+            "stepped_on"
           ],
           "type": "object"
         },
@@ -58509,6 +58516,12 @@
               "minimum": 0,
               "type": "integer"
             },
+            "stepped_on": {
+              "description": "Calls the user keyed over, which were therefore sent again.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
             "transmissions": {
               "format": "uint64",
               "minimum": 0,
@@ -58521,7 +58534,8 @@
             "transmissions",
             "readbacks_accepted",
             "readbacks_corrected",
-            "safety_slowdowns"
+            "safety_slowdowns",
+            "stepped_on"
           ],
           "type": "object"
         },

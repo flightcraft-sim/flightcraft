@@ -111,6 +111,8 @@ pub(crate) struct Msg {
     pub sequence: Option<FleetSequence>,
     pub freq: u32,
     pub corrected: bool,
+    /// Sent again because the user stepped on the first attempt.
+    pub repeat: bool,
 }
 impl Msg {
     fn priority(&self) -> u8 {
@@ -126,6 +128,11 @@ impl Msg {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Chan {
     pub quiet_until: f64,
+    /// When the last transmission's audio finishes. Audio plays once a call completes, so the next call
+    /// may not end before this.
+    pub audio_free: f64,
+    /// The recorded event of the transmission in flight, when the user's radios can hear it.
+    pub event: Option<u64>,
     pub inflight: Option<(f64, Msg)>,
     pub queue: Vec<Msg>,
 }
@@ -168,9 +175,6 @@ fn capital(text: &str) -> String {
     let mut c = text.chars();
     c.next()
         .map_or_else(String::new, |f| f.to_uppercase().collect::<String>() + c.as_str())
-}
-fn spoken_duration(text: &str) -> f64 {
-    (text.split_whitespace().count() as f64 / 2.7).clamp(1.0, 40.0)
 }
 fn profile_kt(spec: &TypeSpec, rem: f64) -> f64 {
     (spec.approach_kt + (rem - 4.0 * NM) / (14.0 * NM) * (spec.cruise_kt - spec.approach_kt))
@@ -747,6 +751,7 @@ impl Fleet {
             sequence: None,
             freq,
             corrected: false,
+            repeat: false,
         });
     }
     fn say_ctrl(
@@ -784,6 +789,7 @@ impl Fleet {
             sequence,
             freq,
             corrected: false,
+            repeat: false,
         });
     }
     fn say_info(&mut self, i: usize, text: &str, kind: FleetCallKind, next: Stage, now: f64) {
@@ -808,6 +814,7 @@ impl Fleet {
             sequence: None,
             freq,
             corrected: false,
+            repeat: false,
         });
     }
     fn handoff(&self, st: usize) -> AtcInstruction {
@@ -1445,53 +1452,111 @@ impl Fleet {
         m.instr.iter().all(|x| readback_matches(x, &message))
     }
 
+    /// What the listener hears: a repeat after the user stepped on the call says so first.
+    fn spoken_text(m: &Msg) -> String {
+        match (m.repeat, m.role) {
+            (false, _) => m.text.clone(),
+            (true, FleetRole::Controller) => format!("Blocked, I say again. {}", m.text),
+            (true, FleetRole::Pilot) => format!("Blocked, say again. {}", m.text),
+        }
+    }
+    fn call_for(&self, m: &Msg, freq: u32) -> Option<FleetCall> {
+        let i = self.idx(m.ac)?;
+        let a = self.ar(i);
+        let st = self.field.st(m.station);
+        Some(FleetCall {
+            exchange: m.ex,
+            aircraft: a.id,
+            callsign: a.ident.full.clone(),
+            role: m.role,
+            kind: m.kind,
+            instructions: m.instr.clone(),
+            facility: st.id.clone(),
+            frequency_khz: freq,
+            voice: if m.role == FleetRole::Pilot {
+                a.ident.voice
+            } else {
+                facility_voice(&self.field.stations, m.station)
+            },
+            for_user: false,
+            sequence: m.sequence.clone(),
+        })
+    }
+
+    /// The user keyed over the transmission in flight on each of `blocked`: the call did not get
+    /// through, so it is sent again after the usual gap with a short "blocked, say again". Its
+    /// aircraft stays waiting, so nothing the call carried takes effect until it is heard.
+    pub fn repeat_blocked(&mut self, blocked: &[u32]) {
+        for k in blocked {
+            let gap = self.rng.range(1.5, 3.5);
+            let Some(c) = self.chans.get_mut(k) else { continue };
+            let Some((end, mut m)) = c.inflight.take() else {
+                continue;
+            };
+            c.quiet_until = end + gap;
+            c.event = None;
+            m.repeat = true;
+            m.ready = end + gap;
+            self.stats.stepped_on += 1;
+            self.seq += 1;
+            m.seq = self.seq;
+            self.stats.transmissions += 1;
+            if let Some(c) = self.chans.get_mut(k) {
+                c.queue.push(m);
+            }
+        }
+    }
+
     fn start_tx(&mut self, now: f64, busy: &[u32]) -> Vec<Tx> {
         let mut out = Vec::new();
         let keys: Vec<u32> = self.chans.keys().copied().collect();
         for k in keys {
             let alive: Vec<u32> = self.craft.iter().map(|a| a.id).collect();
-            let Some(c) = self.chans.get_mut(&k) else { continue };
-            c.queue.retain(|m| alive.contains(&m.ac));
+            if let Some(c) = self.chans.get_mut(&k) {
+                c.queue.retain(|m| alive.contains(&m.ac));
+            }
+            let Some(c) = self.chans.get(&k) else { continue };
             if c.inflight.is_some() || now < c.quiet_until || busy.contains(&k) {
                 continue;
             }
+            // Audio plays after a call completes, so a call may not end before the previous one's audio does.
+            let audio_free = c.audio_free;
             let Some(pick) = c
                 .queue
                 .iter()
                 .enumerate()
                 .filter(|(_, m)| m.ready <= now)
+                .filter(|(_, m)| {
+                    self.call_for(m, k).is_some_and(|call| {
+                        now + fleet_call_duration(&Self::spoken_text(m), &call) + 1e-9 >= audio_free
+                    })
+                })
                 .min_by_key(|(_, m)| (m.priority(), m.seq))
                 .map(|(n, _)| n)
             else {
                 continue;
             };
-            let m = c.queue.remove(pick);
-            c.inflight = Some((now + spoken_duration(&m.text), m.clone()));
+            let Some(mut m) = self.chans.get_mut(&k).map(|c| c.queue.remove(pick)) else {
+                continue;
+            };
+            let text = Self::spoken_text(&m);
+            m.repeat = false;
+            let Some(call) = self.call_for(&m, k) else {
+                continue;
+            };
+            let duration = fleet_call_duration(&text, &call);
+            if let Some(c) = self.chans.get_mut(&k) {
+                c.inflight = Some((now + duration, m.clone()));
+                c.event = None;
+                c.audio_free = now + 2.0 * duration;
+            }
             let Some(i) = self.idx(m.ac) else { continue };
             let a = self.ar(i);
-            let st = self.field.st(m.station);
-            let call = FleetCall {
-                exchange: m.ex,
-                aircraft: a.id,
-                callsign: a.ident.full.clone(),
-                role: m.role,
-                kind: m.kind,
-                instructions: m.instr.clone(),
-                facility: st.id.clone(),
-                frequency_khz: k,
-                voice: if m.role == FleetRole::Pilot {
-                    a.ident.voice
-                } else {
-                    (st.id.len() % 8) as u8
-                },
-                for_user: false,
-                sequence: m.sequence.clone(),
-            };
             out.push(Tx {
                 freq: k,
                 station: m.station,
                 role: m.role,
-                text: m.text.clone(),
+                text,
                 call,
                 origin: (m.role == FleetRole::Pilot).then(|| [a.body.pos[0], a.body.pos[1], -a.body.alt_m]),
                 callsign: a.ident.full.clone(),

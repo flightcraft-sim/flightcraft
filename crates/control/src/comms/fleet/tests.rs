@@ -317,3 +317,86 @@ fn the_user_still_gets_service_with_traffic_on() {
         s.atc_state()
     );
 }
+
+#[test]
+fn transmissions_last_as_long_as_their_voice_and_audio_never_overlaps() {
+    let mut s = busy_session();
+    advance(&mut s, 900.);
+    let events = fleet_events(&s);
+    assert!(events.len() > 20, "{} events", events.len());
+    for (e, c) in &events {
+        let expected = fleet_call_duration(&e.text, c);
+        assert!(
+            (e.duration_s - expected).abs() < 1e-9,
+            "{} vs {expected}",
+            e.duration_s
+        );
+    }
+    let mut khz: Vec<u32> = events.iter().map(|(_, c)| c.frequency_khz).collect();
+    khz.sort();
+    khz.dedup();
+    for k in khz {
+        let on: Vec<&Transmission> = events
+            .iter()
+            .filter(|(_, c)| c.frequency_khz == k)
+            .map(|(e, _)| e)
+            .collect();
+        for pair in on.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            // No carrier overlap, the engine's gap, and the next call ends after the previous audio does.
+            assert!(b.time_s >= a.time_s + a.duration_s + 1.4, "{k}: {a:?} {b:?}");
+            assert!(
+                b.time_s + b.duration_s + 1e-6 >= a.time_s + 2.0 * a.duration_s,
+                "audio overlap on {k}: {:?} then {:?}",
+                a.text,
+                b.text
+            );
+        }
+    }
+}
+
+#[test]
+fn a_call_the_user_keys_over_is_blocked_and_sent_again() {
+    let mut s = busy_session();
+    // Run until a fleet call is on the air on a frequency the user is listening to.
+    let mut stepped = None;
+    for _ in 0..4000 {
+        advance_chunk(&mut s, 0.25);
+        stepped = s
+            .flight_record()
+            .events
+            .iter()
+            .find(|e| e.reception == Reception::Pending && matches!(e.meaning, Meaning::Fleet { .. }))
+            .cloned();
+        if stepped.is_some() {
+            break;
+        }
+    }
+    let target = stepped.expect("a fleet call is on the air");
+    let Meaning::Fleet { call } = &target.meaning else {
+        panic!("a fleet call")
+    };
+    let khz = call.frequency_khz;
+    let radio = if s.comms_state().com1.active_khz == khz {
+        1
+    } else {
+        2
+    };
+    s.execute("comms.audio_panel", json!({"transmit":radio})).unwrap();
+    s.execute("comms.transmit", json!({"text":"Approach, say again"}))
+        .unwrap();
+    advance(&mut s, 60.);
+    let record = s.flight_record();
+    let first = record.events.iter().find(|e| e.id == target.id).unwrap();
+    assert_eq!(first.reception, Reception::Blocked, "{first:?}");
+    assert_eq!(s.fleet_state().stats.stepped_on, 1);
+    // The same call comes round again, introduced as a repeat, and is heard.
+    let again = record.events.iter().find(|e| {
+        e.id > target.id
+            && e.reception == Reception::Heard
+            && matches!(&e.meaning, Meaning::Fleet { call: c } if c.exchange == call.exchange && c.kind == call.kind)
+            && e.text.starts_with("Blocked, ")
+            && e.text.ends_with(&target.text)
+    });
+    assert!(again.is_some(), "no repeat of {:?}", target.text);
+}
