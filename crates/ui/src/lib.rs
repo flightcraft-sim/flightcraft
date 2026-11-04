@@ -6,6 +6,7 @@ pub mod autopilot;
 mod bridge;
 mod callsign_preferences;
 mod canopy_panel;
+mod checklist;
 pub mod clock;
 pub mod crew;
 #[cfg(test)]
@@ -34,6 +35,7 @@ pub mod script;
 pub mod speech_input;
 pub mod theme;
 pub mod traffic_page;
+mod view_preferences;
 mod weather;
 mod weather_live;
 
@@ -180,6 +182,9 @@ impl FlightCraftApp {
             error = Some(e);
         }
         if let Err(e) = display_preferences::restore(&mut session, cc.storage) {
+            error = Some(e);
+        }
+        if let Err(e) = view_preferences::restore(&mut session, cc.storage) {
             error = Some(e);
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -747,6 +752,101 @@ impl FlightCraftApp {
 }
 
 impl FlightCraftApp {
+    /// Checklists, procedure lessons, the ground layout, and the exterior inset.
+    fn procedures_menu(&mut self, ui: &mut egui::Ui) {
+        use flightcraft_control::{InsetMode, LayoutMode};
+        ui.menu_button("Procedures and view", |ui| {
+            let lists = self
+                .session
+                .execute("checklist.list", serde_json::json!({}))
+                .ok()
+                .and_then(|v| v.as_array().cloned())
+                .unwrap_or_default();
+            ui.menu_button("Checklists", |ui| {
+                if lists.is_empty() {
+                    ui.label("This aircraft has no checklists.");
+                }
+                for list in &lists {
+                    let id = list["id"].as_str().unwrap_or_default();
+                    if ui
+                        .button(list["title"].as_str().unwrap_or(id))
+                        .on_hover_text(list["poh_ref"].as_str().unwrap_or_default())
+                        .clicked()
+                    {
+                        let result = self
+                            .session
+                            .execute("checklist.select", serde_json::json!({"id": id}))
+                            .and_then(|_| {
+                                self.session
+                                    .execute("view.layout", serde_json::json!({"mode":"ground"}))
+                            });
+                        if let Err(e) = result {
+                            self.error = Some(e.to_string());
+                        }
+                        ui.close();
+                    }
+                }
+            });
+            ui.menu_button("Procedure lessons", |ui| {
+                let lessons = self
+                    .session
+                    .execute("procedure_lesson.list", serde_json::json!({}))
+                    .ok()
+                    .and_then(|v| v.as_array().cloned())
+                    .unwrap_or_default();
+                for lesson in &lessons {
+                    let id = lesson["id"].as_str().unwrap_or_default();
+                    if ui
+                        .button(lesson["title"].as_str().unwrap_or(id))
+                        .on_hover_text(lesson["briefing"].as_str().unwrap_or_default())
+                        .clicked()
+                    {
+                        if let Err(e) = self
+                            .session
+                            .execute("procedure_lesson.start", serde_json::json!({"id": id}))
+                        {
+                            self.error = Some(e.to_string());
+                        }
+                        ui.close();
+                    }
+                }
+            });
+            ui.separator();
+            let prefs = *self.session.view_preferences();
+            for (mode, label) in [
+                (LayoutMode::Auto, "Layout: ground view with a checklist"),
+                (LayoutMode::Ground, "Layout: ground view now"),
+                (LayoutMode::Normal, "Layout: normal"),
+            ] {
+                if ui.selectable_label(prefs.layout == mode, label).clicked() {
+                    if let Err(e) = self
+                        .session
+                        .execute("view.layout", serde_json::json!({"mode": mode}))
+                    {
+                        self.error = Some(e.to_string());
+                    }
+                    ui.close();
+                }
+            }
+            ui.separator();
+            for (mode, label) in [
+                (InsetMode::Off, "Exterior inset: off"),
+                (InsetMode::Ground, "Exterior inset: on the ground"),
+                (InsetMode::Always, "Exterior inset: always"),
+            ] {
+                if ui.selectable_label(prefs.exterior_inset == mode, label).clicked() {
+                    if let Err(e) = self
+                        .session
+                        .execute("view.exterior_inset", serde_json::json!({"mode": mode}))
+                    {
+                        self.error = Some(e.to_string());
+                    }
+                    ui.close();
+                }
+            }
+        });
+    }
+
     fn flight_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Flight", |ui| {
             let identity = self.session.sim().aircraft().identity.clone();
@@ -888,6 +988,7 @@ impl FlightCraftApp {
                 {
                     self.error = Some(e.to_string());
                 }
+                self.procedures_menu(ui);
                 if ui
                     .button(format!("Reset  [{}]", self.keymap.label(Action::Reset)))
                     .clicked()
@@ -1373,6 +1474,7 @@ impl eframe::App for FlightCraftApp {
         }
         callsign_preferences::save(&self.session, storage);
         display_preferences::save(&self.session, storage);
+        view_preferences::save(&self.session, storage);
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(serial) = self.efb_serial {
@@ -1457,6 +1559,8 @@ fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bo
     ))
 }
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod ground_layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]

@@ -1,0 +1,37 @@
+{
+  "id": "sling2",
+  "name": "Sling 2",
+  "version": "0.4.0",
+  "licence": "Apache-2.0",
+  "authors": [
+    "FlightCraft contributors"
+  ],
+  "affiliation": "Not affiliated with or endorsed by Sling Aircraft. POH numerical facts attributed in data/sources.json; original files licensed Apache-2.0.",
+  "files": [
+    {
+      "path": "family.json",
+      "kind": "family"
+    },
+    {
+      "path": "variant.json",
+      "kind": "variant"
+    },
+    {
+      "path": "engine.json",
+      "kind": "engine"
+    },
+    {
+      "path": "systems.json",
+      "kind": "systems"
+    },
+    {
+      "path": "panel.json",
+      "kind": "panel"
+    },
+    {
+      "path": "aircraft.json",
+      "kind": "aircraft"
+    }
+  ],
+  "format_version": 3
+}

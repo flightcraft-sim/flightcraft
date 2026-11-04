@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "sling-before-start",
+  "title": "Sling: before start, start, and warm-up",
+  "briefing": "Cold and dark on the ramp. Work the before-start list, start the Rotax 912 iS as the POH supplement describes (EMS back-up on, lane lights, both fuel pumps, starter no longer than 10 seconds, oil pressure within 10 seconds), then warm up: 2,000 rpm for two minutes, then 2,500 rpm until the oil reaches 50 C. Use Show me on any item. This is simulated training from the POH; the real POH governs.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "cold_and_dark"
+  },
+  "tasks": [
+    {
+      "title": "Before starting engine",
+      "checklist": "before_start",
+      "poh_ref": "POH 4.5.1",
+      "expect": "complete"
+    },
+    {
+      "title": "Engine start, 912 iS",
+      "checklist": "engine_start",
+      "poh_ref": "POH 4.5.2 and supplement 9.4.12",
+      "expect": "complete"
+    },
+    {
+      "title": "Engine warm-up",
+      "checklist": "warm_up",
+      "poh_ref": "POH 4.5.3",
+      "expect": "complete"
+    }
+  ]
+}

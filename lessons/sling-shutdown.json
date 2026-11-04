@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "sling-shutdown",
+  "title": "Sling: shutdown and securing",
+  "briefing": "Taxied in and stopped, engine idling. Shut down as the POH describes: idle, check engine parameters, avionics off, both fuel pumps off, ignition off, electrical switches off, EFIS and back-up off, master off, fuel selector off. Then secure the aircraft: parking brake, canopy closed and locked.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "engine_running_after_flight",
+    "oil_temperature_c": 85
+  },
+  "tasks": [
+    {
+      "title": "Engine shutdown",
+      "checklist": "shutdown",
+      "poh_ref": "POH 4.15",
+      "expect": "complete"
+    },
+    {
+      "title": "Parking and tie-down",
+      "checklist": "securing",
+      "poh_ref": "POH 4.16",
+      "expect": "complete"
+    }
+  ]
+}

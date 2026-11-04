@@ -95,6 +95,7 @@ pub struct Scene {
     propeller_power: f32,
     exterior: Option<std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>>,
     exterior_pose: exterior::Pose,
+    look_target_ned_m: Option<[f32; 3]>,
     registration: Option<registration::Override>,
     exterior_environment: Option<std::sync::Arc<exterior::ExteriorEnvironment>>,
     larrow: bool,
@@ -132,6 +133,7 @@ impl Default for Scene {
             propeller_power: 0.0,
             exterior: exterior::builtin("corvid"),
             exterior_pose: Default::default(),
+            look_target_ned_m: None,
             registration: None,
             exterior_environment: None,
             larrow: false,
@@ -167,6 +169,17 @@ impl Scene {
 
     pub fn set_imagery(&mut self, stream: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>) {
         self.imagery = stream;
+    }
+
+    /// The exterior model of the aircraft being drawn, for framing its moving parts.
+    #[must_use]
+    pub fn exterior_asset(&self) -> Option<&std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>> {
+        self.exterior.as_ref()
+    }
+
+    /// With a fixed-eye screen view, look at this world point instead of the centre of gravity.
+    pub fn set_look_target(&mut self, target_ned_m: Option<[f32; 3]>) {
+        self.look_target_ned_m = target_ned_m;
     }
 
     pub fn set_screen_view(&mut self, view: Option<ScreenView>) {
@@ -491,7 +504,9 @@ impl Scene {
         let (eye, view) = if let Some(settings) = self.screen_view {
             if let Some(fixed) = settings.fixed_eye_ned_m {
                 let eye = drawing(Vec3::from_array(fixed));
-                let target = position;
+                let target = self
+                    .look_target_ned_m
+                    .map_or(position, |t| drawing(Vec3::from_array(t)));
                 let up = if (target - eye).normalize_or_zero().dot(Vec3::Y).abs() > 0.99 {
                     Vec3::NEG_Z
                 } else {

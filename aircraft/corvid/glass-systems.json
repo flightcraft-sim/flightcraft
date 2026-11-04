@@ -561,5 +561,234 @@
         }
       ]
     }
-  ]
+  ],
+  "procedures": {
+    "version": 1,
+    "source": "Original fictional Corvid checklists written for FlightCraft; not a real POH and never for real-aircraft use.",
+    "checklists": [
+      {
+        "id": "before_start",
+        "title": "Before start",
+        "phase": "before_start",
+        "poh_ref": "Corvid checklist 1",
+        "items": [
+          {
+            "id": "walkround",
+            "text": "Walk-round",
+            "response": "complete",
+            "poh_ref": "Corvid checklist 1.1"
+          },
+          {
+            "id": "brakes",
+            "text": "Parking brake",
+            "response": "set",
+            "poh_ref": "Corvid checklist 1.2",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            }
+          },
+          {
+            "id": "fuel",
+            "text": "Fuel selector",
+            "response": "fullest tank",
+            "poh_ref": "Corvid checklist 1.3",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "left",
+                "right",
+                "both"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "engine_start",
+        "title": "Engine start",
+        "phase": "engine_start",
+        "poh_ref": "Corvid checklist 2",
+        "items": [
+          {
+            "id": "master",
+            "text": "Master switch",
+            "response": "on",
+            "poh_ref": "Corvid checklist 2.1",
+            "verify": {
+              "kind": "master",
+              "on": true
+            }
+          },
+          {
+            "id": "throttle",
+            "text": "Throttle",
+            "response": "cracked open",
+            "poh_ref": "Corvid checklist 2.2",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.15
+            }
+          },
+          {
+            "id": "ignition",
+            "text": "Magnetos",
+            "response": "both",
+            "poh_ref": "Corvid checklist 2.3",
+            "verify": {
+              "kind": "ignition",
+              "on": true
+            }
+          },
+          {
+            "id": "clear",
+            "text": "Propeller area",
+            "response": "clear",
+            "poh_ref": "Corvid checklist 2.4"
+          },
+          {
+            "id": "starter",
+            "text": "Starter",
+            "response": "engage, no more than 10 seconds",
+            "poh_ref": "Corvid checklist 2.5",
+            "verify": {
+              "kind": "engine_running",
+              "running": true
+            },
+            "timer": {
+              "label": "Starter",
+              "kind": "max",
+              "seconds": 10,
+              "start_when": {
+                "kind": "starter",
+                "engaged": true
+              }
+            }
+          },
+          {
+            "id": "oil",
+            "text": "Oil pressure",
+            "response": "rising within 10 seconds",
+            "poh_ref": "Corvid checklist 2.6",
+            "verify": {
+              "kind": "oil_pressure",
+              "min_bar": 1.0
+            },
+            "timer": {
+              "label": "Oil pressure",
+              "kind": "within",
+              "seconds": 10,
+              "start_when": {
+                "kind": "engine_running",
+                "running": true
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "run_up",
+        "title": "Run-up",
+        "phase": "run_up",
+        "poh_ref": "Corvid checklist 3",
+        "items": [
+          {
+            "id": "brakes",
+            "text": "Parking brake",
+            "response": "set",
+            "poh_ref": "Corvid checklist 3.1",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            }
+          },
+          {
+            "id": "oil_temp",
+            "text": "Oil temperature",
+            "response": "in the green",
+            "poh_ref": "Corvid checklist 3.2",
+            "verify": {
+              "kind": "oil_temp",
+              "min_c": 40
+            }
+          },
+          {
+            "id": "rpm",
+            "text": "Engine speed",
+            "response": "1,800 rpm",
+            "poh_ref": "Corvid checklist 3.3",
+            "verify": {
+              "kind": "rpm",
+              "min": 1700,
+              "max": 1900
+            }
+          },
+          {
+            "id": "mags",
+            "text": "Magnetos",
+            "response": "check each, drop within limits, back to both",
+            "poh_ref": "Corvid checklist 3.4"
+          },
+          {
+            "id": "idle",
+            "text": "Throttle",
+            "response": "idle",
+            "poh_ref": "Corvid checklist 3.5",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.1
+            }
+          }
+        ]
+      },
+      {
+        "id": "shutdown",
+        "title": "Shutdown",
+        "phase": "shutdown",
+        "poh_ref": "Corvid checklist 4",
+        "items": [
+          {
+            "id": "idle",
+            "text": "Throttle",
+            "response": "idle",
+            "poh_ref": "Corvid checklist 4.1",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.1
+            }
+          },
+          {
+            "id": "avionics",
+            "text": "Avionics",
+            "response": "off",
+            "poh_ref": "Corvid checklist 4.2",
+            "verify": {
+              "kind": "avionics",
+              "on": false
+            }
+          },
+          {
+            "id": "ignition",
+            "text": "Magnetos",
+            "response": "off",
+            "poh_ref": "Corvid checklist 4.3",
+            "verify": {
+              "kind": "ignition",
+              "on": false
+            }
+          },
+          {
+            "id": "master",
+            "text": "Master switch",
+            "response": "off",
+            "poh_ref": "Corvid checklist 4.4",
+            "verify": {
+              "kind": "master",
+              "on": false
+            }
+          }
+        ]
+      }
+    ]
+  }
 }

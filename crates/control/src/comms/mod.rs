@@ -648,6 +648,9 @@ impl Session {
             self.sequence_scenario();
             self.sequence_lesson();
             self.sequence_preflight();
+            self.sequence_checklist();
+            self.sequence_inset();
+            self.sequence_procedure_lesson();
             if now - self.comms.last_tick >= 0.25 - 1e-8 {
                 let dt = now - self.comms.last_tick;
                 self.comms.last_tick = now;

@@ -14,6 +14,14 @@ use flightcraft_control::{Session, screens::*};
 use serde_json::json;
 use std::collections::BTreeMap;
 
+/// Seconds for the inset camera to ease to a new framing.
+const INSET_EASE_S: f32 = 0.45;
+
+/// The elements that are the small exterior view rather than the main outside view.
+fn is_inset(id: &str) -> bool {
+    id == flightcraft_control::screens::GROUND_EXTERIOR_ID || id == flightcraft_control::screens::INSET_ID
+}
+
 #[derive(Default)]
 pub struct PageUi {
     crew: crate::crew::CrewUi,
@@ -36,6 +44,8 @@ pub struct PageUi {
     canopy_drag_origin: f64,
     canopy_drag_target: Option<(egui::Pos2, egui::Vec2)>,
     canopy_reveal: crate::canopy_panel::Reveal,
+    checklist: crate::checklist::ChecklistUi,
+    inset_frame: Option<flightcraft_aero::exterior_framing::Framing>,
 }
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -300,6 +310,18 @@ impl Canvas {
                     3.,
                     Stroke::new(1.0_f32, theme::BORDER),
                     egui::StrokeKind::Inside,
+                );
+            }
+            if element.id == flightcraft_control::screens::INSET_ID && control && !self.edit {
+                inset_controls(
+                    &mut self.error,
+                    ui,
+                    s,
+                    screen,
+                    &element,
+                    rect,
+                    available,
+                    [sx, sy],
                 );
             }
             if self.edit && control {
@@ -593,6 +615,56 @@ impl PageUi {
         if elapsed.is_finite() { elapsed as f32 } else { 0. }
     }
 
+    /// Points the scene at the part the pilot just moved (or the walkaround's camera), easing from
+    /// the previous framing. The eye is placed in the world from the aircraft's attitude.
+    fn frame_inset(&mut self, ui: &egui::Ui, s: &mut Session) {
+        use flightcraft_aero::exterior_framing::{Framing, FramingTarget, frame};
+        let state = *s.sim().state();
+        let Some(asset) = self.scene.exterior_asset().cloned() else {
+            return;
+        };
+        let cg = s
+            .aircraft_configuration()
+            .map_or([0.; 3], |c| c.weight_balance.cg_m.map(|v| v as f32));
+        let walkaround = crate::checklist::walkaround_camera(s);
+        let wanted: Framing = walkaround
+            .as_ref()
+            .and_then(|w| w.body)
+            .or_else(|| {
+                let target: FramingTarget = s.exterior_inset_state().target;
+                frame(&asset, target, cg).or_else(|| frame(&asset, FramingTarget::Default, cg))
+            })
+            .unwrap_or(Framing {
+                eye_m: [-8., 4., -3.],
+                target_m: [0.; 3],
+                fov_deg: 50.,
+            });
+        let dt = ui.ctx().input(|i| i.stable_dt).clamp(0., 0.25);
+        let current = match self.inset_frame {
+            Some(c) => c.lerp(wanted, 1. - (-dt / INSET_EASE_S).exp()),
+            None => wanted,
+        };
+        self.inset_frame = Some(current);
+        let attitude = state.attitude.map(|v| v as f32);
+        let position = state.position_m.map(|v| v as f32);
+        let world = |v: [f32; 3]| -> [f32; 3] {
+            let [rx, ry, rz] = flightcraft_aero::exterior_framing::rotate(attitude, v);
+            let [px, py, pz] = position;
+            [px + rx, py + ry, pz + rz]
+        };
+        let (eye, target, fov) = match walkaround.as_ref().and_then(|w| w.world) {
+            Some((eye, target, fov)) => (eye, target, fov),
+            None => (world(current.eye_m), world(current.target_m), current.fov_deg),
+        };
+        self.scene.set_screen_view(Some(flightcraft_render::ScreenView {
+            heading_offset_rad: 0.,
+            pitch_rad: 0.,
+            fov_rad: fov.to_radians(),
+            fixed_eye_ned_m: Some(eye),
+        }));
+        self.scene.set_look_target(Some(target));
+    }
+
     pub fn show(&mut self, ui: &mut egui::Ui, page: &Page, s: &mut Session, id: &str) -> Result<(), String> {
         theme::page(ui);
         let readout = s.sim().readout();
@@ -677,6 +749,12 @@ impl PageUi {
                     .map_err(|e| e.to_string())?;
                 }
             }
+            PageKind::Checklist => {
+                egui::Frame::new()
+                    .fill(theme::PANEL)
+                    .inner_margin(egui::Margin::same(8))
+                    .show(ui, |ui| self.checklist.show(ui, s));
+            }
             PageKind::FlyMe => {
                 let keymap = ui
                     .ctx()
@@ -714,7 +792,10 @@ impl PageUi {
                     }
                     View::Forward => (CameraMode::Cockpit, None),
                 };
-                let mode = if page.kind == PageKind::Director {
+                let inset = is_inset(id);
+                let mode = if inset {
+                    CameraMode::Chase
+                } else if page.kind == PageKind::Director {
                     crate::crew::director_camera(s)
                 } else {
                     main_camera.map_or(mode, |camera| match camera.mode {
@@ -780,6 +861,11 @@ impl PageUi {
                 self.scene.set_aircraft(&s.sim().aircraft().identity.id);
                 if let Some(asset) = s.aircraft_catalog().exterior(&s.sim().aircraft().identity.id) {
                     self.scene.set_exterior(asset);
+                }
+                if inset {
+                    self.frame_inset(ui, s);
+                } else {
+                    self.scene.set_look_target(None);
                 }
                 let callsign = s.pilot_callsign();
                 self.scene
@@ -1343,7 +1429,8 @@ impl ScreensUi {
         });
     }
     pub fn root(&mut self, ui: &mut egui::Ui, s: &mut Session) {
-        if let Some(screen) = s.screens().windows.iter().find(|s| s.id == 0).cloned() {
+        if let Some(mut screen) = s.screens().windows.iter().find(|s| s.id == 0).cloned() {
+            screen.layout = main_layout(ui.ctx(), s, &screen.layout, ui.max_rect().width() < 700.);
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let geometry = WindowGeometry {
@@ -1429,6 +1516,85 @@ impl ScreensUi {
                 },
             );
         }
+    }
+}
+/// Drag the inset by its body and resize it by the corner; it stays inside the outside view.
+#[allow(clippy::too_many_arguments)]
+fn inset_controls(
+    error: &mut Option<String>,
+    ui: &mut egui::Ui,
+    s: &mut Session,
+    screen: &Screen,
+    element: &Element,
+    rect: Rect,
+    available: Rect,
+    scale: [f32; 2],
+) {
+    let Some(band_element) = screen
+        .layout
+        .elements
+        .iter()
+        .find(|e| e.page.kind == PageKind::Outside && e.id != element.id)
+    else {
+        return;
+    };
+    let band = element_rect(screen, band_element, available, scale, s);
+    if band.width() < 1. || band.height() < 1. {
+        return;
+    }
+    let handle = Rect::from_min_size(rect.right_bottom() - egui::vec2(18., 18.), egui::vec2(18., 18.));
+    let move_response = ui.interact(rect, ui.id().with("inset-move"), Sense::drag());
+    let size_response = ui.interact(handle, ui.id().with("inset-size"), Sense::drag());
+    ui.painter().add(egui::Shape::convex_polygon(
+        vec![
+            handle.right_bottom(),
+            handle.right_top() + egui::vec2(0., 6.),
+            handle.left_bottom() + egui::vec2(6., 0.),
+        ],
+        theme::ACCENT.gamma_multiply(0.8),
+        Stroke::NONE,
+    ));
+    let mut p = s.view_preferences().placement;
+    let (dx, dy) = (
+        move_response.drag_delta().x / band.width(),
+        move_response.drag_delta().y / band.height(),
+    );
+    let (rx, ry) = (
+        size_response.drag_delta().x / band.width(),
+        size_response.drag_delta().y / band.height(),
+    );
+    if size_response.dragged() {
+        p.w += rx;
+        p.h += ry;
+    } else if move_response.dragged() {
+        p.x += dx;
+        p.y += dy;
+    } else {
+        return;
+    }
+    if let Err(e) = s.execute("view.exterior_inset", json!({"placement": p})) {
+        *error = Some(e.to_string());
+    }
+}
+
+/// The main window's layout for this frame: the ground arrangement while a checklist is open on
+/// the ground, otherwise the stored layout with the exterior inset over the outside view when the
+/// setting calls for it. The stored layout is never changed.
+pub(crate) fn main_layout(ctx: &egui::Context, s: &Session, stored: &Layout, stacked: bool) -> Layout {
+    let state = s.view_layout_state();
+    if !state.ground {
+        // No checklist is on screen, so no dash control is being pointed at.
+        ctx.data_mut(|d| d.remove::<String>(egui::Id::new(crate::checklist::HIGHLIGHT_KEY)));
+    }
+    if state.ground {
+        stored.ground(
+            state.exterior_inset.mode != flightcraft_control::InsetMode::Off,
+            stacked,
+        )
+    } else if state.exterior_inset.visible {
+        stored.with_inset(state.exterior_inset.placement)
+    } else {
+        stored.clone()
     }
 }
 pub fn split_panel(panel: &flightcraft_aero::Panel, loads: &[flightcraft_sim::systems::LoadState]) -> Layout {

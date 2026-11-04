@@ -1,0 +1,141 @@
+{
+  "kind": "variant",
+  "format_version": 2,
+  "identity": {
+    "id": "sling2-912is",
+    "display_name": "Sling 2 / 912 iS",
+    "description": "Sling 2 POH Rev 2.8, section 1.4; Sling 2 POH Rev 2.8, section 2.2; Sling 2 POH Rev 2.8, section 2.8; Sling 2 POH Rev 2.8, section 2.9; Sling 2 POH Rev 2.8, section 6.5. Empty CG and inertia are estimates, not an individual aircraft weighing.",
+    "author": "FlightCraft contributors",
+    "registration": "N371FC",
+    "spoken_type": "Sling"
+  },
+  "family": "sling2-family",
+  "engine": "sling2-rotax912is",
+  "systems": "sling2-systems",
+  "empty_mass": {
+    "mass_kg": 370,
+    "cg_m": [
+      -1.65,
+      0,
+      0
+    ],
+    "inertia_kg_m2": [
+      [
+        430,
+        0,
+        0
+      ],
+      [
+        0,
+        610,
+        0
+      ],
+      [
+        0,
+        0,
+        900
+      ]
+    ]
+  },
+  "min_mass_kg": 370,
+  "max_mass_kg": 700,
+  "cg_envelope": [
+    [
+      -1.808000000001,
+      370
+    ],
+    [
+      -1.634999999999,
+      370
+    ],
+    [
+      -1.634999999999,
+      700
+    ],
+    [
+      -1.808000000001,
+      700
+    ]
+  ],
+  "flap_stages": [
+    {
+      "position": 0,
+      "max_speed_mps": 43.727777777777774
+    },
+    {
+      "position": 0.3333333333333333,
+      "max_speed_mps": 43.727777777777774
+    },
+    {
+      "position": 0.6666666666666666,
+      "max_speed_mps": 43.727777777777774
+    },
+    {
+      "position": 1,
+      "max_speed_mps": 43.727777777777774
+    }
+  ],
+  "fuel_capacity_kg": 108,
+  "stations": [
+    {
+      "id": "pilot",
+      "kind": "pilot",
+      "position_m": [
+        -1.959,
+        -0.27,
+        -0.1
+      ],
+      "max_mass_kg": 130
+    },
+    {
+      "id": "passenger",
+      "kind": "passenger",
+      "position_m": [
+        -1.959,
+        0.27,
+        -0.1
+      ],
+      "max_mass_kg": 130
+    },
+    {
+      "id": "baggage",
+      "kind": "baggage",
+      "position_m": [
+        -2.508,
+        0,
+        -0.05
+      ],
+      "max_mass_kg": 35
+    },
+    {
+      "id": "fuel_left",
+      "kind": "fuel",
+      "position_m": [
+        -1.511,
+        -1.7,
+        0
+      ],
+      "max_mass_kg": 54
+    },
+    {
+      "id": "fuel_right",
+      "kind": "fuel",
+      "position_m": [
+        -1.511,
+        1.7,
+        0
+      ],
+      "max_mass_kg": 54
+    }
+  ],
+  "v_speeds": {
+    "vs_mps": 23.664444444444445,
+    "vso_mps": 21.606666666666666,
+    "vr_mps": 24.69333333333333,
+    "vx_mps": 33.43888888888889,
+    "vy_mps": 38.068888888888885,
+    "vfe_mps": 43.727777777777774,
+    "vno_mps": 56.58888888888889,
+    "vne_mps": 69.45
+  }
+}

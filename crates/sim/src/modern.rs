@@ -31,6 +31,9 @@ pub enum Component {
     LaneB,
     Pump1,
     Pump2,
+    /// Lane A ignition runs but delivers weak sparks: the engine loses excess rpm on lane A alone.
+    LaneAWeak,
+    LaneBWeak,
 }
 #[derive(Clone, Debug, Deserialize, JsonSchema, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -74,6 +77,11 @@ pub enum ModernSetting {
     },
     Door {
         open: bool,
+    },
+    /// Ground servicing / scenario setup: charge left in a backup battery, in ampere-hours.
+    BackupCharge {
+        circuit: BackupCircuit,
+        remaining_ah: f64,
     },
     ParachutePin {
         inserted: bool,
@@ -179,6 +187,11 @@ pub struct ModernState {
     pub lane_b: LaneState,
     pub pump_1: PumpState,
     pub pump_2: PumpState,
+    /// Seeded weak-ignition faults; absent from the hash words unless set.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub lane_a_weak: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub lane_b_weak: bool,
     pub key: KeyPosition,
     pub propeller_rpm: f64,
     pub fuel_pressure_pa: f64,
@@ -228,6 +241,8 @@ impl ModernState {
             lane_b: LaneState::default(),
             pump_1: PumpState::default(),
             pump_2: PumpState::default(),
+            lane_a_weak: false,
+            lane_b_weak: false,
             key: KeyPosition::On,
             propeller_rpm: 0.,
             fuel_pressure_pa: 0.,
@@ -352,6 +367,8 @@ impl ModernState {
                     Component::LaneB => &mut self.lane_b.failed,
                     Component::Pump1 => &mut self.pump_1.failed,
                     Component::Pump2 => &mut self.pump_2.failed,
+                    Component::LaneAWeak => &mut self.lane_a_weak,
+                    Component::LaneBWeak => &mut self.lane_b_weak,
                 } = failed;
             }
             ModernSetting::Key { position } => {
@@ -365,6 +382,19 @@ impl ModernState {
                 Severity::Warning => self.master_warning = false,
             },
             ModernSetting::Door { open } => self.door_open = open,
+            ModernSetting::BackupCharge {
+                circuit,
+                remaining_ah,
+            } => {
+                if !remaining_ah.is_finite() || !(0. ..=100.).contains(&remaining_ah) {
+                    return Err(invalid("backup charge requires 0..100 Ah"));
+                }
+                self.backup_buses
+                    .iter_mut()
+                    .find(|b| b.circuit == circuit)
+                    .ok_or_else(|| invalid("backup bus not installed"))?
+                    .remaining_ah = remaining_ah;
+            }
             setting => {
                 let p = self
                     .recovery

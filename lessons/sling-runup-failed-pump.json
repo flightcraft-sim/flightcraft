@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "sling-runup-failed-pump",
+  "title": "Sling: run-up with a failed fuel pump",
+  "briefing": "The same run-up, but one electric fuel pump has failed. Check each pump alone. A pump that cannot hold pressure alone is a stop.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "engine_idling",
+    "oil_temperature_c": 70,
+    "fault": {
+      "kind": "failed_pump",
+      "pump": "two"
+    }
+  },
+  "tasks": [
+    {
+      "title": "Run-up: find the failed pump",
+      "checklist": "run_up",
+      "poh_ref": "POH 4.5.3, 4.7.1 and supplement 9.4.13",
+      "expect": "stop_on_fault"
+    }
+  ]
+}

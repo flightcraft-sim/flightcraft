@@ -258,6 +258,14 @@ a left-seat pilot declares the right display with `"default_page": "mfd"`. Omitt
 `default_page` shows `layout`, so existing packs are unchanged. The pilot may change each page
 and swap seats at run time (see [pages, roles, and the pilot's seat](equipment.md#pages-roles-and-the-pilots-seat)).
 
+Normal procedures (before start through securing) are optional systems-layer pack data too, as a
+separately versioned `procedures` object with item `verify` bindings to simulator state, panel
+`control` references, POH timers, and limits; see [normal procedures](normal-procedures.md). The
+electronic dual-lane engine control may also give `lane_a_only_power_fraction` and
+`lane_b_only_power_fraction` (each 0.5 to 1; omitted means `single_lane_power_fraction`), which
+make an ignition-lane check produce the POH's per-lane rpm drop. Both are optional; older packs load
+unchanged.
+
 Emergency procedures are optional systems-layer pack data. See [emergencies](emergencies.md#aircraft-procedures)
 for ordered memory/checklist items, glide parameters, validation, and fictional built-in guidance.
 

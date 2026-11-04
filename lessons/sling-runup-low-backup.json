@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "sling-runup-low-backup",
+  "title": "Sling: run-up with a low backup battery",
+  "briefing": "The same run-up, but the EFIS back-up battery is weak. Verify the back-up battery voltage on the engine page before anything else. A weak back-up is a stop.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "engine_idling",
+    "oil_temperature_c": 70,
+    "fault": {
+      "kind": "low_backup_battery",
+      "circuit": "efis",
+      "fraction": 0.25
+    }
+  },
+  "tasks": [
+    {
+      "title": "Run-up: find the low backup battery",
+      "checklist": "run_up",
+      "poh_ref": "POH 4.5.3, 4.7.1 and supplement 9.4.13",
+      "expect": "stop_on_fault"
+    }
+  ]
+}

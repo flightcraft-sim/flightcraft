@@ -16,6 +16,13 @@ pub enum EngineControl {
         pump_1_load: String,
         pump_2_load: String,
         single_lane_power_fraction: f64,
+        /// Power fraction with only lane A running; defaults to `single_lane_power_fraction`.
+        /// The Sling 2 POH allows no drop with lane B off, so its lane A carries the engine fully.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lane_a_only_power_fraction: Option<f64>,
+        /// Power fraction with only lane B running; defaults to `single_lane_power_fraction`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lane_b_only_power_fraction: Option<f64>,
         fuel_pressure_pa: f64,
         /// Degrees Celsius against shaft-power fraction.
         coolant_temperature_c: Box<Table>,
@@ -32,6 +39,8 @@ impl EngineControl {
             pump_1_load,
             pump_2_load,
             single_lane_power_fraction,
+            lane_a_only_power_fraction,
+            lane_b_only_power_fraction,
             fuel_pressure_pa,
             coolant_temperature_c,
             coolant_lag_s,
@@ -52,6 +61,16 @@ impl EngineControl {
                 "single_lane_power_fraction",
                 "requires 0.5..1",
             )?;
+            for fraction in [lane_a_only_power_fraction, lane_b_only_power_fraction]
+                .into_iter()
+                .flatten()
+            {
+                require(
+                    (0.5..=1.0).contains(fraction),
+                    "lane_only_power_fraction",
+                    "requires 0.5..=1",
+                )?;
+            }
             require(
                 (10000.0..=1_000_000.0).contains(fuel_pressure_pa),
                 "fuel_pressure_pa",

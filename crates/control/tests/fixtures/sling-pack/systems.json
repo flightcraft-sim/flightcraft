@@ -1,0 +1,1554 @@
+{
+  "kind": "systems",
+  "format_version": 2,
+  "identity": {
+    "id": "sling2-systems",
+    "display_name": "Sling 2 electronic systems",
+    "description": "Sling 2 POH Rev 2.8, section 1.4; Sling 2 POH Rev 2.8, section 9.4.1; Sling 2 POH Rev 2.8, section 9.4.2. Electrical dynamics, sensors, backups, and recovery dynamics are estimates.",
+    "author": "FlightCraft contributors"
+  },
+  "installed": [
+    "electrical",
+    "pitot_static",
+    "fuel",
+    "engine_operation",
+    "glass_suite"
+  ],
+  "definition": {
+    "electrical": {
+      "battery_capacity_ah": 18,
+      "battery_voltage": 12.6,
+      "alternator_voltage": 14.2,
+      "alternator_amps": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            1400,
+            8
+          ],
+          [
+            2500,
+            25
+          ],
+          [
+            5500,
+            40
+          ],
+          [
+            5800,
+            40
+          ]
+        ],
+        "source": "estimate: lumped electrical supply; not the dual-generator wiring of an individual installation."
+      },
+      "loads": [
+        {
+          "id": "lane_a",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "lane_b",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "pump_1",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 3,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "pump_2",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 3,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "touch_left",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "touch_right",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "glass_standby",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 0.5,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "glass_ahrs",
+          "bus": "essential",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0.25
+        },
+        {
+          "id": "avionics",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "navigator",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "adc",
+          "bus": "essential",
+          "switch": "avionics",
+          "amps": 0.5,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "ahrs2",
+          "bus": "essential",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0.25
+        },
+        {
+          "id": "efis_backup",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "standby_aux",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 0.3,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0.5
+        },
+        {
+          "id": "ap",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 2,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "main_bus",
+          "bus": "main",
+          "switch": "always",
+          "amps": 0.1,
+          "breaker_amps": 30,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "backup_bus",
+          "bus": "essential",
+          "switch": "always",
+          "amps": 0.1,
+          "breaker_amps": 30,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "beacon",
+          "bus": "main",
+          "switch": "beacon",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "landing",
+          "bus": "main",
+          "switch": "landing",
+          "amps": 2.5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "taxi",
+          "bus": "main",
+          "switch": "taxi",
+          "amps": 5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "nav",
+          "bus": "main",
+          "switch": "nav",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "strobe",
+          "bus": "main",
+          "switch": "nav",
+          "amps": 3,
+          "breaker_amps": 7,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "usb",
+          "bus": "main",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "aux",
+          "bus": "main",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "cabin",
+          "bus": "main",
+          "switch": "always",
+          "amps": 0.5,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "flaps",
+          "bus": "main",
+          "switch": "always",
+          "amps": 1,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "efis_aux",
+          "bus": "main",
+          "switch": "avionics",
+          "amps": 1,
+          "breaker_amps": 5,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "start_relay",
+          "bus": "main",
+          "switch": "always",
+          "amps": 0.1,
+          "breaker_amps": 2,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "pitot_heat",
+          "bus": "main",
+          "switch": "pitot_heat",
+          "amps": 8,
+          "breaker_amps": 15,
+          "backup_capacity_ah": 0
+        },
+        {
+          "id": "landing_right",
+          "bus": "main",
+          "switch": "landing",
+          "amps": 2.5,
+          "breaker_amps": 10,
+          "backup_capacity_ah": 0
+        }
+      ]
+    },
+    "pitot_static": {
+      "position_error_pa": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "source": "estimate: ideal calibrated static source."
+      },
+      "alternate_static_error_pa": -70,
+      "vsi_lag_s": 5
+    },
+    "tanks": [
+      {
+        "id": "left",
+        "wing": "left",
+        "station": "fuel_left",
+        "capacity_kg": 54,
+        "unusable_kg": 1.44,
+        "gauge_lag_s": 8,
+        "gauge_bias_kg": 0
+      },
+      {
+        "id": "right",
+        "wing": "right",
+        "station": "fuel_right",
+        "capacity_kg": 54,
+        "unusable_kg": 1.44,
+        "gauge_lag_s": 8,
+        "gauge_bias_kg": 0
+      }
+    ],
+    "engine": {
+      "single_mag_power_fraction": 0.85,
+      "carb_heat_power_fraction": 0.9,
+      "carb_ice_rate": {
+        "points": [
+          [
+            -60,
+            0
+          ],
+          [
+            60,
+            0
+          ]
+        ],
+        "source": "estimate: unused for injection."
+      },
+      "carb_ice_humidity": {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "source": "estimate: unused for injection."
+      },
+      "carb_heat_clear_rate": 0.006,
+      "egt_lag_s": 8,
+      "cht_lag_s": 90,
+      "start_time_s": 2,
+      "starter_amps": 100
+    },
+    "electric_gyro_load": "glass_standby",
+    "modern": {
+      "selector_both": false,
+      "parachute": {
+        "hold_s": 2,
+        "deployment_delay_s": 0.5,
+        "inflation_s": 2,
+        "descent_rate_mps": 7,
+        "hanging_pitch_rad": -0.3
+      },
+      "annunciations": [
+        {
+          "source": "low_voltage",
+          "severity": "caution",
+          "label": "LOW VOLTAGE",
+          "threshold": 12
+        },
+        {
+          "source": "low_fuel_pressure",
+          "severity": "warning",
+          "label": "FUEL PRESSURE",
+          "threshold": 280000
+        },
+        {
+          "source": "lane_fault",
+          "severity": "caution",
+          "label": "LANE FAULT",
+          "threshold": 0
+        },
+        {
+          "source": "high_coolant_temperature",
+          "severity": "warning",
+          "label": "COOLANT",
+          "threshold": 120
+        },
+        {
+          "source": "door_open",
+          "severity": "caution",
+          "label": "CANOPY UNLATCHED",
+          "threshold": 0
+        },
+        {
+          "source": "parachute_armed",
+          "severity": "caution",
+          "label": "CHUTE ARMED",
+          "threshold": 0
+        },
+        {
+          "source": "engine_shutdown",
+          "severity": "warning",
+          "label": "SHUT DOWN ENGINE",
+          "threshold": 0
+        }
+      ],
+      "backup_buses": [
+        {
+          "circuit": "ems",
+          "capacity_ah": 2,
+          "voltage": 12,
+          "loads": [
+            "lane_a",
+            "lane_b",
+            "pump_1",
+            "pump_2"
+          ]
+        },
+        {
+          "circuit": "efis",
+          "capacity_ah": 2,
+          "voltage": 12,
+          "loads": [
+            "touch_left",
+            "touch_right",
+            "glass_ahrs",
+            "ahrs2",
+            "adc",
+            "navigator",
+            "efis_backup"
+          ]
+        }
+      ],
+      "wigwag": {
+        "left_load": "landing",
+        "right_load": "landing_right",
+        "half_period_s": 0.5
+      }
+    },
+    "sliding_canopy": true
+  },
+  "emergencies": [
+    {
+      "id": "door_open",
+      "title": "Canopy unlatched",
+      "best_glide_mps": 32.0,
+      "glide_ratio": 10.0,
+      "speed_tolerance_mps": 5.0,
+      "items": [
+        {
+          "id": "control",
+          "instruction": "Maintain aircraft control; avoid abrupt manoeuvres.",
+          "memory": true
+        },
+        {
+          "id": "canopy",
+          "instruction": "Keep the canopy closed; latch only when fully closed and safe to reach.",
+          "memory": false
+        },
+        {
+          "id": "land",
+          "instruction": "Land at a suitable airfield if the canopy cannot be secured.",
+          "memory": false
+        }
+      ]
+    }
+  ],
+  "procedures": {
+    "version": 1,
+    "source": "Sling 2 Pilot Operating Handbook DC-POH-002-X-B-2.8 Revision 2.8: sections 4.5.1, 4.5.2, 4.5.3, 4.6, 4.7.1, 4.15, 4.16 and supplement 04/2012 (Rotax 912 iS) sections 9.4.12 and 9.4.13. Rotax 912 iS operator's manual not consulted (not obtainable); items it governs are marked.",
+    "checklists": [
+      {
+        "id": "before_start",
+        "title": "Before starting engine",
+        "phase": "before_start",
+        "poh_ref": "POH 4.5.1",
+        "items": [
+          {
+            "id": "preflight",
+            "text": "Pre-flight inspection",
+            "response": "completed",
+            "poh_ref": "POH 4.5.1 item 1"
+          },
+          {
+            "id": "emergency_equipment",
+            "text": "Emergency equipment",
+            "response": "on board",
+            "poh_ref": "POH 4.5.1 item 2"
+          },
+          {
+            "id": "passenger",
+            "text": "Passenger",
+            "response": "briefed",
+            "poh_ref": "POH 4.5.1 item 3"
+          },
+          {
+            "id": "seats",
+            "text": "Seats, seatbelt and harnesses",
+            "response": "adjust and secure",
+            "poh_ref": "POH 4.5.1 item 4"
+          },
+          {
+            "id": "brakes",
+            "text": "Brakes",
+            "response": "on",
+            "poh_ref": "POH 4.5.1 item 5",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            }
+          }
+        ]
+      },
+      {
+        "id": "engine_start",
+        "title": "Engine start (Rotax 912 iS)",
+        "phase": "engine_start",
+        "poh_ref": "POH 4.5.2; supplement 9.4.12",
+        "items": [
+          {
+            "id": "master",
+            "text": "Master switch",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 1",
+            "verify": {
+              "kind": "master",
+              "on": true
+            },
+            "note": "Observe the temperature limits for engine start (POH 2.14)."
+          },
+          {
+            "id": "efis_backup",
+            "text": "EFIS back-up battery",
+            "response": "on, verify EFIS on and back-up battery voltage",
+            "poh_ref": "POH 9.4.12 item 2",
+            "verify": {
+              "kind": "backup_battery",
+              "circuit": "efis",
+              "on": true,
+              "min_voltage": 11.5
+            },
+            "control": "efis_backup_switch",
+            "unverified": "The back-up battery voltage limit is an original estimate; the POH asks only that the voltage be verified."
+          },
+          {
+            "id": "lane_a",
+            "text": "Ignition Lane A",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 5",
+            "verify": {
+              "kind": "lane",
+              "lane": "a",
+              "on": true
+            },
+            "control": "lane_a"
+          },
+          {
+            "id": "lane_b",
+            "text": "Ignition Lane B",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 5",
+            "verify": {
+              "kind": "lane",
+              "lane": "b",
+              "on": true
+            },
+            "control": "lane_b"
+          },
+          {
+            "id": "ems_backup",
+            "text": "EMS battery back-up switch",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 6",
+            "verify": {
+              "kind": "backup_battery",
+              "circuit": "ems",
+              "on": true,
+              "min_voltage": 11.5
+            },
+            "control": "ems_backup",
+            "unverified": "The back-up battery voltage limit is an original estimate; the POH asks only that the voltage be verified."
+          },
+          {
+            "id": "lane_lights",
+            "text": "Lane A and Lane B warning lights",
+            "response": "on for about 5 s, then out",
+            "poh_ref": "POH 9.4.12 item 6 (warning)",
+            "note": "Flashing, or not lighting, is a deficiency: do not take the engine into operation before it is rectified."
+          },
+          {
+            "id": "fuel_selector",
+            "text": "Fuel selector",
+            "response": "select emptiest tank (if not empty)",
+            "poh_ref": "POH 9.4.12 item 7",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "left",
+                "right"
+              ]
+            },
+            "control": "fuel_selector"
+          },
+          {
+            "id": "throttle_idle",
+            "text": "Throttle",
+            "response": "set to idle position",
+            "poh_ref": "POH 9.4.12 item 8",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.05
+            },
+            "note": "Start with the throttle at idle or at most 5% open, to avoid shock loading."
+          },
+          {
+            "id": "pump_1",
+            "text": "Fuel pump 1",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 9",
+            "verify": {
+              "kind": "pump",
+              "pump": "one",
+              "on": true
+            },
+            "control": "pump1"
+          },
+          {
+            "id": "pump_2",
+            "text": "Fuel pump 2",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 9",
+            "verify": {
+              "kind": "pump",
+              "pump": "two",
+              "on": true
+            },
+            "control": "pump2"
+          },
+          {
+            "id": "prop_area",
+            "text": "Propeller area",
+            "response": "clear of people and obstructions",
+            "poh_ref": "POH 9.4.12 item 10"
+          },
+          {
+            "id": "starter",
+            "text": "Starter",
+            "response": "activate (maximum 10 seconds)",
+            "poh_ref": "POH 9.4.12 item 11; 4.5.2 caution",
+            "verify": {
+              "kind": "engine_running",
+              "running": true
+            },
+            "control": "ignition",
+            "timer": {
+              "label": "Starter",
+              "kind": "max",
+              "seconds": 10,
+              "start_when": {
+                "kind": "starter",
+                "engaged": true
+              }
+            },
+            "note": "After a start attempt wait at least 2 minutes for the starter to cool."
+          },
+          {
+            "id": "smooth_running",
+            "text": "Throttle",
+            "response": "adjust for smooth running (approximately 2,000 rpm)",
+            "poh_ref": "POH 9.4.12 item 12",
+            "verify": {
+              "kind": "rpm",
+              "min": 1700,
+              "max": 2300
+            }
+          },
+          {
+            "id": "oil_pressure",
+            "text": "Oil pressure",
+            "response": "increase within 10 seconds",
+            "poh_ref": "POH 9.4.12 item 13",
+            "verify": {
+              "kind": "oil_pressure",
+              "min_bar": 3.0
+            },
+            "control": "left_display",
+            "timer": {
+              "label": "Oil pressure",
+              "kind": "within",
+              "seconds": 10,
+              "start_when": {
+                "kind": "engine_running",
+                "running": true
+              }
+            },
+            "note": "Increase rpm only if oil pressure is steady above 3 bar (44 psi). With cold oil keep watching it: it can drop again."
+          },
+          {
+            "id": "avionics",
+            "text": "Avionics master switch",
+            "response": "on",
+            "poh_ref": "POH 4.5.2 item 15",
+            "verify": {
+              "kind": "avionics",
+              "on": true
+            },
+            "control": "avionics_switch"
+          }
+        ],
+        "limits": [
+          {
+            "id": "oil_before_rpm",
+            "message": "Increase rpm only once oil pressure is steady above 3 bar.",
+            "poh_ref": "POH 9.4.12 caution",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "rpm",
+                  "min": 2600
+                },
+                {
+                  "kind": "oil_pressure",
+                  "max_bar": 3.0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "warm_up",
+        "title": "Engine warm-up",
+        "phase": "warm_up",
+        "poh_ref": "POH 4.5.3; supplement 9.4.12 items 14-17",
+        "items": [
+          {
+            "id": "brakes",
+            "text": "Wheel brakes or chocks",
+            "response": "on",
+            "poh_ref": "POH 4.5.3",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            }
+          },
+          {
+            "id": "warm_2000",
+            "text": "Warm up at 2,000 rpm",
+            "response": "approximately 2 minutes",
+            "poh_ref": "POH 4.5.3; 4.5.2 item 16",
+            "verify": {
+              "kind": "rpm",
+              "min": 1800,
+              "max": 2200
+            },
+            "timer": {
+              "label": "Warm-up at 2,000 rpm",
+              "kind": "hold",
+              "seconds": 120
+            },
+            "note": "Supplement 9.4.12 item 14 allows one minute for the 912 iS; the longer figure of 4.5.3 is used here."
+          },
+          {
+            "id": "alt_b",
+            "text": "Main bus voltage",
+            "response": "13.8 to 14.4 V (alternator B online)",
+            "poh_ref": "POH 9.4.12 item 15",
+            "verify": {
+              "kind": "bus_voltage",
+              "min_v": 13.8,
+              "max_v": 14.4
+            },
+            "control": "left_display",
+            "note": "The supplement raises rpm to about 3,000 until the voltage shows alternator B online."
+          },
+          {
+            "id": "warm_2500",
+            "text": "Engine speed",
+            "response": "2,500 rpm",
+            "poh_ref": "POH 4.5.3; 9.4.12 item 16",
+            "verify": {
+              "kind": "rpm",
+              "min": 2300,
+              "max": 2700
+            }
+          },
+          {
+            "id": "oil_temp",
+            "text": "Oil temperature",
+            "response": "50 C (122 F)",
+            "poh_ref": "POH 4.5.3; 9.4.12 item 16",
+            "verify": {
+              "kind": "oil_temp",
+              "min_c": 50
+            },
+            "control": "left_display"
+          },
+          {
+            "id": "ems_off",
+            "text": "EMS battery back-up switch",
+            "response": "off",
+            "poh_ref": "POH 9.4.12 item 17",
+            "verify": {
+              "kind": "backup_battery",
+              "circuit": "ems",
+              "on": false
+            },
+            "control": "ems_backup"
+          },
+          {
+            "id": "instruments",
+            "text": "Engine instrument readings",
+            "response": "verify all",
+            "poh_ref": "POH 9.4.12 after item 17"
+          }
+        ],
+        "limits": [
+          {
+            "id": "rpm_before_warm",
+            "message": "Hold the engine to 2,500 rpm or less until the oil is at 50 C.",
+            "poh_ref": "POH 4.5.3",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "rpm",
+                  "min": 3200
+                },
+                {
+                  "kind": "oil_temp",
+                  "max_c": 49.9
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "run_up",
+        "title": "Run-up (engine check)",
+        "phase": "run_up",
+        "poh_ref": "POH 4.5.3; supplement 9.4.13",
+        "items": [
+          {
+            "id": "brakes",
+            "text": "Wheel brakes or chocks",
+            "response": "on",
+            "poh_ref": "POH 4.5.3",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            }
+          },
+          {
+            "id": "into_wind",
+            "text": "Aircraft heading",
+            "response": "upwind, not on loose terrain",
+            "poh_ref": "POH 4.5.3 caution",
+            "note": "The propeller can suck up grit that damages the blade leading edges."
+          },
+          {
+            "id": "oil_warm",
+            "text": "Oil temperature",
+            "response": "50 C (122 F) or more",
+            "poh_ref": "POH 4.5.3",
+            "verify": {
+              "kind": "oil_temp",
+              "min_c": 50
+            },
+            "control": "left_display",
+            "note": "Do not run up a cold engine. If the oil is below 50 C keep warming it at 2,500 rpm.",
+            "stop_on_failure": true
+          },
+          {
+            "id": "efis_battery",
+            "text": "EFIS back-up battery voltage",
+            "response": "verify",
+            "poh_ref": "POH 9.4.12 item 2",
+            "verify": {
+              "kind": "backup_battery",
+              "circuit": "efis",
+              "on": true,
+              "min_voltage": 11.5
+            },
+            "control": "efis_backup_switch",
+            "unverified": "The back-up battery voltage limit is an original estimate; the POH asks only that the voltage be verified.",
+            "stop_on_failure": true
+          },
+          {
+            "id": "lane_b_off",
+            "text": "Lane B off at 4,000 rpm",
+            "response": "no rpm drop; back on",
+            "poh_ref": "POH 9.4.13",
+            "verify": {
+              "kind": "check",
+              "check": "lane",
+              "lane": "b",
+              "at_rpm": 4000,
+              "max_drop_rpm": 0,
+              "allow_rpm": 25
+            },
+            "control": "lane_b",
+            "note": "Only one ignition circuit (lane) at a time. Switching lane B off leaves lane A running the engine.",
+            "unverified": "25 rpm allowance for measurement scatter is an original estimate; lane check detail per Rotax 912 iS operator's manual, not verified",
+            "stop_on_failure": true
+          },
+          {
+            "id": "lane_b_on",
+            "text": "Lane B",
+            "response": "on",
+            "poh_ref": "POH 9.4.13",
+            "verify": {
+              "kind": "lane",
+              "lane": "b",
+              "on": true
+            },
+            "control": "lane_b"
+          },
+          {
+            "id": "lane_a_off",
+            "text": "Lane A off at 4,000 rpm",
+            "response": "rpm drop under 180; back on",
+            "poh_ref": "POH 9.4.13",
+            "verify": {
+              "kind": "check",
+              "check": "lane",
+              "lane": "a",
+              "at_rpm": 4000,
+              "max_drop_rpm": 180,
+              "allow_rpm": 0
+            },
+            "control": "lane_a",
+            "note": "An rpm drop of less than 180 rpm is permissible when lane A is switched off.",
+            "stop_on_failure": true
+          },
+          {
+            "id": "lane_a_on",
+            "text": "Lane A",
+            "response": "on",
+            "poh_ref": "POH 9.4.13",
+            "verify": {
+              "kind": "lane",
+              "lane": "a",
+              "on": true
+            },
+            "control": "lane_a"
+          },
+          {
+            "id": "pump_1_alone",
+            "text": "Fuel pump 1 alone",
+            "response": "fuel pressure holds; back on",
+            "poh_ref": "POH 9.4.12 item 9",
+            "verify": {
+              "kind": "check",
+              "check": "pump",
+              "pump": "one",
+              "min_kpa": 280
+            },
+            "control": "pump1",
+            "unverified": "fuel pump check and 280 kPa limit (the pack's FUEL PRESSURE annunciation) per Rotax 912 iS operator's manual, not verified",
+            "stop_on_failure": true
+          },
+          {
+            "id": "pump_2_alone",
+            "text": "Fuel pump 2 alone",
+            "response": "fuel pressure holds; back on",
+            "poh_ref": "POH 9.4.12 item 9",
+            "verify": {
+              "kind": "check",
+              "check": "pump",
+              "pump": "two",
+              "min_kpa": 280
+            },
+            "control": "pump2",
+            "unverified": "fuel pump check and 280 kPa limit (the pack's FUEL PRESSURE annunciation) per Rotax 912 iS operator's manual, not verified",
+            "stop_on_failure": true
+          },
+          {
+            "id": "pumps_on",
+            "text": "Both fuel pumps",
+            "response": "on",
+            "poh_ref": "POH 9.4.12 item 9",
+            "verify": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "pump",
+                  "pump": "one",
+                  "on": true
+                },
+                {
+                  "kind": "pump",
+                  "pump": "two",
+                  "on": true
+                }
+              ]
+            },
+            "control": "pump1"
+          },
+          {
+            "id": "max_power",
+            "text": "Maximum power",
+            "response": "rpm in limits; acceleration from idle to maximum smooth",
+            "poh_ref": "POH 4.5.3",
+            "verify": {
+              "kind": "check",
+              "check": "max_rpm",
+              "min_rpm": 4600,
+              "max_rpm": 5800,
+              "within_s": 8
+            },
+            "note": "Maximum take-off rpm is 5,800 (5 minutes). A fixed-pitch propeller turns slower held on the brakes than in the take-off roll (POH 4.7.2 shows 5,500 to 5,800).",
+            "unverified": "4,600 rpm static minimum and 8 s acceleration are original estimates for this simulator's propeller; the POH gives no static figure",
+            "stop_on_failure": true
+          },
+          {
+            "id": "throttle_back",
+            "text": "Throttle",
+            "response": "idle",
+            "poh_ref": "POH 4.5.3",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.1
+            }
+          }
+        ],
+        "limits": [
+          {
+            "id": "brakes_for_runup",
+            "message": "Hold the brakes on (or chock the wheels) for the engine check.",
+            "poh_ref": "POH 4.5.3",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "rpm",
+                  "min": 2800
+                },
+                {
+                  "kind": "brake",
+                  "set": false
+                }
+              ]
+            }
+          },
+          {
+            "id": "cold_runup",
+            "message": "Oil is below 50 C: finish warming up before running up.",
+            "poh_ref": "POH 4.5.3",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "rpm",
+                  "min": 3400
+                },
+                {
+                  "kind": "oil_temp",
+                  "max_c": 49.9
+                }
+              ]
+            }
+          },
+          {
+            "id": "both_lanes_off",
+            "message": "Only one ignition lane may be off at a time.",
+            "poh_ref": "POH 9.4.13",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "lane",
+                  "lane": "a",
+                  "on": false
+                },
+                {
+                  "kind": "lane",
+                  "lane": "b",
+                  "on": false
+                }
+              ]
+            }
+          },
+          {
+            "id": "oil_pressure_rpm",
+            "message": "Increase rpm only once oil pressure is steady above 3 bar.",
+            "poh_ref": "POH 9.4.12 caution",
+            "when": {
+              "kind": "all",
+              "of": [
+                {
+                  "kind": "engine_running",
+                  "running": true
+                },
+                {
+                  "kind": "rpm",
+                  "min": 2600
+                },
+                {
+                  "kind": "oil_pressure",
+                  "max_bar": 3.0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "taxi",
+        "title": "Taxi",
+        "phase": "taxi",
+        "poh_ref": "POH 4.6",
+        "items": [
+          {
+            "id": "fuel_selector",
+            "text": "Fuel selector",
+            "response": "switch tank (to fullest tank)",
+            "poh_ref": "POH 4.6 item 1",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "left",
+                "right"
+              ]
+            },
+            "control": "fuel_selector"
+          },
+          {
+            "id": "flaps_up",
+            "text": "Flaps",
+            "response": "up",
+            "poh_ref": "POH 4.6 item 2",
+            "verify": {
+              "kind": "flaps",
+              "max": 0.05
+            }
+          },
+          {
+            "id": "brakes_off",
+            "text": "Brakes",
+            "response": "off (carefully verify the park brake is off)",
+            "poh_ref": "POH 4.6 item 3",
+            "verify": {
+              "kind": "brake",
+              "set": false
+            }
+          },
+          {
+            "id": "controls",
+            "text": "Controls",
+            "response": "neutral position, or as required for wind",
+            "poh_ref": "POH 4.6 item 4"
+          },
+          {
+            "id": "brakes_check",
+            "text": "Brakes",
+            "response": "verify",
+            "poh_ref": "POH 4.6 item 6",
+            "note": "Apply power and brakes as needed to control movement."
+          },
+          {
+            "id": "instruments",
+            "text": "Instruments",
+            "response": "verify",
+            "poh_ref": "POH 4.6 item 7"
+          }
+        ]
+      },
+      {
+        "id": "before_takeoff",
+        "title": "Before take-off",
+        "phase": "before_takeoff",
+        "poh_ref": "POH 4.7.1",
+        "items": [
+          {
+            "id": "controls",
+            "text": "Controls",
+            "response": "verify full and free movement, directions",
+            "poh_ref": "POH 4.7.1 item 1",
+            "verify": {
+              "kind": "check",
+              "check": "controls",
+              "min_deflection": 0.8
+            },
+            "note": "Move stick fore and aft, left and right, and both rudder pedals, watching the surfaces."
+          },
+          {
+            "id": "trim",
+            "text": "Trim",
+            "response": "neutral",
+            "poh_ref": "POH 4.7.1 item 2",
+            "verify": {
+              "kind": "trim_neutral",
+              "tolerance": 0.02
+            }
+          },
+          {
+            "id": "choke",
+            "text": "Choke",
+            "response": "off (912 ULS / 914 UL)",
+            "poh_ref": "POH 4.7.1 item 3",
+            "note": "Not applicable to the Rotax 912 iS or a fixed-pitch propeller; confirm and tick."
+          },
+          {
+            "id": "flaps",
+            "text": "Flaps",
+            "response": "as required (typically 1 notch)",
+            "poh_ref": "POH 4.7.1 item 4"
+          },
+          {
+            "id": "fuel_quantity",
+            "text": "Fuel quantity",
+            "response": "confirm",
+            "poh_ref": "POH 4.7.1 item 5",
+            "control": "left_display"
+          },
+          {
+            "id": "fuel_selector",
+            "text": "Fuel selector",
+            "response": "fullest tank",
+            "poh_ref": "POH 4.7.1 item 6",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "left",
+                "right"
+              ]
+            },
+            "control": "fuel_selector"
+          },
+          {
+            "id": "aux_pump",
+            "text": "Auxiliary electric fuel pump",
+            "response": "on (912 iS)",
+            "poh_ref": "POH 4.7.1 item 7",
+            "verify": {
+              "kind": "pump",
+              "pump": "two",
+              "on": true
+            },
+            "control": "pump2"
+          },
+          {
+            "id": "breakers",
+            "text": "Circuit breakers",
+            "response": "all in",
+            "poh_ref": "POH 4.7.1 item 8"
+          },
+          {
+            "id": "instruments",
+            "text": "Instruments",
+            "response": "verify all",
+            "poh_ref": "POH 4.7.1 item 9",
+            "control": "left_display"
+          },
+          {
+            "id": "altimeter",
+            "text": "Altimeter",
+            "response": "set QNH / QFE",
+            "poh_ref": "POH 4.7.1 item 10"
+          },
+          {
+            "id": "switches",
+            "text": "Switches",
+            "response": "verify, as required",
+            "poh_ref": "POH 4.7.1 item 11"
+          },
+          {
+            "id": "ignition",
+            "text": "Power and ignition",
+            "response": "lanes verified at 4,000 rpm in the run-up",
+            "poh_ref": "POH 4.7.1 item 12; 9.4.13"
+          },
+          {
+            "id": "prop_check",
+            "text": "Propeller check",
+            "response": "(if applicable)",
+            "poh_ref": "POH 4.7.1 item 13",
+            "note": "Not applicable to the Rotax 912 iS or a fixed-pitch propeller; confirm and tick."
+          },
+          {
+            "id": "prop_auto",
+            "text": "Propeller",
+            "response": "AUTO / TO (if applicable)",
+            "poh_ref": "POH 4.7.1 item 14",
+            "note": "Not applicable to the Rotax 912 iS or a fixed-pitch propeller; confirm and tick."
+          },
+          {
+            "id": "engine_parameters",
+            "text": "Engine parameters",
+            "response": "verify temperatures, pressures, current/voltage",
+            "poh_ref": "POH 4.7.1 item 15",
+            "control": "left_display"
+          },
+          {
+            "id": "canopy",
+            "text": "Canopy",
+            "response": "closed and latched",
+            "poh_ref": "POH 4.7.1 item 16",
+            "verify": {
+              "kind": "canopy_latched",
+              "latched": true
+            }
+          },
+          {
+            "id": "harnesses",
+            "text": "Safety harnesses",
+            "response": "on and tight",
+            "poh_ref": "POH 4.7.1 item 17"
+          },
+          {
+            "id": "parachute_pin",
+            "text": "Ballistic parachute (if fitted)",
+            "response": "remove handle lock pin",
+            "poh_ref": "POH 4.7.1 item 18",
+            "control": "parachute"
+          }
+        ]
+      },
+      {
+        "id": "shutdown",
+        "title": "Engine shutdown",
+        "phase": "shutdown",
+        "poh_ref": "POH 4.15",
+        "items": [
+          {
+            "id": "idle",
+            "text": "Engine speed",
+            "response": "idle",
+            "poh_ref": "POH 4.15 item 1",
+            "verify": {
+              "kind": "throttle",
+              "max": 0.1
+            },
+            "note": "For the 912 iS at least 5 minutes must elapse between landing and shutting off the engine. If the engine is hot, cool it about 2 minutes at approximately 3,000 rpm first."
+          },
+          {
+            "id": "parameters",
+            "text": "Instruments",
+            "response": "engine parameters within limits",
+            "poh_ref": "POH 4.15 item 2",
+            "control": "left_display"
+          },
+          {
+            "id": "avionics",
+            "text": "Avionics master switch",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 3",
+            "verify": {
+              "kind": "avionics",
+              "on": false
+            },
+            "control": "avionics_switch"
+          },
+          {
+            "id": "pump_1",
+            "text": "Electric fuel pump 1",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 4",
+            "verify": {
+              "kind": "pump",
+              "pump": "one",
+              "on": false
+            },
+            "control": "pump1"
+          },
+          {
+            "id": "pump_2",
+            "text": "Electric fuel pump 2",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 4",
+            "verify": {
+              "kind": "pump",
+              "pump": "two",
+              "on": false
+            },
+            "control": "pump2"
+          },
+          {
+            "id": "lane_a",
+            "text": "Ignition Lane A",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 5",
+            "verify": {
+              "kind": "lane",
+              "lane": "a",
+              "on": false
+            },
+            "control": "lane_a"
+          },
+          {
+            "id": "lane_b",
+            "text": "Ignition Lane B",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 5",
+            "verify": {
+              "kind": "lane",
+              "lane": "b",
+              "on": false
+            },
+            "control": "lane_b"
+          },
+          {
+            "id": "electrical",
+            "text": "Electrical switches",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 6"
+          },
+          {
+            "id": "efis",
+            "text": "EFIS back-up battery",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 7",
+            "verify": {
+              "kind": "backup_battery",
+              "circuit": "efis",
+              "on": false
+            },
+            "control": "efis_backup_switch"
+          },
+          {
+            "id": "master",
+            "text": "Master switch",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 8",
+            "verify": {
+              "kind": "master",
+              "on": false
+            }
+          },
+          {
+            "id": "fuel_selector",
+            "text": "Fuel selector",
+            "response": "off",
+            "poh_ref": "POH 4.15 item 9",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "off"
+              ]
+            },
+            "control": "fuel_selector"
+          }
+        ]
+      },
+      {
+        "id": "securing",
+        "title": "Aircraft parking and tie-down",
+        "phase": "securing",
+        "poh_ref": "POH 4.16",
+        "items": [
+          {
+            "id": "site",
+            "text": "Site",
+            "response": "park on as level an area as possible",
+            "poh_ref": "POH 4.16 item 1"
+          },
+          {
+            "id": "ignition",
+            "text": "Ignition switches",
+            "response": "off",
+            "poh_ref": "POH 4.16 item 2",
+            "verify": {
+              "kind": "ignition",
+              "on": false
+            },
+            "control": "lane_a"
+          },
+          {
+            "id": "master",
+            "text": "Master switch",
+            "response": "off",
+            "poh_ref": "POH 4.16 item 3",
+            "verify": {
+              "kind": "master",
+              "on": false
+            }
+          },
+          {
+            "id": "fuel_selector",
+            "text": "Fuel selector",
+            "response": "off",
+            "poh_ref": "POH 4.16 item 4",
+            "verify": {
+              "kind": "fuel_selector",
+              "positions": [
+                "off"
+              ]
+            },
+            "control": "fuel_selector"
+          },
+          {
+            "id": "parking_brake",
+            "text": "Parking brake",
+            "response": "use as necessary",
+            "poh_ref": "POH 4.16 item 5",
+            "verify": {
+              "kind": "brake",
+              "set": true
+            },
+            "note": "Use the parking brake for short-period parking only; for long periods use wheel chocks as well."
+          },
+          {
+            "id": "canopy",
+            "text": "Canopy",
+            "response": "close, lock as necessary",
+            "poh_ref": "POH 4.16 item 6",
+            "verify": {
+              "kind": "canopy_latched",
+              "latched": true
+            }
+          },
+          {
+            "id": "secure",
+            "text": "Secure the airplane",
+            "response": "anchor eyes on wings and rear fuselage",
+            "poh_ref": "POH 4.16 item 7",
+            "note": "In high wind move the control stick forward and secure it with the rudder pedals; check the canopy is closed and locked."
+          }
+        ]
+      }
+    ]
+  }
+}

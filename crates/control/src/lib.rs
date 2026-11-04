@@ -8,6 +8,10 @@ pub mod lesson;
 pub use lesson::*;
 pub mod preflight;
 pub use preflight::*;
+pub mod checklist;
+pub use checklist::*;
+mod ground_layout;
+pub use ground_layout::*;
 pub mod scenario;
 pub use scenario::*;
 pub mod comms;
@@ -119,6 +123,9 @@ pub struct Session {
     scenario: scenario::ScenarioRuntime,
     lesson: lesson::LessonRuntime,
     preflight: preflight::Runtime,
+    checklist: checklist::ChecklistRuntime,
+    procedure: checklist::ProcedureRuntime,
+    pub(crate) ground_layout: GroundLayout,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
     sim: Sim,
@@ -166,6 +173,9 @@ impl Session {
             scenario: Default::default(),
             lesson: Default::default(),
             preflight: Default::default(),
+            checklist: Default::default(),
+            procedure: Default::default(),
+            ground_layout: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
             selected_configuration: Some(configuration.clone()),
@@ -916,6 +926,18 @@ registry!(
     PreflightSpeed,
     PreflightEnd,
     PreflightLessons,
+    checklist::ChecklistListCommand,
+    checklist::ChecklistStateCommand,
+    checklist::ChecklistSelect,
+    checklist::ChecklistComplete,
+    checklist::ChecklistAbort,
+    checklist::ChecklistShowMe,
+    checklist::ProcedureLessonList,
+    checklist::ProcedureLessonStart,
+    checklist::ProcedureLessonDebrief,
+    checklist::ProcedureLessonFinish,
+    SetViewLayout,
+    SetExteriorInset,
     InstructorInstrumentFailure,
     InstructorAttitude,
     SetCrewMode,

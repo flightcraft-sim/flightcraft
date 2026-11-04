@@ -1066,6 +1066,23 @@ impl PanelUi {
             });
             self.key_owned = false;
         }
+        if let Some(id) = ui
+            .ctx()
+            .data(|d| d.get_temp::<String>(egui::Id::new(crate::checklist::HIGHLIGHT_KEY)))
+            && let Some(e) = panel.elements.iter().find(|e| e.id == id)
+            && dash.is_none_or(|r| {
+                r.expand(0.01)
+                    .contains_rect(crate::panel_art::installation_rect(e))
+            })
+        {
+            let [x, y] = e.position;
+            let [w, h] = e.size;
+            let cell = Rect::from_min_size(
+                rect.min + egui::vec2(x as f32, y as f32) * scale,
+                egui::vec2(w as f32, h as f32) * scale,
+            );
+            crate::checklist::pulse(ui, cell.expand(3. * scale));
+        }
         if let Some(dash) = dash {
             let button = Rect::from_min_size(
                 available.right_bottom() - egui::vec2(94., 31.),

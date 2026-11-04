@@ -320,7 +320,8 @@
         "breaker",
         "readout",
         "image",
-        "traffic"
+        "traffic",
+        "checklist"
       ]
     },
     "Screen": {

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "sling-runup",
+  "title": "Sling: run-up and before take-off",
+  "briefing": "Engine idling and warm, brakes on, heading into wind. Do the engine check: oil 50 C or more, then lane check at 4,000 rpm (lane B off: no drop; lane A off: under 180 rpm), each fuel pump alone, backup battery, controls full and free, trim neutral, full power check. Then the before-take-off list. If any check fails, stop.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "engine_idling",
+    "oil_temperature_c": 70
+  },
+  "tasks": [
+    {
+      "title": "Run-up",
+      "checklist": "run_up",
+      "poh_ref": "POH 4.5.3, 4.7.1 and supplement 9.4.13",
+      "expect": "complete"
+    },
+    {
+      "title": "Before take-off",
+      "checklist": "before_takeoff",
+      "poh_ref": "POH 4.7.1",
+      "expect": "complete"
+    }
+  ]
+}

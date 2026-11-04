@@ -28,9 +28,10 @@ pub enum PageKind {
     Readout,
     Image,
     Traffic,
+    Checklist,
 }
 impl PageKind {
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 22] = [
         Self::Outside,
         Self::FlyMe,
         Self::Director,
@@ -52,6 +53,7 @@ impl PageKind {
         Self::Readout,
         Self::Image,
         Self::Traffic,
+        Self::Checklist,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -76,6 +78,7 @@ impl PageKind {
             Self::Readout => "Variable readout",
             Self::Image => "Image / placard",
             Self::Traffic => "Traffic",
+            Self::Checklist => "Checklist",
         }
     }
 }
@@ -183,6 +186,11 @@ fn yes() -> bool {
 fn one() -> f32 {
     1.0
 }
+/// Share of the outside band the checklist takes in the ground layout.
+pub const GROUND_CHECKLIST_SHARE: f32 = 0.62;
+/// Element ids of the exterior views in the ground layout and over the cockpit view.
+pub const GROUND_EXTERIOR_ID: &str = "exterior";
+pub const INSET_ID: &str = "exterior-inset";
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Layout {
@@ -226,6 +234,72 @@ impl Layout {
                 accepts_input: true,
             }],
         }
+    }
+    /// The ground arrangement: the first outside view's band is split into a checklist (left) and
+    /// a smaller exterior view (right); every other element, the dash included, is untouched.
+    /// With `exterior` false the checklist takes the whole band. A `stacked` window (a phone held
+    /// upright) puts the exterior view under the checklist instead of beside it.
+    #[must_use]
+    pub fn ground(&self, exterior: bool, stacked: bool) -> Self {
+        let mut layout = self.clone();
+        let Some(i) = layout
+            .elements
+            .iter()
+            .position(|e| e.page.kind == PageKind::Outside)
+        else {
+            return layout;
+        };
+        let band = layout.elements.remove(i);
+        let [x, y] = band.position;
+        let [w, h] = band.size;
+        let split = if exterior { GROUND_CHECKLIST_SHARE } else { 1. };
+        let (list_size, view_at, view_size) = if stacked {
+            ([w, h * split], [x, y + h * split], [w, h * (1. - split)])
+        } else {
+            ([w * split, h], [x + w * split, y], [w * (1. - split), h])
+        };
+        let mut checklist = Element::page("checklist", Page::new(PageKind::Checklist), [x, y], list_size);
+        checklist.z = band.z;
+        // In the band's place, so it draws (and names the control to outline) before the dash.
+        layout.elements.insert(i, checklist);
+        if exterior {
+            let mut view = Element::page(
+                GROUND_EXTERIOR_ID,
+                Page::new(PageKind::Outside),
+                view_at,
+                view_size,
+            );
+            view.z = band.z;
+            layout.elements.insert(i + 1, view);
+        }
+        layout.name = "Ground procedures".into();
+        layout
+    }
+    /// The normal arrangement with a small movable exterior box over the outside view. The box is
+    /// clamped inside that view, so it never covers the dash below.
+    #[must_use]
+    pub fn with_inset(&self, placement: crate::InsetPlacement) -> Self {
+        let mut layout = self.clone();
+        let Some(band) = layout
+            .elements
+            .iter()
+            .find(|e| e.page.kind == PageKind::Outside)
+            .cloned()
+        else {
+            return layout;
+        };
+        let p = placement.clamped();
+        let [x, y] = band.position;
+        let [w, h] = band.size;
+        let mut inset = Element::page(
+            INSET_ID,
+            Page::new(PageKind::Outside),
+            [x + w * p.x, y + h * p.y],
+            [w * p.w, h * p.h],
+        );
+        inset.z = band.z + 10;
+        layout.elements.push(inset);
+        layout
     }
     pub fn from_json(text: &str) -> Result<Self, String> {
         if text.len() > 1024 * 1024 {

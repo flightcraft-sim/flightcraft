@@ -145,3 +145,79 @@ fn camera_follow_gpu_preview() {
         capture.validate().await;
     });
 }
+
+#[test]
+fn flap_change_frames_the_trailing_edge_from_the_flap_node_then_returns_to_default() {
+    use flightcraft_aero::exterior_framing::{FramingTarget, default_framing, frame, node_position};
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut owner = Session::new().unwrap();
+    owner
+        .execute("view.exterior_inset", json!({"mode":"always","hold_s":1.0}))
+        .unwrap();
+    owner
+        .execute("sim.reset", json!({"start":{"kind":"runway"},"paused":true}))
+        .unwrap();
+    owner.execute("sim.step", json!({"steps":24})).unwrap();
+    let mut canvas = Canvas::default();
+    let mut frames = 0.;
+    let mut render = |owner: &mut Session, canvas: &mut Canvas, count: u32| {
+        for _ in 0..count {
+            let mut snapshot = owner.presentation_copy();
+            let mut screen = snapshot.screens().windows.first().unwrap().clone();
+            screen.layout = main_layout(&ctx, &snapshot, &screen.layout, false);
+            frames += 1. / 60.;
+            let _ = ctx.run(
+                egui::RawInput {
+                    time: Some(frames),
+                    predicted_dt: 1. / 60.,
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280., 800.))),
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default()
+                        .show(ctx, |ui| canvas.show(ui, &screen, &mut snapshot, true));
+                },
+            );
+        }
+    };
+    render(&mut owner, &mut canvas, 3);
+    let inset = flightcraft_control::screens::INSET_ID;
+    let default = default_framing(canvas.pages[inset].scene.exterior_asset().unwrap());
+    assert_eq!(
+        canvas.pages[inset].inset_frame,
+        Some(default),
+        "starts on the three-quarter rear chase"
+    );
+    // The pilot lowers the flaps: the inset heads for the trailing edge, derived from the flap node.
+    owner.execute("sim.set_controls", json!({"flaps":0.8})).unwrap();
+    owner.execute("sim.step", json!({"steps":24})).unwrap();
+    assert_eq!(owner.exterior_inset_state().target, FramingTarget::Flaps);
+    render(&mut owner, &mut canvas, 240);
+    let asset = canvas.pages[inset].scene.exterior_asset().unwrap().clone();
+    let cg = owner
+        .aircraft_configuration()
+        .unwrap()
+        .weight_balance
+        .cg_m
+        .map(|v| v as f32);
+    let wanted = frame(&asset, FramingTarget::Flaps, cg).unwrap();
+    let got = canvas.pages[inset].inset_frame.unwrap();
+    assert!(
+        (got.eye_m[0] - wanted.eye_m[0]).abs() < 0.05 && (got.target_m[0] - wanted.target_m[0]).abs() < 0.05
+    );
+    let flap = node_position(&asset.lod0, "flaps_left").unwrap();
+    assert!(
+        got.eye_m[0] < flap[0] - cg[0] - 1.,
+        "the eye is behind the flap node"
+    );
+    assert!(got.eye_m[2] < flap[2] - cg[2], "and above it");
+    // After the hold time the inset eases back to the default view.
+    owner.execute("sim.step", json!({"steps":240})).unwrap();
+    assert_eq!(owner.exterior_inset_state().target, FramingTarget::Default);
+    render(&mut owner, &mut canvas, 360);
+    let back = canvas.pages[inset].inset_frame.unwrap();
+    assert!(
+        (back.eye_m[0] - default.eye_m[0]).abs() < 0.05 && (back.eye_m[2] - default.eye_m[2]).abs() < 0.05
+    );
+}

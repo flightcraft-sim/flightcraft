@@ -1,5 +1,7 @@
 # Instrument procedures and NAV receivers
 
+(Normal procedures, checklists and the run-up are in [normal procedures](normal-procedures.md).)
+
 Instrument procedures come from the FAA CIFP, with plate names and PDF basenames linked from
 FAA d-TPP metadata. Both bundled geographic regions carry cycle **2611**, effective **2026-10-29**.
 For simulation only, not for real-world navigation.

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "sling-runup-weak-lane",
+  "title": "Sling: run-up with a weak ignition lane",
+  "briefing": "The same run-up, but one ignition lane is weak. Do the lane check exactly as written and decide. Continuing to fly with an excessive drop fails the lesson; stopping and squawking it passes.",
+  "setup": {
+    "aircraft": "sling2",
+    "start": "engine_idling",
+    "oil_temperature_c": 70,
+    "fault": {
+      "kind": "weak_lane",
+      "lane": "a"
+    }
+  },
+  "tasks": [
+    {
+      "title": "Run-up: find the weak lane",
+      "checklist": "run_up",
+      "poh_ref": "POH 4.5.3, 4.7.1 and supplement 9.4.13",
+      "expect": "stop_on_fault"
+    }
+  ]
+}

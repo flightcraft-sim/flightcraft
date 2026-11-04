@@ -1,0 +1,302 @@
+{
+  "kind": "family",
+  "format_version": 2,
+  "identity": {
+    "id": "sling2-family",
+    "display_name": "Sling 2 airframe",
+    "description": "Sling 2 POH Rev 2.8, section 1.4; dimensional facts with original estimated aerodynamics and ground mechanics.",
+    "author": "FlightCraft contributors"
+  },
+  "geometry": {
+    "wing_area_m2": 11.845,
+    "span_m": 9.165,
+    "chord_m": 1.339,
+    "reference_point_m": [
+      -1.7,
+      0,
+      0
+    ],
+    "gear": [
+      {
+        "point_m": [
+          -1.959,
+          -0.975,
+          0.85
+        ],
+        "stiffness_n_m": 70000,
+        "damping_ns_m": 3800,
+        "weight_fraction": 0.415,
+        "steering_rad": 0
+      },
+      {
+        "point_m": [
+          -1.959,
+          0.975,
+          0.85
+        ],
+        "stiffness_n_m": 70000,
+        "damping_ns_m": 3800,
+        "weight_fraction": 0.415,
+        "steering_rad": 0
+      },
+      {
+        "point_m": [
+          -0.464,
+          0,
+          0.85
+        ],
+        "stiffness_n_m": 40000,
+        "damping_ns_m": 2200,
+        "weight_fraction": 0.17,
+        "steering_rad": 0.4
+      }
+    ],
+    "hard_points_m": [
+      [
+        -0.1,
+        0,
+        0.35
+      ],
+      [
+        -5.9,
+        0,
+        -0.55
+      ],
+      [
+        -1.7,
+        -4.5825,
+        -0.3
+      ],
+      [
+        -1.7,
+        4.5825,
+        -0.3
+      ]
+    ]
+  },
+  "aerodynamics": {
+    "cl_clean": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.7
+        ],
+        [
+          -0.2792526803190927,
+          -1.05
+        ],
+        [
+          -0.13962634015954636,
+          -0.3981317007977318
+        ],
+        [
+          0.0,
+          0.3
+        ],
+        [
+          0.13962634015954636,
+          0.9981317007977317
+        ],
+        [
+          0.2792526803190927,
+          1.6896040076407828
+        ],
+        [
+          0.3490658503988659,
+          1.3854752862654418
+        ],
+        [
+          0.4363323129985824,
+          1.0475544847372853
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md; CLmax calibrated to Sling 2 POH Rev 2.8, section 2.2 (46 kt, 700 kg)."
+    },
+    "cl_flaps": {
+      "points": [
+        [
+          -0.4363323129985824,
+          -0.7
+        ],
+        [
+          -0.2792526803190927,
+          -1.05
+        ],
+        [
+          -0.13962634015954636,
+          0.0018682992022681644
+        ],
+        [
+          0.0,
+          0.7
+        ],
+        [
+          0.13962634015954636,
+          1.3981317007977316
+        ],
+        [
+          0.2617993877991494,
+          2.0267585488480147
+        ],
+        [
+          0.3490658503988659,
+          1.661942010055372
+        ],
+        [
+          0.4363323129985824,
+          1.256590300285769
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md; CLmax calibrated to Sling 2 POH Rev 2.8, section 2.2 (42 kt, 700 kg)."
+    },
+    "cd_alpha": {
+      "points": [
+        [
+          -0.4363323129985824,
+          0.2
+        ],
+        [
+          -0.2792526803190927,
+          0.038
+        ],
+        [
+          0.0,
+          0.024
+        ],
+        [
+          0.2792526803190927,
+          0.038
+        ],
+        [
+          0.4363323129985824,
+          0.2
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md"
+    },
+    "cm_alpha": {
+      "points": [
+        [
+          -0.44,
+          0.568
+        ],
+        [
+          0,
+          0.04
+        ],
+        [
+          0.44,
+          -0.488
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md"
+    },
+    "cy_beta": {
+      "points": [
+        [
+          -0.52,
+          0.312
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0.52,
+          -0.312
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md"
+    },
+    "cl_beta": {
+      "points": [
+        [
+          -0.52,
+          0.0416
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0.52,
+          -0.0416
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md"
+    },
+    "cn_beta": {
+      "points": [
+        [
+          -0.52,
+          -0.0728
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0.52,
+          0.0728
+        ]
+      ],
+      "source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md"
+    },
+    "derivatives": {
+      "cl_p": -0.5,
+      "cl_r": 0.1,
+      "cm_q": -9.0,
+      "cn_p": -0.025,
+      "cn_r": -0.25,
+      "cy_r": 0.18,
+      "cl_aileron": 0.14,
+      "cm_elevator": 1.0,
+      "cn_rudder": 0.1,
+      "cy_rudder": 0.18,
+      "cn_aileron": -0.01
+    },
+    "derivatives_source": "estimate: original finite-wing, tail-volume, and dimensional build-up; see docs/estimates.md",
+    "cl_max": 1.6896040076407828,
+    "induced_drag": 0.045,
+    "flap_drag": 0.065,
+    "flap_pitch": -0.1,
+    "blend_start_rad": 0.4363323129985824,
+    "blend_width_rad": 0.6108652381980153,
+    "plate_drag_zero": 0.04,
+    "plate_drag": 1.8,
+    "plate_pitch": -0.15
+  },
+  "controls": {
+    "elevator": [
+      -1,
+      1
+    ],
+    "aileron": [
+      -1,
+      1
+    ],
+    "rudder": [
+      -1,
+      1
+    ],
+    "throttle": [
+      0,
+      1
+    ],
+    "flaps": [
+      0,
+      1
+    ],
+    "brake": [
+      0,
+      1
+    ],
+    "gear_travel_m": 0.22,
+    "max_normal_force_n": 65000,
+    "hard_touchdown_mps": 4.5,
+    "rolling_pavement": 0.018,
+    "rolling_other": 0.05,
+    "brake_friction": 0.32,
+    "lateral_friction": 0.7
+  }
+}

@@ -250,7 +250,8 @@
         "breaker",
         "readout",
         "image",
-        "traffic"
+        "traffic",
+        "checklist"
       ]
     },
     "TouchControl": {

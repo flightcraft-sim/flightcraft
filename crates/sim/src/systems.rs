@@ -97,6 +97,11 @@ pub enum SystemSetting {
         #[schemars(range(min = 0, max = 1))]
         relative_humidity: f64,
     },
+    /// Ground scenario setup: engine oil temperature, for a cold or warm engine.
+    OilTemperature {
+        #[schemars(range(min = -60, max = 150))]
+        value_c: f64,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
@@ -324,6 +329,8 @@ pub(crate) fn altitude(pressure: f64, setting: f64) -> f64 {
     }
 }
 
+/// Share of power kept by a seeded weak ignition lane running alone (original estimate).
+const WEAK_LANE_FACTOR: f64 = 0.82;
 impl SystemsState {
     /// Legacy installations expose ideal sensors through the same presentation interface.
     pub(crate) fn ideal_sensors(&mut self, r: Readout) {
@@ -672,6 +679,10 @@ impl SystemsState {
                 self.controls.temperature_c = temperature_c;
                 self.controls.relative_humidity = relative_humidity;
             }
+            SystemSetting::OilTemperature { value_c } => {
+                bounded(value_c, -60.0, 150.0)?;
+                self.oil_temperature_c = value_c;
+            }
             SystemSetting::Breaker { load, closed } => {
                 let l = self
                     .electrical
@@ -833,10 +844,18 @@ impl SystemsState {
                 1.
             } else if let flightcraft_aero::modern::EngineControl::ElectronicDualLane {
                 single_lane_power_fraction,
+                lane_a_only_power_fraction,
+                lane_b_only_power_fraction,
                 ..
             } = &m.engine_control
             {
-                *single_lane_power_fraction
+                // A weak lane loses a further fixed share of power when it carries the engine alone.
+                let (fraction, weak) = if s.lane_a.running {
+                    (lane_a_only_power_fraction, s.lane_a_weak)
+                } else {
+                    (lane_b_only_power_fraction, s.lane_b_weak)
+                };
+                fraction.unwrap_or(*single_lane_power_fraction) * if weak { WEAK_LANE_FACTOR } else { 1. }
             } else {
                 0.
             }
@@ -1228,10 +1247,14 @@ impl SystemsState {
                     .sum();
                 bus.remaining_ah = (bus.remaining_ah - draw).max(0.);
                 bus.voltage = if bus.on && bus.remaining_ah > 0. {
+                    // Terminal voltage is nominal until half the capacity is gone, then sags
+                    // linearly to 80% (original estimate; no cell chemistry is modelled).
                     feeds
                         .iter()
                         .find(|(d, _)| d.circuit == bus.circuit)
-                        .map_or(0., |(d, _)| d.voltage)
+                        .map_or(0., |(d, _)| {
+                            d.voltage * (0.8 + 0.4 * (bus.remaining_ah / d.capacity_ah).min(0.5))
+                        })
                 } else {
                     0.
                 };

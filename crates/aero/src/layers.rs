@@ -192,6 +192,9 @@ pub struct InstalledSystems {
     /// Exterior pre-flight walkaround. Requires pack format version 4.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preflight: Option<Box<crate::preflight::Preflight>>,
+    /// Normal-procedure checklists (before start through securing), versioned independently.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub procedures: Option<crate::checklists::ProcedureSet>,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
@@ -508,6 +511,9 @@ impl LayerFile {
                         "emergencies",
                         "duplicate procedure",
                     )?;
+                }
+                if let Some(p) = &s.procedures {
+                    p.validate()?;
                 }
                 if let Some(d) = &s.definition {
                     d.validate()?;
@@ -1107,6 +1113,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
     let systems = InstalledSystems {
         emergencies: Vec::new(),
         preflight: None,
+        procedures: None,
         definition: None,
         format_version: 2,
         identity: make_identity("systems"),

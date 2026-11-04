@@ -173,6 +173,16 @@ documented in [weather and simulated instrument practice](weather.md).
   the GPS, holds, partial panel after a vacuum or display failure, unusual attitude recovery, and
   missed approaches. Each is graded against the instrument rating ACS tolerances.
 
+### Ground procedures
+
+Preflight and run-up take the longest to learn, so there are lessons for them: before start, start
+and warm-up; run-up and before take-off, with seeded faults (a weak ignition lane, a failed fuel
+pump, a low back-up battery, oil not yet warm) that the student must catch and stop for; and
+shutdown and securing. The checklist panel ticks items from simulator state, shows the POH timers,
+warns on limits and out-of-sequence actions, and the virtual pilot can show any item. The main
+window switches to a layout with the checklist beside a small exterior view and the whole dash
+below. See [normal procedures](normal-procedures.md).
+
 ## 7. Commands and MCP additions
 
 - `comms.tune`, `comms.audio_panel`, `comms.transmit` (the pilot's call, as text), and
