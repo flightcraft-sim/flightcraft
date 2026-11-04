@@ -25,6 +25,13 @@ pub struct Exterior {
     pub lod1: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lod2: Option<String>,
+    /// Pack-root PNG paths. GLB image URIs resolve relative to their model file.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(length(max = 8))]
+    pub textures: Vec<String>,
+    /// Authored cabin and pilot eye in pack body coordinates (before CG subtraction).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interior: Option<Interior>,
     #[schemars(range(min = 0.01, max = 100))]
     pub span_m: f32,
     #[schemars(range(min = 0.01, max = 100))]
@@ -40,6 +47,12 @@ pub struct Exterior {
     #[schemars(length(max = 16))]
     pub lights: Vec<ExteriorLight>,
     pub registration: Registration,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Interior {
+    #[schemars(transform = pilot_eye_schema)]
+    pub pilot_eye_m: [f32; 3],
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -130,12 +143,40 @@ impl Exterior {
         std::iter::once(self.model.as_str())
             .chain(std::iter::once(self.lod1.as_str()))
             .chain(self.lod2.as_deref())
+            .chain(self.textures.iter().map(String::as_str))
             .collect()
     }
     pub fn validate(&self) -> Result<(), AircraftError> {
         crate::layers::id(&self.aircraft, "exterior.aircraft")?;
-        for path in self.paths() {
+        for path in std::iter::once(&self.model)
+            .chain(std::iter::once(&self.lod1))
+            .chain(self.lod2.iter())
+        {
             super::validate_asset_path(path)?;
+        }
+        require(
+            self.textures.len() <= MAX_IMAGES,
+            "exterior.textures",
+            "at most eight shared PNGs",
+        )?;
+        let mut paths = BTreeSet::new();
+        for path in &self.textures {
+            validate_texture_path(path)?;
+            require(
+                paths.insert(path.to_ascii_lowercase()),
+                "exterior.textures",
+                "duplicate texture path",
+            )?;
+        }
+        if let Some(interior) = &self.interior {
+            require(
+                interior
+                    .pilot_eye_m
+                    .iter()
+                    .all(|v| v.is_finite() && v.abs() <= 10.),
+                "exterior.interior",
+                "pilot eye must be finite and within ten meters of the body origin",
+            )?;
         }
         for value in [
             self.span_m,
@@ -226,6 +267,16 @@ impl Exterior {
         )
     }
 }
+fn validate_texture_path(path: &str) -> Result<(), AircraftError> {
+    require(path.ends_with(".png"), "exterior.texture", "requires .png")?;
+    super::validate_pack_path(&format!("{path}.json"))
+}
+fn pilot_eye_schema(schema: &mut schemars::Schema) {
+    schema.insert(
+        "items".into(),
+        serde_json::json!({"type":"number","minimum":-10,"maximum":10}),
+    );
+}
 fn valid_name(s: &str) -> Result<(), AircraftError> {
     require(
         !s.is_empty()
@@ -288,10 +339,29 @@ pub struct ExteriorAsset {
     pub lod2: Option<Arc<ExteriorModel>>,
 }
 
-/// Only self-contained GLB 2.0 triangle meshes, POSITION/NORMAL, and material base colors.
+/// Bounded GLB 2.0 triangle meshes with embedded PNGs.
 /// Check byte ranges before using gltf's readers (which assume valid binary storage).
 pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, AircraftError> {
+    load_glb_with_assets(
+        bytes,
+        definition,
+        &definition.model,
+        &BTreeMap::new(),
+        &mut BTreeMap::new(),
+    )
+}
+
+/// Resolve only manifest-listed PNGs from transport-owned memory. Never accesses a file or network.
+/// The per-install cache shares immutable decoded pixels across all LODs.
+pub fn load_glb_with_assets(
+    bytes: &[u8],
+    definition: &Exterior,
+    model_path: &str,
+    assets: &BTreeMap<String, Vec<u8>>,
+    cache: &mut BTreeMap<String, ModelImage>,
+) -> Result<ExteriorModel, AircraftError> {
     definition.validate()?;
+    super::validate_asset_path(model_path)?;
     let fail = |s| error("exterior.glb", s);
     require(
         bytes.len() <= MAX_MODEL_BYTES && bytes.starts_with(b"glTF"),
@@ -356,18 +426,40 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
     let mut decoded_bytes = 0usize;
     let mut encoded_images = Vec::new();
     for image in gltf.images() {
-        let gltf::image::Source::View { view, mime_type } = image.source() else {
-            return Err(fail("external image URIs are unsupported".into()));
+        let (data, mime_type, key) = match image.source() {
+            gltf::image::Source::View { view, mime_type } => (
+                blob.get(view.offset()..view.offset() + view.length())
+                    .ok_or_else(|| fail("invalid image storage".into()))?,
+                mime_type,
+                None,
+            ),
+            gltf::image::Source::Uri { uri, mime_type } => {
+                validate_texture_path(uri)?;
+                let path = model_path
+                    .rsplit_once('/')
+                    .map_or_else(|| uri.to_owned(), |(base, _)| format!("{base}/{uri}"));
+                require(
+                    definition.textures.contains(&path),
+                    "exterior.texture",
+                    "image URI is not manifest-listed",
+                )?;
+                let data = assets
+                    .get(&path)
+                    .ok_or_else(|| fail("missing shared PNG".into()))?;
+                require(
+                    data.len() <= MAX_MODEL_BYTES,
+                    "exterior.texture",
+                    "encoded PNG exceeds 64 MiB",
+                )?;
+                (data.as_slice(), mime_type.unwrap_or("image/png"), Some(path))
+            }
         };
-        let data = blob
-            .get(view.offset()..view.offset() + view.length())
-            .ok_or_else(|| fail("invalid image storage".into()))?;
         require(
             mime_type == "image/png"
                 && data.starts_with(b"\x89PNG\r\n\x1a\n")
                 && data.get(12..16) == Some(b"IHDR"),
             "exterior.image",
-            "requires an embedded PNG",
+            "requires a PNG",
         )?;
         let header = data
             .get(16..24)
@@ -393,10 +485,14 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
             "exterior.image",
             "decoded texture budget exceeded",
         )?;
-        encoded_images.push((size, data));
+        encoded_images.push((size, data, key));
     }
     let mut images = Vec::new();
-    for (size, data) in encoded_images {
+    for (size, data, key) in encoded_images {
+        if let Some(image) = key.as_ref().and_then(|key| cache.get(key)) {
+            images.push(image.clone());
+            continue;
+        }
         let [width, height] = size;
         let mut limits = image::Limits::default();
         limits.max_image_width = Some(MAX_TEXTURE_DIMENSION);
@@ -412,10 +508,14 @@ pub fn load_glb(bytes: &[u8], definition: &Exterior) -> Result<ExteriorModel, Ai
             "exterior.image",
             "PNG dimensions changed during decoding",
         )?;
-        images.push(ModelImage {
+        let image = ModelImage {
             size,
             rgba: rgba.into_raw().into(),
-        });
+        };
+        if let Some(key) = key {
+            cache.insert(key, image.clone());
+        }
+        images.push(image);
     }
     let mut materials = Vec::new();
     for material in gltf.materials() {
@@ -896,6 +996,67 @@ mod tests {
             )
             .is_err()
         );
+    }
+    #[test]
+    fn shared_pngs_are_allowlisted_bounded_and_decoded_once() {
+        use image::ImageEncoder;
+        let (mut d, b) = fixture();
+        let mut png = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut png)
+            .write_image(&[23, 45, 67, 255], 1, 1, image::ExtendedColorType::Rgba8)
+            .unwrap();
+        let external = edit(&with_png(&b, &png, 1), |v| {
+            v["images"][0] = serde_json::json!({"uri":"textures/paint.png","mimeType":"image/png"});
+        });
+        d.textures = vec!["models/textures/paint.png".into()];
+        let assets = BTreeMap::from([("models/textures/paint.png".into(), png.clone())]);
+        let mut cache = BTreeMap::new();
+        let a = load_glb_with_assets(&external, &d, "models/level.glb", &assets, &mut cache).unwrap();
+        let b = load_glb_with_assets(&external, &d, "models/distant.glb", &assets, &mut cache).unwrap();
+        assert!(Arc::ptr_eq(&a.images[0].rgba, &b.images[0].rgba));
+        assert_eq!(&*a.images[0].rgba, &[23, 45, 67, 255]);
+        assert!(load_glb(&external, &d).is_err());
+        assert!(
+            load_glb_with_assets(&external, &d, "models/level.glb", &BTreeMap::new(), &mut cache).is_err()
+        );
+        for uri in [
+            "../paint.png",
+            "/paint.png",
+            "https://x/paint.png",
+            "file:///paint.png",
+            "data:image/png;base64,AA",
+            "textures/%2e.png",
+            "textures/paint.jpg",
+            "textures/absent.png",
+            "textures\\paint.png",
+        ] {
+            let bad = edit(&external, |v| v["images"][0]["uri"] = uri.into());
+            assert!(
+                load_glb_with_assets(&bad, &d, "models/level.glb", &assets, &mut cache).is_err(),
+                "{uri}"
+            );
+        }
+        let mut oversized = png;
+        oversized[16..20].copy_from_slice(&4097u32.to_be_bytes());
+        let bad_assets = BTreeMap::from([("models/textures/paint.png".into(), oversized)]);
+        assert!(load_glb_with_assets(&external, &d, "models/level.glb", &bad_assets, &mut cache).is_err());
+    }
+    #[test]
+    fn interior_eye_and_shared_texture_inventory_are_hostile() {
+        let (mut d, _) = fixture();
+        d.interior = Some(Interior {
+            pilot_eye_m: [-2.3, -0.205, -0.72],
+        });
+        assert!(d.validate().is_ok());
+        d.interior.as_mut().unwrap().pilot_eye_m[0] = f32::NAN;
+        assert!(d.validate().is_err());
+        d.interior = None;
+        for path in ["../x.png", "https://x.png", "/x.png", "x.jpg"] {
+            d.textures = vec![path.into()];
+            assert!(d.validate().is_err());
+        }
+        d.textures = vec!["x.png".into(), "X.png".into()];
+        assert!(d.validate().is_err());
     }
     #[test]
     fn binding_numbers_paths_and_unknown_fields_are_hostile() {

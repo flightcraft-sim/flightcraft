@@ -635,9 +635,18 @@ impl CallbackTrait for SceneCallback {
             }
             let result = (|| -> Result<(), String> {
                 if changed {
-                    exterior
-                        .pbr
-                        .set_materials(device, queue, &crate::exterior::pbr_materials(lod))?;
+                    exterior.pbr.set_materials_with_limit(
+                        device,
+                        queue,
+                        &crate::exterior::pbr_materials(lod),
+                        if std::sync::Arc::ptr_eq(lod, &asset.lod0) {
+                            4096
+                        } else if std::sync::Arc::ptr_eq(lod, &asset.lod1) {
+                            1024
+                        } else {
+                            512
+                        },
+                    )?;
                     exterior.asset = Some(asset.clone());
                     exterior.lod = Some(lod.clone());
                 }

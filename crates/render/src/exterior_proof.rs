@@ -31,10 +31,22 @@ fn load_pack() -> Arc<ExteriorAsset> {
     let pack = PathBuf::from(std::env::var("FLIGHTCRAFT_SLING_PACK").unwrap());
     let definition: Exterior =
         serde_json::from_slice(&std::fs::read(pack.join("exterior.json")).unwrap()).unwrap();
-    let load = |name| {
+    let assets = definition
+        .paths()
+        .into_iter()
+        .map(|name| (name.to_owned(), std::fs::read(pack.join(name)).unwrap()))
+        .collect();
+    let mut cache = std::collections::BTreeMap::new();
+    let mut load = |name: &str| {
         Arc::new(
-            flightcraft_aero::exterior::load_glb(&std::fs::read(pack.join(name)).unwrap(), &definition)
-                .unwrap(),
+            flightcraft_aero::exterior::load_glb_with_assets(
+                &std::fs::read(pack.join(name)).unwrap(),
+                &definition,
+                name,
+                &assets,
+                &mut cache,
+            )
+            .unwrap(),
         )
     };
     Arc::new(ExteriorAsset {

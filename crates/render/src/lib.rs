@@ -377,7 +377,13 @@ impl Scene {
         // Exponential smoothing is stable across long paint gaps; invalid time freezes the slew.
         let dt = if dt.is_finite() { dt.max(0.0) } else { 0.0 };
         let blend = 1.0 - (-dt * 7.0).exp();
-        let pilot_eye = if self.larrow {
+        let pilot_eye = if let Some(interior) = self
+            .exterior
+            .as_ref()
+            .and_then(|a| a.definition.interior.as_ref())
+        {
+            Vec3::from_array(interior.pilot_eye_m) - Vec3::from_array(self.exterior_pose.cg_m)
+        } else if self.larrow {
             Vec3::new(-0.1, 0.0, -0.63)
         } else if self.sling {
             Vec3::new(-0.1, -0.25, -0.65)
@@ -503,7 +509,7 @@ impl Scene {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),
             aspect,
-            if self.camera == CameraMode::Wing {
+            if matches!(self.camera, CameraMode::Wing | CameraMode::Cockpit) {
                 0.015
             } else {
                 0.05
@@ -601,11 +607,10 @@ impl Scene {
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
                 show_aircraft: self.camera != CameraMode::Cockpit
-                    || self.exterior.as_ref().is_some_and(|a| {
-                        a.definition.moving_parts.iter().any(|p| {
-                            p.node == "canopy_slide" && p.motion == flightcraft_aero::exterior::Motion::Slide
-                        })
-                    }),
+                    || self
+                        .exterior
+                        .as_ref()
+                        .is_some_and(|a| a.definition.interior.is_some()),
                 larrow: self.larrow,
                 sling: self.sling,
                 exterior: self.exterior.clone(),
@@ -740,6 +745,7 @@ impl Scene {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -748,6 +754,26 @@ mod tests {
         assert_eq!(drawing(Vec3::X), -Vec3::Z);
         assert_eq!(drawing(Vec3::Y), Vec3::X);
         assert_eq!(drawing(Vec3::Z), -Vec3::Y);
+    }
+
+    #[test]
+    fn authored_pilot_eye_tracks_the_cabin_for_different_cg_and_looks() {
+        let mut asset = (*exterior::builtin("corvid").unwrap()).clone();
+        let pilot = [-2.30, -0.205, -0.72];
+        asset.definition.interior = Some(flightcraft_aero::exterior::Interior { pilot_eye_m: pilot });
+        let mut scene = Scene::default();
+        scene.set_exterior(std::sync::Arc::new(asset));
+        scene.camera = CameraMode::Cockpit;
+        for cg in [[-1.65, 0., 0.], [-1.85, 0.03, 0.02]] {
+            scene.exterior_pose.cg_m = cg;
+            for yaw in [-2.1, 0., 1.25] {
+                scene.set_cockpit_look(yaw, -0.4);
+                let (eye, view, model, _) = scene.camera_frame(&State::default(), 1.);
+                let expected = model.transform_point3(Vec3::from_array(pilot) - Vec3::from_array(cg));
+                assert!((eye - expected).length() < 1e-5);
+                assert!(view.transform_point3(eye).length() < 1e-5);
+            }
+        }
     }
 
     #[test]

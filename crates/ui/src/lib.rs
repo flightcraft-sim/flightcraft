@@ -1385,6 +1385,8 @@ mod scenario_preview;
 #[cfg(test)]
 mod main_ui_tests;
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod cockpit_preview;
 #[cfg(test)]
 mod exterior_preview;
 

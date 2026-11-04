@@ -134,6 +134,17 @@
           "maximum": 100,
           "minimum": 0.01
         },
+        "interior": {
+          "description": "Authored cabin and pilot eye in pack body coordinates (before CG subtraction).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Interior"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "length_m": {
           "type": "number",
           "format": "float",
@@ -180,6 +191,14 @@
           "format": "float",
           "maximum": 100,
           "minimum": 0.01
+        },
+        "textures": {
+          "description": "Pack-root PNG paths. GLB image URIs resolve relative to their model file.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8
         },
         "wing_area_m2": {
           "type": "number",
@@ -234,6 +253,25 @@
         "systems",
         "panel",
         "aircraft"
+      ]
+    },
+    "Interior": {
+      "type": "object",
+      "properties": {
+        "pilot_eye_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "maximum": 10,
+            "minimum": -10
+          },
+          "maxItems": 3,
+          "minItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "pilot_eye_m"
       ]
     },
     "LightKind": {

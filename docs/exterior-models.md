@@ -1,6 +1,6 @@
 # Making an aircraft exterior
 
-The renderer accepts bounded, self-contained glTF 2.0 binary models (`.glb`) from pack format 2.
+The renderer accepts bounded glTF 2.0 binary models (`.glb`) from pack format 2.
 Corvid and Larrow embed the same model profile, without filesystem access, on desktop and web.
 An unknown aircraft or a missing exterior uses the existing procedural outline. Invalid external
 packs fail transactionally, leaving the active flight and installed catalog intact.
@@ -36,11 +36,13 @@ metallic-roughness maps remain linear. Normal-mapped primitives require UVs and 
 Clearcoat factors are supported. Original color-only models continue to load.
 
 Each GLB is capped at 64 MiB, 128 nodes, 32 materials (including the default material), 120,000
-triangles, and 360,000 expanded vertices. It may contain at most 8 embedded PNG images and
-64 texture references. Images are limited to 4096² and 320 MiB total decoded RGBA storage per
+triangles, and 360,000 expanded vertices. It may contain at most 8 embedded or manifest-listed PNG
+images and 64 texture references. Images are limited to 4096² and 320 MiB total decoded RGBA storage per
 model. Every PNG header and binary view is checked before decompression; the decoder also has
-allocation limits. External images, sparse accessors, skins, morph targets, and embedded animations
-are rejected. Packs have a separate 128 MiB encoded limit. GPU uploads deduplicate shared images
+allocation limits. Unlisted image URIs, external buffers, sparse accessors, skins, morph targets, and
+embedded animations are rejected. Shared PNG inventories and pilot-seat metadata are described in
+[Pilot-seat interiors](cockpit-interior.md). Packs have a separate 128 MiB encoded limit. GPU uploads
+deduplicate shared images
 and build color-correct and normal-correct mipmaps. Devices limited to 2048 textures upload the
 appropriate filtered mip instead of failing or allocating an oversized texture.
 
@@ -81,8 +83,8 @@ per 1.2 seconds; the red beacon flashes for 160 ms per second. They use simulati
 breakers, and bus power gate the lamps. A fixture may name its installed `power_load`, including
 shared circuits such as the Sling nav/strobe installation. The landing light adds a forward, downward cone of illumination
 to terrain and runway fragments; time of day controls its contrast. The renderer has no shadow maps;
-its existing soft ground contact shadow remains in use. Sliding-canopy packs use their authored cabin in cockpit view, including the moving frame and glass.
-Other packs keep the existing procedural cockpit geometry and panel. Wing view uses a 0.015-meter near plane.
+its existing soft ground contact shadow remains in use. Packs with `interior.pilot_eye_m` use their authored cabin in cockpit view, including any moving frame and glass.
+Other packs keep the existing procedural cockpit geometry and panel. Wing and cockpit views use a 0.015-meter near plane.
 
 ## Verification and captures
 

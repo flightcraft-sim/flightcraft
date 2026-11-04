@@ -322,11 +322,13 @@ impl AircraftCatalog {
                     )?;
                 }
             }
-            let model = |path: &str| -> Result<_, AircraftError> {
+            let mut image_cache = BTreeMap::new();
+            let mut model = |path: &str| -> Result<_, AircraftError> {
                 let bytes = assets
                     .get(path)
                     .ok_or_else(|| error("exterior.path", "missing asset"))?;
-                crate::exterior::load_glb(bytes, definition).map(std::sync::Arc::new)
+                crate::exterior::load_glb_with_assets(bytes, definition, path, assets, &mut image_cache)
+                    .map(std::sync::Arc::new)
             };
             let asset = crate::exterior::ExteriorAsset {
                 definition: definition.clone(),

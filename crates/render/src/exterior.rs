@@ -383,29 +383,27 @@ mod tests {
             let path = std::path::Path::new(&dir);
             let definition: flightcraft_aero::exterior::Exterior =
                 serde_json::from_slice(&std::fs::read(path.join("exterior.json")).unwrap()).unwrap();
-            let lod0 = Arc::new(
-                flightcraft_aero::exterior::load_glb(
-                    &std::fs::read(path.join("exterior.glb")).unwrap(),
-                    &definition,
-                )
-                .unwrap(),
-            );
-            let lod1 = Arc::new(
-                flightcraft_aero::exterior::load_glb(
-                    &std::fs::read(path.join("exterior-lod1.glb")).unwrap(),
-                    &definition,
-                )
-                .unwrap(),
-            );
-            let lod2 = definition.lod2.as_ref().map(|name| {
+            let assets = definition
+                .paths()
+                .into_iter()
+                .map(|name| (name.to_owned(), std::fs::read(path.join(name)).unwrap()))
+                .collect();
+            let mut cache = std::collections::BTreeMap::new();
+            let mut load = |name: &str| {
                 Arc::new(
-                    flightcraft_aero::exterior::load_glb(
+                    flightcraft_aero::exterior::load_glb_with_assets(
                         &std::fs::read(path.join(name)).unwrap(),
                         &definition,
+                        name,
+                        &assets,
+                        &mut cache,
                     )
                     .unwrap(),
                 )
-            });
+            };
+            let lod0 = load(&definition.model);
+            let lod1 = load(&definition.lod1);
+            let lod2 = definition.lod2.as_deref().map(load);
             models.push(Arc::new(ExteriorAsset {
                 definition,
                 lod0,
@@ -1067,7 +1065,18 @@ impl PbrRenderer {
         queue: &wgpu::Queue,
         materials: &[PbrMaterial],
     ) -> Result<(), String> {
+        self.set_materials_with_limit(device, queue, materials, device.limits().max_texture_dimension_2d)
+    }
+    /// Distant LODs start at smaller, correctly filtered levels of the shared atlas.
+    pub fn set_materials_with_limit(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        materials: &[PbrMaterial],
+        max_dimension: u32,
+    ) -> Result<(), String> {
         use wgpu::util::DeviceExt;
+        let max_dimension = max_dimension.clamp(1, device.limits().max_texture_dimension_2d);
         if materials.is_empty() || materials.len() > MAX_PBR_MATERIALS {
             return Err("exterior material count exceeds the supported limit".into());
         }
@@ -1160,10 +1169,7 @@ impl PbrRenderer {
                     // but upload a correctly filtered mip when a device needs smaller maps.
                     let mut upload_size = size;
                     let mut upload_rgba = rgba.to_vec();
-                    while upload_size
-                        .iter()
-                        .any(|n| *n > device.limits().max_texture_dimension_2d)
-                    {
+                    while upload_size.iter().any(|n| *n > max_dimension) {
                         (upload_size, upload_rgba) = downsample_pbr(upload_size, &upload_rgba, srgb, i == 2);
                     }
                     let [width, height] = upload_size;
