@@ -145,6 +145,25 @@ pub enum GlassSetting {
     Page {
         page: GlassPage,
     },
+    /// Choose the page an installed touch display shows. Saved per aircraft variant.
+    DisplayPage {
+        /// Installation id, for example `left_display`.
+        display: String,
+        page: flightcraft_aero::modern::TouchLayout,
+    },
+    /// Choose what the MFD page's data column shows on one display. Saved per aircraft variant.
+    DisplayData {
+        display: String,
+        area: flightcraft_aero::modern::DataArea,
+    },
+    /// Left or right seat: a right-seat pilot gets the primary flight display on the right screen.
+    PilotSeat {
+        seat: flightcraft_aero::modern::PilotSeat,
+    },
+    /// Display backup: the multi-function display shows the primary flight display with an engine strip.
+    DisplayReversion {
+        enabled: bool,
+    },
     /// Show or hide traffic on the MFD map (the TRAFFIC annunciation is not affected).
     Traffic {
         shown: bool,

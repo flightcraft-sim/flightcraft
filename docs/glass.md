@@ -192,6 +192,21 @@ and 1 nm within 30 nm of the destination.
 Right-of-track displacement produces a left needle correction. A world without a geographic
 region has no GPS leg. ETE is unavailable below 1 m/s ground speed.
 
+## Two-screen installations
+
+An installation with two touch displays (the Sling 2) is set up for a pilot in the left seat. The
+left display opens on the PFD (attitude, tapes, HSI, engine strip) and the right on the MFD: a
+large moving map with traffic, airspace, the flight plan, and the active leg in magenta with its
+DTK, XTK, and distance, beside a data column that shows the engine page, flight plan, nearest, or
+traffic. Each display can show the PFD, SVT, PFD with map, the MFD map, the engine page, flight
+plan, nearest, or traffic, from its soft keys, the Settings window's Cockpit displays section,
+or `avionics.set`; the choices are saved per aircraft variant. A pilot-seat setting puts the
+PFD on the right. Losing either display, or pressing display backup, reverts the other to the PFD
+with an engine strip. See [equipment](equipment.md#pages-roles-and-the-pilots-seat) for the page
+list, settings, and reversion rules. The Corvid glass variant has this arrangement by design:
+its PFD is the left display and its MFD, which opens on the map, the right; its MFD failure moves
+the engine strip to the PFD. The Corvid displays are fixed instruments, so they have no seat swap.
+
 ## Commands and controls
 
 All soft keys, knobs, squawk edits, map range and orientation, direct-to, and plan editing
@@ -214,7 +229,7 @@ oversized plans, and non-octal squawks return errors.
 Other settings are `heading_bug` (`heading_rad`), `course` (`course_rad`), `selected_altitude`
 (`altitude_m`), `baro` (`pressure_pa`), `pressure_units` (`hpa`), `bearing_pointer`
 (`source`: `off` or `gps`), `map_range` (`range_nm`: 1–200), `orientation` (`north_up` or
-`track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, or `flight_plan`), `active_leg` (`index`, zero-based),
+`track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, or `flight_plan`; the application MFD), `display_page` (`display`, `page`), `display_data` (`display`, `area`), `pilot_seat` (`seat`), `display_reversion` (`enabled`), `active_leg` (`index`, zero-based),
 and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Units are SI
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
 

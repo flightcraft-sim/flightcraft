@@ -518,9 +518,11 @@ impl InstrumentPanel {
         for (id, viewport) in &self.modern.maps {
             let map = self.modern.map_widgets.entry(id.clone()).or_default();
             map.options = self.options;
+            map.guidance = viewport.guidance;
             ui.push_id(id, |ui| {
                 map.show_mfd_base(ui, viewport.rect, session, viewport.base)
             });
+            map.guidance = None;
         }
         if let Some(rect) = self.modern.procedure_rect {
             self.heading_commands

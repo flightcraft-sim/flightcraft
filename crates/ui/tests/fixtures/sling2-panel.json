@@ -796,6 +796,7 @@
           "kind": "touch_display",
           "load": "touch_right",
           "layout": "integrated_pfd",
+          "default_page": "mfd",
           "engine_strip": true,
           "composition": {
             "top_data_bar": true,

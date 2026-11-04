@@ -252,6 +252,20 @@ impl Session {
                 self.map.orientation = orientation.into();
             }
             GlassSetting::Page { page } => self.glass.page = page,
+            GlassSetting::DisplayPage { display, page } => {
+                self.set_equipment(crate::EquipmentSetting::Display {
+                    id: display,
+                    action: crate::DisplayAction::Layout { layout: page },
+                })?
+            }
+            GlassSetting::DisplayData { display, area } => {
+                self.set_equipment(crate::EquipmentSetting::Display {
+                    id: display,
+                    action: crate::DisplayAction::DataArea { area },
+                })?
+            }
+            GlassSetting::PilotSeat { seat } => self.set_pilot_seat(seat),
+            GlassSetting::DisplayReversion { enabled } => self.set_display_reversion(enabled),
             GlassSetting::Traffic { shown } => self.glass.traffic_shown = shown,
             GlassSetting::TrafficFilter { filter } => self.glass.traffic_filter = filter,
             GlassSetting::DirectTo { airport } => self.set_glass_plan(vec![airport])?,

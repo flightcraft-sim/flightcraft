@@ -207,6 +207,86 @@ pub enum TouchLayout {
     #[default]
     PfdMap,
     MapEngine,
+    /// Primary flight display with synthetic vision always on.
+    Svt,
+    /// Large moving map with a configurable data area ([`DataArea`]) beside it.
+    Mfd,
+    /// Full-screen engine page.
+    Engine,
+    /// Full-screen flight-plan list.
+    FlightPlan,
+    /// Full-screen nearest-airports list.
+    Nearest,
+    /// Full-screen traffic list.
+    Traffic,
+}
+impl TouchLayout {
+    /// Pages that show the primary flight display (attitude and tapes).
+    pub fn is_pfd(self) -> bool {
+        matches!(
+            self,
+            Self::IntegratedPfd | Self::FullPfd | Self::PfdMap | Self::Svt
+        )
+    }
+}
+/// What the MFD page's data column shows beside the map.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DataArea {
+    #[default]
+    Engine,
+    FlightPlan,
+    Nearest,
+    Traffic,
+}
+/// Where the pilot sits. A right-seat pilot gets the primary flight display on the right screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PilotSeat {
+    #[default]
+    Left,
+    Right,
+}
+impl TouchLayout {
+    /// The pages a pilot can choose between, in menu order. The PFD entry is the display's installed
+    /// layout (`installed`), so it keeps the composition the pack designed.
+    pub fn pages(installed: Self) -> [Self; 9] {
+        [
+            installed,
+            Self::Svt,
+            Self::PfdMap,
+            Self::Mfd,
+            Self::MapEngine,
+            Self::Engine,
+            Self::FlightPlan,
+            Self::Nearest,
+            Self::Traffic,
+        ]
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::IntegratedPfd | Self::FullPfd => "PFD",
+            Self::PfdMap => "PFD + map",
+            Self::MapEngine => "Map + engine strip",
+            Self::Svt => "SVT (synthetic vision PFD)",
+            Self::Mfd => "MFD (map + data)",
+            Self::Engine => "Engine",
+            Self::FlightPlan => "Flight plan",
+            Self::Nearest => "Nearest",
+            Self::Traffic => "Traffic",
+        }
+    }
+}
+impl DataArea {
+    pub const ALL: [Self; 4] = [Self::Engine, Self::FlightPlan, Self::Nearest, Self::Traffic];
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Engine => "Engine",
+            Self::FlightPlan => "Flight plan",
+            Self::Nearest => "Nearest",
+            Self::Traffic => "Traffic",
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -432,7 +512,12 @@ pub enum PanelElement {
     GuardBar,
     TouchDisplay {
         load: String,
+        /// The installed primary-flight-display layout; also what the PFD soft key selects.
         layout: TouchLayout,
+        /// The page shown at power-up. Omission shows `layout`, as packs always have. A two-display
+        /// installation declares `mfd` here on the screen that is the multi-function display.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        default_page: Option<TouchLayout>,
         engine_strip: bool,
         #[serde(default)]
         composition: DisplayComposition,

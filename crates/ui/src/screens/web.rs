@@ -235,6 +235,9 @@ impl ScreenApp {
         if let Err(error) = crate::callsign_preferences::restore(&mut session, cc.storage) {
             errors.push(error);
         }
+        if let Err(error) = crate::display_preferences::restore(&mut session, cc.storage) {
+            errors.push(error);
+        }
         errors.extend(options.packs.errors);
         for region in options.regions.fetched {
             session.install_region(region)?;

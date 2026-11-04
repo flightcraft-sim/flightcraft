@@ -22,11 +22,27 @@ mod tests;
 pub(crate) struct MapViewport {
     pub rect: Rect,
     pub base: Option<BaseMap>,
+    /// Active-leg guidance drawn over the map, as on a multi-function display.
+    pub guidance: Option<Guidance>,
 }
 impl MapViewport {
     pub fn shared(rect: Rect) -> Self {
-        Self { rect, base: None }
+        Self {
+            rect,
+            base: None,
+            guidance: None,
+        }
     }
+}
+/// The GPS active leg, as the flight director and CDI use it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Guidance {
+    pub active_leg: usize,
+    /// Magnetic desired track, degrees.
+    pub desired_track_deg: f64,
+    /// Positive right of track.
+    pub cross_track_nm: f64,
+    pub distance_nm: f64,
 }
 #[derive(Clone)]
 struct Feature {
@@ -47,6 +63,8 @@ enum Drag {
 pub struct PlanningMap {
     pub open: bool,
     pub options: crate::instruments::DisplayOptions,
+    /// Set by the host for one `show_mfd_base` call.
+    pub(crate) guidance: Option<Guidance>,
     tiles: tiles::Tiles,
     selected: Option<Feature>,
     edit: bool,
@@ -408,6 +426,9 @@ impl PlanningMap {
         let features = paint_features_for(&p, &view, s, &state, compact);
         self.paint_track(&p, &view, &state);
         route(&p, &view, s, &state, self.options.engine);
+        if let Some(guidance) = self.guidance {
+            paint_guidance(&p, &view, s, aircraft, guidance);
+        }
         if let Some(point) = aircraft
             && state.opacity(Overlay::Aircraft) > 0.
             && let Some(c) = view.point(point)
@@ -1462,6 +1483,46 @@ fn route(
         );
         p.galley(origin, galley, theme::GLASS_GPS);
     }
+}
+/// The active leg in magenta from its start (the previous waypoint, or the aircraft) to the active
+/// waypoint, with the track, cross-track, and distance the CDI and flight director are steering to.
+fn paint_guidance(p: &egui::Painter, v: &View, s: &Session, aircraft: Option<GeoPoint>, g: Guidance) {
+    let waypoints: Vec<(String, GeoPoint)> = if s.gps_map_waypoints().is_empty() {
+        s.flight_plan()
+            .waypoints
+            .iter()
+            .map(|w| (w.waypoint.ident.clone(), w.waypoint.position))
+            .collect()
+    } else {
+        s.gps_map_waypoints()
+            .iter()
+            .map(|w| (w.ident.clone(), w.position))
+            .collect()
+    };
+    let Some((ident, end)) = waypoints.get(g.active_leg).cloned() else {
+        return;
+    };
+    let start = g
+        .active_leg
+        .checked_sub(1)
+        .and_then(|i| waypoints.get(i))
+        .map(|w| w.1)
+        .or(aircraft);
+    if let (Some(a), Some(b)) = (start.and_then(|p| v.point(p)), v.point(end)) {
+        p.line_segment([a, b], Stroke::new(6.0_f32, theme::PANEL));
+        p.line_segment([a, b], Stroke::new(3.5_f32, theme::GLASS_GPS));
+    }
+    let side = if g.cross_track_nm >= 0. { 'R' } else { 'L' };
+    let text = format!(
+        "{ident}  DTK {:03.0}°  XTK {:.1} {side}  DIS {:.1} NM",
+        g.desired_track_deg.rem_euclid(360.),
+        g.cross_track_nm.abs(),
+        g.distance_nm
+    );
+    let galley = p.layout_no_wrap(text, FontId::monospace(11.), theme::GLASS_GPS);
+    let rect = Rect::from_min_size(v.rect.left_top() + egui::vec2(6., 6.), galley.size()).expand(3.);
+    p.rect_filled(rect, 2., theme::PANEL);
+    p.galley(rect.min + egui::vec2(3., 3.), galley, theme::GLASS_GPS);
 }
 fn rings(p: &egui::Painter, v: &View, state: &MapState) {
     let color = theme::MUTED.linear_multiply(state.opacity(Overlay::RangeRings));

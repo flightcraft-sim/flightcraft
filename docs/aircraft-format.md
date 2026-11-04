@@ -251,6 +251,13 @@ limitations. The [fictional equipment pack](../examples/packs/equipment-demo/pac
 complete composable example. Optional fields default to the existing behaviour; built-in
 engine definitions and default flight dynamics are unchanged.
 
+A `touch_display` element's `layout` names its installed PFD layout, and the optional
+`default_page` names what the screen shows at power-up: any `layout` value, including the MFD
+pages `mfd`, `engine`, `flight_plan`, `nearest`, and `traffic`, and `svt`. A two-display pack for
+a left-seat pilot declares the right display with `"default_page": "mfd"`. Omitting
+`default_page` shows `layout`, so existing packs are unchanged. The pilot may change each page
+and swap seats at run time (see [pages, roles, and the pilot's seat](equipment.md#pages-roles-and-the-pilots-seat)).
+
 Emergency procedures are optional systems-layer pack data. See [emergencies](emergencies.md#aircraft-procedures)
 for ordered memory/checklist items, glide parameters, validation, and fictional built-in guidance.
 

@@ -10,6 +10,7 @@ pub mod clock;
 pub mod crew;
 #[cfg(test)]
 mod crew_preview;
+mod display_preferences;
 pub mod glass;
 mod ifr;
 #[cfg(test)]
@@ -176,6 +177,9 @@ impl FlightCraftApp {
         // The app opens flying in real time; headless sessions start paused.
         let mut session = Session::new()?;
         if let Err(e) = callsign_preferences::restore(&mut session, cc.storage) {
+            error = Some(e);
+        }
+        if let Err(e) = display_preferences::restore(&mut session, cc.storage) {
             error = Some(e);
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -458,6 +462,88 @@ impl FlightCraftApp {
         }
     }
 
+    /// Each installed touch display's page, the pilot's seat, and display backup. Choices are saved
+    /// for the aircraft variant; they use the same `avionics.set` settings a script would.
+    fn display_settings(session: &mut Session, error: &mut Option<String>, ui: &mut egui::Ui) {
+        use flightcraft_aero::modern::{DataArea, PilotSeat, TouchLayout};
+        use flightcraft_control::GlassSetting;
+        let touch = session.touch_state();
+        if touch.displays.is_empty() {
+            return;
+        }
+        let mut changes = Vec::new();
+        ui.separator();
+        ui.label(RichText::new("COCKPIT DISPLAYS").color(theme::ACCENT).size(11.0));
+        if touch.displays.len() == 2 {
+            ui.horizontal(|ui| {
+                ui.label("Pilot seat");
+                for (seat, label) in [(PilotSeat::Left, "Left"), (PilotSeat::Right, "Right")] {
+                    if ui.selectable_label(touch.pilot_seat == seat, label).clicked()
+                        && touch.pilot_seat != seat
+                    {
+                        changes.push(GlassSetting::PilotSeat { seat });
+                    }
+                }
+            });
+        }
+        for display in &touch.displays {
+            ui.horizontal(|ui| {
+                let name = display.id.replace('_', " ");
+                ui.label(RichText::new(name[..1].to_uppercase() + &name[1..]));
+                egui::ComboBox::from_id_salt(("display page", &display.id))
+                    .selected_text(display.layout.label())
+                    .show_ui(ui, |ui| {
+                        for page in TouchLayout::pages(display.installed_layout) {
+                            if ui
+                                .selectable_label(display.layout == page, page.label())
+                                .clicked()
+                            {
+                                changes.push(GlassSetting::DisplayPage {
+                                    display: display.id.clone(),
+                                    page,
+                                });
+                            }
+                        }
+                    });
+                if display.layout == TouchLayout::Mfd {
+                    egui::ComboBox::from_id_salt(("display data", &display.id))
+                        .selected_text(display.data_area.label())
+                        .show_ui(ui, |ui| {
+                            for area in DataArea::ALL {
+                                if ui
+                                    .selectable_label(display.data_area == area, area.label())
+                                    .clicked()
+                                {
+                                    changes.push(GlassSetting::DisplayData {
+                                        display: display.id.clone(),
+                                        area,
+                                    });
+                                }
+                            }
+                        });
+                }
+            });
+        }
+        let mut backup = touch.manual_reversion;
+        if touch.displays.len() > 1
+            && ui
+                .checkbox(
+                    &mut backup,
+                    "Display backup (multi-function display shows the PFD with engine strip)",
+                )
+                .changed()
+        {
+            changes.push(GlassSetting::DisplayReversion { enabled: backup });
+        }
+        for setting in changes {
+            if let Err(e) = session.run(flightcraft_control::SetAvionics {
+                setting: flightcraft_sim::avionics::AvionicsSetting::Glass { setting },
+            }) {
+                *error = Some(e.to_string());
+            }
+        }
+    }
+
     fn bindings_window(&mut self, ctx: &egui::Context) {
         let applied = self.session.efb_status().settings;
         if applied != self.efb_applied {
@@ -483,6 +569,7 @@ impl FlightCraftApp {
                 ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Us,"US customary");
                 ui.selectable_value(&mut self.instrument_panel.options.engine, instruments::EngineUnits::Si,"SI");
             });
+            Self::display_settings(&mut self.session, &mut self.error, ui);
             ui.separator();
             ui.label(RichText::new("Send to tablet apps").color(theme::ACCENT));
             if cfg!(target_arch = "wasm32") {
@@ -1284,6 +1371,7 @@ impl eframe::App for FlightCraftApp {
             storage.set_string("flightcraft.screens.v1", json);
         }
         callsign_preferences::save(&self.session, storage);
+        display_preferences::save(&self.session, storage);
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(serial) = self.efb_serial {

@@ -2099,6 +2099,17 @@
                 "top_data_bar": false
               }
             },
+            "default_page": {
+              "description": "The page shown at power-up. Omission shows `layout`, as packs always have. A two-display\ninstallation declares `mfd` here on the screen that is the multi-function display.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TouchLayout"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "engine_strip": {
               "type": "boolean"
             },
@@ -2107,6 +2118,7 @@
               "const": "touch_display"
             },
             "layout": {
+              "description": "The installed primary-flight-display layout; also what the PFD soft key selects.",
               "$ref": "#/$defs/TouchLayout"
             },
             "load": {
@@ -2790,12 +2802,46 @@
       ]
     },
     "TouchLayout": {
-      "type": "string",
-      "enum": [
-        "integrated_pfd",
-        "full_pfd",
-        "pfd_map",
-        "map_engine"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "integrated_pfd",
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ]
+        },
+        {
+          "description": "Primary flight display with synthetic vision always on.",
+          "type": "string",
+          "const": "svt"
+        },
+        {
+          "description": "Large moving map with a configurable data area ([`DataArea`]) beside it.",
+          "type": "string",
+          "const": "mfd"
+        },
+        {
+          "description": "Full-screen engine page.",
+          "type": "string",
+          "const": "engine"
+        },
+        {
+          "description": "Full-screen flight-plan list.",
+          "type": "string",
+          "const": "flight_plan"
+        },
+        {
+          "description": "Full-screen nearest-airports list.",
+          "type": "string",
+          "const": "nearest"
+        },
+        {
+          "description": "Full-screen traffic list.",
+          "type": "string",
+          "const": "traffic"
+        }
       ]
     },
     "VSpeeds": {

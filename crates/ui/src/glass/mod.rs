@@ -458,7 +458,18 @@ pub(crate) fn paint_touch(
     } else {
         display.layout
     };
-    let strip = if display.engine_strip || display.reversion || display.layout == TouchLayout::IntegratedPfd {
+    // The MFD pages carry their own data area, so they have no separate engine strip.
+    let has_strip_column = !matches!(
+        layout,
+        TouchLayout::Mfd
+            | TouchLayout::Engine
+            | TouchLayout::FlightPlan
+            | TouchLayout::Nearest
+            | TouchLayout::Traffic
+    );
+    let strip = if has_strip_column
+        && (display.engine_strip || display.reversion || display.layout == TouchLayout::IntegratedPfd)
+    {
         content.width() * composition.engine_strip_fraction as f32
     } else {
         0.
@@ -474,7 +485,46 @@ pub(crate) fn paint_touch(
         );
     }
     let primary = match layout {
-        TouchLayout::FullPfd | TouchLayout::IntegratedPfd => Some(main),
+        TouchLayout::FullPfd | TouchLayout::IntegratedPfd | TouchLayout::Svt => Some(main),
+        TouchLayout::Mfd => {
+            // Large moving map with the flight director's active-leg guidance, and a data column.
+            let (map, data) = content.split_left_right_at_fraction(0.64);
+            let guidance = s.gps.valid.then_some(crate::map::Guidance {
+                active_leg: s.gps.active_leg,
+                desired_track_deg: s.gps.desired_track_rad.to_degrees(),
+                cross_track_nm: s.gps.cross_track_nm,
+                distance_nm: s.gps.distance_nm,
+            });
+            maps.push(MapViewport {
+                guidance,
+                ..MapViewport::shared(map)
+            });
+            data_area(
+                ui,
+                data,
+                &shared,
+                input,
+                display.data_area,
+                composition.engine_style,
+            );
+            None
+        }
+        TouchLayout::Engine => {
+            touch_engine(ui, content, &shared, input, composition.engine_style);
+            None
+        }
+        TouchLayout::FlightPlan => {
+            list_page(ui, content, &shared, mfd::ListKind::FlightPlan);
+            None
+        }
+        TouchLayout::Nearest => {
+            list_page(ui, content, &shared, mfd::ListKind::Nearest);
+            None
+        }
+        TouchLayout::Traffic => {
+            list_page(ui, content, &shared, mfd::ListKind::Traffic);
+            None
+        }
         TouchLayout::PfdMap => {
             let (left, right) = main.split_left_right_at_fraction(0.5);
             maps.push(MapViewport::shared(right));
@@ -529,6 +579,7 @@ pub(crate) fn paint_touch(
                 DisplayInset::Terrain => maps.push(MapViewport {
                     rect,
                     base: Some(flightcraft_control::BaseMap::Terrain),
+                    guidance: None,
                 }),
                 DisplayInset::SyntheticVision => {
                     let mut vision = shared.clone();
@@ -555,6 +606,39 @@ pub(crate) fn paint_touch(
         }
     }
     maps
+}
+
+/// A full-height list drawn by the MFD's table code.
+fn list_page(ui: &egui::Ui, area: egui::Rect, s: &GlassState, kind: mfd::ListKind) {
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let mut d = canvas();
+    mfd::table(&mut d, s, kind, 250., 40., 1.);
+    paint_fill(ui, area, d);
+}
+/// The data column beside the MFD map: the engine page, or a list.
+fn data_area(
+    ui: &egui::Ui,
+    area: egui::Rect,
+    s: &GlassState,
+    input: InstrumentInput<'_>,
+    content: flightcraft_aero::modern::DataArea,
+    style: flightcraft_aero::modern::EngineStripStyle,
+) {
+    use flightcraft_aero::modern::DataArea;
+    match content {
+        DataArea::Engine => touch_engine(ui, area, s, input, style),
+        DataArea::FlightPlan => column(ui, area, s, mfd::ListKind::FlightPlan),
+        DataArea::Nearest => column(ui, area, s, mfd::ListKind::Nearest),
+        DataArea::Traffic => column(ui, area, s, mfd::ListKind::Traffic),
+    }
+}
+/// A list narrow enough for the column beside the map: it keeps the type size of the full page.
+fn column(ui: &egui::Ui, area: egui::Rect, s: &GlassState, kind: mfd::ListKind) {
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let mut d = canvas();
+    d.size = [330., 380.];
+    mfd::table(&mut d, s, kind, 165., 40., 0.85);
+    paint_fill(ui, area, d);
 }
 
 pub(crate) fn paint_standby(ui: &egui::Ui, cell: egui::Rect, state: &GlassState, input: InstrumentInput<'_>) {

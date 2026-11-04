@@ -201,7 +201,7 @@ impl Command for CommsCallsign {
     }
 }
 impl Session {
-    fn callsign_variant(&self) -> &str {
+    pub(crate) fn callsign_variant(&self) -> &str {
         self.active_configuration
             .as_ref()
             .map_or(self.sim().aircraft().identity.id.as_str(), |c| {

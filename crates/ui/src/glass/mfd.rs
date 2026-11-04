@@ -20,56 +20,121 @@ pub(super) fn draw(s: &GlassState, options: crate::instruments::DisplayOptions) 
     }
     match s.settings.page {
         GlassPage::Map => map(&mut d, s),
-        GlassPage::Nearest | GlassPage::FlightPlan => {
-            let legs = if s.settings.page == GlassPage::Nearest {
+        GlassPage::Nearest => table(&mut d, s, ListKind::Nearest, 302., 49., 1.),
+        GlassPage::FlightPlan => table(&mut d, s, ListKind::FlightPlan, 302., 49., 1.),
+    }
+    d
+}
+/// The lists the MFD and the touch displays share.
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum ListKind {
+    Nearest,
+    FlightPlan,
+    Traffic,
+}
+/// A titled list centred on `cx`, its title at `top`; `unit` scales type and row spacing.
+pub(super) fn table(d: &mut DrawList, s: &GlassState, kind: ListKind, cx: f32, top: f32, unit: f32) {
+    let (title, heading) = match kind {
+        ListKind::Nearest => ("NEAREST AIRPORTS", "AIRPORT      NM     BRG    ETE"),
+        ListKind::FlightPlan => ("FLIGHT PLAN", "AIRPORT      NM     BRG    ETE"),
+        ListKind::Traffic => ("TRAFFIC", "TARGET      NM     ALT    TRK"),
+    };
+    label(d, [cx, top], title, 14. * unit, Ink::Text);
+    let rows: Vec<(String, Ink)> = match kind {
+        ListKind::Nearest | ListKind::FlightPlan => {
+            let legs = if kind == ListKind::Nearest {
                 &s.nearest
             } else {
                 &s.gps.legs
             };
-            label(
-                &mut d,
-                [302., 49.],
-                if s.settings.page == GlassPage::Nearest {
-                    "NEAREST AIRPORTS"
-                } else {
-                    "FLIGHT PLAN"
-                },
-                14.,
-                Ink::Text,
-            );
-            label(
-                &mut d,
-                [302., 75.],
-                "AIRPORT      NM     BRG    ETE",
-                11.,
-                Ink::Muted,
-            );
-            for (i, leg) in legs.iter().take(8).enumerate() {
-                let y = 103. + i as f32 * 29.;
-                let ete = leg.ete_s.map_or("--:--".into(), |t| {
-                    format!("{:02.0}:{:02.0}", (t / 60.).floor(), t % 60.)
-                });
-                label(
-                    &mut d,
-                    [302., y],
-                    format!(
-                        "{:<6}  {:5.1}  {:03.0}   {}",
-                        leg.airport,
-                        leg.distance_nm,
-                        leg.bearing_rad.to_degrees(),
-                        ete
-                    ),
-                    12.,
-                    if s.settings.page == GlassPage::FlightPlan && i == s.gps.active_leg {
-                        Ink::Gps
-                    } else {
-                        Ink::Text
-                    },
-                );
-            }
+            legs.iter()
+                .take(8)
+                .enumerate()
+                .map(|(i, leg)| {
+                    let ete = leg.ete_s.map_or("--:--".into(), |t| {
+                        format!("{:02.0}:{:02.0}", (t / 60.).floor(), t % 60.)
+                    });
+                    (
+                        format!(
+                            "{:<6}  {:5.1}  {:03.0}   {}",
+                            leg.airport,
+                            leg.distance_nm,
+                            leg.bearing_rad.to_degrees(),
+                            ete
+                        ),
+                        if kind == ListKind::FlightPlan && i == s.gps.active_leg {
+                            Ink::Gps
+                        } else {
+                            Ink::Text
+                        },
+                    )
+                })
+                .collect()
         }
+        ListKind::Traffic => {
+            if !s.traffic_installed {
+                label(
+                    d,
+                    [cx, top + 40. * unit],
+                    "NO TRAFFIC RECEIVER",
+                    12. * unit,
+                    Ink::Muted,
+                );
+                return;
+            }
+            let mut targets: Vec<_> = s.traffic.iter().collect();
+            targets.sort_by(|a, b| a.range_nm.total_cmp(&b.range_nm));
+            targets
+                .into_iter()
+                .take(8)
+                .map(|t| {
+                    let name = if t.registration.is_empty() {
+                        &t.callsign
+                    } else {
+                        &t.registration
+                    };
+                    let trend = match flightcraft_control::trend(t.vertical_rate_fpm) {
+                        1 => "^",
+                        -1 => "v",
+                        _ => " ",
+                    };
+                    (
+                        format!(
+                            "{:<7} {:5.1}  {}{}  {:03.0}",
+                            name.chars().take(7).collect::<String>(),
+                            t.range_nm,
+                            flightcraft_control::altitude_tag(t.relative_altitude_m / 0.3048),
+                            trend,
+                            t.chart_track_rad.to_degrees().rem_euclid(360.)
+                        ),
+                        if t.class == flightcraft_control::TrafficClass::Alert {
+                            Ink::Warning
+                        } else {
+                            Ink::Text
+                        },
+                    )
+                })
+                .collect()
+        }
+    };
+    label(d, [cx, top + 26. * unit], heading, 11. * unit, Ink::Muted);
+    if rows.is_empty() {
+        let empty = if kind == ListKind::Traffic {
+            "NO TRAFFIC"
+        } else {
+            "NO ENTRIES"
+        };
+        label(d, [cx, top + 60. * unit], empty, 12. * unit, Ink::Muted);
     }
-    d
+    for (i, (text, ink)) in rows.into_iter().enumerate() {
+        label(
+            d,
+            [cx, top + (54. + i as f32 * 29.) * unit],
+            text,
+            12. * unit,
+            ink,
+        );
+    }
 }
 fn map(d: &mut DrawList, s: &GlassState) {
     // Equal horizontal and vertical scales preserve range rings; clip to the full content area.

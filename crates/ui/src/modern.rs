@@ -406,15 +406,40 @@ impl PanelUi {
                                                     TouchLayout::FullPfd
                                                 },
                                             },
-                                            d.layout == TouchLayout::FullPfd
-                                                || d.layout == TouchLayout::IntegratedPfd,
+                                            matches!(
+                                                d.layout,
+                                                TouchLayout::FullPfd | TouchLayout::IntegratedPfd
+                                            ),
                                         ),
                                         1 => (
                                             "MAP",
-                                            DisplayAction::Layout {
-                                                layout: TouchLayout::PfdMap,
+                                            // The MFD page; pressed again, it steps the data column.
+                                            if d.layout == TouchLayout::Mfd {
+                                                DisplayAction::DataArea {
+                                                    area: match d.data_area {
+                                                        DataArea::Engine => DataArea::FlightPlan,
+                                                        DataArea::FlightPlan => DataArea::Nearest,
+                                                        DataArea::Nearest => DataArea::Traffic,
+                                                        DataArea::Traffic => DataArea::Engine,
+                                                    },
+                                                }
+                                            } else {
+                                                DisplayAction::Layout {
+                                                    layout: TouchLayout::Mfd,
+                                                }
                                             },
-                                            d.layout == TouchLayout::PfdMap,
+                                            d.layout == TouchLayout::Mfd,
+                                        ),
+                                        2 if !d.layout.is_pfd() && d.layout != TouchLayout::MapEngine => (
+                                            "ENG",
+                                            DisplayAction::Layout {
+                                                layout: if d.layout == TouchLayout::Engine {
+                                                    TouchLayout::Mfd
+                                                } else {
+                                                    TouchLayout::Engine
+                                                },
+                                            },
+                                            d.layout == TouchLayout::Engine,
                                         ),
                                         2 => (
                                             "ENG",
@@ -431,11 +456,20 @@ impl PanelUi {
                                             d.synthetic_vision,
                                         ),
                                         _ => (
-                                            "MFD",
+                                            "LIST",
                                             DisplayAction::Layout {
-                                                layout: TouchLayout::MapEngine,
+                                                layout: match d.layout {
+                                                    TouchLayout::FlightPlan => TouchLayout::Nearest,
+                                                    TouchLayout::Nearest => TouchLayout::Traffic,
+                                                    _ => TouchLayout::FlightPlan,
+                                                },
                                             },
-                                            d.layout == TouchLayout::MapEngine,
+                                            matches!(
+                                                d.layout,
+                                                TouchLayout::FlightPlan
+                                                    | TouchLayout::Nearest
+                                                    | TouchLayout::Traffic
+                                            ),
                                         ),
                                     };
                                     let key = part(

@@ -117,12 +117,57 @@ The navigator map and every display map or inset use the same planning map widge
 map state, overlays, range, and gestures. They send `map.set`, and use the shared `map.state`.
 
 Any number of touch displays, within panel limits, share the suite's sensor and GPS snapshot.
-Each installation independently chooses `full_pfd`, `pfd_map`, or `map_engine`, plus an engine
-strip. Bottom soft keys rearrange the screen; corner knobs adjust heading and map range.
-Mouse clicks and touch taps use egui's same pointer path. Display failure and electrical loss
-trigger full-PFD reversion, with engine indications, on surviving displays. Restoring the
-failed display restores each survivor's selected layout. The independent standby retains its
-own computer and backup power.
+Each installation independently chooses a page, plus an engine strip. Bottom soft keys change the
+page; corner knobs adjust heading and map range. Mouse clicks and touch taps use egui's same
+pointer path. Display failure and electrical loss trigger PFD reversion, with engine
+indications, on surviving displays. Restoring the failed display restores each survivor's
+selected page. The independent standby retains its own computer and backup power.
+
+### Pages, roles, and the pilot's seat
+
+A two-screen installation is flown by one pilot, so the screens do different jobs, as on a
+Garmin G3X Touch or Dynon SkyView HDX install: the left screen is the primary flight display and
+the right is the multi-function display (MFD). The page is the display's `layout` value:
+
+| Page | Shows |
+|---|---|
+| `integrated_pfd`, `full_pfd` | The primary flight display |
+| `svt` | The PFD with synthetic vision always on |
+| `pfd_map` | PFD and map, split |
+| `mfd` | A large moving map with the flight director's active-leg guidance (the active leg in magenta, DTK, XTK, distance), traffic, airspace, and the plan, beside a data column |
+| `map_engine` | Map beside the narrow engine strip |
+| `engine`, `flight_plan`, `nearest`, `traffic` | The full-screen engine page or list |
+
+The `mfd` data column shows the engine page, flight plan, nearest, or traffic list
+(`data_area`: `engine`, `flight_plan`, `nearest`, `traffic`). The MAP soft key selects `mfd`;
+pressed again it steps the data column. ENG toggles the engine strip on a PFD page and the
+full-screen engine page elsewhere. SVT toggles synthetic vision, and a fifth key (LIST) steps the
+list pages. The lists are the MFD's own tables.
+
+A pack declares what a display shows at power-up with the optional `default_page` of its
+`touch_display` element. Omission shows `layout`, as packs always have. `layout` remains the
+installed PFD layout, which the PFD key and menu entry select, so the MFD screen of the Sling
+declares `"layout": "integrated_pfd", "default_page": "mfd"`.
+
+The pilot's choices are saved for the aircraft variant: `avionics.set` glass settings
+`display_page` (`display` is the installation id, `page` one of the values above) and
+`display_data` (`display`, `area`), and the Settings window's Cockpit displays section, which lists
+every display with a page dropdown. Choices are stored in the application's preference store
+beside the callsigns (`flightcraft.displays.v1`), restored at launch, and kept across flight
+resets and aircraft changes. `equipment.set` display `layout` and `data_area` actions change and
+save the same choices.
+
+**Pilot seat.** The glass setting `pilot_seat` (`seat`: `left` or `right`) is also in Settings. A
+right-seat pilot of a two-screen install gets the two screens' defaults exchanged, so the PFD is
+on the right (for right-seat practice and instructors). Changing seat drops the pilot's own page
+choices so that the new defaults show.
+
+**Reversion.** When a display fails or loses power, every surviving display shows the PFD with the
+engine strip, and returns to its chosen page when the failed display returns. The glass setting
+`display_reversion` (`enabled`) is the backup button: the screen that is not showing a PFD reverts
+as if the PFD screen had failed. It clears at flight reset. State reports `pilot_seat`,
+`manual_reversion`, and each display's `layout`, `default_page`, `installed_layout`, `data_area`,
+and `reversion`.
 
 ## Declared panel and command boundary
 
@@ -177,6 +222,7 @@ without changing the shared map settings. Recovery pin and pull labels fit their
 {"setting":{"kind":"systems","setting":{"kind":"key","position":"start"}}}
 {"setting":{"kind":"navigator","action":{"kind":"flip","band":"com"}}}
 {"setting":{"kind":"display","id":"left_display","action":{"kind":"layout","layout":"pfd_map"}}}
+{"setting":{"kind":"display","id":"right_display","action":{"kind":"data_area","area":"flight_plan"}}}
 ```
 
 Systems actions additionally include `pump` (`one` or `two`, `on`), `failure` (`component`:

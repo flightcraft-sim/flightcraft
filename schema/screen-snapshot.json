@@ -2435,6 +2435,16 @@
         "fuel_flow_kg_s"
       ]
     },
+    "DataArea": {
+      "description": "What the MFD page's data column shows beside the map.",
+      "type": "string",
+      "enum": [
+        "engine",
+        "flight_plan",
+        "nearest",
+        "traffic"
+      ]
+    },
     "Derivatives": {
       "type": "object",
       "properties": {
@@ -7773,6 +7783,17 @@
                 "top_data_bar": false
               }
             },
+            "default_page": {
+              "description": "The page shown at power-up. Omission shows `layout`, as packs always have. A two-display\ninstallation declares `mfd` here on the screen that is the multi-function display.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TouchLayout"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "engine_strip": {
               "type": "boolean"
             },
@@ -7781,6 +7802,7 @@
               "const": "touch_display"
             },
             "layout": {
+              "description": "The installed primary-flight-display layout; also what the PFD soft key selects.",
               "$ref": "#/$defs/TouchLayout"
             },
             "load": {
@@ -8673,6 +8695,14 @@
           "type": "string",
           "const": "negative_contact"
         }
+      ]
+    },
+    "PilotSeat": {
+      "description": "Where the pilot sits. A right-seat pilot gets the primary flight display on the right screen.",
+      "type": "string",
+      "enum": [
+        "left",
+        "right"
       ]
     },
     "Pin": {
@@ -10937,6 +10967,16 @@
     "TouchDisplayState": {
       "type": "object",
       "properties": {
+        "data_area": {
+          "description": "What the MFD page's data column shows.",
+          "$ref": "#/$defs/DataArea",
+          "default": "engine"
+        },
+        "default_page": {
+          "description": "The page this display shows at power-up for the pilot's seat, before any choice of the pilot's own.",
+          "$ref": "#/$defs/TouchLayout",
+          "default": "pfd_map"
+        },
         "engine_strip": {
           "type": "boolean"
         },
@@ -10946,7 +10986,13 @@
         "id": {
           "type": "string"
         },
+        "installed_layout": {
+          "description": "The pack's installed layout: what the PFD key and menu entry select.",
+          "$ref": "#/$defs/TouchLayout",
+          "default": "pfd_map"
+        },
         "layout": {
+          "description": "The page the display shows (or would show, were it not reverted).",
           "$ref": "#/$defs/TouchLayout"
         },
         "powered": {
@@ -10970,12 +11016,46 @@
       ]
     },
     "TouchLayout": {
-      "type": "string",
-      "enum": [
-        "integrated_pfd",
-        "full_pfd",
-        "pfd_map",
-        "map_engine"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "integrated_pfd",
+            "full_pfd",
+            "pfd_map",
+            "map_engine"
+          ]
+        },
+        {
+          "description": "Primary flight display with synthetic vision always on.",
+          "type": "string",
+          "const": "svt"
+        },
+        {
+          "description": "Large moving map with a configurable data area ([`DataArea`]) beside it.",
+          "type": "string",
+          "const": "mfd"
+        },
+        {
+          "description": "Full-screen engine page.",
+          "type": "string",
+          "const": "engine"
+        },
+        {
+          "description": "Full-screen flight-plan list.",
+          "type": "string",
+          "const": "flight_plan"
+        },
+        {
+          "description": "Full-screen nearest-airports list.",
+          "type": "string",
+          "const": "nearest"
+        },
+        {
+          "description": "Full-screen traffic list.",
+          "type": "string",
+          "const": "traffic"
+        }
       ]
     },
     "TouchState": {
@@ -10987,6 +11067,11 @@
             "$ref": "#/$defs/TouchDisplayState"
           }
         },
+        "manual_reversion": {
+          "description": "The pilot pressed display backup: the multi-function display shows the primary flight display.",
+          "type": "boolean",
+          "default": false
+        },
         "navigator": {
           "anyOf": [
             {
@@ -10996,6 +11081,10 @@
               "type": "null"
             }
           ]
+        },
+        "pilot_seat": {
+          "$ref": "#/$defs/PilotSeat",
+          "default": "left"
         }
       },
       "required": [
