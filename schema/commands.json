@@ -79087,6 +79087,35 @@
             },
             {
               "additionalProperties": false,
+              "description": "Explicit parked ground position in local north/east metres; height follows terrain.",
+              "properties": {
+                "east_m": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "heading_rad": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "parked",
+                  "type": "string"
+                },
+                "north_m": {
+                  "format": "double",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "kind",
+                "north_m",
+                "east_m",
+                "heading_rad"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "airport": {
                   "type": "string"
@@ -79448,6 +79477,29 @@
             "efis"
           ],
           "type": "string"
+        },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
         },
         "CloudLayer": {
           "additionalProperties": false,
@@ -80737,6 +80789,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -83501,6 +83561,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -84789,6 +84872,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -91719,6 +91810,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -92680,6 +92794,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -93084,6 +93206,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -94045,6 +94190,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -94457,6 +94610,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -95418,6 +95594,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -96468,6 +96652,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -97429,6 +97636,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -104783,6 +104998,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -105744,6 +105982,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -106181,6 +106427,29 @@
           ],
           "type": "string"
         },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        },
         "CloudLayer": {
           "additionalProperties": false,
           "properties": {
@@ -107142,6 +107411,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"
@@ -107983,6 +108260,181 @@
     }
   },
   {
+    "name": "aircraft.canopy",
+    "description": "Open, close, latch, or unlatch the sliding canopy. Opening requires unlatched, on ground, ground speed <=2 m/s and airspeed <=5 m/s. Optional fraction supports dragging.",
+    "input_schema": {
+      "$defs": {
+        "CanopyAction": {
+          "enum": [
+            "open",
+            "close",
+            "latch",
+            "unlatch"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Cabin actions are explicit; an open command never silently releases the latch.",
+      "oneOf": [
+        {
+          "properties": {
+            "action": {
+              "const": "open"
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [
+              "fraction"
+            ]
+          },
+          "properties": {
+            "action": {
+              "enum": [
+                "close",
+                "latch",
+                "unlatch"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/CanopyAction"
+        },
+        "fraction": {
+          "description": "Optional open fraction for dragging. Omit for fully open. Open action only.",
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "SetCanopy",
+      "type": "object"
+    },
+    "output_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "latched": {
+          "type": "boolean"
+        },
+        "open_fraction": {
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "sliding": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sliding",
+        "open_fraction",
+        "latched"
+      ],
+      "title": "CanopyState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "aircraft.checklist",
+    "description": "Check the live canopy state for before_takeoff or securing; does not mark an unchecked item complete.",
+    "input_schema": {
+      "$defs": {
+        "CabinChecklistPhase": {
+          "enum": [
+            "before_takeoff",
+            "securing"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/CabinChecklistPhase"
+        }
+      },
+      "required": [
+        "phase"
+      ],
+      "title": "CheckCanopy",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "CabinChecklistPhase": {
+          "enum": [
+            "before_takeoff",
+            "securing"
+          ],
+          "type": "string"
+        },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "applicable": {
+          "type": "boolean"
+        },
+        "canopy": {
+          "$ref": "#/$defs/CanopyState"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "phase": {
+          "$ref": "#/$defs/CabinChecklistPhase"
+        }
+      },
+      "required": [
+        "phase",
+        "applicable",
+        "passed",
+        "instruction",
+        "canopy"
+      ],
+      "title": "CanopyCheck",
+      "type": "object"
+    }
+  },
+  {
     "name": "weight_balance.compute",
     "description": "Compute total mass, weight, CG, and limit violations for a variant and station load.",
     "input_schema": {
@@ -108382,6 +108834,29 @@
             "efis"
           ],
           "type": "string"
+        },
+        "CanopyState": {
+          "additionalProperties": false,
+          "properties": {
+            "latched": {
+              "type": "boolean"
+            },
+            "open_fraction": {
+              "format": "double",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "sliding": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sliding",
+            "open_fraction",
+            "latched"
+          ],
+          "type": "object"
         },
         "CloudLayer": {
           "additionalProperties": false,
@@ -109671,6 +110146,14 @@
           "properties": {
             "avionics": {
               "$ref": "#/$defs/AvionicsState"
+            },
+            "canopy": {
+              "$ref": "#/$defs/CanopyState",
+              "default": {
+                "latched": true,
+                "open_fraction": 0.0,
+                "sliding": false
+              }
             },
             "carb_heat_installed": {
               "type": "boolean"

@@ -201,6 +201,7 @@ pub fn command_allowed(permission: Permission, name: &str) -> bool {
             | "sim.set_rate"
             | "systems.set"
             | "equipment.set"
+            | "aircraft.canopy"
             | "avionics.set"
             | "weather.set"
             | "failure.set"
@@ -477,6 +478,8 @@ mod tests {
             assert!(!command_allowed(Permission::ReadOnly, c));
         }
         assert!(command_allowed(Permission::Control, "systems.set"));
+        assert!(command_allowed(Permission::Control, "aircraft.canopy"));
+        assert!(!command_allowed(Permission::ReadOnly, "aircraft.canopy"));
         assert!(!command_allowed(Permission::Control, "layout.save"));
         assert!(!lan("0.0.0.0".parse().unwrap()));
         assert!(!lan("8.8.8.8".parse().unwrap()));

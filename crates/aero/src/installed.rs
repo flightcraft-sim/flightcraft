@@ -37,6 +37,9 @@ pub enum Wing {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SystemsDefinition {
+    /// POH-declared cabin mechanism, independent of aircraft identity or artwork.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sliding_canopy: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modern: Option<crate::modern::ModernSystems>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

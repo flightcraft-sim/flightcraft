@@ -115,17 +115,26 @@
       ]
     },
     "Motion": {
-      "type": "string",
-      "enum": [
-        "aileron",
-        "elevator",
-        "rudder",
-        "flaps",
-        "propeller",
-        "prop_blur",
-        "steering",
-        "wheel",
-        "oleo"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "aileron",
+            "elevator",
+            "rudder",
+            "flaps",
+            "propeller",
+            "prop_blur",
+            "steering",
+            "wheel",
+            "oleo"
+          ]
+        },
+        {
+          "description": "Linear translation driven by canopy open fraction (pack format 3).",
+          "type": "string",
+          "const": "slide"
+        }
       ]
     },
     "MovingPart": {
@@ -153,9 +162,23 @@
         "node": {
           "type": "string"
         },
+        "travel_m": {
+          "description": "Closed-to-open translation along the unit local axis; slide only.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "maximum": 3,
+          "minimum": 0.01
+        },
         "travel_rad": {
           "description": "Angles at normalized -1 and +1 (flaps use 0 and 1).",
           "type": "array",
+          "default": [
+            0.0,
+            0.0
+          ],
           "items": {
             "type": "number",
             "format": "float"
@@ -172,11 +195,50 @@
         }
       },
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "motion": {
+              "const": "slide"
+            },
+            "travel_m": {
+              "type": "number",
+              "maximum": 3,
+              "minimum": 0.01
+            },
+            "travel_rad": {
+              "const": [
+                0,
+                0
+              ]
+            }
+          },
+          "required": [
+            "travel_m"
+          ]
+        },
+        {
+          "properties": {
+            "motion": {
+              "not": {
+                "const": "slide"
+              }
+            }
+          },
+          "not": {
+            "required": [
+              "travel_m"
+            ]
+          },
+          "required": [
+            "travel_rad"
+          ]
+        }
+      ],
       "required": [
         "node",
         "motion",
-        "axis",
-        "travel_rad"
+        "axis"
       ]
     },
     "Registration": {

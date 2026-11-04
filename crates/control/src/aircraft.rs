@@ -283,3 +283,78 @@ impl Session {
         Ok(())
     }
 }
+
+/// Cabin actions are explicit; an open command never silently releases the latch.
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[schemars(transform = canopy_command_schema)]
+pub struct SetCanopy {
+    pub action: flightcraft_sim::canopy::CanopyAction,
+    /// Optional open fraction for dragging. Omit for fully open. Open action only.
+    #[serde(
+        default,
+        deserialize_with = "crate::provided",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[schemars(with = "f64", transform = crate::without_default, range(min = 0, max = 1))]
+    pub fraction: Option<f64>,
+}
+fn canopy_command_schema(schema: &mut schemars::Schema) {
+    schema.insert(
+        "oneOf".into(),
+        serde_json::json!([
+            {"properties":{"action":{"const":"open"}}},
+            {"properties":{"action":{"enum":["close","latch","unlatch"]}},"not":{"required":["fraction"]}}
+        ]),
+    );
+}
+impl Command for SetCanopy {
+    const NAME: &'static str = "aircraft.canopy";
+    const DESCRIPTION: &'static str = "Open, close, latch, or unlatch the sliding canopy. Opening requires unlatched, on ground, ground speed <=2 m/s and airspeed <=5 m/s. Optional fraction supports dragging.";
+    type Output = flightcraft_sim::canopy::CanopyState;
+    fn run(self, s: &mut Session) -> Result<Self::Output, CommandError> {
+        let state = s.sim.set_canopy(self.action, self.fraction)?;
+        if s.sim.failures().door_open {
+            s.begin_emergency(crate::EventSource::Rules);
+        }
+        Ok(state)
+    }
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CabinChecklistPhase {
+    BeforeTakeoff,
+    Securing,
+}
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CheckCanopy {
+    pub phase: CabinChecklistPhase,
+}
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct CanopyCheck {
+    pub phase: CabinChecklistPhase,
+    pub applicable: bool,
+    pub passed: bool,
+    pub instruction: String,
+    pub canopy: flightcraft_sim::canopy::CanopyState,
+}
+impl Command for CheckCanopy {
+    const NAME: &'static str = "aircraft.checklist";
+    const DESCRIPTION: &'static str = "Check the live canopy state for before_takeoff or securing; does not mark an unchecked item complete.";
+    type Output = CanopyCheck;
+    fn run(self, s: &mut Session) -> Result<Self::Output, CommandError> {
+        let canopy = s.sim.canopy();
+        Ok(CanopyCheck {
+            phase: self.phase,
+            applicable: canopy.sliding,
+            passed: canopy.secure(),
+            instruction: match self.phase {
+                CabinChecklistPhase::BeforeTakeoff => "Canopy — closed and latched",
+                CabinChecklistPhase::Securing => "Canopy — close, lock as necessary",
+            }
+            .into(),
+            canopy,
+        })
+    }
+}

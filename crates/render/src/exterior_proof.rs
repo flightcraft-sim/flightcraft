@@ -363,8 +363,18 @@ fn matched_sling_exterior_cameras() {
             "beauty",
             "elevation-side",
             "plan-top",
-        ] {
+        ]
+        .into_iter()
+        .chain(
+            ["beauty-open", "elevation-side-open"]
+                .into_iter()
+                .filter(|label| cameras.get(*label).is_some()),
+        ) {
             let camera = &cameras[label];
+            let mut current_pose = pose.clone();
+            current_pose.canopy_open_fraction = camera["canopy_open_fraction"].as_f64().unwrap_or(0.) as f32;
+            let mut current_primitives = pbr_primitives(asset, &asset.lod0, &current_pose);
+            current_primitives.push(primitives.last().unwrap().clone());
             let w = camera["size"][0].as_u64().unwrap() as u32;
             let h = camera["size"][1].as_u64().unwrap() as u32;
             let eye = world.transform_point3(vector(&camera["eye_body_m"]));
@@ -391,7 +401,8 @@ fn matched_sling_exterior_cameras() {
                 environment: [0., 0., exposure, 0.6],
                 ..Default::default()
             };
-            let pixels = capture_frame(&device, &queue, &mut renderer, frame, &primitives, [w, h]).into_raw();
+            let pixels =
+                capture_frame(&device, &queue, &mut renderer, frame, &current_primitives, [w, h]).into_raw();
             image::save_buffer(
                 out.join(format!("engine-{label}.png")),
                 &pixels,
@@ -415,7 +426,7 @@ fn matched_sling_exterior_cameras() {
         std::fs::write(out.join("cameras.json"), manifest).unwrap();
         device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
         assert!(device.pop_error_scope().await.is_none());
-        assert_eq!(images.len(), 7);
+        assert_eq!(images.len(), cameras.as_object().unwrap().len());
     });
 }
 
@@ -445,7 +456,7 @@ fn caption(image: &mut image::RgbaImage, text: &str, origin: [u32; 2], height: f
 }
 
 #[test]
-#[ignore = "requires an offscreen GPU and FLIGHTCRAFT_SLING_PACK with accepted v8 GLBs"]
+#[ignore = "requires an offscreen GPU and FLIGHTCRAFT_SLING_PACK with installed Blender GLBs"]
 fn sling_exterior_motion_proof() {
     block_on(async {
         let asset = load_pack();
@@ -539,13 +550,35 @@ fn sling_exterior_motion_proof() {
                 ));
             }
         }
-        assert_eq!(poses.len(), 60);
+        let has_canopy = asset
+            .definition
+            .moving_parts
+            .iter()
+            .any(|p| p.node == "canopy_slide");
+        if has_canopy {
+            for index in 0..8 {
+                let mut pose = Pose::default();
+                pose.canopy_open_fraction = index as f32 / 7.;
+                poses.push((
+                    format!("canopy-{index:02}"),
+                    format!(
+                        "CANOPY {:03} OPEN",
+                        (pose.canopy_open_fraction * 100.).round() as u32
+                    ),
+                    pose,
+                ));
+            }
+        }
+        assert_eq!(poses.len(), if has_canopy { 68 } else { 60 });
         let cell = [400_u32, 286_u32];
-        let mut sheet =
-            image::RgbaImage::from_pixel(cell[0] * 12, cell[1] * 5 + 48, image::Rgba([242, 245, 248, 255]));
+        let mut sheet = image::RgbaImage::from_pixel(
+            cell[0] * 12,
+            cell[1] * if has_canopy { 6 } else { 5 } + 48,
+            image::Rgba([242, 245, 248, 255]),
+        );
         caption(
             &mut sheet,
-            "SLING V8 - ENGINE DIRECTOR WING - CONTROLS THEN PROP - LEFT TO RIGHT",
+            "SLING - ENGINE DIRECTOR WING - CONTROLS, PROP, CANOPY - LEFT TO RIGHT",
             [12, 10],
             24.,
         );
@@ -577,6 +610,9 @@ fn sling_exterior_motion_proof() {
                 assert_eq!(still.as_ref().unwrap(), &image, "zero RPM must remain still");
             } else if name.starts_with("prop-0300-") && !name.ends_with("-00") {
                 assert!(changed_pixels > 20, "300 RPM blades must visibly rotate");
+            }
+            if name.starts_with("canopy-") && name != "canopy-00" {
+                assert!(changed_pixels > 20, "canopy must visibly slide at {name}");
             }
             image.save(out.join(format!("{name}.png"))).unwrap();
             let column = index as u32 % 12;
@@ -626,20 +662,72 @@ fn sling_exterior_motion_proof() {
                     serde_json::json!(matrices[node].transform_point3(vertex).to_array()),
                 );
             }
-            receipt.push(serde_json::json!({"file": format!("{name}.png"), "controls": pose.controls, "propeller_rpm": pose.propeller_rpm, "time_s": pose.time_s, "phase_rad": pose.propeller_phase, "visible_vertices": vertices, "pixels_changed_from_previous": changed_pixels, "trailing_edges_body_m": trailing_edges}));
+            receipt.push(serde_json::json!({"file": format!("{name}.png"), "controls": pose.controls, "canopy_slide_body_m": asset.lod0.nodes.iter().position(|n| n.name == "canopy_slide").map(|i| matrices[i].w_axis.truncate().to_array()), "canopy_open_fraction": pose.canopy_open_fraction, "propeller_rpm": pose.propeller_rpm, "time_s": pose.time_s, "phase_rad": pose.propeller_phase, "visible_vertices": vertices, "pixels_changed_from_previous": changed_pixels, "trailing_edges_body_m": trailing_edges}));
             eprintln!(
-                "motion proof {}/60: {name} ({changed_pixels} changed pixels)",
+                "motion proof {}: {name} ({changed_pixels} changed pixels)",
                 index + 1
             );
             previous = Some(image);
         }
         sheet.save(out.join("contact-sheet.png")).unwrap();
         std::fs::write(out.join("manifest.json"), serde_json::to_vec_pretty(&serde_json::json!({
-            "aircraft": asset.definition.aircraft, "model": "accepted Sling v8 LOD0", "adapter": format!("{:?}", adapter.get_info()),
+            "aircraft": asset.definition.aircraft, "model": "installed Sling LOD0", "adapter": format!("{:?}", adapter.get_info()),
             "camera": {"name": "director-wing", "eye_body_m": eye_body.to_array(), "target_body_m": target_body.to_array(), "up_body": [0,0,-1], "vertical_fov_rad": fov, "size": size, "note": "Director Wing eye; aim centred to include the full tail. Fixed camera, lighting and all other controls."},
             "contact_sheet": "contact-sheet.png", "frames": receipt
         })).unwrap()).unwrap();
         device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
         assert!(device.pop_error_scope().await.is_none());
     });
+}
+
+#[test]
+#[ignore = "requires FLIGHTCRAFT_SLING_PACK with installed V9 GLBs"]
+fn sling_canopy_moves_only_its_descendants_at_every_lod() {
+    let asset = load_pack();
+    let part = asset
+        .definition
+        .moving_parts
+        .iter()
+        .find(|p| p.node == "canopy_slide")
+        .expect("install V9 before running canopy proof");
+    assert_eq!(part.motion, flightcraft_aero::exterior::Motion::Slide);
+    assert_eq!(part.axis, [-1., 0., 0.]);
+    let travel = part.travel_m.unwrap();
+    for model in std::iter::once(&asset.lod0)
+        .chain(std::iter::once(&asset.lod1))
+        .chain(asset.lod2.as_ref())
+    {
+        let canopy = model.nodes.iter().position(|n| n.name == "canopy_slide").unwrap();
+        let neutral = transforms(&asset, model, &Pose::default());
+        for index in 0..8 {
+            let mut pose = Pose::default();
+            pose.canopy_open_fraction = index as f32 / 7.;
+            let actual = transforms(&asset, model, &pose);
+            for (i, node) in model.nodes.iter().enumerate() {
+                let mut parent = Some(i);
+                let mut moving = false;
+                while let Some(p) = parent {
+                    if p == canopy {
+                        moving = true;
+                        break;
+                    }
+                    parent = model.nodes[p].parent;
+                }
+                if moving {
+                    let delta = actual[i].w_axis.truncate() - neutral[i].w_axis.truncate();
+                    assert!(
+                        (delta - Vec3::new(-travel * pose.canopy_open_fraction, 0., 0.)).length() < 1e-5,
+                        "{}",
+                        node.name
+                    );
+                    assert_eq!(
+                        glam::Mat3::from_mat4(actual[i]),
+                        glam::Mat3::from_mat4(neutral[i])
+                    );
+                } else {
+                    assert_eq!(actual[i], neutral[i], "{} moved with canopy", node.name);
+                }
+            }
+        }
+    }
 }

@@ -255,12 +255,20 @@ impl Command for SetFailure {
     const DESCRIPTION: &'static str = "Inject an aircraft failure, including fires, icing, trim, COM radios, power loss, or a jammed surface.";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
-        let mut failures = session.sim().failures();
+        let mut failures = session.sim().injected_failures();
         match self.failure {
             Failure::EngineFire {} => failures.engine_fire = true,
             Failure::ElectricalFire {} => failures.electrical_fire = true,
             Failure::CabinSmoke {} => failures.cabin_smoke = true,
-            Failure::DoorOpen {} => failures.door_open = true,
+            Failure::DoorOpen {} => {
+                if session.sim().canopy().sliding {
+                    session
+                        .sim_mut()
+                        .set_canopy(flightcraft_sim::canopy::CanopyAction::Unlatch, None)?;
+                } else {
+                    failures.door_open = true;
+                }
+            }
             Failure::CarbIcing {} => failures.carb_icing = true,
             Failure::AirframeIcing {} => failures.airframe_icing = true,
             Failure::FlapAsymmetry {} => failures.flap_asymmetry = true,
@@ -325,7 +333,7 @@ impl Command for ClearFailure {
         "Restore a system or engine, release a surface jam, or clear all failures (the default).";
     type Output = Systems;
     fn run(self, session: &mut Session) -> Result<Systems, CommandError> {
-        let mut f = session.sim().failures();
+        let mut f = session.sim().injected_failures();
         match self.target {
             FailureTarget::EngineFire => f.engine_fire = false,
             FailureTarget::ElectricalFire => f.electrical_fire = false,

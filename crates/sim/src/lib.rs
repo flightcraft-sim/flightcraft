@@ -15,6 +15,7 @@
 
 pub mod autopilot;
 pub mod avionics;
+pub mod canopy;
 mod dynamics;
 pub mod equipment;
 pub use avionics::navigation as glass_navigation;
@@ -165,6 +166,8 @@ pub struct Readout {
 pub enum Start {
     /// Parked on the runway threshold, engine idling, pointing down the runway.
     Runway,
+    /// Ground position off the runway, engine at idle and brakes held.
+    ParkedAt { position_m: [f64; 3], heading_rad: f64 },
     /// Explicit threshold and local grid heading, used for region airport starts.
     RunwayAt {
         threshold_ned_m: [f64; 3],
@@ -238,6 +241,7 @@ pub struct Sim {
     systems: systems::SystemsState,
     systems_model: Option<systems::SystemsModel>,
     systems_changed: bool,
+    parked_start: bool,
     glass: avionics::glass::GlassComputers,
 }
 
@@ -300,7 +304,7 @@ impl Sim {
         let wind = world::Wind::new(weather)?;
         let mut state = State::default();
         let controls = match *start {
-            Start::Runway | Start::RunwayAt { .. } => {
+            Start::Runway | Start::RunwayAt { .. } | Start::ParkedAt { .. } => {
                 // Unequal wheel heights encode a tail-down (or nose-down) parked attitude.
                 // Equal-height gear retains the original level initialization exactly.
                 let pitch = dynamics::runway_pitch(&aircraft);
@@ -314,6 +318,20 @@ impl Sim {
                         return Err(SimError::InvalidStart("non-finite runway start".into()));
                     }
                     runway.threshold_ned_m = threshold_ned_m;
+                    runway.heading_deg = heading_rad.to_degrees();
+                }
+                if let Start::ParkedAt {
+                    position_m,
+                    heading_rad,
+                } = *start
+                {
+                    if position_m.iter().any(|v| !v.is_finite() || v.abs() > 1e8) || !heading_rad.is_finite()
+                    {
+                        return Err(SimError::InvalidStart(
+                            "invalid parked position or heading".into(),
+                        ));
+                    }
+                    runway.threshold_ned_m = position_m;
                     runway.heading_deg = heading_rad.to_degrees();
                 }
                 let heading = runway.heading_deg.to_radians().rem_euclid(core::f64::consts::TAU);
@@ -348,7 +366,15 @@ impl Sim {
                 state.position_m[0] = runway.threshold_ned_m[0];
                 state.position_m[1] = runway.threshold_ned_m[1];
                 state.position_m[2] += runway.threshold_ned_m[2];
-                Controls::default()
+                if matches!(start, Start::ParkedAt { .. }) {
+                    Controls {
+                        throttle: 0.,
+                        brake: 1.,
+                        ..Controls::default()
+                    }
+                } else {
+                    Controls::default()
+                }
             }
             Start::Air {
                 height_m,
@@ -405,6 +431,7 @@ impl Sim {
             systems_model: None,
             glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
+            parked_start: matches!(start, Start::ParkedAt { .. }),
             state,
             controls,
             steps: 0,
@@ -461,6 +488,7 @@ impl Sim {
             systems_model: None,
             glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
+            parked_start: false,
             state,
             controls: controls.clamped(),
             steps,
@@ -515,6 +543,14 @@ impl Sim {
         self.procedures = Default::default();
         self.radios = Default::default();
         self.systems = state;
+        self.systems.canopy = canopy::CanopyState::new(
+            configuration
+                .installed_systems
+                .definition
+                .as_ref()
+                .is_some_and(|d| d.sliding_canopy),
+            self.parked_start,
+        );
         self.systems.avionics = avionics::AvionicsState::configure(configuration);
         self.systems_model = model;
         self.systems_changed = false;
@@ -595,6 +631,18 @@ impl Sim {
     }
 
     pub fn set_systems(&mut self, setting: systems::SystemSetting) -> Result<(), SimError> {
+        if self.canopy().sliding
+            && matches!(
+                setting,
+                systems::SystemSetting::Equipment {
+                    setting: modern::ModernSetting::Door { .. }
+                }
+            )
+        {
+            return Err(SimError::InvalidSystems(
+                "sliding canopy uses aircraft.canopy actions".into(),
+            ));
+        }
         if let systems::SystemSetting::HeadingBug { heading_rad } = &setting {
             if !heading_rad.is_finite() || !(0. ..=core::f64::consts::TAU).contains(heading_rad) {
                 return Err(SimError::InvalidSystems("heading bug outside range".into()));
@@ -758,7 +806,7 @@ impl Sim {
     }
 
     fn propulsion_failures(&self) -> Failures {
-        let mut failures = self.failures;
+        let mut failures = self.failures();
         if failures.airframe_icing {
             let [_, _, down] = self.state.position_m;
             let altitude_ft = -down / 0.3048;
@@ -881,16 +929,24 @@ impl Sim {
     pub fn set_failures(&mut self, failures: Failures) -> Result<(), SimError> {
         failures.validate()?;
         self.failures = failures;
-        self.systems.failures = failures;
+        self.systems.failures = self.failures();
         if failures != Failures::default() {
             self.systems_changed = true;
         }
         Ok(())
     }
 
+    pub fn injected_failures(&self) -> Failures {
+        self.failures
+    }
+
     #[must_use]
     pub fn failures(&self) -> Failures {
-        self.failures
+        let mut failures = self.failures;
+        failures.door_open |= self.systems.canopy.sliding
+            && !self.systems.canopy.latched
+            && dynamics::height(&self.aircraft, &self.state, &self.world) > 0.;
+        failures
     }
 
     #[must_use]
@@ -1280,7 +1336,7 @@ impl Sim {
             self.magnetism.refresh(&self.world, self.state);
             if let Some(model) = &self.systems_model {
                 let readout = self.readout();
-                self.systems.step(model, readout, self.failures);
+                self.systems.step(model, readout, self.failures());
                 self.glass.step(&self.systems, self.state, readout, true);
                 let mut load = model.load.clone();
                 // Tanks can share a station. Sum them in declaration order, once per step.
@@ -1426,7 +1482,7 @@ impl Sim {
             weather,
             wind_ned_mps: self.wind.velocity_mps(s.position_m),
             gust_ned_mps: self.wind.gust_mps(),
-            failures: self.failures,
+            failures: self.failures(),
             effective_controls: self.effective_controls(),
         }
     }
@@ -1500,7 +1556,11 @@ impl Sim {
                 }
             }
         }
-        if self.systems_changed || self.systems.avionics.installed || self.systems.modern.is_some() {
+        if self.systems_changed
+            || self.systems.avionics.installed
+            || self.systems.modern.is_some()
+            || self.systems.canopy.sliding
+        {
             eat(0x7379_7374_656d_7301);
             for word in self
                 .systems

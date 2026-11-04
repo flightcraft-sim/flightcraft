@@ -30,11 +30,11 @@
       "minItems": 1
     },
     "format_version": {
-      "description": "Version 1 manifests remain readable; exterior assets require version 2.",
+      "description": "Legacy manifests remain readable; exteriors require >=2 and slide motion >=3.",
       "type": "integer",
       "format": "uint32",
       "default": 1,
-      "maximum": 2,
+      "maximum": 3,
       "minimum": 1
     },
     "id": {
@@ -51,6 +51,67 @@
     }
   },
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "format_version": {
+              "enum": [
+                2,
+                3
+              ]
+            }
+          },
+          "required": [
+            "format_version"
+          ]
+        }
+      },
+      "then": {
+        "properties": {
+          "exterior": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "format_version": {
+              "const": 3
+            }
+          },
+          "required": [
+            "format_version"
+          ]
+        }
+      },
+      "then": {
+        "properties": {
+          "exterior": {
+            "items": {
+              "properties": {
+                "moving_parts": {
+                  "items": {
+                    "properties": {
+                      "motion": {
+                        "not": {
+                          "const": "slide"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "required": [
     "id",
     "name",
@@ -187,17 +248,26 @@
       ]
     },
     "Motion": {
-      "type": "string",
-      "enum": [
-        "aileron",
-        "elevator",
-        "rudder",
-        "flaps",
-        "propeller",
-        "prop_blur",
-        "steering",
-        "wheel",
-        "oleo"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "aileron",
+            "elevator",
+            "rudder",
+            "flaps",
+            "propeller",
+            "prop_blur",
+            "steering",
+            "wheel",
+            "oleo"
+          ]
+        },
+        {
+          "description": "Linear translation driven by canopy open fraction (pack format 3).",
+          "type": "string",
+          "const": "slide"
+        }
       ]
     },
     "MovingPart": {
@@ -225,9 +295,23 @@
         "node": {
           "type": "string"
         },
+        "travel_m": {
+          "description": "Closed-to-open translation along the unit local axis; slide only.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float",
+          "maximum": 3,
+          "minimum": 0.01
+        },
         "travel_rad": {
           "description": "Angles at normalized -1 and +1 (flaps use 0 and 1).",
           "type": "array",
+          "default": [
+            0.0,
+            0.0
+          ],
           "items": {
             "type": "number",
             "format": "float"
@@ -244,11 +328,50 @@
         }
       },
       "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "motion": {
+              "const": "slide"
+            },
+            "travel_m": {
+              "type": "number",
+              "maximum": 3,
+              "minimum": 0.01
+            },
+            "travel_rad": {
+              "const": [
+                0,
+                0
+              ]
+            }
+          },
+          "required": [
+            "travel_m"
+          ]
+        },
+        {
+          "properties": {
+            "motion": {
+              "not": {
+                "const": "slide"
+              }
+            }
+          },
+          "not": {
+            "required": [
+              "travel_m"
+            ]
+          },
+          "required": [
+            "travel_rad"
+          ]
+        }
+      ],
       "required": [
         "node",
         "motion",
-        "axis",
-        "travel_rad"
+        "axis"
       ]
     },
     "PackFile": {

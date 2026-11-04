@@ -287,13 +287,16 @@ impl Session {
         } else {
             return;
         };
-        let Some(procedure) = self
+        let Some(mut procedure) = self
             .aircraft_configuration()
             .and_then(|c| c.installed_systems.emergencies.iter().find(|p| p.id == id))
             .cloned()
         else {
             return;
         };
+        if id == "door_open" && self.sim.canopy().sliding {
+            procedure.title = "Canopy unlatched".into();
+        }
         let r = self.sim.readout();
         let Ok(glide) = glide_footprint(
             self.sim.world(),

@@ -184,6 +184,9 @@ impl Session {
                 ..Default::default()
             };
         }
+        if self.sim.canopy().sliding && self.sim.failures().door_open {
+            self.begin_emergency(EventSource::Rules);
+        }
         if self.scenario.document.is_none()
             && self.scenario.scheduled.is_empty()
             && self.scenario.state.emergency.is_none()

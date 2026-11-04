@@ -2625,6 +2625,10 @@
         "pitot_static": {
           "$ref": "#/$defs/PitotStaticDefinition"
         },
+        "sliding_canopy": {
+          "description": "POH-declared cabin mechanism, independent of aircraft identity or artwork.",
+          "type": "boolean"
+        },
         "tanks": {
           "type": "array",
           "items": {

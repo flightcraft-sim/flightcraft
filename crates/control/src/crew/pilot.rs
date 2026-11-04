@@ -119,6 +119,24 @@ impl Crew {
             return;
         }
         let r = s.sim.readout();
+        if r.on_ground && !s.sim.canopy().secure() {
+            use flightcraft_sim::canopy::CanopyAction;
+            let result = s
+                .sim
+                .set_canopy(CanopyAction::Close, None)
+                .and_then(|_| s.sim.set_canopy(CanopyAction::Latch, None));
+            if result.is_err() {
+                self.state.reason = "Holding brakes: canopy could not be closed and latched.".into();
+                let _ = SetControls {
+                    throttle: Some(0.),
+                    brake: Some(1.),
+                    ..Default::default()
+                }
+                .run(s);
+                return;
+            }
+            s.crew_say("Before taxi: canopy closed and latched.".into());
+        }
         if r.crashed {
             self.state.reason = "Flight stopped: aircraft crashed; reset before continuing".into();
             self.state.phase = PilotPhase::Refused;
@@ -221,12 +239,14 @@ impl Crew {
             && self.departure_authorized(s)
         {
             let systems = s.sim.systems();
-            if !systems.engine_running
+            if !s.sim.canopy().secure()
+                || !systems.engine_running
                 || r.failures.engine_power_fraction < 0.95
                 || !systems.controls.master
                 || !systems.controls.avionics
             {
-                self.state.reason = "Before-takeoff checks failed: engine, power, master, or avionics".into();
+                self.state.reason =
+                    "Before-takeoff checks failed: canopy, engine, power, master, or avionics".into();
                 self.state.phase = PilotPhase::Refused;
                 return;
             }

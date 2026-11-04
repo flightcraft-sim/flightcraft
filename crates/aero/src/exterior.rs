@@ -73,21 +73,35 @@ pub enum Motion {
     Steering,
     Wheel,
     Oleo,
+    /// Linear translation driven by canopy open fraction (pack format 3).
+    Slide,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(transform = moving_part_schema)]
 pub struct MovingPart {
     pub node: String,
     pub motion: Motion,
     pub axis: [f32; 3],
     /// Angles at normalized -1 and +1 (flaps use 0 and 1).
+    #[serde(default)]
     pub travel_rad: [f32; 2],
+    /// Closed-to-open translation along the unit local axis; slide only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(range(min = 0.01, max = 3))]
+    pub travel_m: Option<f32>,
     #[serde(default)]
     #[schemars(range(max = 15))]
     pub gear_index: usize,
     #[serde(default = "wheel_radius")]
     #[schemars(range(min = 0.01, max = 2))]
     pub wheel_radius_m: f32,
+}
+fn moving_part_schema(schema: &mut schemars::Schema) {
+    schema.insert("oneOf".into(), serde_json::json!([
+        {"properties":{"motion":{"const":"slide"},"travel_m":{"type":"number","minimum":0.01,"maximum":3},"travel_rad":{"const":[0,0]}},"required":["travel_m"]},
+        {"properties":{"motion":{"not":{"const":"slide"}}},"required":["travel_rad"],"not":{"required":["travel_m"]}}
+    ]));
 }
 fn wheel_radius() -> f32 {
     0.19
@@ -145,6 +159,18 @@ impl Exterior {
         for p in &self.moving_parts {
             valid_name(&p.node)?;
             require(names.insert(&p.node), "exterior.node", "duplicate moving node")?;
+            require(
+                match (p.motion, p.travel_m) {
+                    (Motion::Slide, Some(m)) => {
+                        m.is_finite() && (0.01..=3.).contains(&m) && p.travel_rad == [0., 0.]
+                    }
+                    (Motion::Slide, None) => false,
+                    (_, None) => true,
+                    (_, Some(_)) => false,
+                },
+                "exterior.motion.travel_m",
+                "slide requires 0.01 to 3 metres and zero angular travel; other motions forbid travel_m",
+            )?;
             let norm: f32 = p.axis.iter().map(|x| x * x).sum();
             require(
                 norm.is_finite()

@@ -830,6 +830,7 @@ pub fn read_only(command: &str) -> bool {
             | "screen.list"
             | "commands.list"
             | "aircraft.list"
+            | "aircraft.checklist"
             | "autopilot.state"
             | "efb.status"
     )

@@ -254,15 +254,15 @@ for ordered memory/checklist items, glide parameters, validation, and fictional 
 ## Exterior assets (pack format 2)
 
 Pack manifests now have an independent `format_version`. Omission means legacy pack format 1;
-explicit versions 1 and 2 are readable, and unknown versions are rejected. An `exterior` section
-requires `format_version: 2`. Existing version 2 aircraft layer documents and their physics remain
+explicit versions 1, 2 and 3 are readable, and unknown versions are rejected. An `exterior` section
+requires at least `format_version: 2`; linear `slide` motion requires pack format 3. Existing version 2 aircraft layer documents and their physics remain
 unchanged. Older hosts reject the new manifest fields instead of silently discarding the artwork.
 The pack's semantic `version` identifies its release, independently of the manifest format.
 
 `exterior` is an optional list of up to 16 aircraft exteriors. Each must belong to an aircraft document
 in the same pack. GLBs are listed by `model` and `lod1`, separately from the JSON-only `files` list.
-Desktop and browser transports fetch only those listed assets and include them in the existing 8 MiB
-whole-pack budget. The desktop bundler includes both model files. Paths follow the same portable,
+Desktop and browser transports fetch only those listed assets and enforce the 128 MiB encoded
+pack limit and separate 8 MiB JSON text limit. The desktop bundler includes both model files. Paths follow the same portable,
 relative, no-symlink policy as layers, but end in `.glb`.
 
 ```json
@@ -300,7 +300,7 @@ its named node contains author-generated lettering geometry.
 Dimensions are in SI units. Nodes use pack body axes and share the family datum. Node-local transforms
 encode pivots; children inherit their parents' animation. Each named node must exist in both LODs.
 The renderer uses actual effective controls, propeller RPM, contact penetration, switches, and power.
-The cockpit omits the exterior model. See [exterior authoring](exterior-models.md) for motion signs,
+The cockpit uses the authored exterior cabin when `canopy_slide` has a `slide` binding; other packs retain the procedural cockpit. See [exterior authoring](exterior-models.md) for motion signs,
 lighting, fallback behavior, the generator, source restrictions, and offscreen tests.
 
 Additional hostile-input limits: 4 MiB per GLB, 128 nodes, 64 motion bindings, 16 lights, 90,000 expanded
@@ -314,3 +314,21 @@ The standalone [exterior schema](../schema/exterior.json) describes embedded def
 `aircraft/corvid/exterior.json`. `PackContents.assets` carries the bounded GLB bytes alongside JSON
 `files`; Rust integrations call `AircraftCatalog::install_pack_with_assets` for manifests with
 exteriors. The original JSON-only `install_pack` API remains available for older packs.
+
+Pack format 3 adds a linear moving-part binding, without changing version 2 aircraft layer documents:
+
+```json
+{"node":"canopy_slide","motion":"slide","axis":[-1,0,0],"travel_m":1.10}
+```
+
+`axis` is a finite unit vector in node-local body coordinates. `travel_m` is finite and bounded to
+0.01–3 metres; it is required for `slide` and forbidden on other motions. Angular `travel_rad` is
+omitted or `[0,0]` for a slide. Closed is zero translation; full open translates by `axis * travel_m`.
+The renderer clamps the live open fraction to [0,1] and transforms only that node and descendants.
+Format 2 manifests with slide bindings and unknown format versions fail before installation.
+Existing rotational bindings retain their angular units and validation.
+
+The optional `systems.definition.sliding_canopy` boolean declares the aircraft mechanism, independently
+of its identity and exterior availability. Omission is false. `systems.canopy` in simulation and screen
+snapshots reports `sliding`, `open_fraction` and `latched`. The Sling V9 installer enables the capability
+and upgrades its manifest to format 3 only after all new GLBs pass validation.

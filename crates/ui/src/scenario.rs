@@ -139,7 +139,14 @@ pub(crate) fn indications(ui: &mut egui::Ui, s: &Session) {
         (f.engine_fire, "ENGINE FIRE • power loss / temperature rise"),
         (f.electrical_fire, "ELECTRICAL FIRE • buses isolated"),
         (f.cabin_smoke, "CABIN SMOKE • visibility hazard"),
-        (f.door_open, "DOOR OPEN • increased drag"),
+        (
+            f.door_open,
+            if s.sim().canopy().sliding {
+                "CANOPY UNLATCHED • noise / increased drag"
+            } else {
+                "DOOR OPEN • noise / increased drag"
+            },
+        ),
         (f.carb_icing, "CARB ICE • monitor RPM and heat"),
         (f.airframe_icing, "ICE • reduced lift / increased drag and load"),
         (f.flap_asymmetry, "FLAP ASYMMETRY"),

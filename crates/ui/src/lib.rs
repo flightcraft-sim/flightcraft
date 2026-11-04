@@ -1041,6 +1041,12 @@ impl FlightCraftApp {
             &self.keymap,
             self.audio.preferences.gain(),
         );
+        let readout = self.session.sim().readout();
+        self.audio.observe_door_noise(
+            readout.failures.door_open,
+            readout.true_airspeed_mps,
+            self.session.paused(),
+        );
         self.scenarios.show(ctx, &mut self.session);
         self.live_weather.show(ctx, &mut self.session);
         let f = self.session.sim().failures();

@@ -129,6 +129,60 @@ impl Audio {
         }
     }
 }
+/// Original filtered broadband airflow, shared by door-open and canopy-unlatched effects.
+#[cfg(any(test, target_arch = "wasm32", feature = "desktop-audio"))]
+pub(super) struct AirflowNoise {
+    seed: u32,
+    low: f32,
+}
+#[cfg(any(test, target_arch = "wasm32", feature = "desktop-audio"))]
+impl Default for AirflowNoise {
+    fn default() -> Self {
+        Self {
+            seed: 0x7a91f323,
+            low: 0.,
+        }
+    }
+}
+#[cfg(any(test, target_arch = "wasm32", feature = "desktop-audio"))]
+impl AirflowNoise {
+    pub(super) fn sample(&mut self) -> f32 {
+        self.seed ^= self.seed << 13;
+        self.seed ^= self.seed >> 17;
+        self.seed ^= self.seed << 5;
+        let white = self.seed as f32 / u32::MAX as f32 * 2. - 1.;
+        self.low += 0.16 * (white - self.low);
+        self.low * 0.55
+    }
+}
+impl Audio {
+    pub fn observe_door_noise(&mut self, door_open: bool, airspeed_mps: f64, paused: bool) {
+        let level = if door_open && !paused && airspeed_mps.is_finite() {
+            (airspeed_mps as f32 / 40.).clamp(0., 1.)
+        } else {
+            0.
+        };
+        #[cfg(any(target_arch = "wasm32", feature = "desktop-audio"))]
+        {
+            if level * self.preferences.gain() > 0. && self.backend.is_none() {
+                #[cfg(target_arch = "wasm32")]
+                let result = web::Output::new();
+                #[cfg(all(not(target_arch = "wasm32"), feature = "desktop-audio"))]
+                let result = native::Output::new();
+                match result {
+                    Ok(output) => self.backend = Some(output),
+                    Err(e) => self.error = Some(e),
+                }
+            }
+            if let Some(output) = &mut self.backend {
+                output.noise(level);
+            }
+        }
+        #[cfg(not(any(target_arch = "wasm32", feature = "desktop-audio")))]
+        let _ = level;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +215,23 @@ mod tests {
             .gain(),
             0.0
         );
+    }
+}
+
+#[cfg(test)]
+mod airflow_tests {
+    use super::*;
+    #[test]
+    fn airflow_is_bounded_audible_and_repeatable() {
+        let mut a = AirflowNoise::default();
+        let mut b = AirflowNoise::default();
+        let mut energy = 0.;
+        for _ in 0..44100 {
+            let v = a.sample();
+            assert_eq!(v, b.sample());
+            assert!(v.is_finite() && v.abs() <= 0.55);
+            energy += v * v;
+        }
+        assert!(energy > 10.);
     }
 }

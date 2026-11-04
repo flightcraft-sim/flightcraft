@@ -97,6 +97,8 @@ pub struct Scene {
     light_gun: Option<LightGun>,
     director_runway: Option<([f64; 3], f64)>,
     previous_camera: Option<CameraMode>,
+    canopy_latch_screen: Option<egui::Pos2>,
+    canopy_drag_screen: Option<(egui::Pos2, egui::Vec2)>,
 }
 
 impl Default for Scene {
@@ -130,6 +132,8 @@ impl Default for Scene {
             light_gun: None,
             director_runway: None,
             previous_camera: None,
+            canopy_latch_screen: None,
+            canopy_drag_screen: None,
         }
     }
 }
@@ -293,6 +297,16 @@ impl Scene {
     fn smooth_look(&mut self, dt: f32) {
         let dt = if dt.is_finite() { dt.clamp(0.0, 0.25) } else { 0.0 };
         self.look = self.look.lerp(self.look_target, 1.0 - (-dt * 9.0).exp());
+    }
+
+    /// Projected centre of the authored inside latch, when visible in cockpit view.
+    pub fn canopy_latch_screen(&self) -> Option<egui::Pos2> {
+        self.canopy_latch_screen
+    }
+
+    /// Moving front-bow hit point and projected aft direction; UI owns the commands.
+    pub fn canopy_drag_screen(&self) -> Option<(egui::Pos2, egui::Vec2)> {
+        self.canopy_drag_screen
     }
 
     // Shared by the viewport and headless motion tests.
@@ -545,7 +559,12 @@ impl Scene {
                 show_lights: self.lights_visible,
                 world: self.world.clone(),
                 size: [rect.width(), rect.height()],
-                show_aircraft: self.camera != CameraMode::Cockpit,
+                show_aircraft: self.camera != CameraMode::Cockpit
+                    || self.exterior.as_ref().is_some_and(|a| {
+                        a.definition.moving_parts.iter().any(|p| {
+                            p.node == "canopy_slide" && p.motion == flightcraft_aero::exterior::Motion::Slide
+                        })
+                    }),
                 larrow: self.larrow,
                 sling: self.sling,
                 exterior: self.exterior.clone(),
@@ -584,6 +603,57 @@ impl Scene {
                     255,
                 ),
             );
+        }
+        self.canopy_latch_screen = None;
+        self.canopy_drag_screen = None;
+        if self.camera == CameraMode::Cockpit
+            && let Some(asset) = &self.exterior
+        {
+            let matrices = exterior::transforms(asset, &asset.lod0, &self.exterior_pose);
+            let project = |point: Vec3| -> Option<egui::Pos2> {
+                let clip = projection * view * model * point.extend(1.);
+                if clip.w <= 0. {
+                    return None;
+                }
+                let ndc = clip.truncate() / clip.w;
+                Some(egui::pos2(
+                    rect.center().x + ndc.x * rect.width() / 2.,
+                    rect.center().y - ndc.y * rect.height() / 2.,
+                ))
+            };
+            for (index, node) in asset
+                .lod0
+                .nodes
+                .iter()
+                .enumerate()
+                .filter(|(_, n)| matches!(n.name.as_str(), "canopy_inside_latch" | "canopy_bow_front"))
+            {
+                if node.vertices.is_empty() {
+                    continue;
+                }
+                let centre = node
+                    .vertices
+                    .iter()
+                    .map(|v| Vec3::from_array(v.position))
+                    .sum::<Vec3>()
+                    / node.vertices.len() as f32;
+                let point = matrices
+                    .get(index)
+                    .copied()
+                    .unwrap_or(Mat4::IDENTITY)
+                    .transform_point3(centre)
+                    - Vec3::from_array(self.exterior_pose.cg_m);
+                if let Some(screen) = project(point).filter(|p| rect.contains(*p)) {
+                    if node.name == "canopy_inside_latch" {
+                        self.canopy_latch_screen = Some(screen);
+                    } else if let Some(aft) = project(point - Vec3::X * 0.01) {
+                        let delta = aft - screen;
+                        if delta.length_sq() > 0.001 {
+                            self.canopy_drag_screen = Some((screen, delta.normalized()));
+                        }
+                    }
+                }
+            }
         }
         self.draw_light_gun(ui, rect, eye, projection * view, palette);
     }

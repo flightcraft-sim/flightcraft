@@ -13,10 +13,11 @@ pub const MAX_PACKS: usize = 64;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(transform = pack_version_schema)]
 pub struct PackManifest {
-    /// Version 1 manifests remain readable; exterior assets require version 2.
+    /// Legacy manifests remain readable; exteriors require >=2 and slide motion >=3.
     #[serde(default = "manifest_v1")]
-    #[schemars(range(min = 1, max = 2))]
+    #[schemars(range(min = 1, max = 3))]
     pub format_version: u32,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[schemars(length(max = 16))]
@@ -59,6 +60,15 @@ pub fn validate_pack_path(path: &str) -> Result<(), AircraftError> {
         "files.path",
         "requires a JSON layer file other than pack.json",
     )
+}
+
+fn pack_version_schema(schema: &mut schemars::Schema) {
+    schema.insert("allOf".into(), serde_json::json!([
+        {"if":{"not":{"properties":{"format_version":{"enum":[2,3]}},"required":["format_version"]}},
+         "then":{"properties":{"exterior":{"maxItems":0}}}},
+        {"if":{"not":{"properties":{"format_version":{"const":3}},"required":["format_version"]}},
+         "then":{"properties":{"exterior":{"items":{"properties":{"moving_parts":{"items":{"properties":{"motion":{"not":{"const":"slide"}}}}}}}}}}}
+    ]));
 }
 
 fn manifest_v1() -> u32 {
@@ -132,14 +142,23 @@ impl PackManifest {
             "requires 1 to 64 files",
         )?;
         require(
-            (1..=2).contains(&self.format_version) && (self.exterior.is_empty() || self.format_version == 2),
+            (1..=3).contains(&self.format_version) && (self.exterior.is_empty() || self.format_version >= 2),
             "pack.format_version",
-            "exterior assets require pack format version 2",
+            "exterior assets require pack format version 2 or 3",
         )?;
         require(self.exterior.len() <= 16, "pack.exterior", "at most 16 exteriors")?;
         let mut aircraft = BTreeSet::new();
         for e in &self.exterior {
             e.validate()?;
+            require(
+                self.format_version >= 3
+                    || !e
+                        .moving_parts
+                        .iter()
+                        .any(|p| p.motion == crate::exterior::Motion::Slide),
+                "pack.format_version",
+                "slide motion requires pack format version 3",
+            )?;
             require(
                 aircraft.insert(&e.aircraft),
                 "pack.exterior",

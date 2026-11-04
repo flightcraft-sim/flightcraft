@@ -81,6 +81,7 @@ impl Session {
         if snapshot.version != 1 || !snapshot.state.time_s.is_finite() {
             return Err("unsupported or invalid screen snapshot".into());
         }
+        snapshot.systems.canopy.validate().map_err(|e| e.to_string())?;
         snapshot.screens.validate()?;
         snapshot.lesson.validate().map_err(|e| e.to_string())?;
         snapshot.live_weather.validate()?;

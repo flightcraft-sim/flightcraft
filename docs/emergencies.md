@@ -11,7 +11,7 @@ retains the emergency debrief; resetting the flight clears it.
 | `engine_fire` | Available shaft power falls to 15%; CHT and oil heat rise; smoke accumulates |
 | `electrical_fire` | Main and essential buses lose supply; smoke forms while master is on |
 | `cabin_smoke` | Cockpit smoke accumulates over 15 s and obscures the cockpit view |
-| `door_open` | Additional drag coefficient 0.025; door annunciation |
+| `door_open` | Additional drag coefficient 0.025; door annunciation and airflow noise in the app |
 | `carb_icing` | Accelerated carb ice only with carburettor induction, humidity above 50%, and local temperature −15 to 30 C; heat clears it |
 | `airframe_icing` | In visible freezing moisture, lift falls 30%, drag increases 0.065, and downward load increases by 3% of aircraft weight |
 | `flap_asymmetry` | Flap-dependent rolling moment; panel warning |
@@ -97,3 +97,8 @@ terrain relief is drawn only when the active region matches the saved footprint 
 also exposes the live debrief. Integration with the future `lesson.debrief` remains separate.
 See [scenarios](scenarios.md), [systems](systems.md), [planning terrain](map-and-planning.md),
 [crew lessons](crew.md), and [training](training.md).
+
+A sliding-canopy aircraft derives `door_open` while airborne and unlatched. The canopy remains a
+separate physical state; clearing injected failures cannot latch it. The shared procedure retains
+id `door_open`, with the title “Canopy unlatched”. Opening is refused in flight; close and then
+latch through `aircraft.canopy`. The state drives the same exterior and cockpit presentation.

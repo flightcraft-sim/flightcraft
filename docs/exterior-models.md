@@ -81,8 +81,8 @@ per 1.2 seconds; the red beacon flashes for 160 ms per second. They use simulati
 breakers, and bus power gate the lamps. A fixture may name its installed `power_load`, including
 shared circuits such as the Sling nav/strobe installation. The landing light adds a forward, downward cone of illumination
 to terrain and runway fragments; time of day controls its contrast. The renderer has no shadow maps;
-its existing soft ground contact shadow remains in use. Exterior models are omitted in cockpit view,
-which keeps the existing cockpit geometry and panel. Wing view uses a 0.015-meter near plane.
+its existing soft ground contact shadow remains in use. Sliding-canopy packs use their authored cabin in cockpit view, including the moving frame and glass.
+Other packs keep the existing procedural cockpit geometry and panel. Wing view uses a 0.015-meter near plane.
 
 ## Verification and captures
 
@@ -118,8 +118,8 @@ Blender receipts, loads the actual pack GLBs, and draws them with the exterior P
 records the five original views, pure side elevation, and pure top plan. The pack's
 `scripts/compare-exterior.py` combines the unmodified PNGs into a self-contained comparison page.
 V8 completed in confined Blender 5.2.0 LTS and was accepted for integration. Installed
-triangle counts are 101,452 / 18,583 / 4,204. The source remains the pack's
-`scripts/blender-exterior.py`; the unchanged old generator reproduces older pack revisions.
+triangle counts are 101,452 / 18,583 / 4,204. The executed V8 source remains in the queue as `fc-plane-sling2-exterior-v8.py`; the pack source
+`scripts/blender-exterior.py` now carries queued V9. The unchanged old generator reproduces older pack revisions.
 Installed receipts include the Blender version, source hash, model hashes, bounds, containment,
 and camera metadata. The remaining chunky side-on wing root is accepted for now; smoothing
 and thinning that fillet is later polish, without changing this accepted revision.
@@ -175,24 +175,10 @@ pack environment to repeat the CPU registration check. To capture a custom numbe
 `FLIGHTCRAFT_PROOF_REGISTRATION=N824RX` and select a separate proof output directory. Leave
 that variable unset for default-livery comparisons.
 
-Flight lead owns the rebase onto main **460784d** (Rust 1.98, scenery/city providers, and web
-packaging). Git metadata is read-only here; no rebase or commit was performed. Keep main's
-callsign persistence and UI calls to `Scene::set_registration`. Merge the atlas branch and
-optional LOD2 into main's existing `registration.rs`, including the PBR vertex fields in its
-legacy geometry path and glyph visibility for the sibling atlas painter. Preserve main's
-scene/scenery fields while adding the exterior environment field, PBR draws, and lamp gates.
-The small `mesh.rs` lint change is byte-identical to main 01745d1 and needs no further change
-on main. Do not replace main's Cargo manifests or lock wholesale; merge the GLTF extension
-feature and image dependency additions.
-
-Unverified here: the combined main-460784d/scenery build after rebase, packaged desktop and
-browser real-window captures, and hardware-GPU performance. The wasm check covers compilation,
-not browser visuals. The stale baseline UI float-literal warnings are fixed on main and left
-for the rebase. Full workspace CI remains a pre-commit check for flight lead after rebasing.
-Render/control wasm compilation, engine aero/render Clippy, and pack-harness Clippy passed
-with Rust 1.98; Clippy used `-D warnings`. The seven engine stills remained byte-identical
-after sharing the capture helper with the motion proof. `cargo deny check licenses` could
-not run because this environment has no `cargo-deny` subcommand installed.
+The engine worktree is now based on main **8995d43**, including merged engine work **82e9ecb**.
+The earlier rebase handoff is complete. Canopy changes remain uncommitted in the engine and external
+pack worktrees. The accepted V10 installation and proofs are described below. Full workspace CI
+remains a pre-commit requirement; hardware-GPU performance has not been measured.
 
 ## Forbidden sources
 
@@ -200,3 +186,72 @@ Never download or copy aircraft meshes, trace photographs, distribute POH figure
 manufacturer logos, read GPL/LGPL/AGPL simulator code, or extract anything from a commercial simulator.
 Record every new asset and factual source in ATTRIBUTION.md. Real aircraft remain external packs;
 fictional aircraft in this repository must remain original designs.
+
+## V9 sliding-canopy implementation (superseded by V10)
+
+Queue job `fc-plane-sling2-exterior-v9.py` derived from accepted V8. It introduced the split into
+fixed windshield and frame, fixed roll-over hoop with inside latch, and moving
+`canopy_slide` with glass, bows, side sills and centre exterior handle. Straight rails sit on the
+cockpit side skins. Full open is 1.10 m aft; the POH gives no travel, so the pack estimate register
+records this and the original rail/bow/handle dimensions.
+
+Validation bounds the continuous swept moving geometry above all relevant fuselage triangles,
+including its rear edge, by >3 mm at every LOD. It also requires the open front bow to clear
+the seat backs. It writes per-LOD clearance receipts and renders the seven closed views plus
+`beauty-open` and `elevation-side-open` with explicit pose in the exact camera manifest.
+The installer validates everything before replacing assets and adding the format-3 slide binding
+and systems capability. Flight lead ran V9 and requested the two V10 corrections described below;
+the installed assets and current proofs use accepted V10.
+
+To repeat the current proofs, set `FLIGHTCRAFT_CYCLES_OUTPUT` and
+`FLIGHTCRAFT_EXTERIOR_PROOF` to the V10 folders and run `matched_sling_exterior_cameras` as above.
+It captures nine matched engine views, including the two open poses. The existing pack comparison
+script places the unmodified open engine and Cycles images alongside each other.
+`sling_exterior_motion_proof` adds eight canopy frames to a sixth contact-sheet row (68 frames
+total) when the installed binding is present. `sling_canopy_moves_only_its_descendants_at_every_lod`
+checks the actual installed GLB descendants at all eight fractions and all LODs. These ignored tests require
+the external pack and, for captures, an offscreen GPU.
+
+Engine-only tests cover pose/state wiring, interpolation and stationary fixed nodes without external
+assets. Cockpit egui controls use `aircraft.canopy`; a projected physical inside-latch hit target
+shares the same command with the overhead control, and dragging controls the open fraction.
+
+## V10 canopy correction and proof refresh
+
+V9 completed cleanly in confined Blender 5.2.0 LTS at 101,041 / 18,631 / 4,826 triangles.
+Flight lead accepted the sliding mechanism and requested correction of the hovering exterior
+handle and the flat-looking crown. V10 uses one original cubic Bezier meridian for windshield
+and slider; the two pieces share their exact seam and tangent. A flush outside handle at
+centre-top connects to a narrow moving crown frame strip. The 1.10 m aft travel is unchanged.
+
+The pack source fits every vertex of the whole exterior handle, crown strip, moving bows/sills
+and windshield frame to its actual glazing at each LOD. The GLB validator measures every such
+vertex against the exported glass triangles with a 3 mm limit and rejects unchecked moving
+hardware. Fixed roll-over-bar hardware and slider rails/runners retain their mounting roles.
+The existing continuous turtledeck sweep gate remains in force.
+
+Flight lead accepted the completed confined Blender 5.2 run. V10 is now installed in the external
+pack as format **3**, version **0.3.0**, with **102,411 / 19,023 / 4,837 triangles**. Its source SHA-256
+is `1a0747181cf824794f5c54c9d3afbef73bd1cb672254b7cb5c5dd748bd4c74ee`.
+All exported hardware vertices pass the 3 mm gate (maximum 2.507 mm); continuous turtledeck
+clearances are 23.648 / 23.097 / 24.575 mm at LOD0/1/2. Travel remains 1.10 m aft.
+
+`scripts/finalize-sling-exterior.py` completed the install and proof refresh in the foreground.
+All three actual-pack proof tests passed: canopy descendants move aft at every LOD while other
+nodes remain fixed; all nine exact camera/pose pairs were captured; and the motion proof contains
+68 frames with eight closed-to-open canopy poses in its sixth row. Captures used the actual PBR
+renderer on Vulkan llvmpipe (Mesa 26.0.8); this is a rendering proof, with no hardware-GPU
+performance measurement. The open beauty/side views and contact sheet were visually inspected.
+
+Current artifacts in `~/builds/codex-jobs/blender-queue/`:
+
+- `fc-plane-engine-v10/`: nine engine PNGs and the exact camera manifest.
+- `fc-plane-v10-comparison.html`: all nine unmodified Cycles/engine pairs.
+- `fc-plane-v10-proof.json`: completed phases, source/asset/image hashes, hardware/clearance
+  receipts and both worktrees' changed files; status `installed_and_captured`, pending list empty.
+- `fc-plane-v10-engine-changed-files.txt`, `fc-plane-v10-pack-changed-files.txt`, and combined
+  `fc-plane-v10-changed-files.txt`: final uncommitted file lists.
+
+The motion PNGs, pose/pixel manifest and `contact-sheet.png` are in engine `out/plane/motion/`.
+To repeat the complete synchronous pipeline, run queue `fc-plane-v10-engine-proof.sh` against
+the completed accepted output. Both repositories remain uncommitted for flight lead's merge.

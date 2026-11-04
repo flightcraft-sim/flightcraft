@@ -1533,6 +1533,29 @@
         "look_pitch_rad"
       ]
     },
+    "CanopyState": {
+      "type": "object",
+      "properties": {
+        "latched": {
+          "type": "boolean"
+        },
+        "open_fraction": {
+          "type": "number",
+          "format": "double",
+          "maximum": 1,
+          "minimum": 0
+        },
+        "sliding": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "sliding",
+        "open_fraction",
+        "latched"
+      ]
+    },
     "Catalog": {
       "type": "object",
       "properties": {
@@ -9921,6 +9944,10 @@
         "pitot_static": {
           "$ref": "#/$defs/PitotStaticDefinition"
         },
+        "sliding_canopy": {
+          "description": "POH-declared cabin mechanism, independent of aircraft identity or artwork.",
+          "type": "boolean"
+        },
         "tanks": {
           "type": "array",
           "items": {
@@ -9953,6 +9980,14 @@
       "properties": {
         "avionics": {
           "$ref": "#/$defs/AvionicsState"
+        },
+        "canopy": {
+          "$ref": "#/$defs/CanopyState",
+          "default": {
+            "latched": true,
+            "open_fraction": 0.0,
+            "sliding": false
+          }
         },
         "carb_heat_installed": {
           "type": "boolean"

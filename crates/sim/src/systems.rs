@@ -193,6 +193,8 @@ pub struct SensedInstruments {
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct SystemsState {
+    #[serde(default)]
+    pub canopy: crate::canopy::CanopyState,
     /// Normalized cockpit smoke obscuration; accumulates under a smoke source, clears after isolation.
     pub smoke_density: f64,
     pub modern: Option<crate::modern::ModernState>,
@@ -248,6 +250,7 @@ impl Default for SystemsState {
         Self {
             modern: None,
             avionics: crate::avionics::AvionicsState::default(),
+            canopy: Default::default(),
             smoke_density: 0.0,
             enabled: false,
             vacuum_installed: false,
@@ -345,6 +348,13 @@ impl SystemsState {
         let sensed = self.sensed;
         let mut words = vec![c.magnetos as u64, c.fuel_selector as u64];
         words.extend(self.failures.emergency_hash_words());
+        if self.canopy.sliding {
+            words.extend([
+                0x63616e6f7079,
+                self.canopy.open_fraction.to_bits(),
+                u64::from(self.canopy.latched),
+            ]);
+        }
         if c.trim != 0.0 {
             words.extend([0x7472696d, c.trim.to_bits()]);
         }
@@ -851,6 +861,11 @@ impl SystemsState {
 
     pub(crate) fn step(&mut self, m: &SystemsModel, r: Readout, failures: Failures) {
         self.failures = failures;
+        if self.canopy.sliding
+            && let Some(modern) = &mut self.modern
+        {
+            modern.door_open = failures.door_open;
+        }
         let smoking = failures.cabin_smoke
             || (failures.electrical_fire && self.controls.master)
             || (failures.engine_fire && self.engine_running);

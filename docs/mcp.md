@@ -38,6 +38,8 @@ requests `-32600`, and malformed JSON `-32700`.
 | Tool | Command | Arguments and result |
 |---|---|---|
 | `sim_reset` | `sim.reset` | `start: {kind: "runway"}` or `{kind: "air", height_m, airspeed_mps, heading_rad}`; optional `paused` (defaults to `true`). Returns state, readout, and playback settings. |
+| `aircraft_canopy` | `aircraft.canopy` | `action`: `open`, `close`, `latch`, or `unlatch`; optional `fraction` (0–1) for `open`. Returns `sliding`, `open_fraction`, `latched`. Opening requires ground contact, ≤2 m/s ground speed, ≤5 m/s airspeed, and released latch. Refusals preserve state. |
+| `aircraft_checklist` | `aircraft.checklist` | `phase`: `before_takeoff` or `securing`. Checks the live canopy item and returns applicability, instruction, state and `passed`; changes no state. |
 | `sim_set_controls` | `sim.set_controls` | Any subset of `elevator`, `aileron`, `rudder` (-1 to 1), `throttle`, `flaps`, and `brake` (0 to 1). Returns all six controls. |
 | `sim_step` | `sim.step` | Integer `steps` from 0 to 72000 (ten minutes at 120 Hz). Returns the readout. |
 | `assist_set` | `assist.set` | Any subset of `pitch_rad`, `altitude_m`, `vertical_speed_mps`, `heading_rad`, `airspeed_mps`, `wings_level`, `bank_limit_rad`, and `airspeed_mode` (`throttle` or `pitch`). Returns all engaged holds and targets. |
@@ -610,3 +612,24 @@ present the exact host Origin and pairing token. Pairing grants read-only access
 permission for each connected screen in **Screens**. Read-only connections cannot execute any
 commands. Control connections use a flight/panel/layout allowlist, and cannot save arbitrary host
 files. The native loopback MCP transport is separate and remains local-process only.
+
+Sliding-canopy example (MCP tool `aircraft_canopy`, or the same registry commands in app scripts):
+
+```json
+{"action":"unlatch"}
+{"action":"open","fraction":0.5}
+{"action":"close"}
+{"action":"latch"}
+```
+
+Opening does not release a latch, and closing does not latch. Latching requires fully closed.
+An airborne unlatch is allowed and triggers the existing `door_open` drag and procedure, titled
+“Canopy unlatched” for sliding-canopy aircraft; the app plays the shared airflow noise.
+Clearing injected failures does not secure an unlatched canopy. The speed limits are simulator
+estimates, not POH operating limits. Unsupported aircraft return a clear refusal.
+
+`sim_reset` additionally accepts `start:{kind:"parked",north_m,east_m,heading_rad}`. North/east
+are local ground metres and heading is magnetic radians. Terrain supplies ground elevation.
+A parked sliding-canopy aircraft starts fully open and unlatched with brakes held; runway and
+air starts are closed and latched. The virtual pilot closes and latches before applying ground
+power and announces “Before taxi: canopy closed and latched” on intercom.

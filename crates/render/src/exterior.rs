@@ -36,6 +36,7 @@ pub fn builtin(id: &str) -> Option<Arc<ExteriorAsset>> {
 #[derive(Clone, Debug, Default)]
 pub struct Pose {
     pub controls: [f32; 4],
+    pub canopy_open_fraction: f32,
     pub propeller_rpm: f32,
     pub propeller_phase: f32,
     pub wheel_phase: [f32; 16],
@@ -62,6 +63,7 @@ impl Pose {
             c.rudder as f32,
             c.flaps as f32,
         ];
+        self.canopy_open_fraction = sim.canopy().open_fraction as f32;
         self.cg_m = a.mass.cg_m.map(|x| x as f32);
         self.time_s = s.time_s as f32;
         self.height_agl_m = r.height_agl_m as f32;
@@ -170,7 +172,16 @@ pub fn transforms(asset: &ExteriorAsset, model: &ExteriorModel, pose: &Pose) -> 
                         }
                     }
                 };
-                if p.motion == Motion::Oleo {
+                if p.motion == Motion::Slide {
+                    let fraction = if pose.canopy_open_fraction.is_finite() {
+                        pose.canopy_open_fraction.clamp(0., 1.)
+                    } else {
+                        0.
+                    };
+                    matrix *= Mat4::from_translation(
+                        Vec3::from_array(p.axis) * p.travel_m.unwrap_or(0.) * fraction,
+                    );
+                } else if p.motion == Motion::Oleo {
                     matrix *= Mat4::from_translation(
                         Vec3::from_array(p.axis)
                             * pose.compression_m.get(p.gear_index).copied().unwrap_or(0.),
@@ -474,6 +485,7 @@ mod tests {
                         Motion::Propeller => pose.propeller_phase = 1.,
                         Motion::Wheel => pose.wheel_phase[part.gear_index] = 0.2,
                         Motion::Oleo => pose.compression_m[part.gear_index] = 0.1,
+                        Motion::Slide => pose.canopy_open_fraction = 1.,
                         Motion::PropBlur => continue,
                     }
                     let changed = transforms(&asset, model, &pose);
@@ -1873,5 +1885,90 @@ mod pbr_tests {
             device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
             assert!(device.pop_error_scope().await.is_none());
         });
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::indexing_slicing)]
+mod canopy_tests {
+    use super::*;
+    use flightcraft_aero::exterior::{ModelNode, MovingPart};
+    #[test]
+    fn canopy_slide_moves_only_its_descendants_aft_at_every_fraction() {
+        let mut asset = (*builtin("corvid").unwrap()).clone();
+        asset.definition.moving_parts = vec![MovingPart {
+            node: "canopy_slide".into(),
+            motion: Motion::Slide,
+            axis: [-1., 0., 0.],
+            travel_rad: [0., 0.],
+            travel_m: Some(1.1),
+            gear_index: 0,
+            wheel_radius_m: 0.19,
+        }];
+        let mut model = (*asset.lod0).clone();
+        model.nodes = [
+            ("airframe", None),
+            ("windshield", None),
+            ("roll_over_bar", None),
+            ("canopy_slide", None),
+            ("canopy_glass", Some(3)),
+            ("canopy_bow_front", Some(3)),
+            ("canopy_outside_latch", Some(3)),
+            ("canopy_inside_latch", Some(2)),
+            ("seat_back", None),
+        ]
+        .into_iter()
+        .map(|(name, parent)| ModelNode {
+            name: name.into(),
+            parent,
+            transform: Mat4::from_translation(Vec3::new(-2., 0., -0.5)).to_cols_array_2d(),
+            vertices: vec![],
+        })
+        .collect();
+        let neutral = transforms(&asset, &model, &Pose::default());
+        for fraction in [0., 0.25, 0.5, 0.75, 1.] {
+            let pose = Pose {
+                canopy_open_fraction: fraction,
+                ..Default::default()
+            };
+            let actual = transforms(&asset, &model, &pose);
+            for (i, node) in model.nodes.iter().enumerate() {
+                let delta = actual[i].w_axis.truncate() - neutral[i].w_axis.truncate();
+                if node.name == "canopy_slide" || node.parent == Some(3) {
+                    assert!((delta - Vec3::new(-1.1 * fraction, 0., 0.)).length() < 1e-6);
+                } else {
+                    assert_eq!(actual[i], neutral[i], "{} must stay fixed", node.name);
+                }
+                assert_eq!(Mat3::from_mat4(actual[i]), Mat3::from_mat4(neutral[i]));
+            }
+        }
+    }
+    #[test]
+    fn exterior_pose_reads_live_canopy_state_without_advancing_simulation() {
+        let mut config = flightcraft_aero::AircraftCatalog::builtins()
+            .unwrap()
+            .resolve_aircraft("corvid")
+            .unwrap();
+        config
+            .installed_systems
+            .definition
+            .as_mut()
+            .unwrap()
+            .sliding_canopy = true;
+        let mut sim = flightcraft_sim::Sim::new(&flightcraft_sim::Start::ParkedAt {
+            position_m: [0.; 3],
+            heading_rad: 0.,
+        })
+        .unwrap();
+        sim.configure_systems(&config).unwrap();
+        let before = sim.state_hash();
+        let mut pose = Pose::default();
+        pose.update(&sim);
+        assert_eq!(pose.canopy_open_fraction, 1.);
+        assert_eq!(sim.state_hash(), before);
+        sim.set_canopy(flightcraft_sim::canopy::CanopyAction::Open, Some(0.4))
+            .unwrap();
+        pose.update(&sim);
+        assert_eq!(pose.canopy_open_fraction, 0.4);
     }
 }

@@ -368,6 +368,12 @@ pub struct Playback {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ResetStart {
     Runway {},
+    /// Explicit parked ground position in local north/east metres; height follows terrain.
+    Parked {
+        north_m: f64,
+        east_m: f64,
+        heading_rad: f64,
+    },
     AirportRunway {
         airport: String,
         end: String,
@@ -515,6 +521,34 @@ impl Command for Reset {
                 }
             }
             ResetStart::Runway {} => Start::Runway,
+            ResetStart::Parked {
+                north_m,
+                east_m,
+                heading_rad,
+            } => {
+                if !north_m.is_finite()
+                    || !east_m.is_finite()
+                    || north_m.abs() > 1e8
+                    || east_m.abs() > 1e8
+                    || !heading_rad.is_finite()
+                    || !(0. ..=std::f64::consts::TAU).contains(&heading_rad)
+                {
+                    return Err(CommandError::InvalidInput {
+                        command: Self::NAME.into(),
+                        message: "invalid parked position or heading".into(),
+                    });
+                }
+                let reference = flightcraft_sim::magnetic::reference_at(
+                    &world,
+                    [north_m, east_m, 0.],
+                    session.simulation_date(),
+                )
+                .map_err(SimError::from)?;
+                Start::ParkedAt {
+                    position_m: [north_m, east_m, -world.ground(north_m, east_m).height_msl_m],
+                    heading_rad: reference.magnetic_to_grid(heading_rad),
+                }
+            }
             ResetStart::Air {
                 height_m,
                 airspeed_mps,
@@ -574,6 +608,7 @@ impl Command for Reset {
             Start::Air { height_m, .. } => [0., 0., -*height_m],
             Start::AirAt { position_m, .. } => *position_m,
             Start::RunwayAt { threshold_ned_m, .. } => *threshold_ned_m,
+            Start::ParkedAt { position_m, .. } => *position_m,
             Start::Runway => [0., 0., 0.],
         };
         let reference =
@@ -955,6 +990,8 @@ registry!(
     ListCommands,
     ListAircraft,
     LoadAircraft,
+    SetCanopy,
+    CheckCanopy,
     ComputeWeightBalance,
     SetCamera,
     AppScreenshot,

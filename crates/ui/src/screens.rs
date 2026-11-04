@@ -31,6 +31,9 @@ pub struct PageUi {
     airport: String,
     tune1: String,
     tune2: String,
+    canopy_message: String,
+    canopy_drag_origin: f64,
+    canopy_drag_target: Option<(egui::Pos2, egui::Vec2)>,
 }
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -777,6 +780,9 @@ impl PageUi {
                     .set_propeller_power(readout.effective_controls.throttle as f32);
                 let dt = self.camera_elapsed(ui.ctx().input(|i| i.time), s.flight_generation());
                 self.scene.show(ui, s.sim().state(), dt, theme::scene());
+                if mode == CameraMode::Cockpit && s.sim().canopy().sliding {
+                    self.canopy_controls(ui, s);
+                }
                 radio::captions(ui, s);
                 ui.painter().text(
                     ui.max_rect().center_bottom() - egui::vec2(0., 10.),
@@ -1566,6 +1572,107 @@ fn capture_geometry(ctx: &egui::Context, s: &mut Session, screen: &Screen) {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod preview;
+
+impl PageUi {
+    fn canopy_controls(&mut self, ui: &mut egui::Ui, s: &mut Session) {
+        let canopy = s.sim().canopy();
+        let mut action = None;
+        if let Some(point) = self.scene.canopy_latch_screen() {
+            let response = ui.interact(
+                Rect::from_center_size(point, egui::vec2(36., 32.)),
+                ui.id().with("inside-canopy-latch"),
+                Sense::click(),
+            );
+            if response.clicked() {
+                action = Some(if canopy.latched { "unlatch" } else { "latch" });
+            }
+            response.on_hover_text("Inside canopy latch · top centre of roll-over bar");
+        }
+        // Retain pointer capture even after the moving bow passes behind the pilot.
+        if !ui.input(|i| i.pointer.primary_down()) || self.canopy_drag_target.is_none() {
+            self.canopy_drag_target = self.scene.canopy_drag_screen();
+        }
+        if let Some((point, aft)) = self.canopy_drag_target {
+            let response = ui.interact(
+                Rect::from_center_size(point, egui::vec2(56., 38.)),
+                ui.id().with("canopy-front-bow"),
+                Sense::drag(),
+            );
+            if response.drag_started() {
+                self.canopy_drag_origin = canopy.open_fraction;
+            }
+            if response.dragged() {
+                let fraction = (self.canopy_drag_origin + f64::from(response.drag_delta().dot(aft) / 200.))
+                    .clamp(0., 1.);
+                self.canopy_message =
+                    match s.execute("aircraft.canopy", json!({"action":"open","fraction":fraction})) {
+                        Ok(_) => String::new(),
+                        Err(e) => e.to_string(),
+                    };
+            }
+            response.on_hover_text("Drag the canopy frame along its rails; release the latch first");
+        }
+        // Overhead control remains reachable while looking forward. The same latch also
+        // has a physical hit target when the recorded cockpit camera sees it.
+        let rect = Rect::from_min_size(ui.max_rect().min + egui::vec2(12., 12.), egui::vec2(340., 118.));
+        ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+            egui::Frame::new()
+                .fill(theme::PANEL)
+                .inner_margin(8.)
+                .show(ui, |ui| {
+                    ui.label("Roll-over bar · canopy");
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button(if canopy.latched { "Unlatch" } else { "Latch" })
+                            .clicked()
+                        {
+                            action = Some(if canopy.latched { "unlatch" } else { "latch" });
+                        }
+                        if ui.button("Close").clicked() {
+                            action = Some("close");
+                        }
+                        ui.label(if canopy.latched { "Latched" } else { "Unlatched" });
+                    });
+                    let mut fraction = canopy.open_fraction;
+                    if ui
+                        .add_enabled(
+                            !canopy.latched,
+                            egui::Slider::new(&mut fraction, 0. ..=1.).text("Slide aft"),
+                        )
+                        .changed()
+                    {
+                        self.canopy_message = match s
+                            .execute("aircraft.canopy", json!({"action":"open","fraction":fraction}))
+                        {
+                            Ok(_) => String::new(),
+                            Err(e) => e.to_string(),
+                        };
+                    }
+                    ui.colored_label(
+                        if canopy.secure() {
+                            theme::TEXT
+                        } else {
+                            theme::AMBER
+                        },
+                        if canopy.secure() {
+                            "Before takeoff / securing: canopy checked"
+                        } else {
+                            "Before takeoff / securing: close and latch canopy"
+                        },
+                    );
+                    if !self.canopy_message.is_empty() {
+                        ui.colored_label(theme::AMBER, &self.canopy_message);
+                    }
+                });
+        });
+        if let Some(action) = action {
+            self.canopy_message = match s.execute("aircraft.canopy", json!({"action":action})) {
+                Ok(_) => String::new(),
+                Err(e) => e.to_string(),
+            };
+        }
+    }
+}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
