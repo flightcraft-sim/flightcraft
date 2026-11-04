@@ -94,12 +94,14 @@ fn render_sling_cockpit_proof() {
                         |ui| {
                             ui.painter().rect_filled(ui.max_rect(), 0., theme::PANEL);
                             let config = session.aircraft_configuration().unwrap();
+                            let registration = session.pilot_callsign().registration;
                             panel
                                 .show(
                                     ui,
                                     &config.panel,
                                     InstrumentInput::new(session.sim().systems(), 0.)
                                         .with_aircraft(config)
+                                        .with_registration(&registration)
                                         .with_glass(&glass),
                                     session.flight_generation(),
                                 )

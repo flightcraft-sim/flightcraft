@@ -55,7 +55,10 @@ systems layer supplies a `definition`; placeholder installations retain legacy b
 Each panel instrument has a unique installation `id`, a known `module`, a `skin` id (default
 `original`), a nonnegative `position: [x, y]`, and a positive `size: [width, height]`, in panel
 grid units. Modules include the six-pack, engine gauges, fuel, electrical, suction, and
-annunciators. The UI resolves skin ids against its runtime registry; unknown ids are panel load
+annunciators, plus the `registration` module: a strip that shows the aircraft's full registration
+(the pilot's own tail number when set, else the variant's `identity.registration`); every built-in
+panel installs one. Packs with an equipment panel use a `placard` element with the text
+`{registration}` instead (see [equipment panels](equipment.md)). The UI resolves skin ids against its runtime registry; unknown ids are panel load
 errors. See [instruments and skin registration](instruments.md) for the module catalog,
 presentation models, controls, and private pack extension point.
 

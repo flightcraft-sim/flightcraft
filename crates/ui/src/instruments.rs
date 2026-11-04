@@ -6,6 +6,7 @@ mod electronic;
 pub(crate) mod formatting;
 pub(crate) mod heading;
 mod options;
+mod registration;
 pub use options::{DisplayOptions, EngineUnits, PressureUnit};
 mod switches;
 
@@ -32,6 +33,8 @@ pub struct InstrumentInput<'a> {
     pub options: DisplayOptions,
     pub airports: Option<&'a flightcraft_world::Airports>,
     pub aircraft: Option<&'a flightcraft_aero::ResolvedAircraft>,
+    /// Current registration (the pilot's override, else the pack's) for `{registration}` placards.
+    pub registration: Option<&'a str>,
 }
 impl<'a> InstrumentInput<'a> {
     pub fn new(systems: &'a SystemsState, time_s: f64) -> Self {
@@ -44,7 +47,12 @@ impl<'a> InstrumentInput<'a> {
             options: DisplayOptions::default(),
             aircraft: None,
             airports: None,
+            registration: None,
         }
+    }
+    pub fn with_registration(mut self, registration: &'a str) -> Self {
+        self.registration = Some(registration);
+        self
     }
     pub fn with_vision(
         mut self,
@@ -341,6 +349,8 @@ impl Default for Registry {
                     electronic::create
                 } else if id.starts_with("glass_") {
                     crate::glass::create
+                } else if *id == "registration" {
+                    registration::create
                 } else {
                     behaviour::create
                 },

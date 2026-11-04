@@ -228,6 +228,19 @@
         1.8,
         0.2222222222222222
       ]
+    },
+    {
+      "id": "registration",
+      "module": "registration",
+      "skin": "original",
+      "position": [
+        0,
+        2
+      ],
+      "size": [
+        3,
+        0.2
+      ]
     }
   ]
 }

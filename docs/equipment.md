@@ -138,7 +138,13 @@ Concave outlines are triangulated for drawing. Existing rectangular backgrounds 
 In addition to installed avionics, breakers, rockers, master lamps, the key, recovery handle,
 and guarded rotary fuel selector, generic element kinds are `placard`, `toggle`, `dimmer`,
 `push_pull`, `vent`, `elt`, `pitch_wheel`, `lamp`, `bracket`, and `guard_bar`. Placards declare
-`text`, `font_size_mm`, and theme `color`. Toggles declare `label`, `guarded`, and `lamp`.
+`text`, `font_size_mm`, and theme `color`. The token `{registration}` in placard text is replaced
+at draw time by the aircraft's current registration: the pilot's own tail number when one is set
+with `comms.callsign`, otherwise the pack's `identity.registration`. Real panels carry an ID
+placard with the full N number, so a pack should include one, for example
+`{"kind":"placard","text":"{registration}","font_size_mm":9,"color":"white"}`. Registrations are
+at most 12 characters; the 128-character text limit applies to the raw text, and expansion never
+makes it longer. Toggles declare `label`, `guarded`, and `lamp`.
 Rockers support `backlit` labels and an optional `sublabel`; bracket elements label groups.
 Individual beacon, navigation, strobe, taxi, and landing switches have independent electrical
 loads. Breakers read their amp ratings from the electrical layer and show a white collar and

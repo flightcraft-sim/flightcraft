@@ -11,7 +11,7 @@ fn every_module_has_bounded_deterministic_lag_and_pauses() {
     let registry = Registry::default();
     for id in flightcraft_aero::INSTRUMENT_MODULES
         .iter()
-        .filter(|id| !id.starts_with("electronic_") && !id.starts_with("glass_"))
+        .filter(|id| !id.starts_with("electronic_") && !id.starts_with("glass_") && **id != "registration")
     {
         let mut s = SystemsState::default();
         s.sensed.attitude_valid = true;
@@ -827,4 +827,64 @@ fn electronic_speed_limit_marks_the_variant_value_only_when_in_view() {
             visible
         );
     }
+}
+
+fn registration_label(draw: &DrawList) -> Option<&str> {
+    draw.items.iter().find_map(|item| match item {
+        DrawItem::Label { text, .. } => Some(text.as_str()),
+        _ => None,
+    })
+}
+
+#[test]
+fn registration_placard_shows_the_pilots_own_tail_number() {
+    let mut session = Session::new().unwrap();
+    let mut placard = Registry::default().instrument("registration").unwrap();
+    let pack = session.pilot_callsign().registration;
+    let config = session.aircraft_configuration().unwrap().clone();
+    let draw = placard.update(
+        InstrumentInput::new(session.sim().systems(), 0.)
+            .with_aircraft(&config)
+            .with_registration(&pack),
+    );
+    assert_eq!(registration_label(&draw), Some(pack.as_str()));
+    // Without a supplied registration the pack's identity is shown.
+    let draw = placard.update(InstrumentInput::new(session.sim().systems(), 0.).with_aircraft(&config));
+    assert_eq!(
+        registration_label(&draw),
+        Some(config.variant.identity.registration.as_str())
+    );
+
+    session
+        .execute(
+            "comms.callsign",
+            serde_json::json!({"registration":"N824RX","persist":false}),
+        )
+        .unwrap();
+    let custom = session.pilot_callsign().registration;
+    assert_eq!(custom, "N824RX");
+    let draw = placard.update(
+        InstrumentInput::new(session.sim().systems(), 0.)
+            .with_aircraft(&config)
+            .with_registration(&custom),
+    );
+    assert_eq!(registration_label(&draw), Some("N824RX"));
+    assert!(draw.valid && draw.items.iter().all(valid_item));
+}
+
+#[test]
+fn sling_placard_uses_the_registration_token() {
+    use flightcraft_aero::modern::{PanelElement, REGISTRATION_TOKEN};
+    let panel = crate::layout_tests::sling_panel();
+    let placard = panel
+        .equipment
+        .unwrap()
+        .elements
+        .into_iter()
+        .find(|e| e.id == "registration")
+        .unwrap();
+    let PanelElement::Placard { text, .. } = placard.element else {
+        panic!("registration is a placard")
+    };
+    assert_eq!(text, REGISTRATION_TOKEN);
 }

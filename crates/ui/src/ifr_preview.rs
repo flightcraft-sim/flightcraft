@@ -24,6 +24,7 @@ fn cockpit(ui: &mut egui::Ui, s: &Session, scene: &mut Scene, panel: &mut Instru
         |ui| {
             ui.painter().rect_filled(ui.max_rect(), 0., theme::PANEL);
             let config = s.aircraft_configuration().unwrap();
+            let registration = s.pilot_callsign().registration;
             panel
                 .show(
                     ui,
@@ -31,6 +32,7 @@ fn cockpit(ui: &mut egui::Ui, s: &Session, scene: &mut Scene, panel: &mut Instru
                     InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
                         .with_glass(&glass)
                         .with_aircraft(config)
+                        .with_registration(&registration)
                         .with_autopilot(s.sim().installed_autopilot()),
                     s.flight_generation(),
                 )

@@ -61,6 +61,7 @@ pub fn render_equipment_panel(session: &mut Session, width: u32, height: u32) ->
         return Err("selected panel has no equipment".into());
     }
     let glass = session.glass_state();
+    let registration = session.pilot_callsign().registration;
     let mut panel = InstrumentPanel::default();
     let mut error = None;
     let image = rasterize(width, height, |ui| {
@@ -69,6 +70,7 @@ pub fn render_equipment_panel(session: &mut Session, width: u32, height: u32) ->
             &configuration.panel,
             InstrumentInput::new(session.sim().systems(), session.sim().readout().time_s)
                 .with_aircraft(&configuration)
+                .with_registration(&registration)
                 .with_glass(&glass)
                 .with_autopilot(session.sim().installed_autopilot()),
             session.flight_generation(),

@@ -212,6 +212,7 @@ pub(crate) fn shell(ui: &egui::Ui, rect: Rect, panel: &EquipmentPanel) {
         );
     }
 }
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn primitive(
     ui: &mut egui::Ui,
     cell: Rect,
@@ -220,6 +221,7 @@ pub(crate) fn primitive(
     font: f32,
     scale: f32,
     placard: egui::Color32,
+    registration: &str,
 ) -> Option<ModernSetting> {
     let id = installation.id.as_str();
     let element = &installation.element;
@@ -272,6 +274,7 @@ pub(crate) fn primitive(
             } else {
                 ink(*color)
             };
+            let s = &flightcraft_aero::modern::expand_placard_text(s, registration);
             let size = (*font_size_mm as f32 * scale).max(5.);
             let galley = ui
                 .painter()

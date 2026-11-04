@@ -64,7 +64,7 @@ fn builtins_resolve_to_the_original_exact_mass_geometry_and_tables() {
     let catalog = AircraftCatalog::builtins().unwrap();
     let a = catalog.resolve_aircraft("corvid").unwrap();
     assert!(a.weight_balance.in_limits);
-    assert_eq!(a.panel.instruments.len(), 18);
+    assert_eq!(a.panel.instruments.len(), 19);
     assert_eq!(a.load.stations.len(), 3);
     let reference = include_str!("../../../aircraft/corvid/aircraft.json");
     assert_eq!(Aircraft::from_json(reference).unwrap(), a.aircraft);

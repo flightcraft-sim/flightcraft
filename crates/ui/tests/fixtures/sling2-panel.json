@@ -1123,7 +1123,7 @@
         ],
         "element": {
           "kind": "placard",
-          "text": "N371FC",
+          "text": "{registration}",
           "font_size_mm": 9.24,
           "color": "white"
         }

@@ -192,6 +192,11 @@ impl PanelUi {
             crate::panel_preview::equipment_rect(panel, available)
         };
         let scale = rect.width() / width as f32;
+        let registration = input
+            .registration
+            .or_else(|| input.aircraft.map(|a| a.variant.identity.registration.as_str()))
+            .unwrap_or_default()
+            .to_owned();
         #[cfg(test)]
         {
             let visible = dash.map_or(rect, |r| {
@@ -986,9 +991,16 @@ impl PanelUi {
                         }
                     }
                     _ => {
-                        if let Some(setting) =
-                            crate::panel_art::primitive(ui, cell, e, modern, font, scale, placard)
-                        {
+                        if let Some(setting) = crate::panel_art::primitive(
+                            ui,
+                            cell,
+                            e,
+                            modern,
+                            font,
+                            scale,
+                            placard,
+                            &registration,
+                        ) {
                             self.system(setting);
                         }
                     }

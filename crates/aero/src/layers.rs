@@ -30,6 +30,7 @@ pub const INSTRUMENT_MODULES: &[&str] = &[
     "glass_pfd",
     "glass_mfd",
     "glass_standby",
+    "registration",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]

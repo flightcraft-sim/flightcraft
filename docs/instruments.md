@@ -46,6 +46,7 @@ skin uses only theme tokens and original procedural geometry.
 | `ammeter` | Battery current, positive charging and negative discharging | 0.4 s |
 | `volts`, `suction` | Main bus voltage and installed vacuum suction | 0.2 s; 0.5 s |
 | `annunciators` | Installed low voltage, vacuum, fuel, and oil pressure lamps; warning colour when lit, dim when unlit | immediate |
+| `registration` | The aircraft's full registration on a 320 × 22 strip: the pilot's own tail number when set, else the pack's | immediate |
 
 Needles use exact held-input first-order responses with limits and `libm`. Simulation time
 governs presentation: paused redraws consume no time, time reversal resets memory, and session

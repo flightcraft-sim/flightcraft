@@ -801,6 +801,7 @@ impl PageUi {
             }
             PageKind::Panel | PageKind::PanelItem | PageKind::Instrument => {
                 let state = s.glass_state();
+                let registration = s.pilot_callsign().registration;
                 let mut configuration = s
                     .aircraft_configuration()
                     .cloned()
@@ -847,6 +848,7 @@ impl PageUi {
                     &configuration.panel,
                     instruments::InstrumentInput::new(s.sim().systems(), readout.time_s)
                         .with_aircraft(&configuration)
+                        .with_registration(&registration)
                         .with_airports(s.sim().world().airports())
                         .with_vision(s.sim().world(), s.sim().state())
                         .with_glass(&state)

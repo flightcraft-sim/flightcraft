@@ -375,6 +375,21 @@ impl Default for DisplayComposition {
     }
 }
 
+/// Token in placard text that is replaced at draw time by the aircraft's current registration.
+pub const REGISTRATION_TOKEN: &str = "{registration}";
+/// Longest registration a placard can be asked to show. It is shorter than the token, so
+/// expansion never lengthens placard text and the 128-character limit holds for the result.
+pub const MAX_REGISTRATION_LEN: usize = 12;
+const _: () = assert!(MAX_REGISTRATION_LEN <= REGISTRATION_TOKEN.len());
+
+/// Placard text with `{registration}` replaced by `registration`.
+pub fn expand_placard_text(text: &str, registration: &str) -> String {
+    let registration = registration
+        .get(..registration.len().min(MAX_REGISTRATION_LEN))
+        .unwrap_or(registration);
+    text.replace(REGISTRATION_TOKEN, registration)
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PanelElement {
