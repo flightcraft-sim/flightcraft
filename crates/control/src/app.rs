@@ -13,6 +13,8 @@ pub enum CameraMode {
     Wing,
     Tower,
     Flyby,
+    /// Close, slightly elevated view of the pre-flight figure and the part being checked.
+    Walkaround,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, serde::Deserialize, JsonSchema)]

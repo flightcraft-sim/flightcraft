@@ -62,6 +62,7 @@ impl Session {
             layout_redo: self.layout_redo.clone(),
             scenario: self.scenario.clone(),
             lesson: self.lesson.clone(),
+            preflight: self.preflight.clone(),
             flight_archive: self.flight_archive.clone(),
             comms: self.comms.clone(),
             crew: self.crew.clone(),

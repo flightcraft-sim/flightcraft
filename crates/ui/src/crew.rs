@@ -492,5 +492,6 @@ pub(crate) fn render_camera(mode: flightcraft_control::CameraMode) -> flightcraf
         flightcraft_control::CameraMode::Wing => CameraMode::Wing,
         flightcraft_control::CameraMode::Tower => CameraMode::Tower,
         flightcraft_control::CameraMode::Flyby => CameraMode::Flyby,
+        flightcraft_control::CameraMode::Walkaround => CameraMode::Walkaround,
     }
 }

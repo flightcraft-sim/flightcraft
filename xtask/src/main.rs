@@ -253,6 +253,10 @@ fn schemas(check: bool) -> Result<(), String> {
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::Lesson)),
         ),
         (
+            "preflight-lesson.json",
+            serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::PreflightLesson)),
+        ),
+        (
             "layout.json",
             serde_json::to_string_pretty(&schemars::schema_for!(flightcraft_control::screens::Layout)),
         ),

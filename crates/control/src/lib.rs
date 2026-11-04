@@ -6,6 +6,8 @@
 
 pub mod lesson;
 pub use lesson::*;
+pub mod preflight;
+pub use preflight::*;
 pub mod scenario;
 pub use scenario::*;
 pub mod comms;
@@ -116,6 +118,7 @@ pub struct Session {
     crew: crew::Crew,
     scenario: scenario::ScenarioRuntime,
     lesson: lesson::LessonRuntime,
+    preflight: preflight::Runtime,
     flight_archive: comms::archive::FlightArchive,
     comms: comms::Comms,
     sim: Sim,
@@ -162,6 +165,7 @@ impl Session {
             crew: Default::default(),
             scenario: Default::default(),
             lesson: Default::default(),
+            preflight: Default::default(),
             flight_archive: Default::default(),
             comms: comms::Comms::default(),
             selected_configuration: Some(configuration.clone()),
@@ -903,6 +907,15 @@ registry!(
     LessonStart,
     GetLessonDebrief,
     LessonFinish,
+    PreflightBegin,
+    PreflightStateCommand,
+    PreflightPerform,
+    PreflightFault,
+    PreflightResolve,
+    PreflightAdvance,
+    PreflightSpeed,
+    PreflightEnd,
+    PreflightLessons,
     InstructorInstrumentFailure,
     InstructorAttitude,
     SetCrewMode,

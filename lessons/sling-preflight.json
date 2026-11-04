@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "sling-preflight",
+  "title": "Sling: pre-flight walkaround",
+  "briefing": "The Sling 2 is parked at 1N7 runway 07 with its pitot cover, wheel chocks, and tie-down ropes fitted. Walk the pre-flight inspection of POH section 4.4 in order: cabin, fuselage, empennage, right wing and main gear, nose section and nose gear, then the left wing. Each item shows what to check; the figure does it for you. Take the covers, chocks, and ropes off, and physically look at the fuel level in both tanks: with 30 litres, fuel just covers the bottom of a tank. Ignition off before touching the propeller. This is simulated practice, not a substitute for the aircraft's own handbook.",
+  "aircraft": "sling2",
+  "region": "eastern-pa",
+  "airport": "1N7",
+  "runway_end": "07",
+  "covers_on": true,
+  "planned_fuel_l": 40.0,
+  "seed": 0,
+  "random_findings": 0
+}

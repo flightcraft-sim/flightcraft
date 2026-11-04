@@ -12,6 +12,7 @@ mod registration_atlas;
 pub mod scenery;
 mod shadows;
 mod vision;
+pub mod walkaround;
 mod weather;
 pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_vision_stats};
 pub use vision::{PFD_FOCAL_LENGTH, SyntheticVision, pfd_pitch_y};
@@ -67,6 +68,8 @@ pub enum CameraMode {
     Wing,
     Tower,
     Flyby,
+    /// The session's pre-flight camera framing, from the walkaround scene.
+    Walkaround,
 }
 
 pub struct Scene {
@@ -277,6 +280,11 @@ impl Scene {
         Ok(())
     }
 
+    /// The pre-flight figure, props, and close-ups to draw with the aircraft, or none.
+    pub fn set_walkaround(&mut self, scene: Option<flightcraft_aero::walkaround::WalkaroundScene>) {
+        self.exterior_pose.walkaround = scene.map(std::sync::Arc::new);
+    }
+
     /// Read-only animation inputs; phases advance in simulation time, so pause freezes motion.
     pub fn set_exterior_state(&mut self, sim: &flightcraft_sim::Sim) {
         self.exterior_pose.update(sim);
@@ -467,6 +475,18 @@ impl Scene {
                     camera::cockpit_view(position, attitude, self.look.x, self.look.y, pilot_eye),
                 )
             }
+            CameraMode::Walkaround => {
+                let cg = Vec3::from_array(self.exterior_pose.cg_m);
+                let frame = self.exterior_pose.walkaround.as_ref().and_then(|w| w.camera);
+                let (eye_body, target_body, fov) = frame.map_or(
+                    (Vec3::new(-1.0, -7.0, -1.4), Vec3::new(-1.6, 0., -0.15), 50_f32),
+                    |c| (Vec3::from_array(c.eye_m), Vec3::from_array(c.target_m), c.fov_deg),
+                );
+                let eye = position + drawing(attitude * (eye_body - cg));
+                let target = position + drawing(attitude * (target_body - cg));
+                vertical_fov = fov.to_radians().clamp(10_f32.to_radians(), 100_f32.to_radians());
+                (eye, Mat4::look_at_rh(eye, target, Vec3::Y))
+            }
         };
         let (eye, view) = if let Some(settings) = self.screen_view {
             if let Some(fixed) = settings.fixed_eye_ned_m {
@@ -509,7 +529,10 @@ impl Scene {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),
             aspect,
-            if matches!(self.camera, CameraMode::Wing | CameraMode::Cockpit) {
+            if matches!(
+                self.camera,
+                CameraMode::Wing | CameraMode::Cockpit | CameraMode::Walkaround
+            ) {
                 0.015
             } else {
                 0.05

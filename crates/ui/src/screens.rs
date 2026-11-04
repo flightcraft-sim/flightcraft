@@ -785,6 +785,7 @@ impl PageUi {
                 self.scene
                     .set_registration(callsign.overridden.then_some(callsign.registration.as_str()));
                 self.scene.set_exterior_state(s.sim());
+                self.scene.set_walkaround(s.preflight_scene());
                 self.scene
                     .set_propeller_power(readout.effective_controls.throttle as f32);
                 let dt = self.camera_elapsed(ui.ctx().input(|i| i.time), s.flight_generation());

@@ -647,6 +647,7 @@ impl Session {
             self.finish_transmissions();
             self.sequence_scenario();
             self.sequence_lesson();
+            self.sequence_preflight();
             if now - self.comms.last_tick >= 0.25 - 1e-8 {
                 let dt = now - self.comms.last_tick;
                 self.comms.last_tick = now;

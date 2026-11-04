@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PreflightLesson",
+  "type": "object",
+  "properties": {
+    "aircraft": {
+      "description": "Installed aircraft id; its pack must carry a `preflight` section.",
+      "type": "string"
+    },
+    "airport": {
+      "type": "string"
+    },
+    "briefing": {
+      "type": "string"
+    },
+    "covers_on": {
+      "description": "Covers, ropes, and chocks are fitted when the lesson starts.",
+      "type": "boolean"
+    },
+    "findings": {
+      "description": "Findings seeded explicitly.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SeedSpec"
+      }
+    },
+    "id": {
+      "type": "string"
+    },
+    "planned_fuel_l": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "random_findings": {
+      "description": "Findings to seed at random from the pack's seedable defects.",
+      "type": "integer",
+      "format": "uint8",
+      "default": 0,
+      "maximum": 8,
+      "minimum": 0
+    },
+    "region": {
+      "type": "string"
+    },
+    "runway_end": {
+      "description": "Runway end the aircraft is parked at.",
+      "type": "string"
+    },
+    "seed": {
+      "description": "Seed for random findings. The same seed always seeds the same findings.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "title": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "title",
+    "briefing",
+    "aircraft",
+    "region",
+    "airport",
+    "runway_end",
+    "covers_on",
+    "seed"
+  ],
+  "$defs": {
+    "DefectKind": {
+      "description": "Findings an instructor or lesson can seed. The first three are physical props left on.",
+      "type": "string",
+      "enum": [
+        "pitot_cover",
+        "tie_down",
+        "chock",
+        "low_oil",
+        "low_fuel",
+        "loose_cowl_fastener",
+        "aileron_hardware_missing",
+        "flap_hardware_missing",
+        "damaged_tyre",
+        "wheel_fairing_crack"
+      ]
+    },
+    "SeedSpec": {
+      "description": "A finding to seed.",
+      "type": "object",
+      "properties": {
+        "item": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/DefectKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "item",
+        "kind"
+      ]
+    }
+  }
+}

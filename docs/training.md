@@ -2,7 +2,7 @@
 
 Status: weather, IMC visuals, the hood, the [radio foundation](radio.md), a bounded subset of
 [tower and approach training](atc.md), [scenarios](scenarios.md), and [emergencies](emergencies.md)
-are implemented, alongside [IFR lesson files and instrument task grading](ifr-training.md).
+are implemented, alongside [IFR lesson files and instrument task grading](ifr-training.md) and the [exterior pre-flight walkaround](preflight.md).
 Broader conversational instruction features below remain specifications.
 
 FlightCraft is built to do what flight students actually need between lessons. In priority order:

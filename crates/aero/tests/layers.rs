@@ -434,7 +434,7 @@ fn exterior_manifest_version_and_installation_are_transactional() {
         .unwrap();
     assert!(catalog.exterior("corvid-tourer").is_some());
     let mut future = manifest.clone();
-    future.format_version = 4;
+    future.format_version = 5;
     assert!(future.validate().is_err());
     let mut traversal = manifest;
     traversal.exterior[0].model = "../escape.glb".into();

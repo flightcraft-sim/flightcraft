@@ -15,9 +15,10 @@ pub const MAX_PACKS: usize = 64;
 #[serde(deny_unknown_fields)]
 #[schemars(transform = pack_version_schema)]
 pub struct PackManifest {
-    /// Legacy manifests remain readable; exteriors require >=2 and slide motion >=3.
+    /// Legacy manifests remain readable; exteriors require >=2, slide motion >=3, and a
+    /// pre-flight walkaround section in the systems layer >=4.
     #[serde(default = "manifest_v1")]
-    #[schemars(range(min = 1, max = 3))]
+    #[schemars(range(min = 1, max = 4))]
     pub format_version: u32,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[schemars(length(max = 16))]
@@ -64,9 +65,9 @@ pub fn validate_pack_path(path: &str) -> Result<(), AircraftError> {
 
 fn pack_version_schema(schema: &mut schemars::Schema) {
     schema.insert("allOf".into(), serde_json::json!([
-        {"if":{"not":{"properties":{"format_version":{"enum":[2,3]}},"required":["format_version"]}},
+        {"if":{"not":{"properties":{"format_version":{"enum":[2,3,4]}},"required":["format_version"]}},
          "then":{"properties":{"exterior":{"maxItems":0}}}},
-        {"if":{"not":{"properties":{"format_version":{"const":3}},"required":["format_version"]}},
+        {"if":{"not":{"properties":{"format_version":{"enum":[3,4]}},"required":["format_version"]}},
          "then":{"properties":{"exterior":{"items":{"properties":{"moving_parts":{"items":{"properties":{"motion":{"not":{"const":"slide"}}}}}}}}}}}
     ]));
 }
@@ -142,9 +143,9 @@ impl PackManifest {
             "requires 1 to 64 files",
         )?;
         require(
-            (1..=3).contains(&self.format_version) && (self.exterior.is_empty() || self.format_version >= 2),
+            (1..=4).contains(&self.format_version) && (self.exterior.is_empty() || self.format_version >= 2),
             "pack.format_version",
-            "exterior assets require pack format version 2 or 3",
+            "exterior assets require pack format version 2 or later",
         )?;
         require(self.exterior.len() <= 16, "pack.exterior", "at most 16 exteriors")?;
         let mut aircraft = BTreeSet::new();
@@ -257,6 +258,12 @@ impl AircraftCatalog {
                 .ok_or_else(|| error("files.path", format!("missing {}", entry.path)))?;
             let file = LayerFile::from_json(text)?;
             require(
+                manifest.format_version >= 4
+                    || !matches!(&file, LayerFile::Systems(s) if s.preflight.is_some()),
+                "pack.format_version",
+                "a pre-flight walkaround section requires pack format version 4",
+            )?;
+            require(
                 file.kind() == entry.kind,
                 "files.kind",
                 "manifest and document kinds differ",
@@ -319,6 +326,15 @@ impl AircraftCatalog {
                             .is_some_and(|d| d.electrical.loads.iter().any(|l| &l.id == load)),
                         "exterior.power_load",
                         "unresolved electrical load",
+                    )?;
+                }
+            }
+            if let Some(preflight) = &resolved.installed_systems.preflight {
+                for part in preflight.driven_parts() {
+                    require(
+                        definition.moving_parts.iter().any(|m| m.node == part),
+                        "preflight.items",
+                        "a hand-moved control is not a moving part of the exterior",
                     )?;
                 }
             }

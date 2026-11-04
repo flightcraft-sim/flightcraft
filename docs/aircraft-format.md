@@ -264,8 +264,8 @@ for ordered memory/checklist items, glide parameters, validation, and fictional 
 ## Exterior assets (pack format 2)
 
 Pack manifests now have an independent `format_version`. Omission means legacy pack format 1;
-explicit versions 1, 2 and 3 are readable, and unknown versions are rejected. An `exterior` section
-requires at least `format_version: 2`; linear `slide` motion requires pack format 3. Existing version 2 aircraft layer documents and their physics remain
+explicit versions 1, 2, 3 and 4 are readable, and unknown versions are rejected. An `exterior` section
+requires at least `format_version: 2`; linear `slide` motion requires pack format 3, and a [pre-flight walkaround section](#preflight-walkaround-section-pack-format-4) requires pack format 4. Existing version 2 aircraft layer documents and their physics remain
 unchanged. Older hosts reject the new manifest fields instead of silently discarding the artwork.
 The pack's semantic `version` identifies its release, independently of the manifest format.
 
@@ -349,3 +349,66 @@ glass display (a `glass_pfd` or `glass_mfd` load, or an installed touch display)
 such as the Sling 2 show traffic with no change. `false` removes it: no traffic on the glass map or
 inset, no TFC keys, and no TRAFFIC annunciation. It needs no format-version change; an older build
 rejects a pack that sets it as an unknown field. See [glass traffic](glass.md#traffic).
+
+## Preflight walkaround section (pack format 4)
+
+A systems layer may carry an optional top-level `preflight` object, beside `emergencies`, which
+turns the aircraft's own exterior pre-flight inspection list into data for the
+[walkaround](preflight.md). Like emergency procedures it is transcription by the pack author of
+the licensed handbook's list (items and references, not prose), and old packs omit it. Because
+version 2 layers deny unknown fields, an older engine would reject it with an unhelpful error, so
+a pack with a `preflight` section must declare **`format_version: 4`** in `pack.json`; installing
+it under an older manifest version fails with "a pre-flight walkaround section requires pack
+format version 4". Format 4 otherwise contains format 3 (slide motion, exteriors) unchanged.
+Section `version` is currently 1.
+
+```json
+{
+  "version": 1,
+  "source": "Sling 2 POH Rev 2.8 section 4.4 Pre-flight check",
+  "pace_mps": 1.3,
+  "seat_m": [-2.3, -0.205, -0.05],
+  "keepouts":  [{"id": "wing_left", "min_m": [-2.5, -4.6], "max_m": [-1.05, -0.55]}],
+  "route":     [{"id": "nose", "position_m": [1.25, 0.0]}],
+  "stations":  [{"id": "cabin", "name": "Cabin", "node": "left_cabin", "poh_ref": "4.4 (1) Cabin",
+                 "camera": {"target_m": [-2.3, -0.2, -0.2], "eye_offset_m": [-1.6, -3.4, -1.9]}}],
+  "items":     [{"id": "aileron_right", "station": "right_wing", "node": "right_aileron",
+                 "text": "Aileron: freedom of movement, attachment, surface condition",
+                 "poh_ref": "4.4 (4) Right wing and main gear",
+                 "action": {"kind": "move_control", "parts": ["aileron_right"],
+                            "target_m": [-2.39, 3.6, 0.0], "amplitude": 0.8}}],
+  "props":     [{"id": "pitot_cover", "kind": "pitot_cover", "position_m": [-1.3, -2.45, 0.16],
+                 "node": "left_wing_front_in", "present_at_start": true}],
+  "fuel":      {"density_kg_per_l": 0.72, "covers_bottom_l": 30,
+                "caps": [{"tank": "left", "cap_m": [-1.45, -1.9, 0.02]}]}
+}
+```
+
+Positions are body coordinates (x forward, y right, z down, metres), taken from the exterior
+model. Rules, all validated on pack load:
+
+- `keepouts` (at most 16) are plan-view rectangles the figure never enters (wings, fuselage,
+  tail, propeller disc). `route` (3 to 64 nodes) is a closed loop of ground points; every node must
+  be at least 0.2 m outside every keep-out and every segment, including the closing one, must
+  clear them. The figure walks only along it.
+- `stations` (1 to 16) are in walk order, each at a route `node` with a `camera` framing (a target
+  and an eye offset of at least 0.5 m; negative z puts the eye above the target). `items` (1 to
+  128) are grouped by station, in station order, each with the handbook's `text`, a `poh_ref`, an
+  optional `node` to stand at, `optional`, an optional `warning`, up to eight seedable `defects`,
+  and an `action`.
+- `action.kind` is `inspect` (`stance` `stand`/`crouch`, `touch`), `move_control` (exterior
+  `moving_parts` node names, validated against the pack's exterior at install; `amplitude` 0.1 to
+  1), `fuel_cap` (a tank in the `fuel` caps), `oil_check`, `palm_prop`, `remove` (prop ids), or
+  `cabin` (`effect`: `none`, `master_on`, `master_off`, `ignition_off`, `flaps_full`,
+  `fuel_indicator`).
+- A `defect` has a `kind` (`low_oil`, `low_fuel`, `loose_cowl_fastener`, `aileron_hardware_missing`,
+  `flap_hardware_missing`, `damaged_tyre`, `wheel_fairing_crack`; the props `pitot_cover`,
+  `tie_down`, `chock` are seeded through the item that removes them, not listed), a `description`,
+  a `severity` (`no_go` or `caution`), and a `cue_m` position for the visual marker.
+- `props` (at most 32) are `pitot_cover`, `chock`, or `tie_down_rope` objects, each removed by
+  exactly one `remove` item. `fuel.caps` names tank ids that the systems `definition` must have,
+  with `covers_bottom_l` the level at which fuel just covers the bottom of the tank.
+
+Item `text` is a terse restatement of the checklist line, so a pack distributes facts rather than
+handbook prose. See [the walkaround](preflight.md) for behaviour, commands, consequences, and
+grading. The generated [aircraft schema](../schema/aircraft.json) describes the section.

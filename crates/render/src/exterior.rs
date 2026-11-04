@@ -47,6 +47,8 @@ pub struct Pose {
     /// Navigation, strobe, beacon, landing, after switch and electrical power checks.
     pub lights: [bool; 4],
     pub powered_loads: std::collections::BTreeMap<String, bool>,
+    /// A pre-flight walkaround: the figure, props, hand-held surfaces, and close-ups.
+    pub walkaround: Option<Arc<flightcraft_aero::walkaround::WalkaroundScene>>,
     previous_time_s: Option<f64>,
 }
 impl Pose {
@@ -148,18 +150,31 @@ pub fn transforms(asset: &ExteriorAsset, model: &ExteriorModel, pose: &Pose) -> 
             let mut matrix = Mat4::from_cols_array_2d(&n.transform);
             if let Some(p) = asset.definition.moving_parts.iter().find(|p| p.node == n.name) {
                 let [low, high] = p.travel_rad;
-                let normalized = match p.motion {
-                    Motion::Aileron => pose.controls.first(),
-                    Motion::Elevator => pose.controls.get(1),
-                    Motion::Rudder | Motion::Steering => pose.controls.get(2),
-                    Motion::Flaps => pose.controls.get(3),
-                    _ => None,
-                }
-                .copied()
-                .unwrap_or(0.)
-                .clamp(-1., 1.);
+                // A surface moved by hand overrides the flight controls.
+                let held = pose
+                    .walkaround
+                    .as_ref()
+                    .and_then(|w| w.surfaces.iter().find(|s| s.node == n.name))
+                    .map(|s| s.value);
+                let normalized = held
+                    .or_else(|| {
+                        match p.motion {
+                            Motion::Aileron => pose.controls.first(),
+                            Motion::Elevator => pose.controls.get(1),
+                            Motion::Rudder | Motion::Steering => pose.controls.get(2),
+                            Motion::Flaps => pose.controls.get(3),
+                            _ => None,
+                        }
+                        .copied()
+                    })
+                    .unwrap_or(0.)
+                    .clamp(-1., 1.);
                 let angle = match p.motion {
-                    Motion::Propeller => pose.propeller_phase,
+                    Motion::Propeller => pose
+                        .walkaround
+                        .as_ref()
+                        .and_then(|w| w.propeller_phase)
+                        .unwrap_or(pose.propeller_phase),
                     Motion::Wheel => {
                         -pose.wheel_phase.get(p.gear_index).copied().unwrap_or(0.) / p.wheel_radius_m
                     }
@@ -272,6 +287,19 @@ pub(crate) fn frame(asset: &ExteriorAsset, pose: &Pose, distance: f32) -> Frame 
             }
         }
     }
+    // The figure and props cast shadows with the aircraft.
+    if let Some(scene) = &pose.walkaround {
+        for primitive in crate::walkaround::primitives(scene, pose.cg_m, 0) {
+            out.opaque
+                .extend(primitive.vertices.iter().map(|v| crate::mesh::Vertex {
+                    position: v.position,
+                    normal: v.normal,
+                    color: [0.6, 0.6, 0.6, 1.],
+                    kind: 1.,
+                    water_coverage: 0.,
+                }));
+        }
+    }
     out
 }
 
@@ -287,7 +315,7 @@ pub fn model_at_distance(asset: &ExteriorAsset, distance: f32) -> &Arc<ExteriorM
 }
 pub fn pbr_materials(model: &ExteriorModel) -> Vec<PbrMaterial> {
     use flightcraft_aero::exterior::MaterialAlpha;
-    model
+    let mut materials: Vec<PbrMaterial> = model
         .materials
         .iter()
         .map(|m| PbrMaterial {
@@ -313,7 +341,10 @@ pub fn pbr_materials(model: &ExteriorModel) -> Vec<PbrMaterial> {
                 })
             }),
         })
-        .collect()
+        .collect();
+    // The walkaround's own materials follow the model's, whether or not one is drawn.
+    materials.extend(crate::walkaround::materials());
+    materials
 }
 /// Apply named part animations, CG offset, and lamp gates to the textured game geometry.
 pub fn pbr_primitives(asset: &ExteriorAsset, model: &ExteriorModel, pose: &Pose) -> Vec<PbrPrimitive> {
@@ -363,12 +394,20 @@ pub fn pbr_primitives(asset: &ExteriorAsset, model: &ExteriorModel, pose: &Pose)
             }
         }
     }
-    groups
+    let mut primitives: Vec<PbrPrimitive> = groups
         .into_iter()
         .enumerate()
         .filter(|(_, v)| !v.is_empty())
         .map(|(material, vertices)| PbrPrimitive { material, vertices })
-        .collect()
+        .collect();
+    if let Some(scene) = &pose.walkaround {
+        primitives.extend(crate::walkaround::primitives(
+            scene,
+            pose.cg_m,
+            model.materials.len(),
+        ));
+    }
+    primitives
 }
 
 /// Exterior GPU implementation is independent of the scenery pipeline. Its public input types

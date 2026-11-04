@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "sling-preflight-findings",
+  "title": "Sling: pre-flight walkaround with two findings",
+  "briefing": "The Sling 2 is parked at 1N7 runway 07 and something is wrong with it, twice. Walk the whole POH section 4.4 pre-flight inspection and find both problems by looking at the aircraft, not at the panel. Do not fly with a no-go finding. Take the covers, chocks, and ropes off as the list says. The findings are chosen at random from the common ones; the same seed always chooses the same two. This is simulated practice, not a substitute for the aircraft's own handbook.",
+  "aircraft": "sling2",
+  "region": "eastern-pa",
+  "airport": "1N7",
+  "runway_end": "07",
+  "covers_on": true,
+  "planned_fuel_l": 40.0,
+  "seed": 20261104,
+  "random_findings": 2
+}

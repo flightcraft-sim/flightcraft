@@ -30,11 +30,11 @@
       "minItems": 1
     },
     "format_version": {
-      "description": "Legacy manifests remain readable; exteriors require >=2 and slide motion >=3.",
+      "description": "Legacy manifests remain readable; exteriors require >=2, slide motion >=3, and a\npre-flight walkaround section in the systems layer >=4.",
       "type": "integer",
       "format": "uint32",
       "default": 1,
-      "maximum": 3,
+      "maximum": 4,
       "minimum": 1
     },
     "id": {
@@ -59,7 +59,8 @@
             "format_version": {
               "enum": [
                 2,
-                3
+                3,
+                4
               ]
             }
           },
@@ -81,7 +82,10 @@
         "not": {
           "properties": {
             "format_version": {
-              "const": 3
+              "enum": [
+                3,
+                4
+              ]
             }
           },
           "required": [

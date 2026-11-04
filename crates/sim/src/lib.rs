@@ -18,6 +18,9 @@ pub mod avionics;
 pub mod canopy;
 mod dynamics;
 pub mod equipment;
+pub mod hazards;
+#[cfg(test)]
+mod hazards_tests;
 pub use avionics::navigation as glass_navigation;
 pub use avionics::sensor as glass_air_data;
 pub mod magnetic;
@@ -243,6 +246,7 @@ pub struct Sim {
     systems_changed: bool,
     parked_start: bool,
     glass: avionics::glass::GlassComputers,
+    hazards: hazards::GroundHazards,
 }
 
 impl Sim {
@@ -432,6 +436,7 @@ impl Sim {
             glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
             parked_start: matches!(start, Start::ParkedAt { .. }),
+            hazards: hazards::GroundHazards::default(),
             state,
             controls,
             steps: 0,
@@ -489,6 +494,7 @@ impl Sim {
             glass: avionics::glass::GlassComputers::default(),
             systems_changed: false,
             parked_start: false,
+            hazards: hazards::GroundHazards::default(),
             state,
             controls: controls.clamped(),
             steps,
@@ -936,6 +942,20 @@ impl Sim {
         Ok(())
     }
 
+    /// Ground hazards left from a pre-flight: covers, chocks, ropes, and missing hardware.
+    #[must_use]
+    pub fn hazards(&self) -> hazards::GroundHazards {
+        self.hazards
+    }
+
+    pub fn set_hazards(&mut self, hazards: hazards::GroundHazards) {
+        self.hazards = hazards;
+        if hazards != hazards::GroundHazards::default() {
+            self.systems_changed = true;
+        }
+        self.systems.failures = self.failures();
+    }
+
     pub fn injected_failures(&self) -> Failures {
         self.failures
     }
@@ -946,6 +966,10 @@ impl Sim {
         failures.door_open |= self.systems.canopy.sliding
             && !self.systems.canopy.latched
             && dynamics::height(&self.aircraft, &self.state, &self.world) > 0.;
+        if self.hazards != hazards::GroundHazards::default() {
+            let airborne = dynamics::height(&self.aircraft, &self.state, &self.world) > 0.;
+            self.hazards.apply(&mut failures, airborne);
+        }
         failures
     }
 
@@ -1332,6 +1356,17 @@ impl Sim {
                 let [_, _, down] = next.velocity_mps;
                 p.impact_vertical_speed_mps = Some(down);
             }
+            if self.hazards.restrained()
+                && dynamics::height(&self.aircraft, &next, &self.world) <= hazards::RESTRAINT_HEIGHT_M
+            {
+                // Chocks and tie-down ropes hold the aircraft where it stands.
+                next.velocity_mps[0] = 0.;
+                next.velocity_mps[1] = 0.;
+                next.angular_rate_rps[2] = 0.;
+                if self.hazards.tie_downs {
+                    next.velocity_mps[2] = next.velocity_mps[2].max(0.);
+                }
+            }
             self.state = next;
             self.magnetism.refresh(&self.world, self.state);
             if let Some(model) = &self.systems_model {
@@ -1554,6 +1589,12 @@ impl Sim {
                 if let Some(position) = jam {
                     eat(position.to_bits());
                 }
+            }
+        }
+        if self.hazards != hazards::GroundHazards::default() {
+            eat(0x6861_7a61_7264_0001);
+            for word in self.hazards.hash_words() {
+                eat(word);
             }
         }
         if self.systems_changed

@@ -17,6 +17,8 @@ pub mod panel_fidelity;
 pub use installed::*;
 pub mod emergencies;
 mod failures;
+pub mod preflight;
+pub mod walkaround;
 pub use failures::*;
 
 use serde::{Deserialize, Serialize};

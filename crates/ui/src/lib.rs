@@ -879,6 +879,7 @@ impl FlightCraftApp {
                     CameraMode::Wing => "Wing",
                     CameraMode::Tower => "Tower",
                     CameraMode::Flyby => "Flyby",
+                    CameraMode::Walkaround => "Walkaround",
                 };
                 if ui
                     .button(format!("{camera}  [{}]", self.keymap.label(Action::Camera)))
@@ -1479,6 +1480,8 @@ mod main_ui_tests;
 mod cockpit_preview;
 #[cfg(test)]
 mod exterior_preview;
+#[cfg(test)]
+mod walkaround_preview;
 
 /// Schema-only re-export for the repository schema generator.
 pub type SceneryProviderSchema = flightcraft_render::scenery::Provider;

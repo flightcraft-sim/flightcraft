@@ -197,6 +197,196 @@
         "cdi_scale"
       ]
     },
+    "Action": {
+      "description": "What the figure does for an item.",
+      "oneOf": [
+        {
+          "description": "Look at a point, optionally touching it (\"condition\", \"secure\").",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "inspect"
+            },
+            "stance": {
+              "$ref": "#/$defs/Stance"
+            },
+            "target_m": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "touch": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "target_m",
+            "stance",
+            "touch"
+          ]
+        },
+        {
+          "description": "Move control surfaces by hand through their full travel. `parts` are exterior\n`moving_parts` node names; `target_m` is where the hand takes hold.",
+          "type": "object",
+          "properties": {
+            "amplitude": {
+              "type": "number",
+              "format": "double",
+              "maximum": 1.0,
+              "minimum": 0.1
+            },
+            "kind": {
+              "type": "string",
+              "const": "move_control"
+            },
+            "parts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "target_m": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "parts",
+            "target_m",
+            "amplitude"
+          ]
+        },
+        {
+          "description": "Open a fuel filler cap and look at the level inside.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "fuel_cap"
+            },
+            "tank": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "tank"
+          ]
+        },
+        {
+          "description": "Pull the oil tank dipstick and read it between its minimum and maximum marks.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "oil_check"
+            },
+            "target_m": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "target_m"
+          ]
+        },
+        {
+          "description": "Handle the propeller blade area with the palm of the hand. Ignition must be off.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "palm_prop"
+            },
+            "target_m": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "target_m"
+          ]
+        },
+        {
+          "description": "Remove covers, ropes, or chocks.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "remove"
+            },
+            "props": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "props"
+          ]
+        },
+        {
+          "description": "An item done from the cockpit.",
+          "type": "object",
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/CabinEffect"
+            },
+            "kind": {
+              "type": "string",
+              "const": "cabin"
+            },
+            "target_m": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "effect",
+            "target_m"
+          ]
+        }
+      ]
+    },
     "Aerodynamics": {
       "type": "object",
       "properties": {
@@ -1456,6 +1646,33 @@
         "essential"
       ]
     },
+    "CabinEffect": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "master_on",
+            "master_off",
+            "ignition_off"
+          ]
+        },
+        {
+          "description": "A look or a hand check with no switch involved.",
+          "type": "string",
+          "const": "none"
+        },
+        {
+          "description": "Move the flap control to full down.",
+          "type": "string",
+          "const": "flaps_full"
+        },
+        {
+          "description": "Read the fuel quantity indicator.",
+          "type": "string",
+          "const": "fuel_indicator"
+        }
+      ]
+    },
     "CallGrade": {
       "type": "object",
       "properties": {
@@ -1561,6 +1778,11 @@
           "description": "First-person view from the Corvid left seat.",
           "type": "string",
           "const": "cockpit"
+        },
+        {
+          "description": "Close, slightly elevated view of the pre-flight figure and the part being checked.",
+          "type": "string",
+          "const": "walkaround"
         }
       ]
     },
@@ -2443,6 +2665,54 @@
         "flight_plan",
         "nearest",
         "traffic"
+      ]
+    },
+    "DefectKind": {
+      "description": "Findings an instructor or lesson can seed. The first three are physical props left on.",
+      "type": "string",
+      "enum": [
+        "pitot_cover",
+        "tie_down",
+        "chock",
+        "low_oil",
+        "low_fuel",
+        "loose_cowl_fastener",
+        "aileron_hardware_missing",
+        "flap_hardware_missing",
+        "damaged_tyre",
+        "wheel_fairing_crack"
+      ]
+    },
+    "DefectOption": {
+      "type": "object",
+      "properties": {
+        "cue_m": {
+          "description": "Body-frame position of the visual cue on the model.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "description": {
+          "description": "What the student sees and reads when the item reveals it.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/DefectKind"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity2"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "description",
+        "severity",
+        "cue_m"
       ]
     },
     "Derivatives": {
@@ -4488,6 +4758,63 @@
         "dropped_inputs"
       ]
     },
+    "FuelCap": {
+      "type": "object",
+      "properties": {
+        "cap_m": {
+          "description": "Body-frame position of the filler cap, metres.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "tank": {
+          "description": "Tank id from the systems definition.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tank",
+        "cap_m"
+      ]
+    },
+    "FuelCheck": {
+      "type": "object",
+      "properties": {
+        "caps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FuelCap"
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "covers_bottom_l": {
+          "description": "Litres at which fuel can just be seen covering the whole bottom of a tank.",
+          "type": "number",
+          "format": "double",
+          "maximum": 500,
+          "minimum": 1
+        },
+        "density_kg_per_l": {
+          "description": "Fuel density used to convert tank mass to litres.",
+          "type": "number",
+          "format": "double",
+          "maximum": 1.0,
+          "minimum": 0.5
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "density_kg_per_l",
+        "covers_bottom_l",
+        "caps"
+      ]
+    },
     "FuelSelector": {
       "type": "string",
       "enum": [
@@ -5236,6 +5563,17 @@
             "type": "string"
           },
           "maxItems": 64
+        },
+        "preflight": {
+          "description": "Exterior pre-flight walkaround. Requires pack format version 4.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Preflight"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false,
@@ -5609,6 +5947,96 @@
           "type": "string",
           "const": "radio"
         }
+      ]
+    },
+    "Item": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "defects": {
+          "description": "Findings an instructor may seed on this item, with their text and cue.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DefectOption"
+          },
+          "maxItems": 8
+        },
+        "id": {
+          "type": "string"
+        },
+        "node": {
+          "description": "Route node to stand at, when it differs from the station's own.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "optional": {
+          "description": "Skipping an optional item is not graded as a miss.",
+          "type": "boolean",
+          "default": false
+        },
+        "poh_ref": {
+          "description": "Handbook section and list, for example `4.4 (4) Right wing and main gear`.",
+          "type": "string"
+        },
+        "station": {
+          "type": "string"
+        },
+        "text": {
+          "description": "The handbook's own wording.",
+          "type": "string"
+        },
+        "warning": {
+          "description": "A handbook warning or caution that applies to the item.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "station",
+        "text",
+        "poh_ref",
+        "action"
+      ]
+    },
+    "Keepout": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "max_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "min_m": {
+          "description": "Body x (forward) and y (right), metres.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "min_m",
+        "max_m"
       ]
     },
     "KeyPosition": {
@@ -8846,6 +9274,96 @@
         "snow"
       ]
     },
+    "Preflight": {
+      "type": "object",
+      "properties": {
+        "fuel": {
+          "$ref": "#/$defs/FuelCheck"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 128,
+          "minItems": 1
+        },
+        "keepouts": {
+          "description": "Plan-view rectangles the figure never enters: wings, fuselage, tail, and the propeller disc.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Keepout"
+          },
+          "maxItems": 16
+        },
+        "pace_mps": {
+          "description": "Walking pace in metres per second at real time.",
+          "type": "number",
+          "format": "double",
+          "maximum": 2.5,
+          "minimum": 0.5
+        },
+        "props": {
+          "description": "Covers, ropes, and chocks present on a parked aircraft.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Prop"
+          },
+          "maxItems": 32
+        },
+        "route": {
+          "description": "A closed loop of ground points around the aircraft. The figure only walks along it.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RouteNode"
+          },
+          "maxItems": 64,
+          "minItems": 3
+        },
+        "seat_m": {
+          "description": "Where the pilot sits when an item is done from the cockpit: the hip point on the seat.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "source": {
+          "description": "Where the list comes from, for example the handbook revision and section.",
+          "type": "string"
+        },
+        "stations": {
+          "description": "Stations in handbook walk order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Station"
+          },
+          "maxItems": 16,
+          "minItems": 1
+        },
+        "version": {
+          "description": "Document version of this section. Currently 1.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 1,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "source",
+        "pace_mps",
+        "seat_m",
+        "keepouts",
+        "route",
+        "stations",
+        "items",
+        "fuel"
+      ]
+    },
     "ProcedureGeometry": {
       "type": "object",
       "properties": {
@@ -8863,6 +9381,56 @@
         "name",
         "missed",
         "position"
+      ]
+    },
+    "Prop": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/PropKind"
+        },
+        "node": {
+          "description": "Route node where the figure stands to take it off.",
+          "type": "string"
+        },
+        "position_m": {
+          "description": "Body-frame position, metres.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "present_at_start": {
+          "description": "Present when a parked-aircraft walkaround begins.",
+          "type": "boolean"
+        },
+        "yaw_rad": {
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "position_m",
+        "node",
+        "present_at_start"
+      ]
+    },
+    "PropKind": {
+      "type": "string",
+      "enum": [
+        "pitot_cover",
+        "chock",
+        "tie_down_rope"
       ]
     },
     "Propulsion": {
@@ -9397,6 +9965,29 @@
         "landing_wigwag"
       ]
     },
+    "RouteNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "position_m": {
+          "description": "Body x (forward) and y (right), metres.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "position_m"
+      ]
+    },
     "ScenarioAction": {
       "oneOf": [
         {
@@ -9916,6 +10507,20 @@
         "warning"
       ]
     },
+    "Severity2": {
+      "oneOf": [
+        {
+          "description": "Do not fly until fixed.",
+          "type": "string",
+          "const": "no_go"
+        },
+        {
+          "description": "Fix or accept knowingly; flying with it is graded down.",
+          "type": "string",
+          "const": "caution"
+        }
+      ]
+    },
     "SimulationDate": {
       "type": "object",
       "properties": {
@@ -10101,6 +10706,13 @@
       "type": "string",
       "pattern": "^#[0-9a-fA-F]{6}$"
     },
+    "Stance": {
+      "type": "string",
+      "enum": [
+        "stand",
+        "crouch"
+      ]
+    },
     "State": {
       "description": "The full rigid-body state.",
       "type": "object",
@@ -10157,6 +10769,66 @@
         "velocity_mps",
         "attitude",
         "angular_rate_rps"
+      ]
+    },
+    "Station": {
+      "type": "object",
+      "properties": {
+        "camera": {
+          "$ref": "#/$defs/StationCamera"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "node": {
+          "description": "The route node where the figure stands for this station's items.",
+          "type": "string"
+        },
+        "poh_ref": {
+          "description": "Handbook reference of the station.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "node",
+        "poh_ref",
+        "camera"
+      ]
+    },
+    "StationCamera": {
+      "description": "Framing for the exterior inset: look at `target_m`, from `target_m + eye_offset_m`.",
+      "type": "object",
+      "properties": {
+        "eye_offset_m": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        },
+        "target_m": {
+          "description": "Body-frame point (x forward, y right, z down), metres.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 3,
+          "minItems": 3
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target_m",
+        "eye_offset_m"
       ]
     },
     "StationKind": {

@@ -189,6 +189,9 @@ pub struct Engine {
 pub struct InstalledSystems {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub emergencies: Vec<crate::emergencies::EmergencyProcedure>,
+    /// Exterior pre-flight walkaround. Requires pack format version 4.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preflight: Option<Box<crate::preflight::Preflight>>,
     #[schemars(range(min = 2, max = 2))]
     pub format_version: u32,
     pub identity: Identity,
@@ -508,6 +511,17 @@ impl LayerFile {
                 }
                 if let Some(d) = &s.definition {
                     d.validate()?;
+                }
+                if let Some(p) = &s.preflight {
+                    p.validate()?;
+                    let tanks = s.definition.as_ref().map(|d| &d.tanks);
+                    for cap in &p.fuel.caps {
+                        require(
+                            tanks.is_some_and(|t| t.iter().any(|t| t.id == cap.tank)),
+                            "preflight.fuel",
+                            "filler cap names a tank the systems definition lacks",
+                        )?;
+                    }
                 }
                 require(s.installed.len() <= 64, "installed", "at most 64 systems")?;
                 let mut seen = BTreeSet::new();
@@ -1092,6 +1106,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
     };
     let systems = InstalledSystems {
         emergencies: Vec::new(),
+        preflight: None,
         definition: None,
         format_version: 2,
         identity: make_identity("systems"),

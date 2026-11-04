@@ -1,0 +1,1823 @@
+{
+ "version": 1,
+ "source": "Sling 2 POH Rev 2.8 (DC-POH-002-X-B-2.8) section 4.4 Pre-flight check",
+ "pace_mps": 1.3,
+ "seat_m": [
+  -2.3,
+  -0.205,
+  -0.05
+ ],
+ "keepouts": [
+  {
+   "id": "fuselage",
+   "min_m": [
+    -6.0,
+    -0.55
+   ],
+   "max_m": [
+    0.33,
+    0.55
+   ]
+  },
+  {
+   "id": "wing_left",
+   "min_m": [
+    -2.5,
+    -4.6
+   ],
+   "max_m": [
+    -1.05,
+    -0.55
+   ]
+  },
+  {
+   "id": "wing_right",
+   "min_m": [
+    -2.5,
+    0.55
+   ],
+   "max_m": [
+    -1.05,
+    4.6
+   ]
+  },
+  {
+   "id": "tailplane",
+   "min_m": [
+    -5.8,
+    -1.42
+   ],
+   "max_m": [
+    -4.95,
+    1.42
+   ]
+  },
+  {
+   "id": "propeller_disc",
+   "min_m": [
+    0.3,
+    -0.9
+   ],
+   "max_m": [
+    0.7,
+    0.9
+   ]
+  }
+ ],
+ "route": [
+  {
+   "id": "nose",
+   "position_m": [
+    1.25,
+    0.0
+   ]
+  },
+  {
+   "id": "nose_right",
+   "position_m": [
+    1.0,
+    1.3
+   ]
+  },
+  {
+   "id": "right_cowl",
+   "position_m": [
+    0.05,
+    1.3
+   ]
+  },
+  {
+   "id": "right_nose_gear",
+   "position_m": [
+    -0.55,
+    0.85
+   ]
+  },
+  {
+   "id": "right_wing_front_in",
+   "position_m": [
+    -0.6,
+    1.9
+   ]
+  },
+  {
+   "id": "right_wing_front_mid",
+   "position_m": [
+    -0.6,
+    3.0
+   ]
+  },
+  {
+   "id": "right_wing_front_out",
+   "position_m": [
+    -0.7,
+    4.0
+   ]
+  },
+  {
+   "id": "right_tip_front",
+   "position_m": [
+    -0.7,
+    4.95
+   ]
+  },
+  {
+   "id": "right_tip",
+   "position_m": [
+    -1.8,
+    4.95
+   ]
+  },
+  {
+   "id": "right_tip_aft",
+   "position_m": [
+    -2.95,
+    4.95
+   ]
+  },
+  {
+   "id": "right_aileron",
+   "position_m": [
+    -2.95,
+    3.6
+   ]
+  },
+  {
+   "id": "right_flap",
+   "position_m": [
+    -2.95,
+    2.0
+   ]
+  },
+  {
+   "id": "right_gear",
+   "position_m": [
+    -2.78,
+    1.3
+   ]
+  },
+  {
+   "id": "right_aft",
+   "position_m": [
+    -3.2,
+    1.0
+   ]
+  },
+  {
+   "id": "right_fuselage",
+   "position_m": [
+    -4.2,
+    1.0
+   ]
+  },
+  {
+   "id": "tail_right_front",
+   "position_m": [
+    -4.6,
+    1.9
+   ]
+  },
+  {
+   "id": "tail_right",
+   "position_m": [
+    -6.3,
+    1.9
+   ]
+  },
+  {
+   "id": "tail_right_mid",
+   "position_m": [
+    -6.3,
+    0.9
+   ]
+  },
+  {
+   "id": "tail",
+   "position_m": [
+    -6.3,
+    0.0
+   ]
+  },
+  {
+   "id": "tail_left_mid",
+   "position_m": [
+    -6.3,
+    -0.9
+   ]
+  },
+  {
+   "id": "tail_left",
+   "position_m": [
+    -6.3,
+    -1.9
+   ]
+  },
+  {
+   "id": "tail_left_front",
+   "position_m": [
+    -4.6,
+    -1.9
+   ]
+  },
+  {
+   "id": "left_fuselage",
+   "position_m": [
+    -4.2,
+    -1.0
+   ]
+  },
+  {
+   "id": "left_cabin",
+   "position_m": [
+    -3.2,
+    -1.0
+   ]
+  },
+  {
+   "id": "left_gear",
+   "position_m": [
+    -2.78,
+    -1.3
+   ]
+  },
+  {
+   "id": "left_flap",
+   "position_m": [
+    -2.95,
+    -2.0
+   ]
+  },
+  {
+   "id": "left_aileron",
+   "position_m": [
+    -2.95,
+    -3.6
+   ]
+  },
+  {
+   "id": "left_tip_aft",
+   "position_m": [
+    -2.95,
+    -4.95
+   ]
+  },
+  {
+   "id": "left_tip",
+   "position_m": [
+    -1.8,
+    -4.95
+   ]
+  },
+  {
+   "id": "left_tip_front",
+   "position_m": [
+    -0.7,
+    -4.95
+   ]
+  },
+  {
+   "id": "left_wing_front_out",
+   "position_m": [
+    -0.7,
+    -4.0
+   ]
+  },
+  {
+   "id": "left_wing_front_mid",
+   "position_m": [
+    -0.6,
+    -3.0
+   ]
+  },
+  {
+   "id": "left_wing_front_in",
+   "position_m": [
+    -0.6,
+    -1.9
+   ]
+  },
+  {
+   "id": "left_nose_gear",
+   "position_m": [
+    -0.55,
+    -0.85
+   ]
+  },
+  {
+   "id": "left_cowl",
+   "position_m": [
+    0.05,
+    -1.3
+   ]
+  },
+  {
+   "id": "nose_left",
+   "position_m": [
+    1.0,
+    -1.3
+   ]
+  }
+ ],
+ "stations": [
+  {
+   "id": "cabin",
+   "name": "Cabin",
+   "node": "left_cabin",
+   "poh_ref": "4.4 (1) Cabin",
+   "camera": {
+    "target_m": [
+     -2.3,
+     -0.2,
+     -0.2
+    ],
+    "eye_offset_m": [
+     -1.6,
+     -3.4,
+     -1.9
+    ]
+   }
+  },
+  {
+   "id": "fuselage",
+   "name": "Fuselage",
+   "node": "left_fuselage",
+   "poh_ref": "4.4 (2) Fuselage",
+   "camera": {
+    "target_m": [
+     -3.0,
+     -0.5,
+     -0.2
+    ],
+    "eye_offset_m": [
+     -1.5,
+     -4.4,
+     -1.9
+    ]
+   }
+  },
+  {
+   "id": "empennage",
+   "name": "Empennage",
+   "node": "tail",
+   "poh_ref": "4.4 (3) Empennage",
+   "camera": {
+    "target_m": [
+     -5.6,
+     0.0,
+     -0.3
+    ],
+    "eye_offset_m": [
+     -3.4,
+     -3.0,
+     -1.7
+    ]
+   }
+  },
+  {
+   "id": "right_wing",
+   "name": "Right wing and main gear",
+   "node": "right_gear",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "camera": {
+    "target_m": [
+     -1.9,
+     2.4,
+     0.3
+    ],
+    "eye_offset_m": [
+     2.4,
+     3.4,
+     -1.8
+    ]
+   }
+  },
+  {
+   "id": "nose",
+   "name": "Nose section and nose gear",
+   "node": "nose",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "camera": {
+    "target_m": [
+     0.1,
+     0.0,
+     0.2
+    ],
+    "eye_offset_m": [
+     2.6,
+     -2.3,
+     -1.5
+    ]
+   }
+  },
+  {
+   "id": "left_wing",
+   "name": "Left wing",
+   "node": "left_gear",
+   "poh_ref": "4.4 (6) Left wing",
+   "camera": {
+    "target_m": [
+     -1.9,
+     -2.4,
+     0.3
+    ],
+    "eye_offset_m": [
+     2.4,
+     -3.4,
+     -1.8
+    ]
+   }
+  }
+ ],
+ "items": [
+  {
+   "id": "ignition_off",
+   "station": "cabin",
+   "text": "Magnetos / ignition: off",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "ignition_off",
+    "target_m": [
+     -1.85,
+     0.0,
+     -0.08
+    ]
+   }
+  },
+  {
+   "id": "master_on",
+   "station": "cabin",
+   "text": "Master switch: on",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "master_on",
+    "target_m": [
+     -1.85,
+     0.1,
+     -0.05
+    ]
+   }
+  },
+  {
+   "id": "fuel_indicator",
+   "station": "cabin",
+   "text": "Fuel level indicator: verify fuel quantity",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "fuel_indicator",
+    "target_m": [
+     -1.79,
+     -0.175,
+     -0.15
+    ]
+   }
+  },
+  {
+   "id": "flaps_full",
+   "station": "cabin",
+   "text": "Flaps: move to full down position",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "flaps_full",
+    "target_m": [
+     -2.04,
+     0.0,
+     -0.04
+    ]
+   }
+  },
+  {
+   "id": "master_off",
+   "station": "cabin",
+   "text": "Master switch: off",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "master_off",
+    "target_m": [
+     -1.85,
+     0.1,
+     -0.05
+    ]
+   }
+  },
+  {
+   "id": "avionics",
+   "station": "cabin",
+   "text": "Avionics: verify condition",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -1.79,
+     0.0,
+     -0.15
+    ]
+   }
+  },
+  {
+   "id": "control_system",
+   "station": "cabin",
+   "text": "Control system: visual inspection, free movement up to the stops, verify function",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -1.98,
+     -0.205,
+     -0.25
+    ]
+   }
+  },
+  {
+   "id": "harnesses",
+   "station": "cabin",
+   "text": "Safety harnesses: condition, security of attachment, operation of buckles",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.4,
+     -0.205,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "seats",
+   "station": "cabin",
+   "text": "Seats: security of attachment, adjustment mechanism operates and locks after adjustment",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.28,
+     -0.205,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "station": "cabin",
+   "text": "Canopy: attachment, condition, clean",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.0,
+     -0.55,
+     -0.45
+    ]
+   }
+  },
+  {
+   "id": "cockpit",
+   "station": "cabin",
+   "text": "Cockpit: check for loose objects",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.2,
+     0.0,
+     0.1
+    ]
+   }
+  },
+  {
+   "id": "fire_extinguisher",
+   "station": "cabin",
+   "text": "Fire extinguisher: verify present and valid",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.5,
+     0.25,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "documentation",
+   "station": "cabin",
+   "text": "Documentation: verify present and valid",
+   "poh_ref": "4.4 (1) Cabin",
+   "action": {
+    "kind": "cabin",
+    "effect": "none",
+    "target_m": [
+     -2.4,
+     0.3,
+     -0.05
+    ]
+   }
+  },
+  {
+   "id": "fuselage_surface",
+   "station": "fuselage",
+   "text": "Surface condition: check",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -3.4,
+     -0.5,
+     -0.05
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_cabin"
+  },
+  {
+   "id": "fuselage_cowling",
+   "station": "fuselage",
+   "text": "Cowling attachment: check",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.0,
+     -0.5,
+     -0.08
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "left_cowl",
+   "defects": [
+    {
+     "kind": "loose_cowl_fastener",
+     "description": "A cowling fastener is loose and the cowl lifts at that corner.",
+     "severity": "caution",
+     "cue_m": [
+      0.0,
+      -0.5,
+      -0.08
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wing_fuselage_fairings",
+   "station": "fuselage",
+   "text": "Wing/fuselage fairings: check",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.05,
+     -0.62,
+     0.0
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_gear"
+  },
+  {
+   "id": "empennage_fairings",
+   "station": "fuselage",
+   "text": "Empennage fairings: check",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -4.8,
+     -0.45,
+     -0.15
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_fuselage"
+  },
+  {
+   "id": "antennas",
+   "station": "fuselage",
+   "text": "Antenna/e: check condition and security",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -3.78,
+     0.0,
+     -0.5
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_fuselage"
+  },
+  {
+   "id": "luggage_door",
+   "station": "fuselage",
+   "text": "Luggage compartment door: closed and locked",
+   "poh_ref": "4.4 (2) Fuselage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.9,
+     -0.5,
+     -0.15
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "left_cabin"
+  },
+  {
+   "id": "tail_rope",
+   "station": "empennage",
+   "text": "Tie-down rope: removed",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "remove",
+    "props": [
+     "rope_tail"
+    ]
+   }
+  },
+  {
+   "id": "stabilizers",
+   "station": "empennage",
+   "text": "Horizontal and vertical stabilizers: check condition",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -5.2,
+     1.3,
+     -0.15
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "tail_right_front"
+  },
+  {
+   "id": "elevator",
+   "station": "empennage",
+   "text": "Elevator and tab: condition and movement",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "elevator_left",
+     "elevator_right"
+    ],
+    "target_m": [
+     -5.78,
+     0.9,
+     -0.14
+    ],
+    "amplitude": 0.8
+   },
+   "node": "tail_right_mid"
+  },
+  {
+   "id": "rudder",
+   "station": "empennage",
+   "text": "Rudder: condition and movement",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "rudder"
+    ],
+    "target_m": [
+     -5.92,
+     0.0,
+     -0.7
+    ],
+    "amplitude": 0.8
+   }
+  },
+  {
+   "id": "empennage_hinges",
+   "station": "empennage",
+   "text": "Hinges, control horns, bolts, pushrod: condition and secure",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -5.5,
+     0.0,
+     -0.15
+    ],
+    "stance": "stand",
+    "touch": true
+   }
+  },
+  {
+   "id": "tail_strobe",
+   "station": "empennage",
+   "text": "Strobe light: condition",
+   "poh_ref": "4.4 (3) Empennage",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -5.93,
+     0.0,
+     -0.15
+    ],
+    "stance": "stand",
+    "touch": false
+   }
+  },
+  {
+   "id": "wheel_fairing_right",
+   "station": "right_wing",
+   "text": "Wheel fairing: security, cracks",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.96,
+     1.03,
+     0.42
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_gear",
+   "defects": [
+    {
+     "kind": "wheel_fairing_crack",
+     "description": "A crack runs across the wheel fairing near its lower edge.",
+     "severity": "caution",
+     "cue_m": [
+      -1.9,
+      1.05,
+      0.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_brakes_right",
+   "station": "right_wing",
+   "text": "Wheel and brakes: fluid leaks, security, general condition, tyre condition, inflation and wear",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.0,
+     1.05,
+     0.66
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_gear",
+   "defects": [
+    {
+     "kind": "damaged_tyre",
+     "description": "The tyre has a cut through the tread and the cord is showing.",
+     "severity": "no_go",
+     "cue_m": [
+      -1.96,
+      1.05,
+      0.75
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_strut_right",
+   "station": "right_wing",
+   "text": "Wheel strut: condition, cracks",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.9,
+     0.92,
+     0.3
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_gear"
+  },
+  {
+   "id": "leading_edge_right",
+   "station": "right_wing",
+   "text": "Leading edge: check condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.05,
+     2.2,
+     0.1
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "right_wing_front_in"
+  },
+  {
+   "id": "lights_right",
+   "station": "right_wing",
+   "text": "Taxi / landing lights and lens: check for cracks and condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.1,
+     2.8,
+     0.03
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_wing_front_mid"
+  },
+  {
+   "id": "fuel_vent_right",
+   "station": "right_wing",
+   "text": "Fuel vent (underside of wing): unobstructed",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.5,
+     2.0,
+     0.17
+    ],
+    "stance": "crouch",
+    "touch": false
+   },
+   "node": "right_wing_front_in"
+  },
+  {
+   "id": "trailing_edge_right",
+   "station": "right_wing",
+   "text": "Wing trailing edge: check condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.4,
+     3.0,
+     0.05
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "right_aileron"
+  },
+  {
+   "id": "aileron_right",
+   "station": "right_wing",
+   "text": "Aileron: freedom of movement, attachment, surface condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "aileron_right"
+    ],
+    "target_m": [
+     -2.39,
+     3.6,
+     0.0
+    ],
+    "amplitude": 0.8
+   },
+   "node": "right_aileron"
+  },
+  {
+   "id": "aileron_hinges_right",
+   "station": "right_wing",
+   "text": "Aileron hinges, control horn, bolts, pushrod: secure, condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.1,
+     3.6,
+     0.1
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_aileron",
+   "defects": [
+    {
+     "kind": "aileron_hardware_missing",
+     "description": "An aileron hinge bolt is missing; the hinge has no retaining hardware.",
+     "severity": "no_go",
+     "cue_m": [
+      -2.1,
+      3.6,
+      0.1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "flap_hinges_right",
+   "station": "right_wing",
+   "text": "Flap hinges, control horn, bolts, pushrod: secure, condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "flaps_right"
+    ],
+    "target_m": [
+     -2.48,
+     1.7,
+     0.22
+    ],
+    "amplitude": 0.5
+   },
+   "node": "right_flap",
+   "defects": [
+    {
+     "kind": "flap_hardware_missing",
+     "description": "A flap hinge nut is missing and the hinge pin is working out.",
+     "severity": "no_go",
+     "cue_m": [
+      -2.3,
+      1.7,
+      0.2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wing_tip_right",
+   "station": "right_wing",
+   "text": "Wing tip: check condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.65,
+     4.5,
+     -0.1
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "right_tip"
+  },
+  {
+   "id": "nav_lights_right",
+   "station": "right_wing",
+   "text": "Strobe / nav light and lens: check for cracks and condition",
+   "poh_ref": "4.4 (4) Right wing and main gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.35,
+     4.53,
+     -0.2
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_tip"
+  },
+  {
+   "id": "fuel_level_right",
+   "station": "right_wing",
+   "text": "Fuel level: verify physically before each take-off (warning)",
+   "poh_ref": "4.4 (4) Right wing and main gear warning",
+   "action": {
+    "kind": "fuel_cap",
+    "tank": "right"
+   },
+   "node": "right_wing_front_in",
+   "warning": "Verify the fuel level physically before each take-off for the planned flight. Fuel can just be seen covering the whole bottom of the tank, through the filler cap, with 30 litres present.",
+   "defects": [
+    {
+     "kind": "low_fuel",
+     "description": "The tank holds only about 30 litres: fuel just covers the bottom of the tank.",
+     "severity": "no_go",
+     "cue_m": [
+      -1.45,
+      1.9,
+      0.02
+     ]
+    }
+   ]
+  },
+  {
+   "id": "nose_cowling",
+   "station": "nose",
+   "text": "Engine cowling condition: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.2,
+     0.0,
+     -0.05
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "defects": [
+    {
+     "kind": "loose_cowl_fastener",
+     "description": "A cowling fastener is loose and the cowl lifts at that corner.",
+     "severity": "caution",
+     "cue_m": [
+      0.15,
+      0.2,
+      -0.12
+     ]
+    }
+   ]
+  },
+  {
+   "id": "propeller_spinner",
+   "station": "nose",
+   "text": "Propeller and spinner condition: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.55,
+     0.0,
+     -0.06
+    ],
+    "stance": "stand",
+    "touch": false
+   }
+  },
+  {
+   "id": "air_intakes",
+   "station": "nose",
+   "text": "Air intakes: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.19,
+     0.3,
+     -0.08
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_cowl"
+  },
+  {
+   "id": "radiators",
+   "station": "nose",
+   "text": "Radiators: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.1,
+     -0.3,
+     0.1
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_cowl"
+  },
+  {
+   "id": "engine_mount_exhaust",
+   "station": "nose",
+   "text": "Engine mount and exhaust manifold condition: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -0.4,
+     -0.4,
+     0.3
+    ],
+    "stance": "crouch",
+    "touch": false
+   },
+   "node": "left_cowl"
+  },
+  {
+   "id": "oil_coolant",
+   "station": "nose",
+   "text": "Oil and coolant quantity check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "oil_check",
+    "target_m": [
+     0.0,
+     0.4,
+     -0.25
+    ]
+   },
+   "node": "right_cowl",
+   "defects": [
+    {
+     "kind": "low_oil",
+     "description": "The oil level is below the MIN mark on the dipstick.",
+     "severity": "no_go",
+     "cue_m": [
+      0.0,
+      0.4,
+      -0.25
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fuel_electrical",
+   "station": "nose",
+   "text": "Visual inspection of fuel and electrical system: check",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -0.1,
+     0.4,
+     -0.05
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_cowl"
+  },
+  {
+   "id": "engine_checks",
+   "station": "nose",
+   "text": "Engine checks as per the Rotax manual: complete",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.0,
+     0.4,
+     -0.1
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_cowl"
+  },
+  {
+   "id": "engine_manual",
+   "station": "nose",
+   "text": "Other actions according to the engine manual",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     0.0,
+     0.4,
+     -0.1
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "right_cowl",
+   "optional": true
+  },
+  {
+   "id": "parachute_cover",
+   "station": "nose",
+   "text": "Parachute cover, if fitted: check sealed and secure",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -3.0,
+     0.0,
+     -0.45
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_cabin",
+   "optional": true
+  },
+  {
+   "id": "nose_tyre",
+   "station": "nose",
+   "text": "Tyre: condition, inflation, wear",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -0.46,
+     0.15,
+     0.72
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_nose_gear",
+   "defects": [
+    {
+     "kind": "damaged_tyre",
+     "description": "The tyre is worn through on one shoulder; the cord is showing.",
+     "severity": "no_go",
+     "cue_m": [
+      -0.46,
+      0.17,
+      0.74
+     ]
+    }
+   ]
+  },
+  {
+   "id": "nose_wheel",
+   "station": "nose",
+   "text": "Wheels: security, general condition",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -0.46,
+     0.15,
+     0.62
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_nose_gear"
+  },
+  {
+   "id": "chocks_ropes",
+   "station": "nose",
+   "text": "Chocks and tie-down ropes: remove",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "remove",
+    "props": [
+     "chock_nose_fore",
+     "chock_nose_aft",
+     "rope_wing_right",
+     "chock_main_right",
+     "rope_wing_left",
+     "chock_main_left"
+    ]
+   }
+  },
+  {
+   "id": "suspension",
+   "station": "nose",
+   "text": "Suspension and undercarriage: check and test",
+   "poh_ref": "4.4 (5) Nose section and nose gear",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -0.46,
+     0.0,
+     0.3
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "right_nose_gear"
+  },
+  {
+   "id": "propeller_turn",
+   "station": "nose",
+   "text": "Long-term parking: turn the engine over several times by hand on the propeller, ignition off, palm on the blade",
+   "poh_ref": "4.4 (5) Nose section and nose gear caution",
+   "action": {
+    "kind": "palm_prop",
+    "target_m": [
+     0.4,
+     0.72,
+     -0.06
+    ]
+   },
+   "node": "right_cowl",
+   "optional": true,
+   "warning": "Ignition and magnetos off. Handle the blade area with the palm of the hand, never only the fingertips on the blade edge."
+  },
+  {
+   "id": "wheel_fairing_left",
+   "station": "left_wing",
+   "text": "Wheel fairing: security, cracks",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.96,
+     -1.03,
+     0.42
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "left_gear",
+   "defects": [
+    {
+     "kind": "wheel_fairing_crack",
+     "description": "A crack runs across the wheel fairing near its lower edge.",
+     "severity": "caution",
+     "cue_m": [
+      -1.9,
+      -1.05,
+      0.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_brakes_left",
+   "station": "left_wing",
+   "text": "Wheel and brakes: fluid leaks, security, general condition, tyre condition, inflation and wear",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.0,
+     -1.05,
+     0.66
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "left_gear",
+   "defects": [
+    {
+     "kind": "damaged_tyre",
+     "description": "The tyre has a cut through the tread and the cord is showing.",
+     "severity": "no_go",
+     "cue_m": [
+      -1.96,
+      -1.05,
+      0.75
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_strut_left",
+   "station": "left_wing",
+   "text": "Wheel strut: condition, cracks",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.9,
+     -0.92,
+     0.3
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "left_gear"
+  },
+  {
+   "id": "leading_edge_left",
+   "station": "left_wing",
+   "text": "Leading edge: check condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.05,
+     -2.2,
+     0.1
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "left_wing_front_in"
+  },
+  {
+   "id": "lights_left",
+   "station": "left_wing",
+   "text": "Taxi / landing lights and lens: check for cracks and condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.1,
+     -2.8,
+     0.03
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_wing_front_mid"
+  },
+  {
+   "id": "fuel_vent_left",
+   "station": "left_wing",
+   "text": "Fuel vent (underside of wing): unobstructed",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.5,
+     -2.0,
+     0.17
+    ],
+    "stance": "crouch",
+    "touch": false
+   },
+   "node": "left_wing_front_in"
+  },
+  {
+   "id": "trailing_edge_left",
+   "station": "left_wing",
+   "text": "Wing trailing edge: check condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.4,
+     -3.0,
+     0.05
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "left_aileron"
+  },
+  {
+   "id": "aileron_left",
+   "station": "left_wing",
+   "text": "Aileron: freedom of movement, attachment, surface condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "aileron_left"
+    ],
+    "target_m": [
+     -2.39,
+     -3.6,
+     0.0
+    ],
+    "amplitude": 0.8
+   },
+   "node": "left_aileron"
+  },
+  {
+   "id": "aileron_hinges_left",
+   "station": "left_wing",
+   "text": "Aileron hinges, control horn, bolts, pushrod: secure, condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -2.1,
+     -3.6,
+     0.1
+    ],
+    "stance": "crouch",
+    "touch": true
+   },
+   "node": "left_aileron",
+   "defects": [
+    {
+     "kind": "aileron_hardware_missing",
+     "description": "An aileron hinge bolt is missing; the hinge has no retaining hardware.",
+     "severity": "no_go",
+     "cue_m": [
+      -2.1,
+      -3.6,
+      0.1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "flap_hinges_left",
+   "station": "left_wing",
+   "text": "Flap hinges, control horn, bolts, pushrod: secure, condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "move_control",
+    "parts": [
+     "flaps_left"
+    ],
+    "target_m": [
+     -2.48,
+     -1.7,
+     0.22
+    ],
+    "amplitude": 0.5
+   },
+   "node": "left_flap",
+   "defects": [
+    {
+     "kind": "flap_hardware_missing",
+     "description": "A flap hinge nut is missing and the hinge pin is working out.",
+     "severity": "no_go",
+     "cue_m": [
+      -2.3,
+      -1.7,
+      0.2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wing_tip_left",
+   "station": "left_wing",
+   "text": "Wing tip: check condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.65,
+     -4.5,
+     -0.1
+    ],
+    "stance": "stand",
+    "touch": true
+   },
+   "node": "left_tip"
+  },
+  {
+   "id": "nav_lights_left",
+   "station": "left_wing",
+   "text": "Strobe / nav light and lens: check for cracks and condition",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "inspect",
+    "target_m": [
+     -1.35,
+     -4.53,
+     -0.2
+    ],
+    "stance": "stand",
+    "touch": false
+   },
+   "node": "left_tip"
+  },
+  {
+   "id": "pitot",
+   "station": "left_wing",
+   "text": "Pitot tube: security, unobstructed, remove cover",
+   "poh_ref": "4.4 (6) Left wing",
+   "action": {
+    "kind": "remove",
+    "props": [
+     "pitot_cover"
+    ]
+   },
+   "node": "left_wing_front_in"
+  },
+  {
+   "id": "fuel_level_left",
+   "station": "left_wing",
+   "text": "Fuel level: verify physically before each take-off (warning)",
+   "poh_ref": "4.4 (6) Left wing warning",
+   "action": {
+    "kind": "fuel_cap",
+    "tank": "left"
+   },
+   "node": "left_wing_front_in",
+   "warning": "Verify the fuel level physically before each take-off for the planned flight. Fuel can just be seen covering the whole bottom of the tank, through the filler cap, with 30 litres present.",
+   "defects": [
+    {
+     "kind": "low_fuel",
+     "description": "The tank holds only about 30 litres: fuel just covers the bottom of the tank.",
+     "severity": "no_go",
+     "cue_m": [
+      -1.45,
+      -1.9,
+      0.02
+     ]
+    }
+   ]
+  }
+ ],
+ "props": [
+  {
+   "id": "rope_tail",
+   "kind": "tie_down_rope",
+   "position_m": [
+    -5.85,
+    0.0,
+    0.3
+   ],
+   "yaw_rad": 0.0,
+   "node": "tail",
+   "present_at_start": true
+  },
+  {
+   "id": "pitot_cover",
+   "kind": "pitot_cover",
+   "position_m": [
+    -1.3,
+    -2.45,
+    0.16
+   ],
+   "yaw_rad": 0.0,
+   "node": "left_wing_front_in",
+   "present_at_start": true
+  },
+  {
+   "id": "chock_nose_fore",
+   "kind": "chock",
+   "position_m": [
+    -0.13,
+    0.0,
+    0.8
+   ],
+   "yaw_rad": 0.0,
+   "node": "right_nose_gear",
+   "present_at_start": true
+  },
+  {
+   "id": "chock_nose_aft",
+   "kind": "chock",
+   "position_m": [
+    -0.8,
+    0.0,
+    0.8
+   ],
+   "yaw_rad": 0.0,
+   "node": "right_nose_gear",
+   "present_at_start": true
+  },
+  {
+   "id": "rope_wing_right",
+   "kind": "tie_down_rope",
+   "position_m": [
+    -2.1,
+    2.97,
+    0.45
+   ],
+   "yaw_rad": 0.0,
+   "node": "right_aileron",
+   "present_at_start": true
+  },
+  {
+   "id": "chock_main_right",
+   "kind": "chock",
+   "position_m": [
+    -2.3,
+    0.975,
+    0.8
+   ],
+   "yaw_rad": 0.0,
+   "node": "right_gear",
+   "present_at_start": true
+  },
+  {
+   "id": "rope_wing_left",
+   "kind": "tie_down_rope",
+   "position_m": [
+    -2.1,
+    -2.97,
+    0.45
+   ],
+   "yaw_rad": 0.0,
+   "node": "left_aileron",
+   "present_at_start": true
+  },
+  {
+   "id": "chock_main_left",
+   "kind": "chock",
+   "position_m": [
+    -2.3,
+    -0.975,
+    0.8
+   ],
+   "yaw_rad": 0.0,
+   "node": "left_gear",
+   "present_at_start": true
+  }
+ ],
+ "fuel": {
+  "density_kg_per_l": 0.72,
+  "covers_bottom_l": 30.0,
+  "caps": [
+   {
+    "tank": "left",
+    "cap_m": [
+     -1.45,
+     -1.9,
+     0.02
+    ]
+   },
+   {
+    "tank": "right",
+    "cap_m": [
+     -1.45,
+     1.9,
+     0.02
+    ]
+   }
+  ]
+ }
+}
