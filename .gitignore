@@ -11,3 +11,6 @@ DomesticNames_*.txt
 
 # Region scenery is published as verified data releases, never Git binaries.
 /assets/terrain/*/scenery/
+
+# Claude Code local state and agent worktrees
+.claude/
