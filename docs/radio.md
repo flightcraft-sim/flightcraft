@@ -290,6 +290,16 @@ the older CTAF circuit traffic and ATC rules keep their previous 2.7 words-a-sec
 If you key the mic over a call that is being voiced, the call becomes `Blocked`: the voice is cut at
 once and the heterodyne squeal plays for the rest of that call's carrier time.
 
+Only that call is cut. The planner emits `Stop(Some(event id))` for the blocked call and leaves the
+others alone, so a call on the other receiver keeps playing. (`Stop(None)` silences everything and is
+used when the flight changes, speech goes off, or a critical crew call interrupts.) On desktop each
+call has its own track in the mixer, so the cut zeroes only that call's remaining samples and drops
+any render of it still in flight. In the browser, `speechSynthesis` cannot cancel one utterance, so
+the cut cancels the speech queue and re-issues every other live call with the words it has left,
+estimated from elapsed time at the utterance's rate; that restart can repeat or skip a word, and a
+call still waiting in the browser's queue is estimated as if already speaking. The WebAudio radio bed
+of the blocked call is stopped exactly, per event.
+
 The browser's `speak(utterance)` API routes speech to the browser/operating-system audio sink and
 exposes neither PCM samples, an `AudioNode`, an `HTMLMediaElement`, nor a `MediaStream`. The browser
 voice is therefore unfiltered and cannot be time-fitted: it starts, with the WebAudio radio bed (squelch

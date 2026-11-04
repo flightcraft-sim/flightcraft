@@ -16,8 +16,8 @@ mod web;
 /// One thing the audio output has to do now.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Action {
-    /// Silence everything that is playing.
-    Stop,
+    /// Silence the call with this event id, or with `None` everything that is playing.
+    Stop(Option<u64>),
     /// Begin a received call. `at_s` is the simulation time the audio starts; the audio must fit the
     /// carrier time `event.duration_s`.
     Say { event: Box<Transmission>, at_s: f64 },
@@ -48,12 +48,12 @@ impl Planner {
             self.generation = Some(session.flight_generation());
             self.seen = 0;
             self.live.clear();
-            actions.push(Action::Stop);
+            actions.push(Action::Stop(None));
         }
         if !active {
             // Nothing plays while the speech switch, volume or power is off, and nothing is voiced late.
             if !self.live.is_empty() {
-                actions.push(Action::Stop);
+                actions.push(Action::Stop(None));
                 self.live.clear();
             }
             self.seen = events.last().map_or(self.seen, |e| e.id.max(self.seen));
@@ -61,7 +61,7 @@ impl Planner {
         }
         // Calls already being voiced: cut one that two carriers have turned into a squeal, and play the
         // squeal for the rest of its carrier time.
-        let mut cut = false;
+        let mut cuts = Vec::new();
         let mut garbles = Vec::new();
         self.live.retain(|id| {
             let Some(event) = events.iter().rev().find(|e| e.id == *id) else {
@@ -72,7 +72,7 @@ impl Planner {
                 OnAir::Audible => event.reception == Reception::Pending,
                 state => {
                     if end - now > 0.05 {
-                        cut = true;
+                        cuts.push(*id);
                         if state == OnAir::Blocked {
                             garbles.push((event.clone(), end - now));
                         }
@@ -81,11 +81,8 @@ impl Planner {
                 }
             }
         });
-        if cut {
-            actions.push(Action::Stop);
-            // A stop silences every call; the others on the air are not resumed.
-            self.live.clear();
-        }
+        // Only the blocked call is cut; calls on other receivers keep playing.
+        actions.extend(cuts.into_iter().map(|id| Action::Stop(Some(id))));
         for (event, seconds) in garbles {
             actions.push(Action::Garble {
                 event: Box::new(event),
@@ -123,7 +120,7 @@ impl Planner {
                 }
                 OnAir::Audible => {
                     if matches!(event.meaning, Meaning::Crew { critical: true }) {
-                        actions.push(Action::Stop);
+                        actions.push(Action::Stop(None));
                         self.live.clear();
                     }
                     if event.reception == Reception::Pending {
@@ -169,9 +166,12 @@ impl Speech {
         {
             let volume = state.panel.volume as f32 * master_gain.clamp(0.0, 1.0);
             for action in actions {
-                if matches!(action, Action::Stop) {
+                if let Action::Stop(which) = action {
                     if let Some(output) = &mut self.output {
-                        output.stop();
+                        match which {
+                            Some(id) => output.stop_call(id),
+                            None => output.stop(),
+                        }
                     }
                     continue;
                 }
@@ -200,7 +200,7 @@ impl Speech {
                         debug_assert_eq!(event.channel, Channel::Com);
                         output.garble(&event, seconds as f32, volume)
                     }
-                    Action::Stop => Ok(()),
+                    Action::Stop(_) => Ok(()),
                 };
                 if let Err(error) = result {
                     self.error = Some(error);
@@ -400,7 +400,7 @@ mod tests {
         let actions = planner.plan(&s, true);
         let stop = actions
             .iter()
-            .position(|a| *a == Action::Stop)
+            .position(|a| *a == Action::Stop(Some(event.id)))
             .expect("audio cut");
         let garble = actions
             .iter()
@@ -427,6 +427,55 @@ mod tests {
     }
 
     #[test]
+    fn blocking_one_receivers_call_leaves_the_other_receivers_call_playing() {
+        let mut s = busy_session(true);
+        let mut planner = Planner::default();
+        let mut voiced: Vec<Transmission> = Vec::new();
+        let mut pair = None;
+        // Frames until a call on each receiver's frequency is on the air together.
+        'search: for _ in 0..60 * 3000 {
+            frame(&mut s);
+            for action in planner.plan(&s, true) {
+                if let Some((event, _)) = fleet_say(&action) {
+                    voiced.push(event.clone());
+                }
+            }
+            let t = now(&s);
+            let (f1, f2) = (
+                f64::from(s.comms_state().com1.active_khz) * 1000.0,
+                f64::from(s.comms_state().com2.active_khz) * 1000.0,
+            );
+            let live: Vec<&Transmission> = voiced
+                .iter()
+                .filter(|e| planner.live.contains(&e.id) && e.time_s + e.duration_s - t > 0.5)
+                .collect();
+            let on = |hz: f64| {
+                live.iter()
+                    .find(|e| e.frequency_hz.is_some_and(|f| (f - hz).abs() < 1.0))
+            };
+            if let (Some(a), Some(b)) = (on(f1), on(f2)) {
+                pair = Some(((**a).clone(), (**b).clone()));
+                break 'search;
+            }
+        }
+        let (com1_call, com2_call) = pair.expect("calls on both receivers overlapped");
+        s.execute("comms.audio_panel", json!({"transmit":1})).unwrap();
+        s.execute("comms.transmit", json!({"text":"Approach, say again"}))
+            .unwrap();
+        let actions = planner.plan(&s, true);
+        let stops: Vec<&Action> = actions.iter().filter(|a| matches!(a, Action::Stop(_))).collect();
+        assert_eq!(stops, [&Action::Stop(Some(com1_call.id))], "{actions:?}");
+        assert!(
+            actions
+                .iter()
+                .any(|a| matches!(a, Action::Garble { event, .. } if event.id == com1_call.id)),
+            "{actions:?}"
+        );
+        assert!(planner.live.contains(&com2_call.id), "{:?}", planner.live);
+        assert!(!planner.live.contains(&com1_call.id));
+    }
+
+    #[test]
     fn a_call_the_user_cannot_hear_never_queues_audio() {
         // Not tuned to approach: the fleet calls are not even recorded for this receiver.
         let mut s = busy_session(false);
@@ -450,19 +499,18 @@ mod tests {
         s.execute("comms.tune", json!({"radio":2,"channel_khz":118_000}))
             .unwrap();
         let actions = planner.plan(&s, true);
-        assert!(actions.contains(&Action::Stop), "{actions:?}");
+        assert!(actions.contains(&Action::Stop(Some(event.id))), "{actions:?}");
         assert!(
             actions
                 .iter()
                 .all(|a| !matches!(a, Action::Say { .. } | Action::Garble { .. }))
         );
-        let _ = event;
         // Speech switched off: nothing is voiced at all.
         let mut s = busy_session(true);
         let mut planner = Planner::default();
         for _ in 0..60 * 200 {
             frame(&mut s);
-            assert!(planner.plan(&s, false).iter().all(|a| *a == Action::Stop));
+            assert!(planner.plan(&s, false).iter().all(|a| *a == Action::Stop(None)));
         }
     }
 }

@@ -3,12 +3,16 @@ use super::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use flightcraft_control::{Gender, VoiceProfile};
 use std::{
-    collections::VecDeque,
+    collections::HashMap,
     process::{Command, Stdio},
     sync::{Arc, Mutex, mpsc},
     time::{Duration, Instant},
 };
 struct Request {
+    /// Id of the event this audio belongs to, so one call can be cut without touching the others.
+    event: u64,
+    /// Submission number; `stop_call` drops renders of that call submitted before it.
+    ticket: u64,
     text: String,
     voice: VoiceProfile,
     com: bool,
@@ -22,13 +26,21 @@ struct Request {
     volume: f32,
     epoch: u64,
 }
-type Rendered = (u64, Result<Vec<f32>, String>);
+struct Rendered {
+    epoch: u64,
+    event: u64,
+    ticket: u64,
+    samples: Result<Vec<f32>, String>,
+}
 pub(super) struct Output {
     _stream: cpal::Stream,
-    queue: Arc<Mutex<VecDeque<f32>>>,
+    mixer: Arc<Mutex<Mixer>>,
     requests: mpsc::SyncSender<Request>,
     rendered: mpsc::Receiver<Rendered>,
     epoch: u64,
+    next_ticket: u64,
+    /// Per call: renders with a lower ticket were cancelled by `stop_call`.
+    cutoffs: HashMap<u64, u64>,
 }
 impl Output {
     pub fn new() -> Result<Self, String> {
@@ -39,11 +51,11 @@ impl Output {
         let format = supported.sample_format();
         let config: cpal::StreamConfig = supported.into();
         let rate = config.sample_rate.0;
-        let queue = Arc::new(Mutex::new(VecDeque::new()));
+        let mixer = Arc::new(Mutex::new(Mixer::default()));
         let stream = match format {
-            cpal::SampleFormat::F32 => stream::<f32>(&device, &config, queue.clone()),
-            cpal::SampleFormat::I16 => stream::<i16>(&device, &config, queue.clone()),
-            cpal::SampleFormat::U16 => stream::<u16>(&device, &config, queue.clone()),
+            cpal::SampleFormat::F32 => stream::<f32>(&device, &config, mixer.clone()),
+            cpal::SampleFormat::I16 => stream::<i16>(&device, &config, mixer.clone()),
+            cpal::SampleFormat::U16 => stream::<u16>(&device, &config, mixer.clone()),
             _ => return Err("Unsupported speech sample format".into()),
         }?;
         stream.play().map_err(|e| e.to_string())?;
@@ -54,7 +66,13 @@ impl Output {
             .spawn(move || {
                 while let Ok(request) = recv.recv() {
                     let samples = render(&request, rate);
-                    if send.send((request.epoch, samples)).is_err() {
+                    let done = Rendered {
+                        epoch: request.epoch,
+                        event: request.event,
+                        ticket: request.ticket,
+                        samples,
+                    };
+                    if send.send(done).is_err() {
                         break;
                     }
                 }
@@ -62,10 +80,12 @@ impl Output {
             .map_err(|e| e.to_string())?;
         Ok(Self {
             _stream: stream,
-            queue,
+            mixer,
             requests,
             rendered,
             epoch: 0,
+            next_ticket: 0,
+            cutoffs: HashMap::new(),
         })
     }
     pub fn say(
@@ -76,6 +96,8 @@ impl Output {
         distance: f32,
     ) -> Result<(), String> {
         self.request(Request {
+            event: event.id,
+            ticket: 0,
             text: event.text.clone(),
             voice,
             com: event.channel == Channel::Com,
@@ -100,6 +122,8 @@ impl Output {
         volume: f32,
     ) -> Result<(), String> {
         self.request(Request {
+            event: event.id,
+            ticket: 0,
             text: String::new(),
             voice: flightcraft_control::pilot_voice(0, 0),
             com: true,
@@ -112,26 +136,44 @@ impl Output {
             epoch: self.epoch,
         })
     }
-    fn request(&mut self, request: Request) -> Result<(), String> {
+    fn request(&mut self, mut request: Request) -> Result<(), String> {
+        request.ticket = self.next_ticket;
+        self.next_ticket = self.next_ticket.wrapping_add(1);
         self.requests
             .try_send(request)
             .map_err(|_| "Speech queue full; captions contain every call".into())
     }
+    /// Silences everything.
     pub fn stop(&mut self) {
         self.epoch = self.epoch.wrapping_add(1);
-        if let Ok(mut queue) = self.queue.lock() {
-            queue.clear();
+        self.cutoffs.clear();
+        if let Ok(mut mixer) = self.mixer.lock() {
+            mixer.stop_all();
+        }
+    }
+    /// Silences one call: what is left of its audio, and any render of it still in flight. Other calls
+    /// keep playing.
+    pub fn stop_call(&mut self, event: u64) {
+        self.cutoffs.insert(event, self.next_ticket);
+        if let Ok(mut mixer) = self.mixer.lock() {
+            mixer.stop_call(event);
         }
     }
     pub fn poll(&mut self, active: bool, error: &mut Option<String>) {
-        while let Ok((epoch, result)) = self.rendered.try_recv() {
-            if !active || epoch != self.epoch {
+        while let Ok(done) = self.rendered.try_recv() {
+            if !active
+                || done.epoch != self.epoch
+                || self
+                    .cutoffs
+                    .get(&done.event)
+                    .is_some_and(|cut| done.ticket < *cut)
+            {
                 continue;
             }
-            match result {
+            match done.samples {
                 Ok(samples) => {
-                    if let Ok(mut queue) = self.queue.lock() {
-                        mix_in(&mut queue, &samples);
+                    if let Ok(mut mixer) = self.mixer.lock() {
+                        mixer.add(done.event, samples);
                     }
                 }
                 Err(message) => *error = Some(message),
@@ -139,30 +181,60 @@ impl Output {
         }
     }
 }
-/// Adds `samples` to what is already queued, starting now. Calls are voiced as they go on the air, so
-/// two receivers on different frequencies overlap in time just as they would in the cockpit.
-fn mix_in(queue: &mut VecDeque<f32>, samples: &[f32]) {
-    for (i, sample) in samples.iter().enumerate().take(48000 * 90) {
-        if let Some(slot) = queue.get_mut(i) {
-            *slot = (*slot + sample).clamp(-1.0, 1.0);
-        } else {
-            queue.push_back(*sample);
+/// One call's audio and how far the output has played into it.
+struct Track {
+    event: u64,
+    samples: Vec<f32>,
+    position: usize,
+}
+/// The playing calls, mixed sample by sample. Calls are voiced as they go on the air, so two receivers
+/// on different frequencies overlap in time just as they would in the cockpit. Each call keeps its own
+/// track, so one can be cut without touching the rest.
+#[derive(Default)]
+struct Mixer {
+    tracks: Vec<Track>,
+}
+impl Mixer {
+    /// Starts `samples` now, for the call `event`.
+    fn add(&mut self, event: u64, mut samples: Vec<f32>) {
+        samples.truncate(48000 * 90);
+        self.tracks.push(Track {
+            event,
+            samples,
+            position: 0,
+        });
+    }
+    /// Zeroes whatever is left of one call.
+    fn stop_call(&mut self, event: u64) {
+        self.tracks.retain(|t| t.event != event);
+    }
+    fn stop_all(&mut self) {
+        self.tracks.clear();
+    }
+    /// The next output sample.
+    fn next_sample(&mut self) -> f32 {
+        let mut sum = 0.0;
+        for track in &mut self.tracks {
+            sum += track.samples.get(track.position).copied().unwrap_or(0.0);
+            track.position += 1;
         }
+        self.tracks.retain(|t| t.position < t.samples.len());
+        sum.clamp(-1.0, 1.0)
     }
 }
 fn stream<T: cpal::SizedSample + cpal::FromSample<f32>>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
-    queue: Arc<Mutex<VecDeque<f32>>>,
+    mixer: Arc<Mutex<Mixer>>,
 ) -> Result<cpal::Stream, String> {
     let channels = usize::from(config.channels).max(1);
     device
         .build_output_stream(
             config,
             move |output: &mut [T], _| {
-                if let Ok(mut queue) = queue.lock() {
+                if let Ok(mut mixer) = mixer.lock() {
                     for frame in output.chunks_mut(channels) {
-                        let sample = queue.pop_front().unwrap_or(0.0);
+                        let sample = mixer.next_sample();
                         for value in frame {
                             *value = T::from_sample(sample);
                         }
@@ -466,6 +538,8 @@ mod tests {
         let text = "Cessna four two seven kilo papa, descend and maintain three thousand.";
         let rate = 22050;
         let request = |voice: VoiceProfile| Request {
+            event: 1,
+            ticket: 0,
             text: text.into(),
             voice,
             com: true,
@@ -512,11 +586,29 @@ mod tests {
     }
     #[test]
     fn overlapping_receivers_are_mixed_not_queued() {
-        let mut queue: VecDeque<f32> = VecDeque::from(vec![0.25; 4]);
-        mix_in(&mut queue, &[0.25; 6]);
-        assert_eq!(queue.len(), 6);
-        assert!(queue.iter().take(4).all(|v| (*v - 0.5).abs() < 1e-6));
-        assert!(queue.iter().skip(4).all(|v| (*v - 0.25).abs() < 1e-6));
+        let mut mixer = Mixer::default();
+        mixer.add(1, vec![0.25; 4]);
+        mixer.add(2, vec![0.25; 6]);
+        let out: Vec<f32> = (0..7).map(|_| mixer.next_sample()).collect();
+        assert!(out.iter().take(4).all(|v| (*v - 0.5).abs() < 1e-6));
+        assert!(out[4..6].iter().all(|v| (*v - 0.25).abs() < 1e-6));
+        assert!(out[6].abs() < 1e-6);
+    }
+    #[test]
+    fn stopping_one_call_zeroes_only_its_samples() {
+        let mut mixer = Mixer::default();
+        mixer.add(1, vec![0.25; 8]);
+        mixer.add(2, vec![0.5; 8]);
+        // Both play for two samples, then call 1 is cut.
+        let before: Vec<f32> = (0..2).map(|_| mixer.next_sample()).collect();
+        assert!(before.iter().all(|v| (*v - 0.75).abs() < 1e-6));
+        mixer.stop_call(1);
+        let after: Vec<f32> = (0..6).map(|_| mixer.next_sample()).collect();
+        assert!(after.iter().all(|v| (*v - 0.5).abs() < 1e-6), "{after:?}");
+        assert!(mixer.next_sample().abs() < 1e-6);
+        // A new track for the cut call id starts fresh.
+        mixer.add(1, vec![0.25; 2]);
+        assert!((mixer.next_sample() - 0.25).abs() < 1e-6);
     }
     #[test]
     fn hostile_wave_is_an_error() {
