@@ -926,6 +926,8 @@ registry!(
     CommsListen,
     CommsFacilities,
     SetTraffic,
+    SetTrafficDensity,
+    GetTrafficState,
     FlightSave,
     FlightRecords,
     FlightLoad,

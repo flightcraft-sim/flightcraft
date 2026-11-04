@@ -20,8 +20,10 @@ mod speech;
 pub(crate) mod weather;
 pub use speech::*;
 pub use weather::ReportedLayer;
+mod fleet;
 mod record;
 mod traffic;
+pub use fleet::*;
 pub use record::*;
 use std::collections::VecDeque;
 use traffic::Pattern;
@@ -118,6 +120,7 @@ pub(crate) struct Comms {
     pub radios: [ComRadio; 2],
     panel: AudioPanel,
     pattern: Option<Pattern>,
+    fleet: Option<fleet::Fleet>,
     traffic_calls: VecDeque<TrafficCall>,
     pending: Vec<Pending>,
     heard: VecDeque<u64>,
@@ -142,6 +145,7 @@ impl Default for Comms {
             radios: Default::default(),
             panel: Default::default(),
             pattern: None,
+            fleet: None,
             traffic_calls: VecDeque::new(),
             pending: Vec::new(),
             heard: VecDeque::new(),
@@ -640,6 +644,7 @@ impl Session {
                 self.comms.last_tick = now;
                 self.sequence_atc();
                 self.update_pattern(dt);
+                self.sequence_fleet(dt);
                 self.sequence_traffic_calls();
                 self.broadcast_weather();
                 self.broadcast_ident();

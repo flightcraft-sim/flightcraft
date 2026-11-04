@@ -74,6 +74,7 @@ Enable up to three circuit aircraft with `traffic.set`. Controlled circuits reus
 fixed-time kinematics and pilot/traffic spacing reactions. Traffic position reports address tower;
 untowered CTAF call grading continues at untowered airports. Wake cautions accompany sequencing
 behind traffic identified as Heavy; the standard three circuit aircraft are light types.
+For a busy approach with many aircraft talking on the frequency, see [busy-airspace traffic](traffic.md).
 
 ## Radar services and controlled airspace
 
@@ -254,7 +255,7 @@ not enforce a pilot's compliance, and radio failure does not implement all regul
 procedures. Saved flight records retain the typed evidence; resuming ATC's runtime from an exported
 record is not implemented.
 
-See [training](training.md), [weather](weather.md), [procedures](procedures.md), and [crew](crew.md).
+See [training](training.md), [weather](weather.md), [procedures](procedures.md), [crew](crew.md), and [busy-airspace traffic](traffic.md).
 
 [IFR training](ifr-training.md) adds validated final intercepts, published missed instructions,
 hold clearances with EFC, and instrument approach tower handoffs through the same readback queue.

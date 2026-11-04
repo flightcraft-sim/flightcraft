@@ -11,6 +11,8 @@ mod types;
 use flightcraft_world::AirspaceClass;
 use parser::letter;
 pub use parser::{PilotMessage, PilotRequest, parse_pilot};
+pub(crate) use phrase::{render_instruction, render_readback};
+pub(crate) use rules::readback_matches;
 pub use types::*;
 
 #[derive(Debug, Default, Deserialize, JsonSchema, serde::Serialize)]

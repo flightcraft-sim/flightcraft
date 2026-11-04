@@ -492,6 +492,39 @@ pub fn approach_intercept(
     )
 }
 
+/// JO 7110.65 5-7-1: reduce to a speed, or cancel the restriction. Knots are spoken digit by digit.
+pub fn speed_assignment(knots: Option<u16>) -> String {
+    knots.map_or_else(
+        || "Resume normal speed.".into(),
+        |k| format!("Reduce speed to {}.", digits(u32::from(k), 1)),
+    )
+}
+/// JO 7110.65 3-8-1 sequence remark, such as `Number two, following the Skyhawk on final.`
+pub fn sequence(number: u8, follows_type: &str, position: &str) -> String {
+    format!(
+        "Number {}, following the {follows_type} {position}.",
+        digits(u32::from(number), 1)
+    )
+}
+/// Where a sequence leader is, in controller words: `on left base`, `on a 4 mile final`.
+pub fn sequence_position(leg: &str, miles_final: Option<u32>) -> String {
+    match miles_final {
+        Some(m) if leg == "final" => format!("on a {} mile final", digits(m, 1)),
+        _ => format!("on {leg}"),
+    }
+}
+/// Radar identification without a position fix (the aircraft is already inside the sector).
+pub fn radar_identified() -> &'static str {
+    "Radar contact."
+}
+/// End of radar service, with the frequency change approval.
+pub fn radar_service_terminated() -> &'static str {
+    "Radar service terminated, frequency change approved."
+}
+/// A distance on the final approach course, for tower check-ins.
+pub fn miles_final(miles: u32) -> String {
+    format!("{} mile final", digits(miles, 1))
+}
 pub fn spoken_registration(registration: &str) -> String {
     registration
         .chars()

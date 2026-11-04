@@ -475,6 +475,8 @@ underscores, for example `comms_tune`. Every entry has generated input and outpu
 | `comms.listen` | `{}`. Consumes the next completed heard event, or returns `transmission: null`; also returns pending count. Does not advance time. |
 | `comms.facilities` | `{}` lists current stations. Optional `stations` installs a bounded normalized offline FAA catalogue for the session. The source field retains provenance; the command does not certify it. |
 | `traffic.set` | `count` (0–3), `airport`, optional `runway` end, and optional `right_pattern` (false). Requires an imported CTAF for nonzero count; returns circuit targets. |
+| `traffic.density` | `density` (`off`, `light`, `moderate`, `busy`) and optional towered `airport`; starts [busy-airspace traffic](traffic.md) controlled on the real frequencies. |
+| `traffic.state` | Lists every busy-airspace aircraft with position, track, speed, vertical rate, frequency, controlling facility, and intent. |
 | `flight.events` | Optional `after` event id, `limit` (1–1000, default 100), and `input_offset`. Returns typed events, control changes, cursors, pending count, and overflow counters. Cursors restart with each flight reset. Pending event grades can change; re-read their ids after simulated time advances. |
 | `flight.save` | `{}` checkpoints the current flight in desktop app data or browser IndexedDB. |
 | `flight.records` | Optional `refresh` (false). Lists summaries and polls `busy`, `pending_operations`, `error`, and the loaded debrief. Browser storage is asynchronous. |

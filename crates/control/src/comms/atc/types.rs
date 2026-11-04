@@ -35,6 +35,14 @@ pub enum AtcInstruction {
         number: u8,
         follow: Option<String>,
     },
+    /// Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.
+    TouchAndGo {
+        runway: String,
+    },
+    /// Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.
+    Speed {
+        knots: Option<u16>,
+    },
     ExtendDownwind,
     GoAround {
         runway: String,

@@ -265,15 +265,24 @@ impl Command for SetTraffic {
 }
 impl Session {
     pub fn traffic_state(&self) -> TrafficState {
+        let mut aircraft = self
+            .comms
+            .pattern
+            .as_ref()
+            .map(|p| p.aircraft.clone())
+            .unwrap_or_default();
+        let mut airport = self.comms.pattern.as_ref().map(|p| p.airport.clone());
+        let mut runway = self.comms.pattern.as_ref().map(|p| p.runway.clone());
+        // Busy-airspace traffic in the circuit or on final is sequenced like any other circuit traffic.
+        if let Some(fleet) = &self.comms.fleet {
+            aircraft.extend(self.fleet_targets());
+            airport.get_or_insert_with(|| fleet.field.airport.clone());
+            runway.get_or_insert_with(|| fleet.field.runway.clone());
+        }
         TrafficState {
-            airport: self.comms.pattern.as_ref().map(|p| p.airport.clone()),
-            runway: self.comms.pattern.as_ref().map(|p| p.runway.clone()),
-            aircraft: self
-                .comms
-                .pattern
-                .as_ref()
-                .map(|p| p.aircraft.clone())
-                .unwrap_or_default(),
+            airport,
+            runway,
+            aircraft,
         }
     }
     pub(super) fn update_pattern(&mut self, dt: f64) {

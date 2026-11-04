@@ -21,7 +21,34 @@ impl Session {
             .unwrap_or_else(|| "the destination".into())
     }
     pub(crate) fn instruction_phrase(&self, i: &AtcInstruction) -> String {
-        let altitude = |ft| p::altitude_assignment(ft, -self.sim.state().position_m[2] / 0.3048);
+        render_instruction(
+            i,
+            -self.sim.state().position_m[2] / 0.3048,
+            &self.stations(),
+            &self.traffic_state().aircraft,
+        )
+    }
+    /// Short key-item readback for rehearsal clients. Appends the current aircraft identity.
+    /// This is an example renderer; the parser also accepts equivalent pilot wording.
+    pub fn atc_readback(&self, instruction: &AtcInstruction) -> String {
+        let text = render_readback(
+            instruction,
+            -self.sim.state().position_m[2] / 0.3048,
+            &self.stations(),
+        );
+        format!("{text}, {}.", self.pilot_callsign().current)
+    }
+}
+/// Controller wording for one typed instruction, for an aircraft at `actual_ft` MSL.
+/// Stateless, so the user's ATC and the simulated traffic's controllers share one renderer.
+pub(crate) fn render_instruction(
+    i: &AtcInstruction,
+    actual_ft: f64,
+    stations: &[ComStation],
+    circuit: &[TrafficAircraft],
+) -> String {
+    {
+        let altitude = |ft| p::altitude_assignment(ft, actual_ft);
         match i {
             AtcInstruction::Hold {
                 fix,
@@ -66,18 +93,19 @@ impl Session {
                 }
             ),
             AtcInstruction::Land { runway } => format!("Runway {}, cleared to land.", p::runway(runway)),
+            AtcInstruction::TouchAndGo { runway } => {
+                format!("Runway {}, cleared touch-and-go.", p::runway(runway))
+            }
+            AtcInstruction::Speed { knots } => p::speed_assignment(*knots),
             AtcInstruction::Pattern {
                 runway,
                 entry,
                 number,
                 follow,
             } => {
-                let traffic = follow.as_ref().and_then(|call| {
-                    self.traffic_state()
-                        .aircraft
-                        .into_iter()
-                        .find(|a| a.callsign == *call)
-                });
+                let traffic = follow
+                    .as_ref()
+                    .and_then(|call| circuit.iter().find(|a| a.callsign == *call));
                 let suffix = traffic.map_or(String::new(), |a| {
                     format!(
                         " Number {}, follow the {} on {}.{}",
@@ -121,7 +149,7 @@ impl Session {
                 channel_khz,
             } => format!(
                 "Contact {} {}.",
-                self.stations()
+                stations
                     .iter()
                     .find(|s| s.id == *station_id)
                     .map_or("the next controller".into(), p::facility),
@@ -187,10 +215,11 @@ impl Session {
             ),
         }
     }
-    /// Short key-item readback for rehearsal clients. Appends the current aircraft identity.
-    /// This is an example renderer; the parser also accepts equivalent pilot wording.
-    pub fn atc_readback(&self, instruction: &AtcInstruction) -> String {
-        let text = match instruction {
+}
+/// Pilot readback key items (no callsign) for an aircraft at `actual_ft` MSL.
+pub(crate) fn render_readback(i: &AtcInstruction, actual_ft: f64, stations: &[ComStation]) -> String {
+    {
+        match i {
             AtcInstruction::Parking => "Taxi to parking".into(),
             AtcInstruction::ExitRunway { ground_khz, .. } => {
                 format!("Contact ground {}", p::ground_frequency(*ground_khz))
@@ -226,14 +255,14 @@ impl Session {
             } => format!(
                 "Cleared into the Class Bravo, heading {}, {}",
                 p::heading(*heading_deg),
-                p::altitude_assignment(*altitude_ft, -self.sim.state().position_m[2] / 0.3048)
+                p::altitude_assignment(*altitude_ft, actual_ft)
             ),
             AtcInstruction::Handoff {
                 station_id,
                 channel_khz,
             } => format!(
                 "{} {}",
-                self.stations()
+                stations
                     .iter()
                     .find(|s| s.id == *station_id)
                     .map_or("Contact".into(), p::facility),
@@ -276,8 +305,9 @@ impl Session {
             AtcInstruction::GoAround { runway } => format!("Going around, runway {}", p::runway(runway)),
             AtcInstruction::ExtendDownwind => "Extending downwind".into(),
             AtcInstruction::Bravo { cleared: false, .. } => "Remaining outside the Class Bravo".into(),
-            _ => self.instruction_phrase(instruction).trim_end_matches('.').into(),
-        };
-        format!("{text}, {}.", self.pilot_callsign().current)
+            _ => render_instruction(i, actual_ft, stations, &[])
+                .trim_end_matches('.')
+                .into(),
+        }
     }
 }

@@ -7135,6 +7135,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -9102,6 +9143,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -14230,6 +14312,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -15246,6 +15369,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -15964,6 +16206,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -19057,6 +19317,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -20793,6 +21094,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -22500,6 +22842,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -24514,6 +24897,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -26221,6 +26645,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -28236,6 +28701,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -30264,6 +30770,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -32273,6 +32820,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -32942,6 +33530,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -33963,6 +34592,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -34681,6 +35429,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -36269,6 +37035,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -38563,6 +39370,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -40671,6 +41519,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -41591,6 +42480,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -42544,6 +43474,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -43489,6 +44460,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -45616,6 +46628,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -46632,6 +47685,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -47350,6 +48522,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -49118,6 +50308,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -50134,6 +51365,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -50852,6 +52202,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -52409,6 +53777,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -53425,6 +54834,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -54143,6 +55671,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -56274,6 +57820,769 @@
     }
   },
   {
+    "name": "traffic.density",
+    "description": "Set busy-airspace traffic (off, light 4, moderate 8, busy 14 aircraft) controlled by the tower and approach rules on the real frequencies; seeded from the session weather seed.",
+    "input_schema": {
+      "$defs": {
+        "TrafficDensity": {
+          "oneOf": [
+            {
+              "enum": [
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "light",
+              "description": "4 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "moderate",
+              "description": "8 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "busy",
+              "description": "14 aircraft.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "airport": {
+          "default": null,
+          "description": "A towered airport with imported tower and approach frequencies. Omission uses the configured\nATC airport, else the nearest towered airport.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "density": {
+          "$ref": "#/$defs/TrafficDensity"
+        }
+      },
+      "required": [
+        "density"
+      ],
+      "title": "SetTrafficDensity",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "FleetAircraft": {
+          "properties": {
+            "aircraft_type": {
+              "type": "string"
+            },
+            "airspace_class": {
+              "description": "Airspace class containing the aircraft, when the region carries airspace.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "altitude_msl_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "assigned_altitude_ft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "assigned_heading_deg": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "assigned_speed_kt": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "bearing_true_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "description": "Fully spoken, such as `Cessna Four Two Seven Kilo Papa`.",
+              "type": "string"
+            },
+            "cleared_to_land_or_approach": {
+              "type": "boolean"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "facility_id": {
+              "description": "Station id of the controlling facility, and its spoken name.",
+              "type": "string"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "intent": {
+              "$ref": "#/$defs/FleetIntent"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "on_ground": {
+              "type": "boolean"
+            },
+            "on_user_frequency": {
+              "description": "The user's tuned COM frequency matches this aircraft's controller.",
+              "type": "boolean"
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "range_nm": {
+              "description": "From the user: distance, true bearing, and altitude difference (traffic minus user).",
+              "format": "double",
+              "type": "number"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "relative_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "squawk": {
+              "type": "string"
+            },
+            "track_magnetic_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "track_true_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "type_designator": {
+              "type": "string"
+            },
+            "vertical_rate_fpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "voice": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "type_designator",
+            "altitude_msl_ft",
+            "position_m",
+            "track_true_deg",
+            "track_magnetic_deg",
+            "ground_speed_kt",
+            "vertical_rate_fpm",
+            "on_ground",
+            "squawk",
+            "frequency_khz",
+            "facility_id",
+            "facility",
+            "intent",
+            "cleared_to_land_or_approach",
+            "voice",
+            "range_nm",
+            "bearing_true_deg",
+            "relative_altitude_ft",
+            "on_user_frequency"
+          ],
+          "type": "object"
+        },
+        "FleetFlight": {
+          "enum": [
+            "arrival",
+            "departure",
+            "flight_following",
+            "pattern"
+          ],
+          "type": "string"
+        },
+        "FleetFrequency": {
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "facility_id": {
+              "type": "string"
+            },
+            "khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "khz",
+            "facility_id",
+            "facility",
+            "aircraft"
+          ],
+          "type": "object"
+        },
+        "FleetIntent": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetFlight"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "phase",
+            "airport",
+            "runway"
+          ],
+          "type": "object"
+        },
+        "FleetStats": {
+          "properties": {
+            "completed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readbacks_accepted": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readbacks_corrected": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "safety_slowdowns": {
+              "description": "Times the physics guard had to slow an aircraft; the controllers aim to keep this at zero.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spawned": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "transmissions": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "spawned",
+            "completed",
+            "transmissions",
+            "readbacks_accepted",
+            "readbacks_corrected",
+            "safety_slowdowns"
+          ],
+          "type": "object"
+        },
+        "TrafficDensity": {
+          "oneOf": [
+            {
+              "enum": [
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "light",
+              "description": "4 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "moderate",
+              "description": "8 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "busy",
+              "description": "14 aircraft.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aircraft": {
+          "items": {
+            "$ref": "#/$defs/FleetAircraft"
+          },
+          "type": "array"
+        },
+        "airport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "density": {
+          "$ref": "#/$defs/TrafficDensity"
+        },
+        "frequencies": {
+          "items": {
+            "$ref": "#/$defs/FleetFrequency"
+          },
+          "type": "array"
+        },
+        "runway": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stats": {
+          "$ref": "#/$defs/FleetStats"
+        }
+      },
+      "required": [
+        "density",
+        "seed",
+        "aircraft",
+        "frequencies",
+        "stats"
+      ],
+      "title": "FleetState",
+      "type": "object"
+    }
+  },
+  {
+    "name": "traffic.state",
+    "description": "List every busy-airspace aircraft: callsign, position, track, speed, vertical rate, squawk, frequency, controlling facility, and intent.",
+    "input_schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "title": "GetTrafficState",
+      "type": "object"
+    },
+    "output_schema": {
+      "$defs": {
+        "FleetAircraft": {
+          "properties": {
+            "aircraft_type": {
+              "type": "string"
+            },
+            "airspace_class": {
+              "description": "Airspace class containing the aircraft, when the region carries airspace.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "altitude_msl_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "assigned_altitude_ft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "assigned_heading_deg": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "assigned_speed_kt": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "bearing_true_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "callsign": {
+              "description": "Fully spoken, such as `Cessna Four Two Seven Kilo Papa`.",
+              "type": "string"
+            },
+            "cleared_to_land_or_approach": {
+              "type": "boolean"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "facility_id": {
+              "description": "Station id of the controlling facility, and its spoken name.",
+              "type": "string"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "ground_speed_kt": {
+              "format": "double",
+              "type": "number"
+            },
+            "id": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "intent": {
+              "$ref": "#/$defs/FleetIntent"
+            },
+            "latitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "longitude_deg": {
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "on_ground": {
+              "type": "boolean"
+            },
+            "on_user_frequency": {
+              "description": "The user's tuned COM frequency matches this aircraft's controller.",
+              "type": "boolean"
+            },
+            "position_m": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "range_nm": {
+              "description": "From the user: distance, true bearing, and altitude difference (traffic minus user).",
+              "format": "double",
+              "type": "number"
+            },
+            "registration": {
+              "type": "string"
+            },
+            "relative_altitude_ft": {
+              "format": "double",
+              "type": "number"
+            },
+            "squawk": {
+              "type": "string"
+            },
+            "track_magnetic_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "track_true_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "type_designator": {
+              "type": "string"
+            },
+            "vertical_rate_fpm": {
+              "format": "double",
+              "type": "number"
+            },
+            "voice": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "callsign",
+            "registration",
+            "aircraft_type",
+            "type_designator",
+            "altitude_msl_ft",
+            "position_m",
+            "track_true_deg",
+            "track_magnetic_deg",
+            "ground_speed_kt",
+            "vertical_rate_fpm",
+            "on_ground",
+            "squawk",
+            "frequency_khz",
+            "facility_id",
+            "facility",
+            "intent",
+            "cleared_to_land_or_approach",
+            "voice",
+            "range_nm",
+            "bearing_true_deg",
+            "relative_altitude_ft",
+            "on_user_frequency"
+          ],
+          "type": "object"
+        },
+        "FleetFlight": {
+          "enum": [
+            "arrival",
+            "departure",
+            "flight_following",
+            "pattern"
+          ],
+          "type": "string"
+        },
+        "FleetFrequency": {
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "facility_id": {
+              "type": "string"
+            },
+            "khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "khz",
+            "facility_id",
+            "facility",
+            "aircraft"
+          ],
+          "type": "object"
+        },
+        "FleetIntent": {
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetFlight"
+            },
+            "phase": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "phase",
+            "airport",
+            "runway"
+          ],
+          "type": "object"
+        },
+        "FleetStats": {
+          "properties": {
+            "completed": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readbacks_accepted": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "readbacks_corrected": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "safety_slowdowns": {
+              "description": "Times the physics guard had to slow an aircraft; the controllers aim to keep this at zero.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "spawned": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "transmissions": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "spawned",
+            "completed",
+            "transmissions",
+            "readbacks_accepted",
+            "readbacks_corrected",
+            "safety_slowdowns"
+          ],
+          "type": "object"
+        },
+        "TrafficDensity": {
+          "oneOf": [
+            {
+              "enum": [
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "light",
+              "description": "4 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "moderate",
+              "description": "8 aircraft.",
+              "type": "string"
+            },
+            {
+              "const": "busy",
+              "description": "14 aircraft.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "aircraft": {
+          "items": {
+            "$ref": "#/$defs/FleetAircraft"
+          },
+          "type": "array"
+        },
+        "airport": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "density": {
+          "$ref": "#/$defs/TrafficDensity"
+        },
+        "frequencies": {
+          "items": {
+            "$ref": "#/$defs/FleetFrequency"
+          },
+          "type": "array"
+        },
+        "runway": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stats": {
+          "$ref": "#/$defs/FleetStats"
+        }
+      },
+      "required": [
+        "density",
+        "seed",
+        "aircraft",
+        "frequencies",
+        "stats"
+      ],
+      "title": "FleetState",
+      "type": "object"
+    }
+  },
+  {
     "name": "flight.save",
     "description": "Save the current flight to durable local storage; poll flight.records for browser completion.",
     "input_schema": {
@@ -56529,6 +58838,47 @@
                 "runway",
                 "entry",
                 "number"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -57798,6 +60148,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -58992,6 +61461,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -60797,6 +63284,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -62061,6 +64589,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -63255,6 +65902,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -65062,6 +67727,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -66326,6 +69032,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -67520,6 +70345,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },
@@ -69347,6 +72190,47 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+              "properties": {
+                "kind": {
+                  "const": "touch_and_go",
+                  "type": "string"
+                },
+                "runway": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "runway"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+              "properties": {
+                "kind": {
+                  "const": "speed",
+                  "type": "string"
+                },
+                "knots": {
+                  "format": "uint16",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "extend_downwind",
@@ -70407,6 +73291,125 @@
           },
           "type": "object"
         },
+        "FleetCall": {
+          "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+          "properties": {
+            "aircraft": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "callsign": {
+              "description": "The aircraft's full spoken callsign.",
+              "type": "string"
+            },
+            "exchange": {
+              "description": "Calls that belong together (instruction, readback, correction) share this number.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "facility": {
+              "type": "string"
+            },
+            "for_user": {
+              "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+              "type": "boolean"
+            },
+            "frequency_khz": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instructions": {
+              "items": {
+                "$ref": "#/$defs/AtcInstruction"
+              },
+              "type": "array"
+            },
+            "kind": {
+              "$ref": "#/$defs/FleetCallKind"
+            },
+            "role": {
+              "$ref": "#/$defs/FleetRole"
+            },
+            "sequence": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/FleetSequence"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "voice": {
+              "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "exchange",
+            "aircraft",
+            "callsign",
+            "role",
+            "kind",
+            "instructions",
+            "facility",
+            "frequency_khz",
+            "voice",
+            "for_user"
+          ],
+          "type": "object"
+        },
+        "FleetCallKind": {
+          "oneOf": [
+            {
+              "enum": [
+                "check_in",
+                "instruction",
+                "readback",
+                "information",
+                "terminate"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "correction",
+              "description": "The controller corrects a wrong readback.",
+              "type": "string"
+            }
+          ]
+        },
+        "FleetRole": {
+          "enum": [
+            "controller",
+            "pilot"
+          ],
+          "type": "string"
+        },
+        "FleetSequence": {
+          "description": "The landing number the controller gave, and the aircraft it follows.",
+          "properties": {
+            "follows": {
+              "type": "string"
+            },
+            "number": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number",
+            "follows"
+          ],
+          "type": "object"
+        },
         "FlightPhase": {
           "enum": [
             "taxi",
@@ -71125,6 +74128,24 @@
                 "airport",
                 "leg",
                 "message"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+              "properties": {
+                "call": {
+                  "$ref": "#/$defs/FleetCall"
+                },
+                "type": {
+                  "const": "fleet",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "call"
               ],
               "type": "object"
             },

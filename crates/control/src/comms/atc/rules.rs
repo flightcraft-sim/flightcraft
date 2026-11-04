@@ -809,7 +809,7 @@ pub(super) fn entry_phrase(e: PatternEntry) -> &'static str {
         PatternEntry::RightBase => "right base",
     }
 }
-pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
+pub(crate) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
     let t = &m.normalized;
     if t.split_whitespace()
         .any(|w| matches!(w, "negative" | "unable" | "not"))
@@ -850,6 +850,13 @@ pub(super) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
                 && (!closed_traffic || t.contains("left closed traffic"))
         }
         AtcInstruction::Land { runway } => m.runway.as_ref() == Some(runway) && t.contains("cleared to land"),
+        AtcInstruction::TouchAndGo { runway } => {
+            m.runway.as_ref() == Some(runway) && t.contains("touch and go")
+        }
+        AtcInstruction::Speed { knots } => match knots {
+            Some(k) => t.contains(&words(&phraseology::digits(u32::from(*k), 1))),
+            None => t.contains("normal speed"),
+        },
         AtcInstruction::Pattern {
             runway,
             entry,

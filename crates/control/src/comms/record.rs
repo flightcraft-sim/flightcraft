@@ -112,6 +112,10 @@ pub enum Meaning {
         leg: PatternLeg,
         message: String,
     },
+    /// A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.
+    Fleet {
+        call: FleetCall,
+    },
     Text,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

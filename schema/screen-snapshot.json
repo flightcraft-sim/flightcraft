@@ -710,6 +710,47 @@
           ]
         },
         {
+          "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "touch_and_go"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "speed"
+            },
+            "knots": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
           "type": "object",
           "properties": {
             "kind": {
@@ -4171,6 +4212,125 @@
         "max_speed_mps"
       ]
     },
+    "FleetCall": {
+      "description": "Tags a simulated-traffic transmission for voices, captions, and display correlation.",
+      "type": "object",
+      "properties": {
+        "aircraft": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "callsign": {
+          "description": "The aircraft's full spoken callsign.",
+          "type": "string"
+        },
+        "exchange": {
+          "description": "Calls that belong together (instruction, readback, correction) share this number.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "facility": {
+          "type": "string"
+        },
+        "for_user": {
+          "description": "Traffic never addresses the user; the user answers only calls with their own callsign.",
+          "type": "boolean"
+        },
+        "frequency_khz": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AtcInstruction"
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/FleetCallKind"
+        },
+        "role": {
+          "$ref": "#/$defs/FleetRole"
+        },
+        "sequence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FleetSequence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "voice": {
+          "description": "Stable voice index 0-7: the aircraft's for pilots, the facility's for controllers.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "exchange",
+        "aircraft",
+        "callsign",
+        "role",
+        "kind",
+        "instructions",
+        "facility",
+        "frequency_khz",
+        "voice",
+        "for_user"
+      ]
+    },
+    "FleetCallKind": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "check_in",
+            "instruction",
+            "readback",
+            "information",
+            "terminate"
+          ]
+        },
+        {
+          "description": "The controller corrects a wrong readback.",
+          "type": "string",
+          "const": "correction"
+        }
+      ]
+    },
+    "FleetRole": {
+      "type": "string",
+      "enum": [
+        "controller",
+        "pilot"
+      ]
+    },
+    "FleetSequence": {
+      "description": "The landing number the controller gave, and the aircraft it follows.",
+      "type": "object",
+      "properties": {
+        "follows": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "number",
+        "follows"
+      ]
+    },
     "FlightPhase": {
       "type": "string",
       "enum": [
@@ -6454,6 +6614,24 @@
             "airport",
             "leg",
             "message"
+          ]
+        },
+        {
+          "description": "A simulated-traffic transmission: controller or AI pilot, tagged for voices and display.",
+          "type": "object",
+          "properties": {
+            "call": {
+              "$ref": "#/$defs/FleetCall"
+            },
+            "type": {
+              "type": "string",
+              "const": "fleet"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "call"
           ]
         },
         {

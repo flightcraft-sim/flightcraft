@@ -53,6 +53,7 @@ impl Session {
             AtcInstruction::Parking => role == FacilityKind::Ground,
             AtcInstruction::Takeoff { runway, .. }
             | AtcInstruction::Land { runway }
+            | AtcInstruction::TouchAndGo { runway }
             | AtcInstruction::GoAround { runway } => role == FacilityKind::Tower && runway_ok(runway),
             AtcInstruction::Pattern {
                 runway,
@@ -99,6 +100,7 @@ impl Session {
             AtcInstruction::ExitRunway { runway, .. } => {
                 role == FacilityKind::Tower && runway_ok(runway) && ground
             }
+            AtcInstruction::Speed { .. } => radar,
             // These require additional route, separation, or procedure authority. Use rules mode.
             AtcInstruction::Hold { .. }
             | AtcInstruction::MissedApproach { .. }

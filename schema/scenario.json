@@ -275,6 +275,47 @@
           ]
         },
         {
+          "description": "Touch-and-go landing clearance (JO 7110.65 3-9-4); used for circuit traffic.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "touch_and_go"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "runway"
+          ]
+        },
+        {
+          "description": "Speed adjustment (JO 7110.65 5-7-1); `None` cancels the restriction.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "speed"
+            },
+            "knots": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
           "type": "object",
           "properties": {
             "kind": {
