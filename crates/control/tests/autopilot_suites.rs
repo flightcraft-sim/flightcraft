@@ -26,13 +26,10 @@ fn flight(aircraft: &str) -> Session {
     )
     .unwrap();
     s.execute("sim.reset",json!({"world":"new-york","start":{"kind":"air","height_m":1000.,"airspeed_mps":40.,"heading_rad":0.}})).unwrap();
-    assert!(
-        s.execute(
-            "avionics.set",
-            json!({"setting":{"kind":"autopilot","setting":{"kind":"engage","on":true}}})
-        )
-        .is_err()
-    );
+    // An airborne start is already aligned and running, so the autopilot is available at once.
+    // (A parked start's alignment is covered in tests/avionics.rs.)
+    panel(&mut s, json!({"kind":"engage","on":true}));
+    panel(&mut s, json!({"kind":"engage","on":false}));
     s.execute(
         "assist.set",
         json!({"altitude_m":1000.,"heading_rad":0.,"airspeed_mps":40.}),
