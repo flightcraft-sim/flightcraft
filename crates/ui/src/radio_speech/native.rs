@@ -93,14 +93,19 @@ impl Output {
         })
     }
     /// The squeal of two transmissions on one frequency.
-    pub fn garble(&mut self, event: &flightcraft_control::Transmission, volume: f32) -> Result<(), String> {
+    pub fn garble(
+        &mut self,
+        event: &flightcraft_control::Transmission,
+        seconds: f32,
+        volume: f32,
+    ) -> Result<(), String> {
         self.request(Request {
             text: String::new(),
             voice: flightcraft_control::pilot_voice(0, 0),
             com: true,
             morse: None,
-            garble: Some(event.duration_s as f32),
-            slot_s: event.duration_s as f32,
+            garble: Some(seconds),
+            slot_s: seconds,
             distance: 0.0,
             seed: event.id as u32,
             volume,
@@ -125,14 +130,23 @@ impl Output {
             }
             match result {
                 Ok(samples) => {
-                    if let Ok(mut queue) = self.queue.lock()
-                        && queue.len() < 48000 * 90
-                    {
-                        queue.extend(samples);
+                    if let Ok(mut queue) = self.queue.lock() {
+                        mix_in(&mut queue, &samples);
                     }
                 }
                 Err(message) => *error = Some(message),
             }
+        }
+    }
+}
+/// Adds `samples` to what is already queued, starting now. Calls are voiced as they go on the air, so
+/// two receivers on different frequencies overlap in time just as they would in the cockpit.
+fn mix_in(queue: &mut VecDeque<f32>, samples: &[f32]) {
+    for (i, sample) in samples.iter().enumerate().take(48000 * 90) {
+        if let Some(slot) = queue.get_mut(i) {
+            *slot = (*slot + sample).clamp(-1.0, 1.0);
+        } else {
+            queue.push_back(*sample);
         }
     }
 }
@@ -183,12 +197,15 @@ fn render(request: &Request, rate: u32) -> Result<Vec<f32>, String> {
         // The simulation held the frequency for the estimated speech time; never run past it.
         let budget = speech_budget(request.slot_s);
         let seconds = resampled.len() as f32 / rate as f32;
-        if seconds > budget * 1.02 {
-            voice.wpm = (f32::from(voice.wpm) * (seconds / budget).min(1.8)).min(320.0) as u16;
+        if seconds > budget {
+            // A little extra, since engines round their rate.
+            voice.wpm = (f32::from(voice.wpm) * (seconds / budget * 1.03).min(1.8)).min(320.0) as u16;
             if let Ok(faster) = synthesize(&request.text, &voice) {
                 resampled = resample(faster, rate);
             }
         }
+        // Audio never runs past the carrier: whatever is left over is faded out at the budget.
+        fit_to(&mut resampled, (budget * rate as f32) as usize, rate);
         if request.com {
             radio_effect(&mut resampled, rate, &params(request));
         }
@@ -198,6 +215,20 @@ fn render(request: &Request, rate: u32) -> Result<Vec<f32>, String> {
         *sample *= request.volume;
     }
     Ok(samples)
+}
+/// Truncates `samples` to `limit` with a 20 ms fade-out.
+fn fit_to(samples: &mut Vec<f32>, limit: usize, rate: u32) {
+    if samples.len() <= limit {
+        return;
+    }
+    samples.truncate(limit);
+    let fade = ((rate / 50) as usize).min(limit).max(1);
+    for i in 0..fade {
+        let at = limit - fade + i;
+        if let Some(s) = samples.get_mut(at) {
+            *s *= 1.0 - i as f32 / fade as f32;
+        }
+    }
 }
 fn params(request: &Request) -> RadioParams {
     RadioParams {
@@ -454,9 +485,10 @@ mod tests {
         assert!(a.iter().chain(&b).all(|s| s.is_finite() && s.abs() <= 1.0));
         for (samples, voice) in [(&a, controller), (&b, pilot)] {
             let seconds = samples.len() as f64 / f64::from(rate);
-            // Speech plus squelch break and tail stays within the time the simulation allotted.
+            // Speech plus squelch break and tail stays within the carrier time the simulation allotted:
+            // the audio starts with the transmission, so it must also end with it.
             assert!(
-                seconds <= voice.duration_s(text) + 0.35,
+                seconds <= voice.duration_s(text),
                 "{seconds} vs {}",
                 voice.duration_s(text)
             );
@@ -466,6 +498,25 @@ mod tests {
         let mut squeal = request(controller);
         squeal.garble = Some(1.0);
         assert!(render(&squeal, rate).unwrap().len() >= rate as usize);
+    }
+    #[test]
+    fn audio_longer_than_the_carrier_is_cut_to_it() {
+        let rate = 22050;
+        let mut long = vec![0.5_f32; rate as usize * 3];
+        fit_to(&mut long, rate as usize * 2, rate);
+        assert_eq!(long.len(), rate as usize * 2);
+        assert!(long.last().is_some_and(|v| v.abs() < 0.01));
+        let mut short = vec![0.5_f32; 100];
+        fit_to(&mut short, 1000, rate);
+        assert_eq!(short.len(), 100);
+    }
+    #[test]
+    fn overlapping_receivers_are_mixed_not_queued() {
+        let mut queue: VecDeque<f32> = VecDeque::from(vec![0.25; 4]);
+        mix_in(&mut queue, &[0.25; 6]);
+        assert_eq!(queue.len(), 6);
+        assert!(queue.iter().take(4).all(|v| (*v - 0.5).abs() < 1e-6));
+        assert!(queue.iter().skip(4).all(|v| (*v - 0.25).abs() < 1e-6));
     }
     #[test]
     fn hostile_wave_is_an_error() {

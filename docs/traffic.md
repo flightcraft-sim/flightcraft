@@ -115,8 +115,9 @@ separate, faster palette: a facility's voice is its kind (Tower, Ground, Departu
 approach high and low differ.
 
 Transmissions last as long as the voice takes to say them (`speech_duration_s` with the voice's words
-per minute, for both the recorded `duration_s` and the frequency schedule). A call does not start if it
-would finish before the audio of the previous call on that frequency, so speech never overlaps.
+per minute, for both the recorded `duration_s` and the frequency schedule). You hear a call as it is
+spoken: its audio starts with the transmission and ends with it, so the carrier alone keeps speech from
+overlapping and the usual 1.5 to 3.5 s gap separates calls on a frequency.
 
 If you key the mic over a traffic call you hear a heterodyne squeal and the call is recorded as
 `blocked`. The engine notices (the recorded event is the authority), puts the call back in the queue,

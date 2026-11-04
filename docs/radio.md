@@ -271,28 +271,39 @@ shortens service range as before.
 
 ### Speech duration and pacing
 
-Radio speech is heard once its transmission completes, in the order calls complete. The simulation must
-therefore hold a frequency for as long as the voice takes. `speech_duration_s(text, wpm)` is the
-deterministic estimate (0.2 s, plus words at the voice's rate, plus 0.08 s per comma and 0.2 s per
-sentence end; 1 to 45 s). Simulated-traffic transmissions use it with their voice's rate for both the
-recorded `duration_s` and the scheduler, and the scheduler does not start a call that would end before
-the previous call's audio has finished. The desktop renderer synthesizes at the same rate and, if the
-engine runs more than 2% over the call's slot, renders again faster (up to 1.8x), so audio never runs
-into the next call. Calls from the older CTAF circuit traffic and ATC rules keep their previous
-2.7 words-a-second estimate.
+Radio speech is heard **as it is spoken**: a received call's audio (squelch break, then the voice)
+starts when the transmission starts, while its event is still `Pending` and your receiver can hear it,
+and ends with the carrier. It does not wait for `Heard`. The UI asks `Session::on_air(id)` each frame:
+`Audible` starts the call, `Blocked` plays the squeal, `Unheard` (wrong frequency, out of range,
+receiver off or retuned, speech switch off) never plays. Calls you cannot hear are not queued and never
+voiced late. The user's own transmissions are not voiced.
+
+`speech_duration_s(text, wpm)` is the deterministic estimate (0.2 s, plus words at the voice's rate,
+plus 0.08 s per comma and 0.2 s per sentence end; 1 to 45 s). Simulated-traffic transmissions use it
+with their voice's rate for both the recorded `duration_s` and the scheduler. Audio and carrier
+coincide, so the fleet's normal 1.5 to 3.5 s gap between calls on a frequency is all the pacing
+needed. The desktop renderer synthesizes at the same rate and, if the engine runs over the call's slot,
+renders again faster (up to 1.8x) and, as a last resort, fades out at the slot's end, so audio never
+runs past the carrier. Two receivers on different frequencies overlap in time and are mixed. Calls from
+the older CTAF circuit traffic and ATC rules keep their previous 2.7 words-a-second estimate.
+
+If you key the mic over a call that is being voiced, the call becomes `Blocked`: the voice is cut at
+once and the heterodyne squeal plays for the rest of that call's carrier time.
 
 The browser's `speak(utterance)` API routes speech to the browser/operating-system audio sink and
 exposes neither PCM samples, an `AudioNode`, an `HTMLMediaElement`, nor a `MediaStream`. The browser
-voice is therefore unfiltered and cannot be time-fitted; its squelch break, noise (rising with
-distance) and tail play from a WebAudio buffer sized to the call's duration alongside it, and a blocked
-call plays the same squeal. Applying the band-pass to the voice would require a speech engine that
-returns PCM (for example a separately licensed, bundled WASM voice). None is available in this
-repository. Browser voice availability and audio activation depend on the platform.
+voice is therefore unfiltered and cannot be time-fitted: it starts, with the WebAudio radio bed (squelch
+break, noise rising with distance, tail, sized to the call's duration), when the event starts, is
+cancelled when the carrier's time is up or the call is blocked, and a blocked call plays the same
+squeal. Applying the band-pass to the voice would require a speech engine that returns PCM (for example a
+separately licensed, bundled WASM voice). None is available in this repository. Browser voice
+availability and audio activation depend on the platform.
 
 Offline checks: `cargo test -p flightcraft-ui --features desktop-audio --lib radio_speech` runs the DSP
-tests (band limit, squelch lead and tail, noise growing with distance, squeal determinism) and, where
-espeak is installed, renders two different voices through the engine and the radio and checks the audio
-fits the call's slot.
+tests (band limit, squelch lead and tail, noise growing with distance, squeal determinism), the
+planner tests (audio starts with the event, fits the carrier, is cut by a block, never plays when
+unheard) and, where espeak is installed, renders two different voices through the engine and the radio
+and checks the audio fits the call's slot.
 
 NAV Morse is original 1020 Hz tone synthesis on both
 platforms. Tuned usable VOR/localizer receivers supply identifiers; optional `adf_khz` in `comms.tune`

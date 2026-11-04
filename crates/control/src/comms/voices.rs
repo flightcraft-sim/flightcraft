@@ -195,7 +195,45 @@ pub fn speech_duration_s(text: &str, wpm: u16) -> f64 {
 /// Service radius used for simulated pilots' transmissions.
 pub(crate) const FLEET_PILOT_RANGE_NM: f64 = 40.0;
 
+/// What the user's receiver is getting from a transmission right now.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnAir {
+    /// The user's receiver can hear it and nothing else is keyed on the carrier.
+    Audible,
+    /// Two carriers are keyed together: the user hears a heterodyne squeal, not either voice.
+    Blocked,
+    /// Wrong frequency, out of range, receiver off, or otherwise not received.
+    Unheard,
+}
+
 impl Session {
+    /// The live reception state of transmission `id`, valid while it is still on the air (`Pending`)
+    /// and, afterwards, derived from its final reception. The audio layer starts a call's audio the
+    /// moment it is `Audible` and cuts it if it turns `Blocked`.
+    pub fn on_air(&self, id: u64) -> OnAir {
+        if let Some(p) = self.comms.pending.iter().find(|p| p.id == id) {
+            return if !p.eligible {
+                OnAir::Unheard
+            } else if p.collided {
+                OnAir::Blocked
+            } else {
+                OnAir::Audible
+            };
+        }
+        match self
+            .comms
+            .record
+            .events
+            .iter()
+            .rev()
+            .find(|e| e.id == id)
+            .map(|e| e.reception)
+        {
+            Some(Reception::Heard) => OnAir::Audible,
+            Some(Reception::Blocked) => OnAir::Blocked,
+            _ => OnAir::Unheard,
+        }
+    }
     /// How far a transmitter is, as a fraction of its service range (0 at the antenna, 1 at the edge).
     /// The audio layer raises the radio noise floor with it. Zero when the origin is unknown.
     pub fn transmission_distance_fraction(&self, event: &Transmission) -> f32 {

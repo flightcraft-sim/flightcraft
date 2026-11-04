@@ -318,8 +318,17 @@ fn the_user_still_gets_service_with_traffic_on() {
     );
 }
 
+/// Seconds of speech the voice needs for a recorded fleet call: the audio layer renders to the carrier's
+/// slot, so this is what it plays.
+fn fleet_voice_audio_s(e: &Transmission) -> f64 {
+    let Meaning::Fleet { call } = &e.meaning else {
+        unreachable!("fleet events only")
+    };
+    fleet_voice(call).duration_s(&e.text)
+}
+
 #[test]
-fn transmissions_last_as_long_as_their_voice_and_audio_never_overlaps() {
+fn transmissions_last_as_long_as_their_voice_and_audio_is_bounded_by_the_carrier() {
     let mut s = busy_session();
     advance(&mut s, 900.);
     let events = fleet_events(&s);
@@ -343,13 +352,13 @@ fn transmissions_last_as_long_as_their_voice_and_audio_never_overlaps() {
             .collect();
         for pair in on.windows(2) {
             let (a, b) = (pair[0], pair[1]);
-            // No carrier overlap, the engine's gap, and the next call ends after the previous audio does.
+            // No carrier overlap and the engine's gap. Audio plays while the call is on the air, so its
+            // length is bounded by the carrier: the next call never starts before this one's audio ends.
             assert!(b.time_s >= a.time_s + a.duration_s + 1.4, "{k}: {a:?} {b:?}");
+            let audio_s = fleet_voice_audio_s(a);
             assert!(
-                b.time_s + b.duration_s + 1e-6 >= a.time_s + 2.0 * a.duration_s,
-                "audio overlap on {k}: {:?} then {:?}",
-                a.text,
-                b.text
+                audio_s <= a.duration_s + 1e-9,
+                "audio outlasts carrier on {k}: {a:?}"
             );
         }
     }

@@ -128,9 +128,6 @@ impl Msg {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Chan {
     pub quiet_until: f64,
-    /// When the last transmission's audio finishes. Audio plays once a call completes, so the next call
-    /// may not end before this.
-    pub audio_free: f64,
     /// The recorded event of the transmission in flight, when the user's radios can hear it.
     pub event: Option<u64>,
     pub inflight: Option<(f64, Msg)>,
@@ -304,11 +301,10 @@ impl Fleet {
             corrected: false,
             repeat: false,
         };
-        // Held for the voice's spoken duration; its audio plays after it, like a traffic call.
+        // Held for the voice's spoken duration; its audio plays while it is on the air.
         let duration = controller_voice(voice).duration_s(text);
         let c = self.chans.entry(key).or_default();
         c.inflight = Some((now + duration, hold));
-        c.audio_free = c.audio_free.max(now + 2.0 * duration);
         true
     }
 
@@ -1581,18 +1577,12 @@ impl Fleet {
             if c.inflight.is_some() || now < c.quiet_until || busy.contains(&k) {
                 continue;
             }
-            // Audio plays after a call completes, so a call may not end before the previous one's audio does.
-            let audio_free = c.audio_free;
+            // Audio plays while the call is on the air, so the carrier alone paces the frequency.
             let Some(pick) = c
                 .queue
                 .iter()
                 .enumerate()
                 .filter(|(_, m)| m.ready <= now)
-                .filter(|(_, m)| {
-                    self.call_for(m, k).is_some_and(|call| {
-                        now + fleet_call_duration(&Self::spoken_text(m), &call) + 1e-9 >= audio_free
-                    })
-                })
                 .min_by_key(|(_, m)| (m.priority(), m.seq))
                 .map(|(n, _)| n)
             else {
@@ -1610,7 +1600,6 @@ impl Fleet {
             if let Some(c) = self.chans.get_mut(&k) {
                 c.inflight = Some((now + duration, m.clone()));
                 c.event = None;
-                c.audio_free = now + 2.0 * duration;
             }
             let Some(i) = self.idx(m.ac) else { continue };
             let a = self.ar(i);

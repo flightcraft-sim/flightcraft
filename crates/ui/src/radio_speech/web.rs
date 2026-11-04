@@ -7,6 +7,9 @@ pub(super) struct Output {
     speech: SpeechSynthesis,
     audio: AudioContext,
     tones: Vec<web_sys::AudioBufferSourceNode>,
+    /// Wall-clock millisecond at which the voice being spoken must be silent: the end of its carrier.
+    /// `speechSynthesis` cannot be time-fitted, so it is cut here instead of running into the next call.
+    speech_deadline_ms: Option<f64>,
 }
 impl Output {
     pub fn new() -> Result<Self, String> {
@@ -19,15 +22,25 @@ impl Output {
             speech,
             audio,
             tones: Vec::new(),
+            speech_deadline_ms: None,
         })
     }
     pub fn stop(&mut self) {
         self.speech.cancel();
+        self.speech_deadline_ms = None;
         for tone in self.tones.drain(..) {
             let _ = tone.unchecked_ref::<web_sys::AudioScheduledSourceNode>().stop();
         }
     }
-    pub fn poll(&mut self, _: bool, _: &mut Option<String>) {}
+    pub fn poll(&mut self, _: bool, _: &mut Option<String>) {
+        if self
+            .speech_deadline_ms
+            .is_some_and(|at| js_sys::Date::now() >= at)
+        {
+            self.speech.cancel();
+            self.speech_deadline_ms = None;
+        }
+    }
     /// Plays mono samples at the context rate, keeping a bounded list so `stop` can silence them.
     fn play(&mut self, samples: &[f32], rate: u32) -> Result<(), String> {
         let buffer = self
@@ -57,9 +70,14 @@ impl Output {
         Ok(())
     }
     /// Two carriers keyed together: the heterodyne squeal.
-    pub fn garble(&mut self, event: &flightcraft_control::Transmission, volume: f32) -> Result<(), String> {
+    pub fn garble(
+        &mut self,
+        event: &flightcraft_control::Transmission,
+        seconds: f32,
+        volume: f32,
+    ) -> Result<(), String> {
         let rate = self.audio.sample_rate() as u32;
-        let samples = blocked_garble(event.duration_s as f32, rate, event.id as u32)
+        let samples = blocked_garble(seconds, rate, event.id as u32)
             .into_iter()
             .map(|v| v * volume)
             .collect::<Vec<_>>();
@@ -105,6 +123,9 @@ impl Output {
         });
         utterance.set_volume(volume);
         self.speech.speak(&utterance);
+        // A radio call is on the air now; its voice must be silent when the carrier drops.
+        self.speech_deadline_ms = (event.channel == flightcraft_control::Channel::Com)
+            .then(|| js_sys::Date::now() + event.duration_s * 1000.0);
         if event.channel == flightcraft_control::Channel::Com {
             // The browser keeps speech out of WebAudio, so the voice itself is unfiltered. The radio's
             // squelch break, hiss rising with distance, and squelch tail play alongside it from the same
