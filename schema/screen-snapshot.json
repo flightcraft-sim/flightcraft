@@ -647,6 +647,27 @@
         }
       ]
     },
+    "AltitudeConstraint": {
+      "description": "An altitude restriction at a flight-plan waypoint.",
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "description": "Metres MSL.",
+          "type": "number",
+          "format": "double",
+          "maximum": 15000,
+          "minimum": 0
+        },
+        "kind": {
+          "$ref": "#/$defs/ConstraintKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "altitude_m"
+      ]
+    },
     "Annunciation": {
       "type": "object",
       "properties": {
@@ -2184,6 +2205,60 @@
         "securing"
       ]
     },
+    "ClockFormat": {
+      "description": "Which time the clock field shows.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "utc"
+          ]
+        },
+        {
+          "description": "Local time at the aircraft: UTC plus the longitude's nautical time zone, one hour per 15\ndegrees (rounded), as a unit without a time-zone database shows it.",
+          "type": "string",
+          "const": "local"
+        }
+      ]
+    },
+    "ClockReadout": {
+      "description": "The clock and flight timer as the data bar shows them, at the snapshot's simulation time.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "`UTC` or `LCL`.",
+          "type": "string"
+        },
+        "seconds": {
+          "description": "Seconds from midnight in the chosen format.",
+          "type": "number",
+          "format": "double"
+        },
+        "timer_down": {
+          "type": "boolean"
+        },
+        "timer_expired": {
+          "description": "A count-down timer that has reached zero.",
+          "type": "boolean"
+        },
+        "timer_running": {
+          "type": "boolean"
+        },
+        "timer_s": {
+          "description": "The timer's value: elapsed counting up, remaining counting down.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "seconds",
+        "label",
+        "timer_s",
+        "timer_running",
+        "timer_expired",
+        "timer_down"
+      ]
+    },
     "CloudLayer": {
       "type": "object",
       "properties": {
@@ -2501,6 +2576,25 @@
         "obscuration",
         "precipitation",
         "time_of_day"
+      ]
+    },
+    "ConstraintKind": {
+      "oneOf": [
+        {
+          "description": "Cross at this altitude.",
+          "type": "string",
+          "const": "at"
+        },
+        {
+          "description": "Cross at or above this altitude.",
+          "type": "string",
+          "const": "at_or_above"
+        },
+        {
+          "description": "Cross at or below this altitude.",
+          "type": "string",
+          "const": "at_or_below"
+        }
       ]
     },
     "ControlBinding": {
@@ -2984,6 +3078,26 @@
         "flight_plan",
         "nearest",
         "traffic"
+      ]
+    },
+    "DataBarField": {
+      "description": "What the data bar's user field (the slot of the minimum safe altitude on the guide's data\nbar) shows.",
+      "oneOf": [
+        {
+          "description": "The minimum safe altitude; the engine models none and shows dashes.",
+          "type": "string",
+          "const": "safe_altitude"
+        },
+        {
+          "description": "The clock, in the chosen format.",
+          "type": "string",
+          "const": "clock"
+        },
+        {
+          "description": "The flight timer.",
+          "type": "string",
+          "const": "timer"
+        }
       ]
     },
     "DefectKind": {
@@ -4108,6 +4222,11 @@
           "const": "course"
         },
         {
+          "description": "Barometric minimums altitude, feet.",
+          "type": "string",
+          "const": "minimums"
+        },
+        {
           "description": "Direct-to waypoint identifier.",
           "type": "string",
           "const": "direct_to"
@@ -4136,6 +4255,21 @@
           "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
           "type": "string",
           "const": "fpl_after"
+        },
+        {
+          "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
+          "type": "string",
+          "const": "fpl_altitude_at"
+        },
+        {
+          "description": "Altitude the selected flight-plan waypoint is crossed at or above, feet.",
+          "type": "string",
+          "const": "fpl_altitude_above"
+        },
+        {
+          "description": "Altitude the selected flight-plan waypoint is crossed at or below, feet.",
+          "type": "string",
+          "const": "fpl_altitude_below"
         }
       ]
     },
@@ -5254,6 +5388,40 @@
         "dropped_inputs"
       ]
     },
+    "FlightTimer": {
+      "description": "The flight timer: counts up from zero, or down from a preset to zero. It runs on simulation\ntime, so it stops with the simulation when paused.",
+      "type": "object",
+      "properties": {
+        "accumulated_s": {
+          "description": "Seconds counted before the current run began.",
+          "type": "number",
+          "format": "double"
+        },
+        "direction": {
+          "$ref": "#/$defs/TimerDirection"
+        },
+        "preset_s": {
+          "description": "The count-down start value, seconds.",
+          "type": "number",
+          "format": "double"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "started_at_s": {
+          "description": "Simulation time the current run began at.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "direction",
+        "preset_s",
+        "running",
+        "accumulated_s",
+        "started_at_s"
+      ]
+    },
     "FuelCap": {
       "type": "object",
       "properties": {
@@ -5465,12 +5633,28 @@
         "bearing_pointer": {
           "$ref": "#/$defs/BearingPointer"
         },
+        "clock_format": {
+          "description": "Which time the clock field shows.",
+          "$ref": "#/$defs/ClockFormat",
+          "default": "utc"
+        },
+        "clock_start_utc_s": {
+          "description": "Time of day (UTC, seconds) at simulation time zero; the clock runs on simulation time.",
+          "type": "number",
+          "format": "double",
+          "default": 61200.0
+        },
         "course_manual": {
           "type": "boolean"
         },
         "course_rad": {
           "type": "number",
           "format": "double"
+        },
+        "data_bar_field": {
+          "description": "What the data bar's user field shows.",
+          "$ref": "#/$defs/DataBarField",
+          "default": "safe_altitude"
         },
         "flight_plan": {
           "type": "array",
@@ -5507,6 +5691,15 @@
           "maxItems": 2,
           "minItems": 2
         },
+        "minimums_m": {
+          "description": "Barometric minimums altitude, metres MSL; none until the pilot sets one.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "default": null
+        },
         "orientation": {
           "$ref": "#/$defs/MapOrientation"
         },
@@ -5527,6 +5720,17 @@
         "synthetic_vision": {
           "type": "boolean"
         },
+        "timer": {
+          "description": "The flight timer.",
+          "$ref": "#/$defs/FlightTimer",
+          "default": {
+            "accumulated_s": 0.0,
+            "direction": "up",
+            "preset_s": 300.0,
+            "running": false,
+            "started_at_s": 0.0
+          }
+        },
         "traffic_filter": {
           "description": "The altitude window traffic is shown in.",
           "$ref": "#/$defs/TrafficFilter",
@@ -5542,6 +5746,12 @@
         },
         "transponder_mode": {
           "$ref": "#/$defs/TransponderMode"
+        },
+        "vnav_angle_deg": {
+          "description": "The vertical navigation descent angle, degrees.",
+          "type": "number",
+          "format": "double",
+          "default": 3.0
         },
         "waypoints": {
           "type": "array",
@@ -5594,6 +5804,17 @@
           "default": {
             "messages": [],
             "unacknowledged": false
+          }
+        },
+        "clock": {
+          "$ref": "#/$defs/ClockReadout",
+          "default": {
+            "label": "",
+            "seconds": 0.0,
+            "timer_down": false,
+            "timer_expired": false,
+            "timer_running": false,
+            "timer_s": 0.0
           }
         },
         "comms": {
@@ -5707,6 +5928,18 @@
           "description": "An ADS-B In (or TIS-B) receiver feeds this aircraft's glass displays.",
           "type": "boolean",
           "default": false
+        },
+        "vnav": {
+          "description": "The vertical navigation path, when the flight plan has an altitude constraint ahead.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VnavReadout"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "wind_from_rad": {
           "type": "number",
@@ -5957,6 +6190,17 @@
       "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
       "type": "object",
       "properties": {
+        "altitude_constraint": {
+          "description": "The altitude restriction at this waypoint, for vertical navigation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AltitudeConstraint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "ident": {
           "type": "string",
           "maxLength": 64,
@@ -8138,6 +8382,14 @@
         "bearing_rad": {
           "type": "number",
           "format": "double"
+        },
+        "constraint": {
+          "description": "The waypoint's altitude constraint as the FPL page writes it, if it has one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "distance_nm": {
           "type": "number",
@@ -12602,6 +12854,13 @@
         "dawn"
       ]
     },
+    "TimerDirection": {
+      "type": "string",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
     "TimerKind": {
       "description": "How a POH time limit applies to an item.",
       "oneOf": [
@@ -14546,6 +14805,74 @@
         "chase",
         "tower",
         "top_down"
+      ]
+    },
+    "VnavReadout": {
+      "description": "The vertical path to the next altitude constraint, for the VNAV indicator and the data bar.",
+      "type": "object",
+      "properties": {
+        "angle_deg": {
+          "type": "number",
+          "format": "double"
+        },
+        "deviation_m": {
+          "description": "Aircraft above (positive) or below the path, metres.",
+          "type": "number",
+          "format": "double"
+        },
+        "dots": {
+          "description": "The indicator's displacement in dots (100 ft each), positive above the path, at most 2.5.",
+          "type": "number",
+          "format": "double"
+        },
+        "path_altitude_m": {
+          "description": "The path's altitude at the aircraft, metres.",
+          "type": "number",
+          "format": "double"
+        },
+        "required_vs_fpm": {
+          "description": "The vertical speed that reaches the target altitude at the target, feet per minute\n(negative descends); none without ground speed.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "target_altitude_m": {
+          "description": "The path's altitude at that waypoint, metres.",
+          "type": "number",
+          "format": "double"
+        },
+        "target_distance_nm": {
+          "type": "number",
+          "format": "double"
+        },
+        "target_ident": {
+          "description": "The constrained waypoint the path leads to.",
+          "type": "string"
+        },
+        "top_of_descent_nm": {
+          "description": "Distance to the top of descent, nautical miles; zero or negative once past it.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "tracking": {
+          "description": "The autopilot is flying the path (GP mode active).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target_ident",
+        "target_altitude_m",
+        "target_distance_nm",
+        "path_altitude_m",
+        "deviation_m",
+        "dots",
+        "angle_deg",
+        "tracking"
       ]
     },
     "WaypointKind": {

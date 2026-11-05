@@ -156,6 +156,13 @@ pages, split screen, knobs, keys, and reversion follow the model described in
 `recommended_skin`, a skin pack id used when that pack is installed; see
 [skin packs](glass.md#skin-packs).
 
+The landscape touch EFIS carries the training aids a pack needs no declaration for, all shared by its
+displays and set with `avionics.set` glass settings as well as by touch: baro minimums (a minimums bug and
+MINIMUMS annunciation on the altitude tape, with a spoken callout), a clock and flight timer on the data bar,
+and vertical navigation (altitude constraints on flight-plan waypoints, the descent path, its indicator, vertical
+speed required, and path tracking by the digital autopilot's GP mode). See [glass](glass.md#baro-minimums),
+[clock](glass.md#clock-and-flight-timer), and [VNAV](glass.md#vertical-navigation-vnav).
+
 A pack declares what a display shows at power-up with the optional `default_page` of its
 `touch_display` element. Omission shows `layout`, as packs always have. `layout` remains the
 installed PFD layout, which the PFD key and menu entry select, so the MFD screen of the Sling
@@ -360,9 +367,11 @@ height]` in installation-local mm, and must fit the installation. Control hit re
 `altitude_knob`, and `pitch_wheel`. The face fills the complete installation rectangle.
 Knob pushes sync heading or selected altitude to sensed values; scrolling and dragging adjust
 heading, selected altitude (100/1,000 feet), or the current pitch/VS/IAS target. Buttons issue
-existing autopilot commands. `vnav` arms the existing GPS glidepath (`gp`) vertical mode;
-it does not introduce an en-route vertical flight-plan model. Installed autopilot capability
-validation still applies.
+existing autopilot commands. `vnav` arms the existing GPS glidepath (`gp`) vertical mode, which
+tracks the approach glidepath of a loaded procedure and, on the landscape touch EFIS, the vertical
+navigation path computed from the altitude constraints on flight-plan waypoints (see
+[glass](glass.md#vertical-navigation-vnav)); it captures only when a path exists. Installed autopilot
+capability validation still applies.
 
 `home_columns` retains the navigator's shared pages and commands, with HOME and CDI source
 controls on the left, a 4 × 2 home tile grid in the centre, and COM active/standby, swap,

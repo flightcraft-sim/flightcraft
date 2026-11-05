@@ -1,5 +1,7 @@
 //! Integrated suite settings and installation wiring; sensors are shared with standby units.
+use super::glass_aids::{ClockFormat, DataBarField, TimerAction};
 use super::sensor::{AirDataComputer, ComputerInput};
+use super::vnav::AltitudeConstraint;
 use crate::{Readout, systems::SystemsState};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -94,6 +96,9 @@ pub struct GpsWaypoint {
     pub ident: String,
     pub kind: WaypointKind,
     pub position: flightcraft_world::GeoPoint,
+    /// The altitude restriction at this waypoint, for vertical navigation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub altitude_constraint: Option<AltitudeConstraint>,
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -128,8 +133,42 @@ pub enum GlassSetting {
         #[schemars(range(min = 80000, max = 110000))]
         pressure_pa: f64,
     },
+    /// The barometric minimums altitude (feet-based bug on the altitude tape), metres MSL.
+    Minimums {
+        #[schemars(range(min=-500,max=15000))]
+        altitude_m: f64,
+    },
+    /// Remove the minimums bug.
+    MinimumsOff {},
     PressureUnits {
         hpa: bool,
+    },
+    /// Which time the clock shows: UTC, or local time at the aircraft.
+    ClockFormat {
+        format: ClockFormat,
+    },
+    /// Set the clock to this time of day (UTC, seconds from midnight) now.
+    ClockSet {
+        #[schemars(range(min = 0, max = 86399))]
+        utc_seconds: f64,
+    },
+    /// Start, stop, or reset the flight timer, or choose its direction and count-down preset.
+    Timer {
+        operation: TimerAction,
+    },
+    /// What the data bar's user field shows: the minimum safe altitude (dashes), the clock, or the timer.
+    DataBarField {
+        field: DataBarField,
+    },
+    /// The vertical navigation descent angle, degrees.
+    VnavAngle {
+        #[schemars(range(min = 1, max = 6))]
+        degrees: f64,
+    },
+    /// Set or clear the altitude constraint of one flight-plan waypoint.
+    WaypointAltitude {
+        index: usize,
+        constraint: Option<AltitudeConstraint>,
     },
     BearingPointer {
         source: BearingPointer,

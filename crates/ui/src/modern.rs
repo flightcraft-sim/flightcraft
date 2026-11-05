@@ -345,6 +345,7 @@ impl PanelUi {
                                         cas_overflow: glass.cas.overflow(),
                                         cas: glass.cas.clone(),
                                         ident_remaining_s: glass.settings.ident_remaining_s,
+                                        user_field: glass.settings.data_bar_field,
                                         fpl: crate::efis::FplView {
                                             rows: glass
                                                 .gps
@@ -354,6 +355,7 @@ impl PanelUi {
                                                     ident: leg.airport.clone(),
                                                     bearing_deg: leg.bearing_rad.to_degrees() as f32,
                                                     distance_nm: leg.distance_nm as f32,
+                                                    constraint: leg.constraint.clone(),
                                                 })
                                                 .collect(),
                                             cursor: glass.settings.fpl_cursor,

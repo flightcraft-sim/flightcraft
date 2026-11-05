@@ -154,6 +154,30 @@ pub struct ReceiverLeg {
     pub start_deg: [f64; 2],
     pub end_deg: [f64; 2],
     pub projection_origin_deg: [f64; 2],
+    /// A vertical navigation path along this leg, from the flight-plan altitude constraints. It
+    /// is left out of the serialised state when absent, so a leg without one hashes as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vnav: Option<crate::avionics::vnav::LegPath>,
+}
+impl ReceiverLeg {
+    /// Guidance for an aircraft at `altitude_m`: the lateral guidance of [`NavSource::guidance`],
+    /// and, when the leg carries a vertical path, the deviation above it (positive above) and
+    /// the path angle the autopilot's GP mode tracks.
+    pub fn guidance_at(&self, north_m: f64, east_m: f64, altitude_m: f64) -> Option<NavGuidance> {
+        use crate::avionics::navigation;
+        let mut sample = self.guidance(north_m, east_m)?;
+        if let Some(path) = &self.vnav {
+            let [lat, lon] = self.projection_origin_deg;
+            let projection = flightcraft_world::geo::LocalProjection::new(lat, lon).ok()?;
+            let position = projection.unproject(north_m, east_m).ok()?;
+            let (_, along) = navigation::track(self.start_deg, self.end_deg, position);
+            let remaining = navigation::inverse(self.start_deg, self.end_deg).0 - along;
+            let (path_altitude, angle) = path.at(remaining);
+            sample.vertical_deviation_m = Some(altitude_m - path_altitude);
+            sample.path_angle_rad = Some(angle);
+        }
+        sample.validate().ok().map(|()| sample)
+    }
 }
 impl NavSource for ReceiverLeg {
     fn guidance(&self, north_m: f64, east_m: f64) -> Option<NavGuidance> {
@@ -176,5 +200,57 @@ impl NavSource for ReceiverLeg {
             path_angle_rad: None,
         };
         sample.validate().ok().map(|()| sample)
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use crate::avionics::vnav::LegPath;
+
+    fn leg(vnav: Option<LegPath>) -> ReceiverLeg {
+        ReceiverLeg {
+            start_deg: [40.0, -74.0],
+            end_deg: [40.0, -73.8],
+            projection_origin_deg: [40.0, -74.0],
+            vnav,
+        }
+    }
+
+    #[test]
+    fn a_leg_without_a_vertical_path_gives_no_vertical_guidance_and_hashes_as_before() {
+        let g = leg(None).guidance_at(0., 0., 1500.).unwrap();
+        assert_eq!((g.vertical_deviation_m, g.path_angle_rad), (None, None));
+        let json = serde_json::to_string(&leg(None)).unwrap();
+        assert!(!json.contains("vnav"), "{json}");
+    }
+
+    #[test]
+    fn a_vertical_path_gives_a_deviation_above_it_and_the_path_angle() {
+        let angle = 3f64.to_radians();
+        let path = LegPath {
+            target_altitude_m: 600.,
+            beyond_m: 0.,
+            angle_rad: angle,
+        };
+        let l = leg(Some(path));
+        let length = crate::avionics::navigation::inverse(l.start_deg, l.end_deg).0;
+        // At the start of the leg the path stands `length` of descent above the target.
+        let on_path = 600. + length * libm::tan(angle);
+        let above = l.guidance_at(0., 0., on_path + 100.).unwrap();
+        let below = l.guidance_at(0., 0., on_path - 100.).unwrap();
+        assert!((above.vertical_deviation_m.unwrap() - 100.).abs() < 2.);
+        assert!((below.vertical_deviation_m.unwrap() + 100.).abs() < 2.);
+        assert!((above.path_angle_rad.unwrap() + angle).abs() < 1e-12);
+        // Past the end of the leg the path is level at the target.
+        let [lat, lon] = l.projection_origin_deg;
+        let projection = flightcraft_world::geo::LocalProjection::new(lat, lon).unwrap();
+        let [north, east] = projection.project(40.0, -73.79).unwrap();
+        let past = l.guidance_at(north, east, 640.).unwrap();
+        assert!((past.vertical_deviation_m.unwrap() - 40.).abs() < 1.0);
+        assert_eq!(past.path_angle_rad, Some(0.0));
+        // A leg with a path serialises it.
+        assert!(serde_json::to_string(&l).unwrap().contains("vnav"));
     }
 }

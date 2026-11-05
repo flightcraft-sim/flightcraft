@@ -65,6 +65,7 @@ impl ElectronicHsi {
             start_deg: self.leg_origin?,
             end_deg: self.destination_position?,
             projection_origin_deg: [region.origin.latitude_deg, region.origin.longitude_deg],
+            vnav: None,
         };
         let [n, e, _] = state.position_m;
         leg.guidance(n, e)

@@ -208,6 +208,7 @@ fn shared(rows: &[&str], cursor: usize, active: usize) -> crate::efis::Shared {
         cas_overflow: false,
         cas: Default::default(),
         ident_remaining_s: 0.,
+        user_field: flightcraft_control::DataBarField::SafeAltitude,
         fpl: crate::efis::FplView {
             rows: rows
                 .iter()
@@ -216,6 +217,7 @@ fn shared(rows: &[&str], cursor: usize, active: usize) -> crate::efis::Shared {
                     ident: (*ident).to_owned(),
                     bearing_deg: 90. + i as f32,
                     distance_nm: 10. * (i + 1) as f32,
+                    constraint: (i == 1).then(|| "3000FT A".to_owned()),
                 })
                 .collect(),
             cursor,
@@ -258,7 +260,13 @@ fn the_fpl_page_selects_a_waypoint_and_offers_activate_insert_and_remove() {
     run_page(&ctx, &sh, Vec::new(), t);
     // Layout: rows from y = 10 + 8.5% of 360 = 40.6, 30.6 high; buttons along the bottom.
     let row = |i: usize| egui::pos2(300., 10. + 360. * 0.085 + 360. * 0.085 * (i as f32 + 0.5));
-    let button = |i: usize| egui::pos2(10. + 600. * (i as f32 + 0.5) / 4., 10. + 360. - 360. * 0.055);
+    // Two rows of four buttons: list edits, then the altitude constraint of the selected waypoint.
+    let button = |i: usize| {
+        egui::pos2(
+            10. + 600. * ((i % 4) as f32 + 0.5) / 4.,
+            10. + 360. - 360. * 0.22 + 360. * 0.11 * ((i / 4) as f32 + 0.5),
+        )
+    };
     assert!(click(&ctx, &sh, row(2), &mut t).iter().any(|a| matches!(
         a,
         DisplayAction::FlightPlan {
@@ -270,6 +278,10 @@ fn the_fpl_page_selects_a_waypoint_and_offers_activate_insert_and_remove() {
         (1, "insert before"),
         (2, "insert after"),
         (3, "remove"),
+        (4, "altitude at"),
+        (5, "altitude at or above"),
+        (6, "altitude at or below"),
+        (7, "altitude clear"),
     ];
     for (i, what) in want {
         let got = click(&ctx, &sh, button(i), &mut t);
@@ -298,6 +310,21 @@ fn the_fpl_page_selects_a_waypoint_and_offers_activate_insert_and_remove() {
                         flightcraft_control::touch_entry::EntryTarget::FplAfter,
                     )
             }
+            (4..=6, DisplayAction::OpenOverlay { overlay }) => {
+                use flightcraft_control::touch_entry::EntryTarget as T;
+                *overlay
+                    == flightcraft_control::touch_efis::Overlay::Keypad(match i {
+                        4 => T::FplAltitudeAt,
+                        5 => T::FplAltitudeAbove,
+                        _ => T::FplAltitudeBelow,
+                    })
+            }
+            (
+                7,
+                DisplayAction::FlightPlan {
+                    edit: FplEdit::Altitude { constraint: None },
+                },
+            ) => true,
             _ => false,
         });
         assert!(ok, "{what}: {got:?}");
@@ -307,6 +334,7 @@ fn the_fpl_page_selects_a_waypoint_and_offers_activate_insert_and_remove() {
     run_page(&ctx, &empty, Vec::new(), t);
     assert!(click(&ctx, &empty, button(0), &mut t).is_empty());
     assert!(click(&ctx, &empty, button(3), &mut t).is_empty());
+    assert!(click(&ctx, &empty, button(5), &mut t).is_empty());
     assert!(!click(&ctx, &empty, button(2), &mut t).is_empty());
 }
 

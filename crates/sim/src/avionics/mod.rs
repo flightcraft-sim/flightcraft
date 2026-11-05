@@ -2,10 +2,12 @@
 pub mod electronic_attitude;
 pub mod electronic_hsi;
 pub mod glass;
+pub mod glass_aids;
 pub mod navigation;
 pub mod procedures;
 pub mod radio;
 pub mod sensor;
+pub mod vnav;
 use crate::{Readout, SimError, State, systems::SystemsState};
 use flightcraft_world::World;
 use schemars::JsonSchema;

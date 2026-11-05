@@ -302,8 +302,9 @@ degrees, the selected-heading bug, the track triangle, the course pointer and de
 GPS, green for a radio), and the source and CDI scale annunciations; the wind box with an arrow and speed
 over direction; and the top data bar (COM1 active and standby, then waypoint, bearing, distance, time en
 route, ground speed, track, minimum safe altitude, and vertical speed required) and the bottom status bar
-(the function of each knob's two rings, outside air temperature, Messages). Minimum safe altitude and
-vertical speed required are not modelled and read as dashes.
+(the function of each knob's two rings, outside air temperature, Messages). The minimum safe altitude is
+not modelled (its slot reads dashes, or shows the clock or flight timer, below), and vertical speed required
+reads dashes until a vertical path exists.
 
 Colours are by meaning, as in the guide: cyan for selected values, bugs, baro, and the standby frequency;
 magenta for the flight director, trend vectors, GPS guidance, and data bar values; green for active modes,
@@ -353,16 +354,102 @@ how typing edits the field, how an entry parses and range-checks, and the shortc
 |---|---|---|---|
 | Selected altitude | altitude | 100 to 30,000 ft | Set To Current (nearest 100 ft) |
 | Baro | baro | 27.50 to 31.50 inHg (2992 reads as 29.92) or 900 to 1100 hPa | Set To Standard, Set For Field |
+| Minimums (under the baro box) | minimums | 0 to 15,000 ft | Minimums Off |
 | Selected heading | heading | 0 to 360 (360 is north) | Set To Current |
 | Course | course | 0 to 360 | Set To Current (desired track, else heading) |
 | DIRECT key | waypoint | 1 to 6 letters or digits | |
 | COM1 standby, NAV1 standby | frequency | 118.000 to 136.975 on 25 kHz; 108.00 to 117.95 on 50 kHz | |
 | Transponder | code | four digits, 0 to 7 | |
 | FPL page, Insert Before / Insert After | waypoint | 1 to 6 letters or digits | |
+| FPL page, Alt At / Alt At/Above / Alt At/Below | waypoint altitude | 0 to 45,000 ft | |
 
 A hardware keyboard types into the pad as well. ENTER is enabled only for an entry that parses, the pad
 shows why it does not, and the engine rejects a bad entry with the keypad left open (`equipment.set`
 display actions `open_overlay`, `enter`, `shortcut`).
+
+### Baro minimums
+
+The pilot sets a barometric minimums altitude (decision altitude or minimum descent altitude, feet MSL) in the
+minimums box under the baro box, or with `avionics.set` glass setting `{"kind":"minimums","altitude_m":76.2}`
+(`-500` to `15000` m, finite; `{"kind":"minimums_off"}` removes it; the keypad accepts 0 to 15,000 ft and has a
+Minimums Off button). While set, the altitude tape carries an amber minimums bug on its left edge, pinned to
+the tape's edge when off the scale, and the box shows `MIN 1,000`; unset it shows `MIN ----`.
+`flightcraft_control::minimums` is the pure part, comparing the indicated (baro) altitude with the minimums:
+more than 100 ft above, nothing but the bug; within 100 ft above, an amber outlined **MINIMUMS** annunciation
+at the top of the altitude tape; at or below the minimums, the same annunciation solid amber with dark text, so
+the two states differ by more than the word. The guide's own colours for this annunciation were not available
+to the model; the choice here keeps amber for a caution and reserves red for warnings, as the rest of the
+display does.
+
+The audio alert is a spoken **"Minimums."** callout on the crew voice path (the one that says "Five hundred"
+and "One hundred"), sounded once on the step that first finds the aircraft at or below the minimums after a
+step that found it above. It sounds again only after a climb back above, never at the moment the minimums are
+set below the aircraft, and never while the altitude data is invalid. The warning tone (`audio::Audio`) is
+tied to the autopilot disconnect and has no named callouts, so the voice path is the hook the engine has.
+
+### Clock and flight timer
+
+The data bar's minimum safe altitude slot (the engine models no minimum safe altitude, so it read dashes) is
+also the **user field**: touching its left half cycles dashes, the clock, and the flight timer; with the timer
+shown, touching its right half starts and stops it. The same choices are glass settings, so they work from
+`avionics.set` and replay: `data_bar_field` (`field`: `safe_altitude`, `clock`, `timer`), `clock_format`
+(`format`: `utc` or `local`), `clock_set` (`utc_seconds`, 0 to 86,399), and `timer` with an `operation` of
+`{"kind":"start"}`, `stop`, `toggle`, `reset`, `{"kind":"direction","direction":"up"|"down"}`, or
+`{"kind":"preset","seconds":n}` (1 to 359,999 s, finite; a bad preset is refused and changes nothing).
+
+Both run on **simulation time** (`flightcraft_sim::avionics::glass_aids`, pure and unit tested), so they stop
+when the simulation is paused and give the same readings on replay. The sim has no calendar clock: the flight
+starts at 17:00 UTC (the renderer's default illumination hour) unless `clock_set` says otherwise, which moves
+the clock's zero point. Local time is UTC plus the aircraft's nautical time zone, one hour per 15 degrees of
+longitude rounded; there is no time-zone database, daylight time, or date. The timer counts up from zero or down
+from its preset and holds while stopped; a count-down stops at zero, cannot be started again until reset, and
+turns amber on the data bar. The clock reads `HH:MM:SS` labelled UTC or LCL; the timer reads `MM:SS`, or
+`H:MM:SS` from an hour. `avionics.state` carries the readings in `glass_suite.clock`.
+
+### Vertical navigation (VNAV)
+
+A flight-plan waypoint can carry an **altitude constraint**: `at`, `at_or_above`, or `at_or_below` an altitude
+(`GpsWaypoint.altitude_constraint`, optional, 0 to 15,000 m MSL, validated wherever a plan is installed and
+carried through every FPL edit, so inserting or removing other waypoints leaves it on its waypoint). On the FPL
+page, select a waypoint and touch **Alt At**, **Alt At/Above**, or **Alt At/Below** for a keypad (0 to 45,000 ft),
+or **Alt Clear**; the constraint shows on the row (`3000FT`, `2500FT A`, `4000FT B`). The same edit is the
+`equipment.set` display action `flight_plan` with `{"kind":"altitude","constraint":{...}|null}` and the glass
+setting `waypoint_altitude`. Approach legs are not edited (an approach has its own published path).
+
+`flightcraft_sim::avionics::vnav` computes the path, in pure geometry on route distance and altitude:
+
+- **Backwards from the constraints.** Only constrained waypoints are vertices. From the last constraint, each
+  earlier one gets the altitude a descent at the **descent angle** (default 3.0 degrees; setting `vnav_angle`,
+  1 to 6) would need there to reach the next vertex, held to its own constraint: *at* pins it, *at or above*
+  raises it to at least the constraint, *at or below* lowers it to at most the constraint. Between vertices the
+  path is a straight line; ahead of the first it is the descent-angle line through that vertex.
+  Past the last constraint the path is level at its altitude.
+- **The target** is the first vertex the aircraft still has to meet; an *at or below* it already satisfies is
+  skipped.
+- **Deviation** is the aircraft's indicated altitude minus the path altitude at its position: positive above.
+- **Vertical speed required** is the vertical speed that reaches the target altitude at the target waypoint at the
+  current ground speed (negative descends); with no ground speed there is no value, never a guess.
+- **Top of descent** is the route distance at which the descent-angle path meets the current altitude.
+
+`avionics.state` carries the result in `glass_suite.vnav` (target identifier, altitude and distance, path altitude,
+deviation, `dots`, `required_vs_fpm`, `top_of_descent_nm`, the angle, and whether the autopilot is tracking). It is
+absent with no constraint ahead and while an approach is loaded (the approach's own path rules then).
+
+On the PFD (guide items 43 and 44, page 22) the **VNAV indicator** is a column of dots (100 ft each, full scale
+2.5) just left of the altitude tape with a magenta diamond and the VNAV label above it: the diamond sits below the
+middle when the aircraft is above the path and above the middle when below, so the pilot flies toward it. It
+turns green while the autopilot is flying the path. The data bar's **VSR** field reads the vertical speed
+required in feet per minute (`-600FPM`, rounded to 10) and dashes otherwise.
+
+**Autopilot.** The VNAV key (and `{"kind":"autopilot","setting":{"kind":"vertical","mode":"gp"}}`) arms the existing
+GPS glidepath mode, whose tracking law is reused unchanged: the active leg's receiver guidance now carries a
+vertical deviation and path angle from the VNAV path, so GP captures within 30 m of the path, then holds it
+(feed-forward from groundspeed and the path angle, plus a deviation term) down to the constraint. After the
+constrained waypoint is sequenced the path stays level at its altitude while GP is flying, so the autopilot levels
+off instead of losing the path and disconnecting; any other vertical mode, or a new plan, ends that hold. With no
+constraint the leg carries no vertical guidance and GP stays armed, as before. The guidance rides on the receiver
+leg and is left out of the serialised leg when absent, so flights without constraints hash exactly as before. The
+selected altitude still arrests a descent as it does in any vertical mode (set it to the constraint to stop at it).
 
 ### Radio and transponder windows
 
@@ -381,7 +468,7 @@ windows to take a radio index first.
 
 ### Flight-plan editing
 
-The FPL page lists the active flight plan (identifier, bearing, distance) as touch rows with four buttons
+The FPL page lists the active flight plan (identifier, bearing, altitude constraint, distance) as touch rows with eight buttons
 beneath, from the guide's editing procedures (6.5 and 6.6, printed pages 191 to 193): touch a waypoint to
 select it; **Activate Leg** makes it the waypoint flown to; **Insert Before** and **Insert After** open the
 waypoint keypad and put the entered identifier beside the selected waypoint; **Remove** deletes it. On an
@@ -510,8 +597,12 @@ The model is not a screen-for-screen copy. **Matched** (from the guide's figures
 and split-screen PFD arrangement and colour meanings, the AFCS status box and flight director bars, the data
 bar and status bar, the CAS window, the trim and flap position indicators, touch flight-plan editing
 (select, insert before and after, remove, activate leg), the CAS message list page (opened from the
-window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry keypads (baro, heading, altitude,
-course, direct-to) with their shortcuts, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
+window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry
+keypads (baro, heading, altitude, course, minimums, direct-to) with their shortcuts, baro minimums (bug,
+annunciation, and callout), the data bar's clock and flight timer, vertical navigation (altitude
+constraints on flight-plan waypoints, the descent path computed back from them, the deviation indicator,
+vertical speed required, and path tracking by the autopilot), the COM1, NAV1, and transponder windows, the
+23-step range ladder with zoom buttons, the
 flight director bug knob and course-sync push, the Select Page menu, the VOR, NDB, intersection, and
 airspace nearest pages, and reversion with the autopilot rule.
 
@@ -520,15 +611,15 @@ airspace nearest pages, and reversion with the autopilot rule.
 - The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
   positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
 - The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
-- Minimum safe altitude and vertical speed required (data bar), the flight timer and clock, baro
-  minimums, the second bearing pointer, the G meter, and the Vspeed bugs' configuration page are not
-  modelled; the airspeed Vspeed letters show only R, X, and Y.
-- **VNAV and its indicator** are not drawn: the engine has no vertical-navigation profile (no target
-  altitudes at waypoints, no required descent angle). The autopilot's vocabulary has a VNAV mode name and
-  approaches carry an LNAV/VNAV capability, but neither computes a vertical path, so there is nothing for the
-  indicator (guide items 43 and 44, page 22) to show. The glidepath of a loaded approach is drawn as before.
+- The minimum safe altitude (data bar), the second bearing pointer, the G meter, and the Vspeed bugs'
+  configuration page are not modelled; the airspeed Vspeed letters show only R, X, and Y.
+- **VNAV** is a descent-path model (below): no climb constraints or step-climb paths, no
+  speed constraints, no wind-corrected top of descent, no VNAV direct-to, and no RNAV approach vertical
+  guidance beyond the loaded approach's own glidepath. The autopilot's vertical-path mode is the GPS
+  glidepath mode, so the AFCS box reads GP, not the unit's VPTH, when it flies the path.
 - The CAS window has no external lamps, and shows only the aircraft's own annunciations and the
-  autopilot's failures (autopilot failures are listed but have no acknowledgement of their own). The trim and flap indicators have no PFD-options toggle (always shown when the
+  autopilot's failures (autopilot failures are listed but have no acknowledgement of their own). The trim
+  and flap indicators have no PFD-options toggle (always shown when the
   host supplies the pilot's controls) and no aileron or rudder trim.
 - Touching the AFCS box (autopilot controls on the display), the selected-altitude and selected-heading
   bugs' "Set to Current" on the tapes themselves, PFD options beyond synthetic vision, and the pitch offset
@@ -592,6 +683,9 @@ CAS message; both are described under "CAS message list and IDENT" below. Other 
 (`altitude_m`), `baro` (`pressure_pa`), `pressure_units` (`hpa`), `bearing_pointer`
 (`source`: `off` or `gps`), `map_range` (`range_nm`: 1–200), `orientation` (`north_up` or
 `track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, `flight_plan`, or `cas`; the application MFD), `display_page` (`display`, `page`), `display_data` (`display`, `area`), `pilot_seat` (`seat`), `display_reversion` (`enabled`), `active_leg` (`index`, zero-based),
+`minimums` (`altitude_m`) and `minimums_off`, `clock_format`, `clock_set`, `timer`, `data_bar_field`,
+`vnav_angle` (`degrees`: 1 to 6), `waypoint_altitude` (`index`, `constraint`: `{"kind":"at"|"at_or_above"|
+"at_or_below","altitude_m":n}` or `null` to clear),
 and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Units are SI
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
 
