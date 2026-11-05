@@ -5,6 +5,10 @@ use wgpu::util::DeviceExt;
 
 const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+/// Samples per pixel of the scene targets. Mesh, glass and cowl edges, and the intersections of
+/// the aircraft's own shells, are otherwise drawn as hard stairsteps; 4x is guaranteed for both
+/// formats by WebGPU. WebGL2 keeps single-sample targets.
+const SAMPLES: u32 = if cfg!(target_arch = "wasm32") { 1 } else { 4 };
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -83,7 +87,10 @@ pub(crate) struct ViewGpu {
 
 struct Targets {
     size: [u32; 2],
+    /// The resolved image the composite samples.
     color: wgpu::TextureView,
+    /// The multisampled image the passes draw into, when `SAMPLES > 1`.
+    msaa: Option<wgpu::TextureView>,
     depth: wgpu::TextureView,
     bind: wgpu::BindGroup,
 }
@@ -91,6 +98,9 @@ struct Targets {
 impl Drop for Targets {
     fn drop(&mut self) {
         self.color.texture().destroy();
+        if let Some(msaa) = &self.msaa {
+            msaa.texture().destroy();
+        }
         self.depth.texture().destroy();
     }
 }
@@ -202,9 +212,27 @@ pub fn initialize_synthetic_vision(state: &egui_wgpu::RenderState, context: &egu
     crate::vision::bind_texture(context, texture);
 }
 
+/// The cleared colour attachment of a scene pass: the multisampled image resolving into the one
+/// the composite samples, or the plain image when single-sampled.
+fn color_attachment(targets: &Targets) -> wgpu::RenderPassColorAttachment<'_> {
+    wgpu::RenderPassColorAttachment {
+        view: targets.msaa.as_ref().unwrap_or(&targets.color),
+        resolve_target: targets.msaa.as_ref().map(|_| &targets.color),
+        depth_slice: None,
+        ops: wgpu::Operations {
+            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+            store: if targets.msaa.is_some() {
+                wgpu::StoreOp::Discard
+            } else {
+                wgpu::StoreOp::Store
+            },
+        },
+    }
+}
+
 fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout) -> Targets {
     let [width, height] = size;
-    let descriptor = |format, usage| wgpu::TextureDescriptor {
+    let descriptor = |format, usage, sample_count| wgpu::TextureDescriptor {
         label: Some("flight scene target"),
         size: wgpu::Extent3d {
             width,
@@ -212,7 +240,7 @@ fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
-        sample_count: 1,
+        sample_count,
         dimension: wgpu::TextureDimension::D2,
         format,
         usage,
@@ -222,10 +250,24 @@ fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout
         .create_texture(&descriptor(
             COLOR_FORMAT,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            1,
         ))
         .create_view(&Default::default());
+    let msaa = (SAMPLES > 1).then(|| {
+        device
+            .create_texture(&descriptor(
+                COLOR_FORMAT,
+                wgpu::TextureUsages::RENDER_ATTACHMENT,
+                SAMPLES,
+            ))
+            .create_view(&Default::default())
+    });
     let depth = device
-        .create_texture(&descriptor(DEPTH_FORMAT, wgpu::TextureUsages::RENDER_ATTACHMENT))
+        .create_texture(&descriptor(
+            DEPTH_FORMAT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT,
+            SAMPLES,
+        ))
         .create_view(&Default::default());
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("scene sampler"),
@@ -250,6 +292,7 @@ fn targets(device: &wgpu::Device, size: [u32; 2], layout: &wgpu::BindGroupLayout
     Targets {
         size,
         color,
+        msaa,
         depth,
         bind,
     }
@@ -337,7 +380,10 @@ impl Gpu {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: Default::default(),
+                multisample: wgpu::MultisampleState {
+                    count: SAMPLES,
+                    ..Default::default()
+                },
                 multiview: None,
                 cache: None,
             })
@@ -449,7 +495,7 @@ impl Gpu {
             }],
         });
         let vision_targets = targets(device, [750, 285], &texture_layout);
-        let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout, anisotropy);
+        let scenery = crate::scenery::gpu::Pipeline::new(device, &uniform_layout, anisotropy, SAMPLES);
         Self {
             pbr_images: Default::default(),
             empty: device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -653,7 +699,7 @@ impl CallbackTrait for SceneCallback {
             let exterior = view.exterior.get_or_insert_with(|| ExteriorGpu {
                 pose: None,
                 eye: None,
-                pbr: crate::exterior::PbrRenderer::with_shared_images(device, gpu.pbr_images.clone()),
+                pbr: crate::exterior::PbrRenderer::with_samples(device, gpu.pbr_images.clone(), SAMPLES),
                 asset: None,
                 lod: None,
                 ready: false,
@@ -837,15 +883,7 @@ impl CallbackTrait for SceneCallback {
         }
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("flight scene"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view.targets.color,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
+            color_attachments: &[Some(color_attachment(&view.targets))],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &view.targets.depth,
                 depth_ops: Some(wgpu::Operations {
@@ -1147,15 +1185,7 @@ impl CallbackTrait for VisionCallback {
         queue.write_buffer(&gpu.vision_uniform, 0, bytemuck::bytes_of(&uniform));
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("shared synthetic vision terrain"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &gpu.vision_targets.color,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
+            color_attachments: &[Some(color_attachment(&gpu.vision_targets))],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &gpu.vision_targets.depth,
                 depth_ops: Some(wgpu::Operations {

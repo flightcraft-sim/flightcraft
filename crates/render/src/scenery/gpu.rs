@@ -39,7 +39,12 @@ pub(crate) struct Cache {
     selected: Vec<usize>,
 }
 impl Pipeline {
-    pub(crate) fn new(device: &wgpu::Device, uniform: &wgpu::BindGroupLayout, anisotropy: u16) -> Self {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        uniform: &wgpu::BindGroupLayout,
+        anisotropy: u16,
+        samples: u32,
+    ) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("3D Tiles material"),
             entries: &[
@@ -130,7 +135,10 @@ impl Pipeline {
                     stencil: Default::default(),
                     bias,
                 }),
-                multisample: Default::default(),
+                multisample: wgpu::MultisampleState {
+                    count: samples,
+                    ..Default::default()
+                },
                 multiview: None,
                 cache: None,
             })

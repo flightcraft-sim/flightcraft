@@ -137,3 +137,66 @@ fn render_sling_cockpit_proof() {
         capture.validate().await;
     });
 }
+
+/// Sun sweep through the cockpit forward view: the cowl and canopy bows under every sun azimuth
+/// and elevation, with the cascaded shadows live. Saves `<out>/sun-<hour>.png` for visual review.
+#[test]
+#[ignore = "requires FLIGHTCRAFT_SLING_PACK and an offscreen GPU; saves out/cockpit/sun"]
+fn render_sling_cockpit_sun_sweep() {
+    pollster::block_on(async {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let out = std::env::var_os("FLIGHTCRAFT_COCKPIT_SUN")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| root.join("out/cockpit/sun"));
+        std::fs::create_dir_all(&out).unwrap();
+        let pack = std::env::var("FLIGHTCRAFT_SLING_PACK").unwrap();
+        let mut session = Session::new().unwrap();
+        let contents = flightcraft_control::read_pack(std::path::Path::new(&pack)).unwrap();
+        session.install_pack(&contents).unwrap();
+        session
+            .execute(
+                "aircraft.load",
+                serde_json::json!({"source":{"kind":"installed","id":"sling2"},"reset":true}),
+            )
+            .unwrap();
+        session
+            .install_region(
+                flightcraft_control::read_region(&root.join("assets/terrain/eastern-pa")).unwrap(),
+            )
+            .unwrap();
+        session.execute("sim.reset", serde_json::json!({"world":"eastern-pa","start":{"kind":"airport_runway","airport":"1N7","end":"07"}})).unwrap();
+        let mut capture = Capture::new([1600, 700]).await;
+        let asset = session.aircraft_catalog().exterior("sling2").unwrap();
+        let mut scene = Scene::default();
+        scene.set_aircraft("sling2");
+        scene.set_world(session.sim().world());
+        scene.set_exterior(asset);
+        scene.camera = CameraMode::Cockpit;
+        scene.airspace_visible = false;
+        scene.set_exterior_state(session.sim());
+        let pose = *session.sim().state();
+        for hour in [12.5, 13., 14.] {
+            scene
+                .set_lighting(flightcraft_render::lighting::LightingSettings {
+                    // Midsummer morning: the sun is ahead of the runway-07 cockpit, where the cowl
+                    // and glass catch direct and mirrored sunlight.
+                    month: 6,
+                    day: 21,
+                    utc_hour: hour,
+                    ..Default::default()
+                })
+                .unwrap();
+            for look in [("fwd", 0_f32, 0_f32), ("left", -0.9, -0.05)] {
+                scene.set_cockpit_look(look.1, look.2);
+                for _ in 0..4 {
+                    capture.draw(|ui| scene.show(ui, &pose, 1., theme::scene()));
+                }
+                capture
+                    .image()
+                    .save(out.join(format!("sun-{hour:04.1}-{}.png", look.0)))
+                    .unwrap();
+            }
+        }
+        capture.validate().await;
+    });
+}

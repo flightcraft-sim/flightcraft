@@ -50,6 +50,8 @@ struct Surface {
     return o;
 }
 const PI: f32 = 3.14159265359;
+// sin of the largest tangent-space normal tilt (about 20 degrees) the baked maps may apply.
+const MAX_NORMAL_TILT: f32 = 0.35;
 fn fresnel(f0: vec3<f32>, cosine: f32) -> vec3<f32> {
     return f0 + (vec3<f32>(1.0) - f0) * pow(clamp(1.0-cosine, 0.0, 1.0), 5.0);
 }
@@ -105,7 +107,13 @@ fn finish_lighting(color:vec3<f32>,world:vec3<f32>)->vec3<f32> {
     let geometric_normal = normalize(i.normal)*face_sign;
     let tangent = normalize(i.tangent.xyz-geometric_normal*dot(geometric_normal,i.tangent.xyz));
     let bitangent = cross(geometric_normal,tangent)*i.tangent.w;
-    let mapped = normalize(vec3<f32>(normal_texel.xy*material.emissive_normal.w, normal_texel.z));
+    // Baked tangent normals are only trusted for shallow relief. A texel baked across a rim,
+    // seam or the far side of a thin shell tilts far past any real surface detail, and lighting it
+    // draws sawtooth white glints along the triangles that sample it; the tilt is capped.
+    var tilt = normal_texel.xy*material.emissive_normal.w;
+    let tilt_length = length(tilt);
+    if tilt_length > MAX_NORMAL_TILT { tilt *= MAX_NORMAL_TILT/tilt_length; }
+    let mapped = vec3<f32>(tilt, sqrt(max(1.0-dot(tilt,tilt), 0.0)));
     let n = normalize(mat3x3<f32>(tangent,bitangent,geometric_normal)*mapped);
     let v = normalize(frame.eye.xyz-i.world);
     let l = normalize(frame.sun_direction.xyz);

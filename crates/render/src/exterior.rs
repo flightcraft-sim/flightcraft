@@ -928,6 +928,10 @@ impl PbrRenderer {
     }
     /// A renderer that uploads its texture maps into, and reuses them from, `images`.
     pub fn with_shared_images(device: &wgpu::Device, images: SharedPbrImages) -> Self {
+        Self::with_samples(device, images, 1)
+    }
+    /// A renderer whose pipelines draw into a target with `samples` samples per pixel.
+    pub fn with_samples(device: &wgpu::Device, images: SharedPbrImages, samples: u32) -> Self {
         use wgpu::util::DeviceExt;
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("exterior PBR frame"),
@@ -1075,7 +1079,10 @@ impl PbrRenderer {
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
-                multisample: Default::default(),
+                multisample: wgpu::MultisampleState {
+                    count: samples,
+                    ..Default::default()
+                },
                 multiview: None,
                 cache: None,
             })
