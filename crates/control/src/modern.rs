@@ -641,8 +641,17 @@ impl Session {
                 crate::SearchKind::Pin => crate::WaypointKind::Pin,
                 _ => crate::WaypointKind::Coordinate,
             };
+            // Airports carry their ICAO identifier, as the navigator displays them (KMMU, not MMU).
+            let ident = if kind == crate::WaypointKind::Airport {
+                crate::regions::airport(self.sim.world(), &result.ident)
+                    .ok()
+                    .and_then(|a| a.icao.clone())
+                    .unwrap_or_else(|| result.ident.clone())
+            } else {
+                result.ident.clone()
+            };
             waypoints.push(crate::GpsWaypoint {
-                ident: result.ident.clone(),
+                ident,
                 kind,
                 position,
             });
