@@ -723,3 +723,28 @@ fn the_whole_list_at_real_pace_takes_minutes_not_seconds() {
         "ignition was off by the time it came up"
     );
 }
+
+#[test]
+fn the_walkaround_animates_on_frame_time_while_the_flight_is_paused() {
+    let mut s = begun(BeginOptions::default());
+    s.execute("sim.pause", serde_json::json!({})).unwrap();
+    assert!(s.paused());
+    let fuel = format!("{:?}", state(&s).fuel);
+    let time = s.sim().state().time_s;
+    perform(&mut s, "aileron_right");
+    let before = state(&s).figure.position_m;
+    for _ in 0..240 {
+        s.advance_walkaround_paused(1. / 60.);
+    }
+    let st = state(&s);
+    assert_ne!(st.figure.position_m, before, "the figure never moved");
+    assert!(item(&st, "aileron_right").done);
+    assert_eq!(s.sim().state().time_s, time, "the flight clock must not move");
+    assert_eq!(format!("{:?}", st.fuel), fuel);
+    // A running flight is stepped by the fixed steps instead, never double-advanced.
+    s.execute("sim.resume", serde_json::json!({})).unwrap();
+    perform(&mut s, "aileron_left");
+    let p = state(&s).figure.position_m;
+    s.advance_walkaround_paused(0.2);
+    assert_eq!(state(&s).figure.position_m, p);
+}

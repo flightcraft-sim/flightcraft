@@ -221,3 +221,63 @@ fn flap_change_frames_the_trailing_edge_from_the_flap_node_then_returns_to_defau
         (back.eye_m[0] - default.eye_m[0]).abs() < 0.05 && (back.eye_m[2] - default.eye_m[2]).abs() < 0.05
     );
 }
+
+#[test]
+fn the_exterior_inset_draws_the_same_world_and_scenery_as_the_main_outside_view() {
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut owner = Session::new().unwrap();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // The region data is fetched, not checked in: without it the test still covers the default world.
+    let region = flightcraft_control::read_region(&root.join("assets/terrain/eastern-pa")).ok();
+    let have_region = region.is_some();
+    if let Some(region) = region {
+        owner.install_region(region).unwrap();
+    }
+    owner
+        .execute("view.exterior_inset", json!({"mode":"always"}))
+        .unwrap();
+    let reset = if have_region {
+        json!({"world":"eastern-pa","start":{"kind":"airport_runway","airport":"1N7","end":"07"},"paused":true})
+    } else {
+        json!({"start":{"kind":"runway"},"paused":true})
+    };
+    owner.execute("sim.reset", reset).unwrap();
+    let mut canvas = Canvas::default();
+    let mut snapshot = owner.presentation_copy();
+    let mut screen = snapshot.screens().windows.first().unwrap().clone();
+    screen.layout = main_layout(&ctx, &snapshot, &screen.layout, false);
+    for frame in 1..=3 {
+        let _ = ctx.run(
+            egui::RawInput {
+                time: Some(f64::from(frame) / 60.),
+                predicted_dt: 1. / 60.,
+                screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280., 800.))),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| canvas.show(ui, &screen, &mut snapshot, true));
+            },
+        );
+    }
+    let inset = &canvas.pages[flightcraft_control::screens::INSET_ID].scene;
+    let main = screen
+        .layout
+        .elements
+        .iter()
+        .find(|e| e.page.kind == PageKind::Outside && !is_inset(&e.id))
+        .expect("a main outside view");
+    let main = &canvas.pages[&main.id].scene;
+    let world = snapshot.sim().world();
+    assert_eq!(world.region().is_some(), have_region);
+    assert_eq!(inset.world().fingerprint(), world.fingerprint());
+    assert_eq!(inset.world().fingerprint(), main.world().fingerprint());
+    let same = |a: Option<&std::sync::Arc<_>>, b: Option<&std::sync::Arc<_>>| match (a, b) {
+        (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+        (None, None) => true,
+        _ => false,
+    };
+    let (i, m) = (inset.scenery_streams(), main.scenery_streams());
+    assert!(same(i[0], m[0]) && same(i[1], m[1]));
+    assert!(same(i[0], canvas.scenery.as_ref()) && same(i[1], canvas.imagery.as_ref()));
+}

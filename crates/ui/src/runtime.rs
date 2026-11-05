@@ -65,6 +65,8 @@ impl Runtime {
                             || last_external.is_some_and(|t| t.elapsed() < Duration::from_secs(3)),
                         Ordering::Relaxed,
                     );
+                    // The walkaround is a ground activity: it animates in real time while paused.
+                    session.advance_walkaround_paused(elapsed);
                     let steps = clock.advance(elapsed * session.rate(), session.paused());
                     for _ in 0..steps {
                         let time = session.sim().state().time_s;

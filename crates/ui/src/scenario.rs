@@ -133,8 +133,26 @@ impl ScenarioUi {
         Ok(())
     }
 }
+/// The failures that count as an emergency indication. Pre-flight hazards (a pitot cover, chocks,
+/// missing hardware) are latent until flight, so on the ground only injected failures and a
+/// derived open door count; in the air the hazards' effects count too.
+pub(crate) fn emergency_failures(s: &Session) -> flightcraft_aero::Failures {
+    if s.sim().readout().on_ground {
+        let mut f = s.sim().injected_failures();
+        f.door_open |= s.sim().failures().door_open;
+        f
+    } else {
+        s.sim().failures()
+    }
+}
+
+/// Whether any failure is active, so the Emergency menu should show red.
+pub(crate) fn emergency_active(s: &Session) -> bool {
+    emergency_failures(s) != flightcraft_aero::Failures::default()
+}
+
 pub(crate) fn indications(ui: &mut egui::Ui, s: &Session) {
-    let f = s.sim().failures();
+    let f = emergency_failures(s);
     for (on, label) in [
         (f.engine_fire, "ENGINE FIRE • power loss / temperature rise"),
         (f.electrical_fire, "ELECTRICAL FIRE • buses isolated"),
@@ -153,6 +171,13 @@ pub(crate) fn indications(ui: &mut egui::Ui, s: &Session) {
         (f.trim_runaway, "TRIM RUNAWAY"),
         (f.trim_stuck, "TRIM STUCK"),
         (f.radio_failure, "COM1 / COM2 FAIL"),
+        (f.pitot_blocked, "PITOT BLOCKED • airspeed unreliable"),
+        (
+            f.static_blocked,
+            "STATIC BLOCKED • altitude and airspeed unreliable",
+        ),
+        (f.vacuum_pump, "VACUUM PUMP FAIL • gyro instruments"),
+        (f.alternator, "ALTERNATOR FAIL • battery only"),
     ] {
         if on {
             ui.colored_label(theme::DANGER, label);
@@ -239,4 +264,57 @@ pub(crate) fn glide_map(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief
         ui.label(format!("{prefix}{}", field.description(d.glide.origin_m)));
     }
     ui.label("Terrain screening: ≥1,969 ft long × 197 ft wide, local slope ≤3%, sampled along the wind. Land cover and obstacles are not verified.");
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use flightcraft_sim::hazards::GroundHazards;
+
+    #[test]
+    fn parked_hazards_are_not_an_emergency_but_a_real_failure_is() {
+        let mut s = Session::new().unwrap();
+        s.execute(
+            "sim.reset",
+            serde_json::json!({"start":{"kind":"runway"},"paused":true}),
+        )
+        .unwrap();
+        assert!(!emergency_active(&s));
+        // Covers, ropes, chocks and missing hardware are latent hazards on the ground.
+        s.sim_mut().set_hazards(GroundHazards {
+            pitot_cover: true,
+            chocks: true,
+            tie_downs: true,
+            flap_hardware: true,
+            aileron_hardware: true,
+        });
+        assert!(s.sim().readout().on_ground);
+        assert!(
+            s.sim().failures().pitot_blocked,
+            "the cover still blocks the pitot"
+        );
+        assert!(!emergency_active(&s), "but it is not an emergency");
+        // A real injected failure still is, with or without the hazards.
+        s.execute(
+            "failure.set",
+            serde_json::json!({"failure":{"kind":"engine_fire"}}),
+        )
+        .unwrap();
+        assert!(emergency_active(&s));
+        assert!(emergency_failures(&s).engine_fire);
+        s.sim_mut().set_hazards(GroundHazards::default());
+        assert!(emergency_active(&s));
+    }
+
+    #[test]
+    fn a_blocked_pitot_injected_as_a_failure_is_listed() {
+        let mut s = Session::new().unwrap();
+        s.execute(
+            "failure.set",
+            serde_json::json!({"failure":{"kind":"pitot_blocked"}}),
+        )
+        .unwrap();
+        assert!(emergency_active(&s));
+    }
 }

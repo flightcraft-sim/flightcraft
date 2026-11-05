@@ -171,6 +171,18 @@ impl Scene {
         self.imagery = stream;
     }
 
+    /// The terrain this scene draws.
+    #[must_use]
+    pub fn world(&self) -> &flightcraft_world::World {
+        &self.world
+    }
+
+    /// The photoreal scenery and imagery streams this scene selects from.
+    #[must_use]
+    pub fn scenery_streams(&self) -> [Option<&std::sync::Arc<std::sync::Mutex<scenery::Stream>>>; 2] {
+        [self.scenery.as_ref(), self.imagery.as_ref()]
+    }
+
     /// The exterior model of the aircraft being drawn, for framing its moving parts.
     #[must_use]
     pub fn exterior_asset(&self) -> Option<&std::sync::Arc<flightcraft_aero::exterior::ExteriorAsset>> {

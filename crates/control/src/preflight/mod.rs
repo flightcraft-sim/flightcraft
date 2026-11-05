@@ -905,6 +905,18 @@ impl Session {
         }
     }
 
+    /// Advance the walkaround on wall-clock frame time while the flight is paused.
+    ///
+    /// A preflight is a ground activity, so the figure keeps walking when the simulation is
+    /// stopped. While the flight runs, the fixed steps feed the animation instead, so this does
+    /// nothing then. The flight state is untouched; only the walkaround's own effects apply.
+    /// `elapsed_s` is clamped so a stalled frame does not skip the animation.
+    pub fn advance_walkaround_paused(&mut self, elapsed_s: f64) {
+        if self.paused() && self.preflight.walk.is_some() && elapsed_s.is_finite() && elapsed_s > 0. {
+            self.advance_preflight(elapsed_s.min(0.25));
+        }
+    }
+
     pub(crate) fn sequence_preflight(&mut self) {
         if self.preflight.walk.is_some() {
             self.advance_preflight(1. / 120.);

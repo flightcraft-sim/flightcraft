@@ -76,7 +76,16 @@ Registered like every command (schemas by `cargo xtask schemas`, exposed over MC
 | `preflight.lessons` | The pre-flight lessons. |
 
 The animation advances with `sim.step` (every fixed step feeds it), `sim.wait`, or
-`preflight.advance`. Seeds are `DefectKind`: `pitot_cover`, `tie_down`, `chock` (props left on),
+`preflight.advance`. In the app it also runs on wall-clock frame time while the flight is paused
+(a preflight is a ground activity, and the lessons start paused), at the chosen `speed`; the flight
+state does not change, only the walkaround's own effects (surfaces moved by hand, covers taken
+off). While the flight runs, the fixed steps feed it instead, so it never advances twice.
+Scripted runs and tests stay deterministic because only the app loop calls
+`Session::advance_walkaround_paused`.
+
+A pitot cover, chock, rope or missing hardware does not turn the Emergency menu red while parked:
+they are latent hazards, and a chock has its own "will not move" message. The menu reports
+injected failures, and in the air the hazards' effects too. Seeds are `DefectKind`: `pitot_cover`, `tie_down`, `chock` (props left on),
 `low_oil`, `low_fuel`, `loose_cowl_fastener`, `aileron_hardware_missing`, `flap_hardware_missing`,
 `damaged_tyre`, `wheel_fairing_crack`. A pack lists which kinds each item accepts; anything else is
 refused.

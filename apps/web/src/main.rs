@@ -184,6 +184,7 @@ mod worker {
                 o.session.autosave_flight();
                 o.last_save = now;
             }
+            o.session.advance_walkaround_paused(elapsed);
             let steps = o.clock.advance(elapsed * o.session.rate(), o.session.paused());
             for _ in 0..steps {
                 let time = o.session.sim().state().time_s;

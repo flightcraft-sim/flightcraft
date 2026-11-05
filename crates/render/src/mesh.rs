@@ -17,7 +17,14 @@ struct Mesh(Vec<Vertex>);
 
 impl Mesh {
     fn triangle(&mut self, a: Vec3, b: Vec3, c: Vec3, color: [f32; 4], kind: f32) {
-        let normal = (b - a).cross(c - a).normalize_or_zero().to_array();
+        let mut normal = (b - a).cross(c - a).normalize_or_zero();
+        // Ground and pavement are never seen from below. The physical lighting reads the normal
+        // directly, so a quad wound the other way (the training field's ground plane) was lit as
+        // if it faced the dark underside and drew black. Face every such surface upward (+y).
+        if (kind == 0.0 || kind == 3.0) && normal.y < 0.0 {
+            normal = -normal;
+        }
+        let normal = normal.to_array();
         for position in [a, b, c] {
             self.0.push(Vertex {
                 position: position.to_array(),
@@ -866,6 +873,30 @@ pub(crate) mod terrain_tests {
         for ch in "0123456789LRCG".chars() {
             assert!(!glyph(ch).is_empty());
         }
+    }
+
+    #[test]
+    fn ground_and_pavement_face_up_so_the_physical_lighting_does_not_draw_them_black() {
+        let geometry = build(palette(), false);
+        let world = &geometry.vertices[..geometry.world_end as usize];
+        assert!(
+            world.iter().any(|v| v.kind == 0.0),
+            "the training field has a ground plane"
+        );
+        for v in world.iter().filter(|v| v.kind == 0.0 || v.kind == 3.0) {
+            assert!(v.normal[1] > 0.99, "kind {} faces {:?}", v.kind, v.normal);
+        }
+        let strip = flightcraft_world::RunwayStrip {
+            ends_m: [[0.0, 0.0], [0.0, 900.0]],
+            elevations_m: [100.0, 100.0],
+            width_m: 23.0,
+            surface: flightcraft_world::RunwaySurface::Asphalt,
+            end_idents: ["09".into(), "27".into()],
+            lighting: [None; 2],
+        };
+        let mut m = Mesh::default();
+        airport_runway(&mut m, &strip, palette());
+        assert!(m.0.iter().all(|v| v.normal[1] > 0.99));
     }
 
     pub(crate) fn palette() -> Palette {

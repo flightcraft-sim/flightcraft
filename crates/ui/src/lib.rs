@@ -1378,7 +1378,7 @@ impl FlightCraftApp {
         );
         self.scenarios.show(ctx, &mut self.session);
         self.live_weather.show(ctx, &mut self.session);
-        let f = self.session.sim().failures();
+        let f = scenario::emergency_failures(&self.session);
         if f.engine_fire
             || f.electrical_fire
             || f.cabin_smoke
@@ -1389,6 +1389,10 @@ impl FlightCraftApp {
             || f.trim_runaway
             || f.trim_stuck
             || f.radio_failure
+            || f.pitot_blocked
+            || f.static_blocked
+            || f.vacuum_pump
+            || f.alternator
         {
             egui::TopBottomPanel::bottom("emergency-annunciations")
                 .frame(egui::Frame::new().fill(theme::PANEL))
@@ -1437,7 +1441,7 @@ impl FlightCraftApp {
                     if ui.button("Scenarios").clicked() {
                         self.scenarios.open = !self.scenarios.open;
                     }
-                    if self.session.sim().failures() != flightcraft_sim::Failures::default() {
+                    if scenario::emergency_active(&self.session) {
                         ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| {
                             scenario::indications(ui, &self.session)
                         });
