@@ -4000,6 +4000,11 @@
           "const": "course"
         },
         {
+          "description": "Barometric minimums altitude, feet.",
+          "type": "string",
+          "const": "minimums"
+        },
+        {
           "description": "Direct-to waypoint identifier.",
           "type": "string",
           "const": "direct_to"
@@ -5383,6 +5388,15 @@
           },
           "maxItems": 2,
           "minItems": 2
+        },
+        "minimums_m": {
+          "description": "Barometric minimums altitude, metres MSL; none until the pilot sets one.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double",
+          "default": null
         },
         "orientation": {
           "$ref": "#/$defs/MapOrientation"

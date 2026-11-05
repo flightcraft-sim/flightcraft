@@ -13,6 +13,13 @@ pub struct GlassSettings {
     pub course_rad: f64,
     pub course_manual: bool,
     pub selected_altitude_m: f64,
+    /// Barometric minimums altitude, metres MSL; none until the pilot sets one.
+    #[serde(default)]
+    pub minimums_m: Option<f64>,
+    /// Whether the aircraft was last seen above the minimums altitude; the callout sounds on the
+    /// step it is first seen at or below, so it sounds once per descent through the altitude.
+    #[serde(skip)]
+    pub minimums_above: Option<bool>,
     pub pressure_hpa: bool,
     pub bearing_pointer: BearingPointer,
     pub transponder_code: String,
@@ -47,6 +54,8 @@ impl Default for GlassSettings {
             course_rad: 0.0,
             course_manual: false,
             selected_altitude_m: 914.4,
+            minimums_m: None,
+            minimums_above: None,
             pressure_hpa: false,
             bearing_pointer: BearingPointer::Off,
             transponder_code: "1200".into(),
@@ -244,6 +253,16 @@ impl Session {
                 }
                 self.glass.selected_altitude_m = altitude_m;
             }
+            GlassSetting::Minimums { altitude_m } => {
+                range(NAME, "altitude_m", altitude_m, -500.0, 15000.0)?;
+                self.glass.minimums_m = Some(altitude_m);
+                // A new setting starts a new watch: it never calls for a descent already made.
+                self.glass.minimums_above = None;
+            }
+            GlassSetting::MinimumsOff {} => {
+                self.glass.minimums_m = None;
+                self.glass.minimums_above = None;
+            }
             GlassSetting::Baro { pressure_pa } => self
                 .sim
                 .set_systems(flightcraft_sim::systems::SystemSetting::Altimeter { pressure_pa })?,
@@ -419,6 +438,22 @@ impl Session {
             self.glass.active_leg += 1;
         }
         self.sync_receiver_leg();
+    }
+    /// The minimums callout: once per descent through the pilot's minimums altitude, sounded on
+    /// the crew voice path (the same spoken callouts as "Five hundred"). Presentation only.
+    pub(crate) fn sequence_minimums(&mut self) {
+        self.reset_glass_generation();
+        let computers = self.sim.glass_computers();
+        let state = if computers.primary.air_data_valid {
+            crate::minimums::state(computers.primary.altitude_msl_m, self.glass.minimums_m)
+        } else {
+            crate::minimums::MinimumsState::Off
+        };
+        let (call, above) = crate::minimums::callout(self.glass.minimums_above, state);
+        self.glass.minimums_above = above;
+        if call {
+            self.crew_callout("Minimums.".into());
+        }
     }
     pub fn glass_state(&self) -> GlassState {
         if let Some(state) = &self.presentation_glass {

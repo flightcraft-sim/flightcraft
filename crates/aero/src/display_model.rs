@@ -201,6 +201,8 @@ pub enum PfdElement {
     AltitudeTape,
     SelectedAltitudeBox,
     BaroBox,
+    /// The barometric minimums box under the baro box: touch it to set the minimums altitude.
+    MinimumsBox,
     /// The vertical speed scale beside the altitude tape.
     VerticalSpeedScale,
     /// The black box on the altitude tape that shows the altitude.
@@ -345,6 +347,7 @@ impl DisplayModel {
                     (E::AltitudeTape, [824., 135., 111., 253.]),
                     (E::SelectedAltitudeBox, [840., 98., 95., 29.]),
                     (E::BaroBox, [840., 399., 95., 32.]),
+                    (E::MinimumsBox, [840., 433., 95., 24.]),
                     (E::VerticalSpeedScale, [935., 135., 39., 253.]),
                     (E::AltitudePointer, [868., 242., 140., 37.]),
                     (E::SlipBox, [578., 361., 143., 28.]),
@@ -393,6 +396,7 @@ impl DisplayModel {
                         (E::AltitudeTape, [434., 144., 95., 264.]),
                         (E::SelectedAltitudeBox, [434., 114., 95., 28.]),
                         (E::BaroBox, [434., 414., 95., 28.]),
+                        (E::MinimumsBox, [446., 444., 83., 24.]),
                         (E::VerticalSpeedScale, [529., 144., 34., 264.]),
                         (E::AltitudePointer, [458., 244., 105., 37.]),
                         (E::SlipBox, [215., 384., 136., 28.]),

@@ -627,6 +627,12 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         vec![[x + 17., by - 11.], [x + 28., by], [x + 17., by + 11.]],
         Ink::Cyan,
     );
+    // Barometric minimums bug: an amber marker on the tape's left edge, pinned when off the scale.
+    if let Some(minimums) = s.settings.minimums_m {
+        let my = at(minimums * FEET).clamp(y + 8., y + h - 8.);
+        polygon(d, vec![[x, my - 7.], [x + 14., my], [x, my + 7.]], Ink::Yellow);
+        line(d, [x, my], [x + 22., my], Ink::Yellow, 2.);
+    }
     // Altitude trend vector, to the predicted altitude in 6 seconds.
     let trend = (a.altitude_trend_m * FEET) as f32 * ALT_PX_PER_FT;
     if trend.abs() > 1. {
@@ -681,6 +687,18 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
             20. * t.boxes,
             Ink::Green,
         );
+    }
+    // MINIMUMS: amber text within 100 ft above the minimums, and solid amber at or below them.
+    match flightcraft_control::minimums::state(a.altitude_msl_m, s.settings.minimums_m) {
+        flightcraft_control::minimums::MinimumsState::Approaching => {
+            bordered(d, [x + 3., y + 3., w - 6., 24.], Ink::BoxFill, Ink::Yellow);
+            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::Yellow);
+        }
+        flightcraft_control::minimums::MinimumsState::Reached => {
+            rect(d, [x + 3., y + 3., w - 6., 24.], Ink::Yellow);
+            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::BoxFill);
+        }
+        _ => {}
     }
     // The pointer: black, with the altitude; its tens digits roll.
     let [px, py, pw, ph] = r4(g.rect(E::AltitudePointer));
@@ -772,6 +790,23 @@ fn boxes(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &PfdGe
         },
         Ink::Cyan,
         size,
+    );
+    // The minimums box under the baro box: the set altitude, or dashes.
+    boxed(
+        d,
+        E::MinimumsBox,
+        s.settings.minimums_m.map_or("MIN ----".into(), |m| {
+            format!(
+                "MIN {}",
+                crate::instruments::formatting::integer((m * FEET).round())
+            )
+        }),
+        if s.settings.minimums_m.is_some() {
+            Ink::Yellow
+        } else {
+            Ink::White
+        },
+        15. * t.boxes,
     );
     // Selected heading (cyan) and selected course (magenta for GPS, green for a radio).
     boxed(

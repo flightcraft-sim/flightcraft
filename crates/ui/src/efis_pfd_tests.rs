@@ -612,6 +612,47 @@ fn set(s: &mut Session, id: &str, action: serde_json::Value) {
 }
 
 #[test]
+fn minimums_bug_box_and_annunciation_follow_the_altitude() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let tape = geometry.rect(E::AltitudeTape);
+    let draw = |altitude_ft: f64, minimums_ft: Option<f64>| {
+        let mut g = flying(&s);
+        g.air_data.altitude_msl_m = altitude_ft * 0.3048;
+        g.settings.minimums_m = minimums_ft.map(|f| f * 0.3048);
+        touch_pfd::panel(&g, input, &geometry, options())
+    };
+    let amber_items = |d: &DrawList| {
+        d.flat_items()
+            .into_iter()
+            .filter(|i| matches!(i, DrawItem::Polygon { ink: Ink::Yellow, .. }))
+            .count()
+    };
+    // Not set: a dashed box and no annunciation.
+    let d = draw(1500., None);
+    assert!(drawn_in(&d, geometry.rect(E::MinimumsBox), "MIN ----"));
+    assert!(!drawn_in(&d, tape, "MINIMUMS"));
+    // Set and 500 ft above: the box and the bug, no annunciation.
+    let d = draw(1500., Some(1000.));
+    assert!(
+        drawn_in(&d, geometry.rect(E::MinimumsBox), "MIN 1,000")
+            || drawn_in(&d, geometry.rect(E::MinimumsBox), "MIN 1000")
+    );
+    assert!(!drawn_in(&d, tape, "MINIMUMS"));
+    assert!(amber_items(&d) >= 1, "the minimums bug is amber");
+    // Within 100 ft above, then at or below: the annunciation, amber, in the tape.
+    for (altitude, ink) in [(1080., Ink::Yellow), (1000., Ink::BoxFill), (940., Ink::BoxFill)] {
+        let d = draw(altitude, Some(1000.));
+        let text = labels(&d)
+            .into_iter()
+            .find(|(t, at, ..)| t == "MINIMUMS" && inside(tape, *at))
+            .unwrap_or_else(|| panic!("no annunciation at {altitude} ft"));
+        assert_eq!(text.3, ink, "{altitude}");
+    }
+}
+
+#[test]
 fn the_pfd_boxes_are_touch_targets_at_the_models_positions() {
     let s = session();
     let panel = isolated(&s, "left_display");
@@ -626,6 +667,7 @@ fn the_pfd_boxes_are_touch_targets_at_the_models_positions() {
     for (element, want) in [
         (E::SelectedAltitudeBox, Overlay::Keypad(EntryTarget::Altitude)),
         (E::BaroBox, Overlay::Keypad(EntryTarget::Baro)),
+        (E::MinimumsBox, Overlay::Keypad(EntryTarget::Minimums)),
         (E::SelectedHeadingBox, Overlay::Keypad(EntryTarget::Heading)),
         (E::SelectedCourseBox, Overlay::Keypad(EntryTarget::Course)),
     ] {

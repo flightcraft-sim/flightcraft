@@ -1166,6 +1166,7 @@ impl Session {
             Entry::Heading { rad } => self.set_glass(G::HeadingBug { heading_rad: rad }),
             Entry::Altitude { m } => self.set_glass(G::SelectedAltitude { altitude_m: m }),
             Entry::Course { rad } => self.set_glass(G::Course { course_rad: rad }),
+            Entry::Minimums { m } => self.set_glass(G::Minimums { altitude_m: m }),
             Entry::DirectTo { ident } => self.navigator_plan(vec![ident]),
             Entry::FplInsert { ident, after } => {
                 self.edit_flight_plan(touch_fpl::FplEdit::Insert { after, ident })
@@ -1206,6 +1207,7 @@ impl Session {
                 self.set_glass(G::SelectedAltitude { altitude_m: m })
             }
             (EntryTarget::Course, EntryShortcut::SetToCurrent) => self.sync_course(),
+            (EntryTarget::Minimums, EntryShortcut::TurnOff) => self.set_glass(G::MinimumsOff {}),
             (EntryTarget::Baro, EntryShortcut::SetToStandard) => self.set_glass(G::Baro {
                 pressure_pa: touch_entry::STANDARD_PRESSURE_PA,
             }),

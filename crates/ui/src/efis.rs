@@ -554,6 +554,7 @@ pub(crate) fn chrome(
                     Overlay::Keypad(EntryTarget::Altitude),
                 ),
                 (PfdElement::BaroBox, Overlay::Keypad(EntryTarget::Baro)),
+                (PfdElement::MinimumsBox, Overlay::Keypad(EntryTarget::Minimums)),
                 (
                     PfdElement::SelectedHeadingBox,
                     Overlay::Keypad(EntryTarget::Heading),

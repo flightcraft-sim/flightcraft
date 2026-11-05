@@ -21,6 +21,8 @@ pub enum EntryTarget {
     Altitude,
     /// Selected course (OBS), degrees magnetic.
     Course,
+    /// Barometric minimums altitude, feet.
+    Minimums,
     /// Direct-to waypoint identifier.
     DirectTo,
     /// Standby frequency of the first communication radio.
@@ -36,11 +38,12 @@ pub enum EntryTarget {
 }
 
 impl EntryTarget {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Baro,
         Self::Heading,
         Self::Altitude,
         Self::Course,
+        Self::Minimums,
         Self::DirectTo,
         Self::ComStandby,
         Self::NavStandby,
@@ -55,6 +58,7 @@ impl EntryTarget {
             Self::Heading => "HEADING",
             Self::Altitude => "ALTITUDE",
             Self::Course => "COURSE",
+            Self::Minimums => "MINIMUMS",
             Self::DirectTo => "DIRECT-TO",
             Self::ComStandby => "COM1 STANDBY",
             Self::NavStandby => "NAV1 STANDBY",
@@ -69,7 +73,7 @@ impl EntryTarget {
         match self {
             Self::Baro => 5,
             Self::Heading | Self::Course => 3,
-            Self::Altitude => 5,
+            Self::Altitude | Self::Minimums => 5,
             Self::DirectTo | Self::FplBefore | Self::FplAfter => 6,
             Self::ComStandby | Self::NavStandby => 7,
             Self::Transponder => 4,
@@ -161,6 +165,10 @@ pub enum Entry {
         rad: f64,
     },
     Altitude {
+        m: f64,
+    },
+    /// Barometric minimums altitude.
+    Minimums {
         m: f64,
     },
     Course {
@@ -297,6 +305,15 @@ pub fn parse(target: EntryTarget, hpa: bool, text: &str) -> Result<Entry, EntryE
                 m: f64::from(v) * M_PER_FT,
             })
         }
+        EntryTarget::Minimums => {
+            let v = whole(text, 99_999, "enter a minimums altitude in feet")?;
+            if v > 15_000 {
+                return Err(EntryError::Invalid("minimums must be 0 to 15,000 ft"));
+            }
+            Ok(Entry::Minimums {
+                m: f64::from(v) * M_PER_FT,
+            })
+        }
         EntryTarget::DirectTo | EntryTarget::FplBefore | EntryTarget::FplAfter => {
             if text.is_empty() {
                 return Err(EntryError::Empty);
@@ -358,6 +375,8 @@ pub enum EntryShortcut {
     SetToStandard,
     /// Baro, on the ground: the pressure that makes the altimeter read the field elevation.
     SetForField,
+    /// Minimums: remove the minimums bug.
+    TurnOff,
 }
 
 impl EntryShortcut {
@@ -366,6 +385,7 @@ impl EntryShortcut {
             Self::SetToCurrent => "Set To Current",
             Self::SetToStandard => "Set To Standard",
             Self::SetForField => "Set For Field",
+            Self::TurnOff => "Minimums Off",
         }
     }
 
@@ -374,6 +394,7 @@ impl EntryShortcut {
         match target {
             EntryTarget::Heading | EntryTarget::Altitude | EntryTarget::Course => &[Self::SetToCurrent],
             EntryTarget::Baro => &[Self::SetToStandard, Self::SetForField],
+            EntryTarget::Minimums => &[Self::TurnOff],
             _ => &[],
         }
     }
@@ -484,6 +505,23 @@ mod tests {
         assert!(parse(EntryTarget::Altitude, false, "99").is_err());
         assert!(parse(EntryTarget::Altitude, false, "100").is_ok());
         assert!(parse(EntryTarget::Altitude, false, "12.5").is_err());
+    }
+
+    #[test]
+    fn minimums_entry_is_feet_zero_to_fifteen_thousand_with_an_off_shortcut() {
+        let Entry::Minimums { m } = parse(EntryTarget::Minimums, false, "250").unwrap() else {
+            panic!()
+        };
+        assert!((m - 76.2).abs() < 1e-9);
+        assert!(parse(EntryTarget::Minimums, false, "0").is_ok());
+        assert!(parse(EntryTarget::Minimums, false, "15001").is_err());
+        assert!(parse(EntryTarget::Minimums, false, "2.5").is_err());
+        assert_eq!(parse(EntryTarget::Minimums, false, ""), Err(EntryError::Empty));
+        assert_eq!(type_in(EntryTarget::Minimums, false, "12345678"), "12345");
+        assert_eq!(
+            EntryShortcut::offered(EntryTarget::Minimums),
+            [EntryShortcut::TurnOff]
+        );
     }
 
     #[test]

@@ -124,6 +124,13 @@ pub enum GlassSetting {
         #[schemars(range(min = 80000, max = 110000))]
         pressure_pa: f64,
     },
+    /// The barometric minimums altitude (feet-based bug on the altitude tape), metres MSL.
+    Minimums {
+        #[schemars(range(min=-500,max=15000))]
+        altitude_m: f64,
+    },
+    /// Remove the minimums bug.
+    MinimumsOff {},
     PressureUnits {
         hpa: bool,
     },

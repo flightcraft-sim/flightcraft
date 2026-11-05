@@ -91795,6 +91795,11 @@
               "const": "set_for_field",
               "description": "Baro, on the ground: the pressure that makes the altimeter read the field elevation.",
               "type": "string"
+            },
+            {
+              "const": "turn_off",
+              "description": "Minimums: remove the minimums bug.",
+              "type": "string"
             }
           ]
         },
@@ -91819,6 +91824,11 @@
             {
               "const": "course",
               "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "minimums",
+              "description": "Barometric minimums altitude, feet.",
               "type": "string"
             },
             {
@@ -92154,6 +92164,41 @@
               "required": [
                 "kind",
                 "pressure_pa"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The barometric minimums altitude (feet-based bug on the altitude tape), metres MSL.",
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 15000,
+                  "minimum": -500,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "minimums",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Remove the minimums bug.",
+              "properties": {
+                "kind": {
+                  "const": "minimums_off",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -93859,6 +93904,11 @@
             {
               "const": "course",
               "description": "Selected course (OBS), degrees magnetic.",
+              "type": "string"
+            },
+            {
+              "const": "minimums",
+              "description": "Barometric minimums altitude, feet.",
               "type": "string"
             },
             {
@@ -119118,6 +119168,41 @@
             },
             {
               "additionalProperties": false,
+              "description": "The barometric minimums altitude (feet-based bug on the altitude tape), metres MSL.",
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 15000,
+                  "minimum": -500,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "minimums",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Remove the minimums bug.",
+              "properties": {
+                "kind": {
+                  "const": "minimums_off",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "hpa": {
                   "type": "boolean"
@@ -120915,6 +121000,11 @@
               "type": "string"
             },
             {
+              "const": "minimums",
+              "description": "Barometric minimums altitude, feet.",
+              "type": "string"
+            },
+            {
               "const": "direct_to",
               "description": "Direct-to waypoint identifier.",
               "type": "string"
@@ -121327,6 +121417,15 @@
               "minItems": 2,
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "minimums_m": {
+              "default": null,
+              "description": "Barometric minimums altitude, metres MSL; none until the pilot sets one.",
+              "format": "double",
+              "type": [
+                "number",
                 "null"
               ]
             },
@@ -124120,6 +124219,11 @@
               "type": "string"
             },
             {
+              "const": "minimums",
+              "description": "Barometric minimums altitude, feet.",
+              "type": "string"
+            },
+            {
               "const": "direct_to",
               "description": "Direct-to waypoint identifier.",
               "type": "string"
@@ -124532,6 +124636,15 @@
               "minItems": 2,
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "minimums_m": {
+              "default": null,
+              "description": "Barometric minimums altitude, metres MSL; none until the pilot sets one.",
+              "format": "double",
+              "type": [
+                "number",
                 "null"
               ]
             },

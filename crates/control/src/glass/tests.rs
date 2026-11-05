@@ -252,3 +252,73 @@ fn glass_settings_validate_against_schemas_and_queries_do_not_advance_sensors() 
         assert!(!validator.is_valid(&serde_json::json!({"setting":{"kind":"glass","setting":setting}})));
     }
 }
+fn glass_session() -> Session {
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    s
+}
+#[test]
+fn minimums_are_validated_stored_and_removed() {
+    let mut s = glass_session();
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    assert!(
+        s.set_glass(GlassSetting::Minimums { altitude_m: f64::NAN })
+            .is_err()
+    );
+    assert!(
+        s.set_glass(GlassSetting::Minimums { altitude_m: 20000. })
+            .is_err()
+    );
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    s.set_glass(GlassSetting::Minimums { altitude_m: 76.2 }).unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, Some(76.2));
+    s.set_glass(GlassSetting::MinimumsOff {}).unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    // The tagged JSON a client sends.
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"minimums","altitude_m":300.0}}}),
+    )
+    .unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, Some(300.));
+}
+#[test]
+fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
+    let mut s = glass_session();
+    s.sim.step(1);
+    let altitude = s.sim.glass_computers().primary.altitude_msl_m;
+    let spoken = |s: &Session| {
+        s.comms
+            .record
+            .events
+            .iter()
+            .filter(|e| format!("{e:?}").contains("Minimums."))
+            .count()
+    };
+    // Minimums well below the aircraft: watching, silent.
+    s.set_glass(GlassSetting::Minimums {
+        altitude_m: altitude - 200.,
+    })
+    .unwrap();
+    for _ in 0..3 {
+        s.sequence_minimums();
+    }
+    assert_eq!(spoken(&s), 0);
+    // The aircraft is now below its minimums: one callout, not one per step.
+    s.glass.minimums_m = Some(altitude + 20.);
+    for _ in 0..5 {
+        s.sequence_minimums();
+    }
+    assert_eq!(spoken(&s), 1);
+    // Setting minimums while already below them calls for nothing.
+    s.set_glass(GlassSetting::Minimums {
+        altitude_m: altitude + 50.,
+    })
+    .unwrap();
+    s.sequence_minimums();
+    assert_eq!(spoken(&s), 1);
+}
