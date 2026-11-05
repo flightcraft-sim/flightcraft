@@ -13,10 +13,24 @@ struct Draw {
     vertices_count: u32,
     instances_count: u32,
 }
+// Dropping a wgpu resource on the web releases nothing: the browser frees the GPU memory only
+// when its garbage collector gets to the handle. Free it explicitly.
+impl Drop for Draw {
+    fn drop(&mut self) {
+        self.vertices.destroy();
+        self.instances.destroy();
+    }
+}
 struct Tile {
     draws: Vec<Draw>,
     bind: wgpu::BindGroup,
+    texture: wgpu::Texture,
     payload: Arc<DecodedTile>,
+}
+impl Drop for Tile {
+    fn drop(&mut self) {
+        self.texture.destroy();
+    }
 }
 #[derive(Default)]
 pub(crate) struct Cache {
@@ -258,6 +272,7 @@ impl Pipeline {
                 Tile {
                     draws,
                     bind,
+                    texture,
                     payload: payload.clone(),
                 },
             );

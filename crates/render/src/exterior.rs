@@ -898,6 +898,14 @@ pub struct PbrRenderer {
     materials: Vec<PbrGpuMaterial>,
     draws: Vec<PbrDraw>,
 }
+impl Drop for PbrRenderer {
+    fn drop(&mut self) {
+        // Dropping a wgpu resource on the web waits for the browser's garbage collector.
+        self.uniform.destroy();
+        self.vertices.destroy();
+        self.fallback_probe.texture().destroy();
+    }
+}
 /// Uploaded exterior texture maps (image, sRGB, normal map, upload size limit, view). Every view of
 /// the aircraft (the main outside view and the exterior inset) shares one set, so a second
 /// view costs a few kilobytes of bind groups rather than another few hundred megabytes of mip

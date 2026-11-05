@@ -265,7 +265,7 @@ impl Canvas {
         );
         let mut elements = screen.layout.elements.clone();
         elements.sort_by_key(|e| e.z);
-        self.pages.retain(|id, _| elements.iter().any(|e| &e.id == id));
+        retain_pages(&mut self.pages, &elements);
         for element in elements {
             let [x, y] = element.position;
             let [w, h] = element.size;
@@ -1898,10 +1898,47 @@ impl PageUi {
     }
 }
 
+/// Drop the pages whose element left the layout, except the exterior inset. The ground layout
+/// shows and hides the inset as the flight moves between the ground and the air; a page owns a
+/// 3D scene with its shadow atlas and render targets, and building a new one in the middle of a
+/// session made the browser's WebGPU refuse the next buffer ("createBuffer failed ... when
+/// mappedAtCreation == true"). The hidden inset is not drawn, so keeping its page costs memory
+/// only.
+fn retain_pages<V>(pages: &mut BTreeMap<String, V>, elements: &[Element]) {
+    pages
+        .retain(|id, _| id == flightcraft_control::screens::INSET_ID || elements.iter().any(|e| &e.id == id));
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod interaction_tests {
     use super::*;
+    #[test]
+    fn the_exterior_inset_page_survives_being_hidden_but_other_pages_do_not() {
+        let element = |id: &str| Element::page(id, Page::new(PageKind::Panel), [0., 0.], [10., 10.]);
+        let shown = [
+            element("page"),
+            element("panel"),
+            element(flightcraft_control::screens::INSET_ID),
+        ];
+        let hidden = [element("page"), element("panel")];
+        let mut pages = BTreeMap::new();
+        let mut created = 0;
+        // The ground layout adds and removes the inset as the flight leaves and rejoins the ground.
+        for frame in 0..600 {
+            let layout: &[Element] = if (frame / 100) % 2 == 0 { &shown } else { &hidden };
+            retain_pages(&mut pages, layout);
+            for e in layout {
+                pages.entry(e.id.clone()).or_insert_with(|| {
+                    created += 1;
+                });
+            }
+        }
+        assert_eq!(created, 3, "each page, the inset included, is built once");
+        retain_pages(&mut pages, &[element("page")]);
+        assert!(pages.contains_key(flightcraft_control::screens::INSET_ID));
+        assert!(!pages.contains_key("panel"));
+    }
     #[test]
     fn aircraft_defined_plungers_have_slop_and_move_with_two_contacts() {
         let ctx = egui::Context::default();

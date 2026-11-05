@@ -285,6 +285,18 @@ pub(crate) struct GpuLighting {
     texture: wgpu::Texture,
     key: Option<[u32; 8]>,
 }
+// Dropping a wgpu resource on the web releases nothing until the browser collects the handle, so
+// a view that is hidden and shown again would pile up shadow atlases. Free them explicitly.
+/// Shadow atlases and sky probes created and not yet released; the guard test reads it.
+pub(crate) static LIVE: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+impl Drop for GpuLighting {
+    fn drop(&mut self) {
+        LIVE.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        self.atlas.texture().destroy();
+        self.texture.destroy();
+        self.uniform.destroy();
+    }
+}
 impl GpuLighting {
     pub fn new(device: &wgpu::Device, quality: crate::scenery::Quality) -> Self {
         use wgpu::util::DeviceExt;
@@ -357,6 +369,7 @@ impl GpuLighting {
             dimension: Some(wgpu::TextureViewDimension::Cube),
             ..Default::default()
         });
+        LIVE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Self {
             bind,
             uniform,
@@ -483,5 +496,39 @@ mod tests {
         assert_eq!(f.splits[3], 2.);
         assert!(f.shadow.iter().flatten().flatten().all(|v| v.is_finite()));
         assert!(Frame::new([0., 0.8, 0.6], [0., 113., 0.], 800., 1., 0.).eye[3] > clear * 10.);
+    }
+    /// On the web a dropped wgpu texture is not freed until the browser collects the handle, so a
+    /// view that is hidden and shown again (the exterior inset on and off the ground) piled up shadow
+    /// atlases until WebGPU ran out of memory. Dropping must destroy them.
+    #[test]
+    #[ignore = "requires an offscreen GPU"]
+    fn dropping_a_view_releases_its_shadow_atlas() {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+        let adapter = block_on(instance.request_adapter(&Default::default())).unwrap();
+        let (device, _queue) = block_on(adapter.request_device(&Default::default())).unwrap();
+        let before = LIVE.load(std::sync::atomic::Ordering::Relaxed);
+        for _ in 0..8 {
+            let lighting = GpuLighting::new(&device, crate::scenery::Quality::High);
+            assert_eq!(LIVE.load(std::sync::atomic::Ordering::Relaxed), before + 1);
+            drop(lighting);
+            assert_eq!(LIVE.load(std::sync::atomic::Ordering::Relaxed), before);
+        }
+    }
+    fn block_on<F: std::future::Future>(future: F) -> F::Output {
+        struct Wake(std::thread::Thread);
+        impl std::task::Wake for Wake {
+            fn wake(self: std::sync::Arc<Self>) {
+                self.0.unpark();
+            }
+        }
+        let waker = std::task::Waker::from(std::sync::Arc::new(Wake(std::thread::current())));
+        let mut context = std::task::Context::from_waker(&waker);
+        let mut future = std::pin::pin!(future);
+        loop {
+            if let std::task::Poll::Ready(value) = future.as_mut().poll(&mut context) {
+                return value;
+            }
+            std::thread::park();
+        }
     }
 }

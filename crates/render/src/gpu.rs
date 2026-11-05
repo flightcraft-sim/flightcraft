@@ -65,6 +65,12 @@ struct ExteriorGpu {
     count: u32,
 }
 
+impl Drop for ExteriorGpu {
+    fn drop(&mut self) {
+        self.vertices.destroy();
+    }
+}
+
 pub(crate) struct ViewGpu {
     scenery: crate::scenery::gpu::Cache,
     exterior: Option<ExteriorGpu>,
@@ -80,6 +86,13 @@ struct Targets {
     color: wgpu::TextureView,
     depth: wgpu::TextureView,
     bind: wgpu::BindGroup,
+}
+
+impl Drop for Targets {
+    fn drop(&mut self) {
+        self.color.texture().destroy();
+        self.depth.texture().destroy();
+    }
 }
 
 struct TerrainBuffer {
