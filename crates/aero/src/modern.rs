@@ -521,6 +521,11 @@ pub struct PanelShell {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub centre_console: Option<Outline>,
+    /// The cabin floor under the centre console, drawn behind it in the console window: the
+    /// footwells that the control sticks stand in.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub floor: Option<Outline>,
     pub outline: Outline,
     pub fill: PanelColor,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -767,6 +772,9 @@ impl EquipmentPanel {
             shell.palette.validate()?;
             if let Some(console) = &shell.centre_console {
                 console.validate(self.size)?;
+            }
+            if let Some(floor) = &shell.floor {
+                floor.validate(self.size)?;
             }
             if let Some(glare) = &shell.glare_shield {
                 glare.validate(self.size)?;

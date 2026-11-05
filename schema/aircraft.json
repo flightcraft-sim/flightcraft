@@ -1928,6 +1928,14 @@
     "FlapStage": {
       "type": "object",
       "properties": {
+        "deflection_deg": {
+          "description": "Surface deflection of this detent in degrees, for the flap position indicator's scale\n(the POH's figure, not derived from `position`). Optional: without it the indicator\nshows the position only.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
         "max_speed_mps": {
           "type": "number",
           "format": "double"
@@ -3131,6 +3139,17 @@
         },
         "fill": {
           "$ref": "#/$defs/PanelColor"
+        },
+        "floor": {
+          "description": "The cabin floor under the centre console, drawn behind it in the console window: the\nfootwells that the control sticks stand in.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outline"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "glare_shield": {
           "anyOf": [

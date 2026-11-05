@@ -461,6 +461,24 @@ pub(crate) struct Shared {
     pub nav_standby_khz: Option<u32>,
     pub xpdr_code: String,
     pub xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode,
+    /// A crew alert (CAS message) is active: its window can be touched to acknowledge it.
+    pub cas_active: bool,
+    /// The active flight plan, for the FPL page.
+    pub fpl: FplView,
+}
+
+/// What the FPL page lists: one row per flight-plan waypoint, and which are selected and active.
+#[derive(Clone, Default)]
+pub(crate) struct FplView {
+    pub rows: Vec<FplRow>,
+    pub cursor: usize,
+    pub active: usize,
+}
+#[derive(Clone)]
+pub(crate) struct FplRow {
+    pub ident: String,
+    pub bearing_deg: f32,
+    pub distance_nm: f32,
 }
 
 fn hit(ui: &mut egui::Ui, rect: Rect, salt: impl std::hash::Hash) -> bool {
@@ -551,6 +569,11 @@ pub(crate) fn chrome(
                     act(out, id, DisplayAction::OpenOverlay { overlay });
                 }
             }
+            // Touching the CAS window acknowledges the active alerts (pilot's guide 3.7).
+            let cas = native_rect(screen, g.screen_rect(PfdElement::CasWindow));
+            if shared.cas_active && cas.width() > 0. && hit(ui, cas, "cas-window") {
+                act(out, id, DisplayAction::AcknowledgeCas {});
+            }
         }
     }
     if let Some(bar) = page_bar(screen, mode) {
@@ -608,6 +631,12 @@ pub(crate) fn chrome(
                 act(out, id, DisplayAction::NearestPage { page: *p });
             }
         }
+    }
+    if page == MfdPage::FlightPlan
+        && d.overlay == Overlay::None
+        && let Some(area) = pane_content(screen, mode, page)
+    {
+        flight_plan_page(ui, area, id, style, shared, out);
     }
     // The map's zoom buttons at the right edge, and the range at its lower right.
     if matches!(page, MfdPage::Map | MfdPage::Terrain)
@@ -1060,4 +1089,166 @@ fn entry_panel(
         text.clear();
     }
     ui.data_mut(|x| x.insert_temp(key, (Some(d.overlay), text)));
+}
+
+/// The active flight plan page with touch editing (pilot's guide 6.5 and 6.6, pages 191 to 193):
+/// touch a waypoint to select it, then Activate Leg, Insert Before, Insert After, or Remove.
+pub(crate) fn flight_plan_page(
+    ui: &mut egui::Ui,
+    area: Rect,
+    id: &str,
+    style: &Style,
+    shared: &Shared,
+    out: &mut Output,
+) {
+    use flightcraft_control::touch_fpl::FplEdit;
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let title_h = area.height() * 0.085;
+    ui.painter().text(
+        area.left_top() + Vec2::new(8., title_h * 0.5),
+        Align2::LEFT_CENTER,
+        "ACTIVE FLIGHT PLAN",
+        style.font(title_h * 0.6),
+        style.key_text,
+    );
+    let buttons_h = area.height() * 0.11;
+    let list = Rect::from_min_max(
+        Pos2::new(area.left(), area.top() + title_h),
+        Pos2::new(area.right(), area.bottom() - buttons_h - 4.),
+    );
+    let row_h = (area.height() * 0.085).max(8.);
+    let visible = ((list.height() / row_h).floor() as usize).max(1);
+    let rows = &shared.fpl.rows;
+    // Keep the selected waypoint on screen.
+    let first = shared
+        .fpl
+        .cursor
+        .saturating_sub(visible - 1)
+        .min(rows.len().saturating_sub(visible));
+    if rows.is_empty() {
+        ui.painter().text(
+            list.center_top() + Vec2::new(0., row_h),
+            Align2::CENTER_CENTER,
+            "No flight plan: Insert After adds a waypoint",
+            style.font(row_h * 0.6),
+            crate::theme::MUTED,
+        );
+    }
+    for (i, row) in rows.iter().enumerate().skip(first).take(visible) {
+        let rect = Rect::from_min_size(
+            list.left_top() + Vec2::new(4., (i - first) as f32 * row_h),
+            Vec2::new(list.width() - 8., row_h - 2.),
+        );
+        let selected = i == shared.fpl.cursor;
+        let active = i == shared.fpl.active;
+        let painter = ui.painter();
+        painter.rect(
+            rect,
+            2.,
+            if selected {
+                style.trim
+            } else {
+                Color32::from_black_alpha(120)
+            },
+            Stroke::new(1.0_f32, if selected { style.key_text } else { style.trim }),
+            egui::StrokeKind::Inside,
+        );
+        let ink = if active {
+            Color32::from_rgb(224, 64, 224)
+        } else {
+            Color32::WHITE
+        };
+        let font = style.font(row_h * 0.55);
+        painter.text(
+            rect.left_center() + Vec2::new(6., 0.),
+            Align2::LEFT_CENTER,
+            format!("{:>2}{}", i + 1, if active { ">" } else { " " }),
+            font.clone(),
+            ink,
+        );
+        painter.text(
+            rect.left_center() + Vec2::new(rect.width() * 0.12, 0.),
+            Align2::LEFT_CENTER,
+            &row.ident,
+            font.clone(),
+            ink,
+        );
+        painter.text(
+            rect.left_center() + Vec2::new(rect.width() * 0.45, 0.),
+            Align2::LEFT_CENTER,
+            format!("{:03.0} deg", row.bearing_deg.rem_euclid(360.)),
+            font.clone(),
+            ink,
+        );
+        painter.text(
+            rect.right_center() - Vec2::new(8., 0.),
+            Align2::RIGHT_CENTER,
+            format!("{:.1} NM", row.distance_nm),
+            font,
+            ink,
+        );
+        if hit(ui, rect, ("fpl-row", i)) {
+            act(
+                out,
+                id,
+                DisplayAction::FlightPlan {
+                    edit: FplEdit::Select { index: i },
+                },
+            );
+        }
+    }
+    let bar = Rect::from_min_max(Pos2::new(area.left(), area.bottom() - buttons_h), area.max);
+    let labels = ["Activate Leg", "Insert Before", "Insert After", "Remove"];
+    let width = bar.width() / labels.len() as f32;
+    for (i, label) in labels.iter().enumerate() {
+        let rect = Rect::from_min_size(
+            Pos2::new(bar.left() + width * i as f32, bar.top()),
+            Vec2::new(width, bar.height()),
+        )
+        .shrink2(Vec2::new(3., 2.));
+        // Only Insert After works on an empty plan: the other three act on a selected waypoint.
+        if shared.fpl.rows.is_empty() && i != 2 {
+            ui.painter().rect_filled(rect, 2., Color32::from_black_alpha(80));
+            ui.painter().text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                *label,
+                style.font(rect.height() * 0.4),
+                crate::theme::MUTED,
+            );
+            continue;
+        }
+        if chip(ui, rect, label, false, style, ("fpl-button", i)) {
+            match i {
+                0 => act(
+                    out,
+                    id,
+                    DisplayAction::FlightPlan {
+                        edit: FplEdit::Activate {},
+                    },
+                ),
+                1 => act(
+                    out,
+                    id,
+                    DisplayAction::OpenOverlay {
+                        overlay: Overlay::Keypad(EntryTarget::FplBefore),
+                    },
+                ),
+                2 => act(
+                    out,
+                    id,
+                    DisplayAction::OpenOverlay {
+                        overlay: Overlay::Keypad(EntryTarget::FplAfter),
+                    },
+                ),
+                _ => act(
+                    out,
+                    id,
+                    DisplayAction::FlightPlan {
+                        edit: FplEdit::Remove {},
+                    },
+                ),
+            }
+        }
+    }
 }

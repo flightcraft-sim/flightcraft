@@ -214,6 +214,12 @@ pub enum PfdElement {
     SelectedHeadingBox,
     SelectedCourseBox,
     WindBox,
+    /// Crew alerting (CAS) messages, upper left of the attitude indicator.
+    CasWindow,
+    /// Flap position indicator: a vertical scale left of the attitude symbol.
+    FlapIndicator,
+    /// Elevator trim indicator, beside the flap indicator.
+    TrimIndicator,
     /// Knob function hints and messages along the bottom edge.
     StatusBar,
 }
@@ -347,6 +353,9 @@ impl DisplayModel {
                     (E::SelectedHeadingBox, [483., 435., 84., 27.]),
                     (E::SelectedCourseBox, [708., 435., 92., 27.]),
                     (E::WindBox, [393., 469., 90., 47.]),
+                    (E::CasWindow, [436., 102., 108., 54.]),
+                    (E::FlapIndicator, [440., 282., 26., 104.]),
+                    (E::TrimIndicator, [472., 282., 26., 104.]),
                     status,
                 ],
                 aircraft_symbol: [640., 261.],
@@ -392,6 +401,9 @@ impl DisplayModel {
                         (E::SelectedHeadingBox, [129., 440., 84., 27.]),
                         (E::SelectedCourseBox, [357., 440., 84., 27.]),
                         (E::WindBox, [37., 480., 90., 42.]),
+                        (E::CasWindow, [108., 122., 100., 52.]),
+                        (E::FlapIndicator, [110., 284., 24., 100.]),
+                        (E::TrimIndicator, [140., 284., 24., 100.]),
                         status,
                     ],
                     aircraft_symbol: [283., 274.],
@@ -546,6 +558,51 @@ mod tests {
             let panel_mid = g.panel[0] + g.panel[2] / 2.;
             assert!((mid_x(afcs) - panel_mid).abs() < 30., "{mode:?}");
             assert!(bottom(afcs) < g.panel[1] + g.aircraft_symbol[1] - g.roll_arc_radius * 0.4);
+        }
+    }
+
+    #[test]
+    fn cas_window_and_the_flap_and_trim_indicators_sit_left_of_the_attitude_symbol_clear_of_the_tapes() {
+        // Pilot's guide 3.7 (CAS window) and the trim and flap position figure (page 81): the
+        // indicators are on the attitude indicator, the flap scale left of the trim scale.
+        for mode in [PfdMode::Full, PfdMode::Split] {
+            let g = geometry(mode);
+            let (cas, flap, trim) = (
+                g.rect(E::CasWindow),
+                g.rect(E::FlapIndicator),
+                g.rect(E::TrimIndicator),
+            );
+            let speed = g.rect(E::AirspeedTape);
+            let [sx, sy] = g.aircraft_symbol;
+            for (name, r) in [("cas", cas), ("flap", flap), ("trim", trim)] {
+                assert!(
+                    r[2] > 0. && r[0] > right(speed),
+                    "{mode:?} {name} clear of the airspeed tape"
+                );
+                assert!(
+                    right(r) < sx - g.roll_arc_radius * 0.5,
+                    "{mode:?} {name} left of the symbol"
+                );
+            }
+            assert!(right(flap) <= trim[0] + 0.5, "{mode:?} flap left of trim");
+            assert!((flap[1] - trim[1]).abs() < 1. && (flap[3] - trim[3]).abs() < 1.);
+            // The CAS window is above the gauges, which sit below the symbol's level.
+            assert!(bottom(cas) < flap[1] && flap[1] > sy);
+            // Nothing overlaps the wind box, slip box, or selected heading box.
+            let overlap = |a: [f64; 4], b: [f64; 4]| {
+                a[0] < right(b) && b[0] < right(a) && a[1] < bottom(b) && b[1] < bottom(a)
+            };
+            for r in [cas, flap, trim] {
+                for e in [
+                    E::WindBox,
+                    E::SlipBox,
+                    E::SelectedHeadingBox,
+                    E::AfcsBox,
+                    E::TrueAirspeedBox,
+                ] {
+                    assert!(!overlap(r, g.rect(e)), "{mode:?} {e:?}");
+                }
+            }
         }
     }
 

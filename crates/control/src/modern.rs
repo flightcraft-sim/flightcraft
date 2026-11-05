@@ -1,6 +1,7 @@
 //! Touch navigator and display behaviour. Navigation is owned by the session's single GPS.
 use crate::touch_efis::{self, EfisConfig, EfisKey, KeyState, Knob, KnobRole, Overlay, PushEffect, Ring};
 use crate::touch_entry::{self, Entry, EntryShortcut, EntryTarget};
+use crate::touch_fpl;
 use crate::{Command, CommandError, GlassSetting, Session, invalid};
 use flightcraft_aero::display_model::DisplayModel;
 use flightcraft_aero::modern::NearestPage;
@@ -292,6 +293,12 @@ pub enum DisplayAction {
     /// Touch a mode key in the transponder window.
     TransponderMode {
         mode: flightcraft_sim::avionics::glass::TransponderMode,
+    },
+    /// Touch the CAS window: acknowledge the active warnings and cautions (BACK does the same).
+    AcknowledgeCas {},
+    /// Touch the FPL page: select, insert, remove, or activate a flight-plan waypoint.
+    FlightPlan {
+        edit: crate::touch_fpl::FplEdit,
     },
     /// Touch the map's zoom buttons: positive zooms in by that many steps of the range ladder.
     MapZoom {
@@ -610,52 +617,60 @@ impl Session {
         self.display_prefs = values;
         Ok(())
     }
+    /// Find one waypoint (airport, navaid, fix, pin) by identifier, as the navigator's entry does.
+    fn resolve_waypoint(&mut self, query: &str) -> Result<crate::GpsWaypoint, CommandError> {
+        let found = self.run(crate::SearchQuery {
+            text: query.to_owned(),
+            reference: None,
+            limit: 100,
+        })?;
+        let result = found
+            .results
+            .iter()
+            .find(|r| r.position.is_some() && r.ident.eq_ignore_ascii_case(query.trim()))
+            .or_else(|| {
+                (found.results.len() == 1)
+                    .then(|| found.results.first())
+                    .flatten()
+            })
+            .ok_or_else(|| invalid("equipment.set", format!("unknown or ambiguous waypoint {query}")))?;
+        let position = result
+            .position
+            .ok_or_else(|| invalid("equipment.set", "waypoint has no position"))?;
+        let kind = match result.kind {
+            crate::SearchKind::Airport => crate::WaypointKind::Airport,
+            crate::SearchKind::Navaid => crate::WaypointKind::Navaid,
+            crate::SearchKind::Fix => crate::WaypointKind::Fix,
+            crate::SearchKind::Pin => crate::WaypointKind::Pin,
+            _ => crate::WaypointKind::Coordinate,
+        };
+        // Airports carry their ICAO identifier, as the navigator displays them (KMMU, not MMU).
+        let ident = if kind == crate::WaypointKind::Airport {
+            crate::regions::airport(self.sim.world(), &result.ident)
+                .ok()
+                .and_then(|a| a.icao.clone())
+                .unwrap_or_else(|| result.ident.clone())
+        } else {
+            result.ident.clone()
+        };
+        Ok(crate::GpsWaypoint {
+            ident,
+            kind,
+            position,
+        })
+    }
     fn navigator_plan(&mut self, queries: Vec<String>) -> Result<(), CommandError> {
         if queries.len() > 64 {
             return Err(invalid("equipment.set", "at most 64 waypoints"));
         }
         let mut waypoints = Vec::new();
         for query in queries {
-            let found = self.run(crate::SearchQuery {
-                text: query.clone(),
-                reference: None,
-                limit: 100,
-            })?;
-            let result = found
-                .results
-                .iter()
-                .find(|r| r.position.is_some() && r.ident.eq_ignore_ascii_case(query.trim()))
-                .or_else(|| {
-                    (found.results.len() == 1)
-                        .then(|| found.results.first())
-                        .flatten()
-                })
-                .ok_or_else(|| invalid("equipment.set", format!("unknown or ambiguous waypoint {query}")))?;
-            let position = result
-                .position
-                .ok_or_else(|| invalid("equipment.set", "waypoint has no position"))?;
-            let kind = match result.kind {
-                crate::SearchKind::Airport => crate::WaypointKind::Airport,
-                crate::SearchKind::Navaid => crate::WaypointKind::Navaid,
-                crate::SearchKind::Fix => crate::WaypointKind::Fix,
-                crate::SearchKind::Pin => crate::WaypointKind::Pin,
-                _ => crate::WaypointKind::Coordinate,
-            };
-            // Airports carry their ICAO identifier, as the navigator displays them (KMMU, not MMU).
-            let ident = if kind == crate::WaypointKind::Airport {
-                crate::regions::airport(self.sim.world(), &result.ident)
-                    .ok()
-                    .and_then(|a| a.icao.clone())
-                    .unwrap_or_else(|| result.ident.clone())
-            } else {
-                result.ident.clone()
-            };
-            waypoints.push(crate::GpsWaypoint {
-                ident,
-                kind,
-                position,
-            });
+            waypoints.push(self.resolve_waypoint(&query)?);
         }
+        self.install_waypoints(waypoints)
+    }
+    /// Replace the flight plan with these waypoints, in the navigator's plan and the glass alike.
+    fn install_waypoints(&mut self, waypoints: Vec<crate::GpsWaypoint>) -> Result<(), CommandError> {
         let mut plan = self.navigation.plan.clone();
         plan.waypoints = waypoints
             .iter()
@@ -665,10 +680,103 @@ impl Session {
                 altitude_m: self.glass.selected_altitude_m,
             })
             .collect();
-        plan.validate()?;
+        if !plan.waypoints.is_empty() {
+            plan.validate()?;
+        }
         self.set_glass(GlassSetting::FlightPlanWaypoints { waypoints })?;
-        self.navigation.active_plan = Some(plan.clone());
+        self.navigation.active_plan = (!plan.waypoints.is_empty()).then(|| plan.clone());
         self.navigation.plan = plan;
+        Ok(())
+    }
+    /// The flight plan as resolved waypoints: the stored ones, or each airport identifier looked up.
+    fn flight_plan_waypoints(&mut self) -> Result<Vec<crate::GpsWaypoint>, CommandError> {
+        if self.glass.waypoints.len() == self.glass.flight_plan.len() {
+            return Ok(self.glass.waypoints.clone());
+        }
+        let idents = self.glass.flight_plan.clone();
+        idents.iter().map(|id| self.resolve_waypoint(id)).collect()
+    }
+    /// One touch edit on the FPL page: select, insert, remove, or activate a leg. The plan edited
+    /// is the glass's own (the navigator's plan follows), so a PFD, an MFD, the data bar, and the
+    /// map all see the result at once.
+    pub fn edit_flight_plan(&mut self, edit: touch_fpl::FplEdit) -> Result<(), CommandError> {
+        use touch_fpl::{FplEdit, FplError};
+        const NAME: &str = "equipment.set";
+        self.reset_glass_generation();
+        if !self.sim.procedure_receiver().loaded.is_empty() {
+            return Err(invalid(
+                NAME,
+                "an approach is loaded; the flight plan cannot be edited until it is cleared",
+            ));
+        }
+        let len = self.glass.flight_plan.len();
+        let (cursor, active) = (self.glass.fpl_cursor, self.glass.active_leg);
+        let refuse = |e: FplError| invalid(NAME, e.to_string());
+        match edit {
+            FplEdit::Select { index } => {
+                if index >= len {
+                    return Err(refuse(FplError::NothingSelected));
+                }
+                self.glass.fpl_cursor = index;
+            }
+            FplEdit::Activate {} => {
+                if cursor >= len {
+                    return Err(refuse(FplError::NothingSelected));
+                }
+                self.set_glass(GlassSetting::ActiveLeg { index: cursor })?;
+            }
+            FplEdit::Insert { after, ident } => {
+                let waypoint = self.resolve_waypoint(&ident)?;
+                let mut waypoints = self.flight_plan_waypoints()?;
+                let done =
+                    touch_fpl::insert(&mut waypoints, cursor, active, after, waypoint).map_err(refuse)?;
+                self.apply_edited_plan(waypoints, done)?;
+            }
+            FplEdit::Remove {} => {
+                let mut waypoints = self.flight_plan_waypoints()?;
+                let done = touch_fpl::remove(&mut waypoints, cursor, active).map_err(refuse)?;
+                self.apply_edited_plan(waypoints, done)?;
+            }
+        }
+        Ok(())
+    }
+    fn apply_edited_plan(
+        &mut self,
+        waypoints: Vec<crate::GpsWaypoint>,
+        done: touch_fpl::Edited,
+    ) -> Result<(), CommandError> {
+        // Installing a plan restarts it at leg 0 from the aircraft's position; restore the leg
+        // that was being flown, and the start of the leg when it is the first.
+        let start = self.glass.leg_origin_deg;
+        self.install_waypoints(waypoints)?;
+        if !self.glass.flight_plan.is_empty() {
+            self.set_glass(GlassSetting::ActiveLeg { index: done.active })?;
+            if done.active == 0 && start.is_some() {
+                self.glass.leg_origin_deg = start;
+            }
+        }
+        self.glass.fpl_cursor = done.cursor;
+        Ok(())
+    }
+    /// The master caution or warning lamp is lit, so the CAS window's text is flashing.
+    fn cas_unacknowledged(&self) -> bool {
+        self.sim
+            .systems()
+            .modern
+            .as_ref()
+            .is_some_and(|m| m.master_caution || m.master_warning)
+    }
+    /// Touch the CAS window or press BACK: acknowledge every active warning and caution.
+    fn acknowledge_cas(&mut self) -> Result<(), CommandError> {
+        for severity in [
+            flightcraft_aero::modern::Severity::Caution,
+            flightcraft_aero::modern::Severity::Warning,
+        ] {
+            self.sim
+                .set_systems(flightcraft_sim::systems::SystemSetting::Equipment {
+                    setting: flightcraft_sim::modern::ModernSetting::Acknowledge { severity },
+                })?;
+        }
         Ok(())
     }
     pub fn set_equipment(&mut self, setting: EquipmentSetting) -> Result<(), CommandError> {
@@ -710,9 +818,21 @@ impl Session {
                         self.apply_key_state(&id, &d, &mut runtime, next);
                     }
                     DisplayAction::Key { key, hold } => {
-                        let next = touch_efis::key(key_state(&d, &runtime), key, hold);
-                        self.apply_key_state(&id, &d, &mut runtime, next);
+                        // BACK acknowledges a flashing CAS message before it does anything else
+                        // (pilot's guide 3.7).
+                        if key == EfisKey::Back
+                            && !hold
+                            && runtime.overlay == Overlay::None
+                            && self.cas_unacknowledged()
+                        {
+                            self.acknowledge_cas()?;
+                        } else {
+                            let next = touch_efis::key(key_state(&d, &runtime), key, hold);
+                            self.apply_key_state(&id, &d, &mut runtime, next);
+                        }
                     }
+                    DisplayAction::AcknowledgeCas {} => self.acknowledge_cas()?,
+                    DisplayAction::FlightPlan { edit } => self.edit_flight_plan(edit)?,
                     DisplayAction::ToggleSplit {} => {
                         let next = touch_efis::toggle_split(key_state(&d, &runtime));
                         self.apply_key_state(&id, &d, &mut runtime, next);
@@ -1047,6 +1167,9 @@ impl Session {
             Entry::Altitude { m } => self.set_glass(G::SelectedAltitude { altitude_m: m }),
             Entry::Course { rad } => self.set_glass(G::Course { course_rad: rad }),
             Entry::DirectTo { ident } => self.navigator_plan(vec![ident]),
+            Entry::FplInsert { ident, after } => {
+                self.edit_flight_plan(touch_fpl::FplEdit::Insert { after, ident })
+            }
             Entry::ComStandby { khz } => self
                 .run(crate::CommsTune {
                     radio: 1,

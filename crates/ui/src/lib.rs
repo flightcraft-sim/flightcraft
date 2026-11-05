@@ -1686,6 +1686,8 @@ fn airspace_status(session: &flightcraft_control::Session) -> Option<(String, bo
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod cockpit_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
+mod console_tests;
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod ground_layout_tests;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod layout_tests;
@@ -1698,6 +1700,8 @@ mod weather_live_preview;
 #[cfg(test)]
 mod weather_preview;
 
+#[cfg(test)]
+mod efis_g3x_tests;
 #[cfg(test)]
 mod efis_pfd_tests;
 #[cfg(test)]

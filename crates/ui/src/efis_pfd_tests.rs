@@ -17,7 +17,7 @@ use serde_json::json;
 
 const MODEL: DisplayModel = DisplayModel::LandscapeTouchEfis;
 
-fn session() -> Session {
+pub(crate) fn session() -> Session {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/packs/equipment-demo");
     let mut pack: PackContents = flightcraft_control::read_pack(&root).unwrap();
     for source in pack.files.values_mut() {
@@ -43,7 +43,7 @@ fn session() -> Session {
 }
 
 /// A snapshot of a flying aircraft: valid and aligned sensors, a GPS leg, and some wind.
-fn flying(s: &Session) -> GlassState {
+pub(crate) fn flying(s: &Session) -> GlassState {
     let mut g = s.glass_state();
     let a = &mut g.air_data;
     a.powered = true;
@@ -81,7 +81,7 @@ fn flying(s: &Session) -> GlassState {
     g
 }
 
-fn labels(d: &DrawList) -> Vec<(String, [f32; 2], f32, Ink)> {
+pub(crate) fn labels(d: &DrawList) -> Vec<(String, [f32; 2], f32, Ink)> {
     d.flat_items()
         .into_iter()
         .filter_map(|i| match i {
@@ -102,7 +102,7 @@ fn drawn_in(d: &DrawList, rect: [f64; 4], needle: &str) -> bool {
         .any(|(t, at, ..)| t.contains(needle) && inside(rect, *at))
 }
 
-fn options() -> Options {
+pub(crate) fn options() -> Options {
     Options {
         typography: Typography::default(),
         reversion: false,
@@ -514,7 +514,7 @@ fn a_skin_palette_and_typography_reach_the_instrument_faces_and_fall_back_when_a
 
 // ---- Screen layout and touch boxes ----
 
-fn isolated(s: &Session, id: &str) -> flightcraft_aero::modern::EquipmentPanel {
+pub(crate) fn isolated(s: &Session, id: &str) -> flightcraft_aero::modern::EquipmentPanel {
     let mut p = s
         .aircraft_configuration()
         .unwrap()
@@ -535,7 +535,7 @@ fn isolated(s: &Session, id: &str) -> flightcraft_aero::modern::EquipmentPanel {
     p
 }
 
-fn frame(
+pub(crate) fn frame(
     ctx: &egui::Context,
     view: &mut PanelUi,
     panel: &flightcraft_aero::modern::EquipmentPanel,
@@ -567,7 +567,7 @@ fn frame(
     );
 }
 
-fn tap(
+pub(crate) fn tap(
     ctx: &egui::Context,
     view: &mut PanelUi,
     panel: &flightcraft_aero::modern::EquipmentPanel,
@@ -588,7 +588,7 @@ fn tap(
     *t += 1.;
 }
 
-fn actions(view: &mut PanelUi) -> Vec<DisplayAction> {
+pub(crate) fn actions(view: &mut PanelUi) -> Vec<DisplayAction> {
     std::mem::take(&mut view.commands)
         .into_iter()
         .filter_map(|c| match c {
@@ -598,7 +598,7 @@ fn actions(view: &mut PanelUi) -> Vec<DisplayAction> {
         .collect()
 }
 
-fn screen_of(panel: &flightcraft_aero::modern::EquipmentPanel, size: egui::Vec2) -> Rect {
+pub(crate) fn screen_of(panel: &flightcraft_aero::modern::EquipmentPanel, size: egui::Vec2) -> Rect {
     let cell = crate::panel_preview::equipment_rect(panel, Rect::from_min_size(egui::Pos2::ZERO, size));
     efis::screen_rect(efis::bezel_rect(cell, MODEL), MODEL)
 }
@@ -1107,6 +1107,7 @@ fn render_efis_closeups() {
                     ui,
                     &panel_config,
                     InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+                        .with_pilot(s.sim().controls())
                         .with_aircraft(&config)
                         .with_skins(&skins)
                         .with_glass(&state)
@@ -1119,4 +1120,40 @@ fn render_efis_closeups() {
         .unwrap();
         image.save(out.join(name)).unwrap();
     }
+    // The same PFD with a seeded alert (the ballistic chute pin pulled), flaps at 20 degrees, and some trim:
+    // the CAS window and the flap and trim indicators.
+    s.sim_mut()
+        .set_systems(flightcraft_sim::systems::SystemSetting::Equipment {
+            setting: flightcraft_sim::modern::ModernSetting::ParachutePin { inserted: false },
+        })
+        .unwrap();
+    s.sim_mut()
+        .set_systems(flightcraft_sim::systems::SystemSetting::Flaps { value: 2. / 3. })
+        .unwrap();
+    s.sim_mut()
+        .set_systems(flightcraft_sim::systems::SystemSetting::Trim { value: 0.12 })
+        .unwrap();
+    s.execute("sim.step", json!({"steps":4})).unwrap();
+    let state = s.glass_state();
+    let mut panel_config = config.panel.clone();
+    panel_config.equipment = Some(isolated(&s, "left_display"));
+    let mut panel = InstrumentPanel::default();
+    let image = crate::panel_preview::rasterize(1920, 1080, |ui| {
+        panel
+            .show(
+                ui,
+                &panel_config,
+                InstrumentInput::new(s.sim().systems(), 0.)
+                    .with_pilot(s.sim().controls())
+                    .with_aircraft(&config)
+                    .with_skins(&skins)
+                    .with_glass(&state)
+                    .with_autopilot(s.sim().installed_autopilot()),
+                s.flight_generation(),
+            )
+            .unwrap();
+        panel.show_shared_hosts(ui, &mut s);
+    })
+    .unwrap();
+    image.save(out.join("sling-left-pfd-cas.png")).unwrap();
 }

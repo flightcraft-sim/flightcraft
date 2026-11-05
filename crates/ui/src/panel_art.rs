@@ -39,7 +39,7 @@ fn text(ui: &egui::Ui, at: Pos2, label: &str, size: f32, color: egui::Color32) {
     ui.painter()
         .text(at, Align2::CENTER_CENTER, label, FontId::monospace(size), color);
 }
-fn outline_points(outline: &Outline) -> Vec<[f64; 2]> {
+pub(crate) fn outline_points(outline: &Outline) -> Vec<[f64; 2]> {
     match outline {
         Outline::Polygon { points } => points.clone(),
         Outline::Cubic { curves } => curves
@@ -82,25 +82,59 @@ pub(crate) fn installation_rect(e: &EquipmentInstallation) -> Rect {
         egui::vec2(e.size[0] as f32, e.size[1] as f32),
     )
 }
-/// Rebase only the controls below the dash for an independent, interactive console host.
+fn translated(outline: &Outline, dx: f64, dy: f64) -> Outline {
+    let shift = |[x, y]: [f64; 2]| [x - dx, y - dy];
+    match outline {
+        Outline::Polygon { points } => Outline::Polygon {
+            points: points.iter().copied().map(shift).collect(),
+        },
+        Outline::Cubic { curves } => Outline::Cubic {
+            curves: curves.iter().map(|c| c.map(shift)).collect(),
+        },
+    }
+}
+/// Rebase only the controls below the dash for an independent, interactive console host. The
+/// console region (the cabin floor and the console top, when the shell authors them) is kept as
+/// the host's shell, so the throttle, brake, park valve, and sticks sit on drawn artwork.
 pub(crate) fn console_panel(panel: &EquipmentPanel, dash: Rect) -> EquipmentPanel {
     let mut console = panel.clone();
     console
         .elements
         .retain(|e| !dash.expand(0.01).contains_rect(installation_rect(e)));
-    let bounds = console
+    let mut bounds = console
         .elements
         .iter()
         .fold(Rect::NOTHING, |a, e| a.union(installation_rect(e)));
+    let floor = panel.shell.as_ref().and_then(|s| s.floor.as_ref());
+    if let Some(floor) = floor {
+        for [x, y] in outline_points(floor) {
+            bounds = bounds.union(Rect::from_min_max(
+                egui::pos2(x as f32, y as f32),
+                egui::pos2(x as f32, y as f32),
+            ));
+        }
+    }
     console.size = [
         f64::from(bounds.width().max(1.)),
         f64::from(bounds.height().max(1.)),
     ];
-    console.shell = None;
+    let (dx, dy) = (f64::from(bounds.left()), f64::from(bounds.top()));
+    console.shell = panel.shell.as_ref().and_then(|s| {
+        let top = s.centre_console.as_ref()?;
+        Some(PanelShell {
+            palette: s.palette.clone(),
+            centre_console: None,
+            floor: s.floor.as_ref().map(|o| translated(o, dx, dy)),
+            outline: translated(top, dx, dy),
+            fill: s.fill,
+            glare_shield: None,
+            screws: Vec::new(),
+        })
+    });
     console.essential = None;
     for e in &mut console.elements {
-        e.position[0] -= f64::from(bounds.left());
-        e.position[1] -= f64::from(bounds.top());
+        e.position[0] -= dx;
+        e.position[1] -= dy;
     }
     console
 }
@@ -176,6 +210,13 @@ pub(crate) fn shell(ui: &egui::Ui, rect: Rect, panel: &EquipmentPanel) {
     let point = |[x, y]: [f64; 2]| {
         rect.min + egui::vec2((x / w) as f32 * rect.width(), (y / h) as f32 * rect.height())
     };
+    if let Some(floor) = &shell.floor {
+        fill(
+            ui,
+            outline_points(floor).into_iter().map(point).collect(),
+            color(shell.palette.glare_shield.as_ref(), t::DIAL),
+        );
+    }
     fill(
         ui,
         outline_points(&shell.outline).into_iter().map(point).collect(),

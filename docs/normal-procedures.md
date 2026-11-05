@@ -95,8 +95,9 @@ raise rpm until the main bus shows 13.8 to 14.4 V (alternator B online; the mode
 3,000 rpm for that), then 2,500 rpm until the oil is at 50 C, then the EMS back-up off.
 
 The Sling pack places every control a list operates: the master switch and flap selector on the
-dash, and the throttle, hand brake lever, park-brake valve, and the pilot's stick (trim buttons)
-below it, as POH 7.2, 7.4, 7.9, 7.10 and 7.11 describe (see [equipment](equipment.md) for the element
+dash, and the throttle, hand brake lever, and park-brake valve on the drawn centre console, with the
+pilot's stick (trim buttons) on the floor beside it and the passenger's opposite, as POH 7.2, 7.4, 7.9,
+7.10, 7.11 and 7.15 describe (see [equipment](equipment.md) for the element
 kinds). The items that use them name them in `control`, so the pulse leads the student to each one,
 and the cold-and-dark lesson can be worked from the panel alone, without Show me
 (`crates/ui/src/cockpit_tests.rs` does exactly that). Controls below the dash outline are reached

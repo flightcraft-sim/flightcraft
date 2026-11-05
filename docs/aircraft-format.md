@@ -40,8 +40,9 @@ Interpolation is linear and clamped at the edges. `controls` contains normalized
 aileron, rudder, throttle, flaps, and brake limits, plus gear travel, contact-force and touchdown
 limits, and friction coefficients. Normalized flap detents move to the variant.
 
-A variant's `flap_stages` are 2–32 ordered objects with normalized `position` and positive
-`max_speed_mps`, spanning the family's flap travel. `v_speeds` contains `vs_mps`, `vso_mps`,
+A variant's `flap_stages` are 2–32 ordered objects with normalized `position`, positive
+`max_speed_mps`, and an optional `deflection_deg` (0 to 90, the detent's surface angle from the aircraft's
+manual, which the flap position indicator labels its scale with), spanning the family's flap travel. `v_speeds` contains `vs_mps`, `vso_mps`,
 `vr_mps`, `vx_mps`, `vy_mps`, `vfe_mps`, `vno_mps`, and `vne_mps`. These are limit metadata;
 flap speed limits do not automatically retract flaps or change the flight model.
 

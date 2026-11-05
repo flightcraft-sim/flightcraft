@@ -129,7 +129,127 @@ pub(crate) fn panel(s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeometry,
     }
     hsi(&mut d, s, g, t);
     boxes(&mut d, s, input, g, t);
+    trim_and_flaps(&mut d, input, g);
+    cas_window(&mut d, input, g, t);
     d
+}
+
+/// The elevator trim and flap position indicators (pilot's guide page 81): vertical scales left
+/// of the aircraft symbol, flaps (0 at the top, full at the bottom) beside trim (DN at the top,
+/// UP at the bottom), each with a white pointer. They need the pilot's controls, so a host that
+/// supplies none draws neither.
+fn trim_and_flaps(d: &mut DrawList, input: InstrumentInput<'_>, g: &PfdGeometry) {
+    let Some(pilot) = input.pilot else {
+        return;
+    };
+    let full = input
+        .aircraft
+        .and_then(|a| a.variant.flap_stages.last())
+        .and_then(|stage| stage.deflection_deg);
+    let flap = flightcraft_control::touch_cas::flap_gauge(pilot.flaps, full);
+    let trim = flightcraft_control::touch_cas::trim_gauge(input.systems.controls.trim);
+    for (element, top, bottom, fraction, pointer_left, neutral) in [
+        (
+            E::FlapIndicator,
+            "0",
+            flap.full_label.as_str(),
+            flap.fraction,
+            true,
+            false,
+        ),
+        (
+            E::TrimIndicator,
+            "DN",
+            "UP",
+            (trim.nose_up + 1.) / 2.,
+            false,
+            true,
+        ),
+    ] {
+        let [x, y, w, h] = r4(g.rect(element));
+        if w <= 0. {
+            continue;
+        }
+        bordered(d, [x, y, w, h], Ink::BoxFill, Ink::BoxBorder);
+        let size = (w * 0.5).clamp(9., 14.);
+        label(d, [x + w * 0.5, y + size * 0.8], top, size, Ink::White);
+        label(d, [x + w * 0.5, y + h - size * 0.8], bottom, size, Ink::White);
+        // The scale runs between the two labels.
+        let (top_y, bottom_y) = (y + size * 1.7, y + h - size * 1.7);
+        let axis = x + w * 0.5;
+        line(d, [axis, top_y], [axis, bottom_y], Ink::White, 1.5);
+        for i in 0..=4 {
+            let ty = top_y + (bottom_y - top_y) * i as f32 / 4.;
+            line(d, [axis - 4., ty], [axis + 4., ty], Ink::White, 1.);
+        }
+        if neutral {
+            // The neutral mark of the trim scale.
+            let mid = (top_y + bottom_y) * 0.5;
+            line(d, [axis - 7., mid], [axis + 7., mid], Ink::Green, 3.);
+        }
+        let py = top_y + (bottom_y - top_y) * fraction as f32;
+        let tip = if pointer_left { axis - 2. } else { axis + 2. };
+        let base = if pointer_left { x + 2. } else { x + w - 2. };
+        polygon(d, vec![[tip, py], [base, py - 6.], [base, py + 6.]], Ink::White);
+    }
+}
+
+/// The CAS window: the active messages, warnings red and cautions yellow, flashing until
+/// acknowledged (pilot's guide 3.7). Nothing is drawn when no message is active.
+fn cas_window(d: &mut DrawList, input: InstrumentInput<'_>, g: &PfdGeometry, t: Typography) {
+    use flightcraft_control::touch_cas::{CasSeverity, window};
+    let failures = input.autopilot.map_or(&[][..], |a| a.failures.as_slice());
+    let cas = window(input.systems.modern.as_ref(), failures);
+    if cas.messages.is_empty() {
+        return;
+    }
+    let [x, y, w, h] = r4(g.rect(E::CasWindow));
+    let worst = cas.messages.first().map(|m| m.severity);
+    bordered(
+        d,
+        [x, y, w, h],
+        Ink::BoxFill,
+        if worst == Some(CasSeverity::Warning) {
+            Ink::Red
+        } else {
+            Ink::BoxBorder
+        },
+    );
+    // Unacknowledged text flashes, twice a second.
+    if cas.unacknowledged && (input.time_s * 2.).floor() as i64 % 2 != 0 {
+        return;
+    }
+    // Shrink the type so the longest visible message fits the window.
+    let longest = cas
+        .visible()
+        .iter()
+        .map(|m| m.text.chars().count())
+        .max()
+        .unwrap_or(1) as f32;
+    let size = (15. * t.annunciation).min((w - 8.) / (longest * 0.62));
+    let lines = cas.visible().len() as f32;
+    let row = (h / flightcraft_control::touch_cas::CAS_WINDOW_LINES as f32).min(size * 1.25);
+    let top = y + (h - row * lines) * 0.5 + row * 0.5;
+    for (i, m) in cas.visible().iter().enumerate() {
+        let ink = match m.severity {
+            CasSeverity::Warning => Ink::Red,
+            CasSeverity::Caution => Ink::Yellow,
+            CasSeverity::Advisory => Ink::White,
+        };
+        label(d, [x + w * 0.5, top + row * i as f32], &m.text, size, ink);
+    }
+    if cas.overflow() {
+        // More messages than the window holds: a down-pointing triangle, as the guide shows.
+        polygon(
+            d,
+            vec![
+                [x + w - 14., y + h - 11.],
+                [x + w - 4., y + h - 11.],
+                [x + w - 9., y + h - 4.],
+            ],
+            Ink::White,
+        );
+    }
 }
 
 fn attitude(

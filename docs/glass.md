@@ -284,6 +284,8 @@ AFCS box top-centre under the data bar.
 | Wind box | 393,469,90,47 |
 | Aircraft symbol, roll arc | centre 640,261, radius 135 |
 | Compass rose | centre 637,603, radius 131 |
+| CAS window | 436,102,108,54 |
+| Flap position indicator, elevator trim indicator | 440,282,26,104 / 472,282,26,104 |
 
 In split mode the tapes keep their pixel size and are pinned to the pane's edges, and the compass is
 centred in the pane; the data bar loses its middle fields and gains the transponder box.
@@ -319,6 +321,28 @@ mode machine's output; nothing is stored.
 command: hollow while the pilot hand-flies with the director alone, solid with the autopilot engaged, and
 absent in reversion.
 
+**CAS window.** `flightcraft_control::touch_cas::window` turns the aircraft's active annunciations (the
+sources of the master caution and warning lamps) and the autopilot's failures into the crew alerting
+window of the pilot's guide (3.7, printed pages 106 and 107; appendix 10.5, pages 376 and 377): warnings in
+red first, then cautions in yellow, then advisories in white, up to three lines, and a down-pointing
+triangle when more are active. Nothing is drawn while no message is active. A warning or caution
+that has not been acknowledged flashes (twice a second); touching the window, or pressing BACK with no
+menu open, acknowledges every active one (`equipment.set` display action `acknowledge_cas`, which clears the
+same master latches as the panel's CAUTION and WARNING lamps). The window is the existing annunciators'
+second face, not a second set of alerts: nothing is stored, and a message ends when its cause does. The
+pack's own annunciation labels are what the window shows (LOW VOLTAGE, FUEL PRESSURE, COOLANT, CHUTE ARMED
+and so on); an autopilot failure reads ROLL SERVO, PITCH SERVO, PITCH TRIM, or AP SENSOR. The guide hides the
+window in split-screen on the GDU 450 and 470 only; this model is the 46X, so it shows in every PFD arrangement.
+
+**Trim and flap position.** Two vertical indicators left of the aircraft symbol, from the guide's "Trim and
+Flap Position Indicators" figure (page 81, an optional indication that an installer enables): the flap scale
+runs from 0 at the top to the last detent at the bottom, with the deflection in degrees when the variant
+declares `deflection_deg` on its `flap_stages` (the Sling 2 declares 0, 10, 20, and 32 from POH 7.2), else
+F; the elevator trim scale runs DN at the top to UP at the bottom with a green neutral mark. White pointers
+show the selector position (`controls.flaps`) and the trim control (`controls.trim`, plus or minus 0.3).
+The engine's flaps have no travel time, so the pointer is the commanded position. A host that supplies no
+pilot controls draws neither indicator. Aileron and rudder trim are not modelled.
+
 ### Touch entry
 
 Touching a PFD box opens a keypad over the display, as the guide describes (section 1.6 data entry; 2.1
@@ -334,6 +358,7 @@ how typing edits the field, how an entry parses and range-checks, and the shortc
 | DIRECT key | waypoint | 1 to 6 letters or digits | |
 | COM1 standby, NAV1 standby | frequency | 118.000 to 136.975 on 25 kHz; 108.00 to 117.95 on 50 kHz | |
 | Transponder | code | four digits, 0 to 7 | |
+| FPL page, Insert Before / Insert After | waypoint | 1 to 6 letters or digits | |
 
 A hardware keyboard types into the pad as well. ENTER is enabled only for an entry that parses, the pad
 shows why it does not, and the engine rejects a bad entry with the keypad left open (`equipment.set`
@@ -346,8 +371,31 @@ transfers active and standby, and the standby frequency opens the COM1 window, w
 frequencies, the keypad, and XFER. NAV1 has the same window from the main menu, as does the transponder
 (code keypad and STBY, ALT, ON keys; section 4 transponder code and mode selection), which in split mode
 also has its box in the data bar. They are wired to the existing comms tuning (`comms.tune`), the NAV radio,
-and the glass transponder setting; no new state exists. Not modelled: COM monitor, volume and squelch, NAV2
-and COM2, the audio panel page, ident.
+and the glass transponder setting; no new state exists. Not modelled: COM monitor, volume and squelch, the audio
+panel page, ident. **COM2 and NAV2 are deliberately absent** (they are not a gap in the model of the Sling
+but in the Sling): the Sling 2 POH lists one GTR 200 COM radio (6.1 installed equipment, 7.10 item 9) and no
+second radio or navigation receiver, so the touch displays' radio box and windows address radio 1 only. The
+engine's second logical receiver exists for aircraft that fit one, and the Sling pack's audio-panel load
+lists it only as a lumped assumption (pack `panel-review.md`); a pack with a second radio would need the
+windows to take a radio index first.
+
+### Flight-plan editing
+
+The FPL page lists the active flight plan (identifier, bearing, distance) as touch rows with four buttons
+beneath, from the guide's editing procedures (6.5 and 6.6, printed pages 191 to 193): touch a waypoint to
+select it; **Activate Leg** makes it the waypoint flown to; **Insert Before** and **Insert After** open the
+waypoint keypad and put the entered identifier beside the selected waypoint; **Remove** deletes it. On an
+empty plan only Insert After is offered, and the entry becomes the plan. The page edits the glass's own flight
+plan, the one the data bar, map, direct-to, and `avionics.set` use (the navigator's plan follows), so every
+display shows the result at once. `flightcraft_control::touch_fpl` holds the list arithmetic: the active
+waypoint stays the same waypoint when one is inserted or removed before it, a removed active waypoint hands
+over to the next, plans are limited to 64 waypoints, and the selection moves to what was inserted. The
+`equipment.set` display actions are `flight_plan` with `edit` `{"kind":"select","index":n}`,
+`{"kind":"insert","after":bool,"ident":"KMMU"}`, `{"kind":"remove"}`, and `{"kind":"activate"}`, and the keypad
+targets `fpl_before` and `fpl_after`. An unknown or ambiguous identifier is refused and the plan is left
+alone; a loaded approach cannot be edited until it is cleared. Not modelled: Find tabs (recent, nearest,
+user, facility name, city), Edit on Map and drag and drop, saved flight plans, import and export, invert
+and the other list-page menu items, and approach and departure editing.
 
 ### Nearest pages
 
@@ -460,8 +508,9 @@ everything are the engine's for every skin.
 
 The model is not a screen-for-screen copy. **Matched** (from the guide's figures and text): the full-screen
 and split-screen PFD arrangement and colour meanings, the AFCS status box and flight director bars, the data
-bar and status bar, the touch entry keypads (baro, heading, altitude, course, direct-to) with their
-shortcuts, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
+bar and status bar, the CAS window, the trim and flap position indicators, touch flight-plan editing
+(select, insert before and after, remove, activate leg), the touch entry keypads (baro, heading, altitude,
+course, direct-to) with their shortcuts, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
 flight director bug knob and course-sync push, the Select Page menu, the VOR, NDB, intersection, and
 airspace nearest pages, and reversion with the autopilot rule.
 
@@ -470,18 +519,27 @@ airspace nearest pages, and reversion with the autopilot rule.
 - The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
   positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
 - The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
-- Minimum safe altitude and vertical speed required (data bar), the flight timer and clock, the flap and
-  trim indicators, the CAS message window, baro minimums, VNAV and its indicator, the second bearing
-  pointer, the G meter, and the Vspeed bugs' configuration page are not modelled; the airspeed Vspeed
-  letters show only R, X, and Y.
+- Minimum safe altitude and vertical speed required (data bar), the flight timer and clock, baro
+  minimums, the second bearing pointer, the G meter, and the Vspeed bugs' configuration page are not
+  modelled; the airspeed Vspeed letters show only R, X, and Y.
+- **VNAV and its indicator** are not drawn: the engine has no vertical-navigation profile (no target
+  altitudes at waypoints, no required descent angle). The autopilot's vocabulary has a VNAV mode name and
+  approaches carry an LNAV/VNAV capability, but neither computes a vertical path, so there is nothing for the
+  indicator (guide items 43 and 44, page 22) to show. The glidepath of a loaded approach is drawn as before.
+- The CAS window has no message list page on the MFD (the guide's page opens from the triangle), no
+  acknowledgement of one message at a time, no external lamps, and shows only the aircraft's own annunciations
+  and the autopilot's failures. The trim and flap indicators have no PFD-options toggle (always shown when the
+  host supplies the pilot's controls) and no aileron or rudder trim.
 - Touching the AFCS box (autopilot controls on the display), the selected-altitude and selected-heading
   bugs' "Set to Current" on the tapes themselves, PFD options beyond synthetic vision, and the pitch offset
   are not drawn.
 - Flight director altitude-hold reference stepping (needs a hold-altitude autopilot setting).
-- COM monitor, volume, squelch, 8.33 kHz entry, COM2 and NAV2, the audio panel and intercom windows,
-  transponder ident.
+- COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows, transponder
+  ident. COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
+  receiver (see the radio windows above).
 - Nearest pages for weather, user waypoints, cities, centres, flight service stations, and visual
-  reporting points; flight-plan editing by touch; weather, charts, checklists, and video pages.
+  reporting points; the FPL page's Find tabs, map editing, saved plans, and import; weather, charts,
+  checklists, and video pages.
 - Synthetic vision shows the existing engine view; the guide's pathway boxes are not drawn.
 - The round-gauge PFD presentation, and the guide's inset window set beyond what a pack lists.
 

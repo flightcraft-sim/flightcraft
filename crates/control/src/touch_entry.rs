@@ -29,10 +29,14 @@ pub enum EntryTarget {
     NavStandby,
     /// Transponder code.
     Transponder,
+    /// Identifier of a waypoint to insert before the selected flight-plan waypoint.
+    FplBefore,
+    /// Identifier of a waypoint to insert after the selected flight-plan waypoint.
+    FplAfter,
 }
 
 impl EntryTarget {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 10] = [
         Self::Baro,
         Self::Heading,
         Self::Altitude,
@@ -41,6 +45,8 @@ impl EntryTarget {
         Self::ComStandby,
         Self::NavStandby,
         Self::Transponder,
+        Self::FplBefore,
+        Self::FplAfter,
     ];
 
     pub fn title(self) -> &'static str {
@@ -53,6 +59,8 @@ impl EntryTarget {
             Self::ComStandby => "COM1 STANDBY",
             Self::NavStandby => "NAV1 STANDBY",
             Self::Transponder => "XPDR CODE",
+            Self::FplBefore => "INSERT BEFORE",
+            Self::FplAfter => "INSERT AFTER",
         }
     }
 
@@ -62,7 +70,7 @@ impl EntryTarget {
             Self::Baro => 5,
             Self::Heading | Self::Course => 3,
             Self::Altitude => 5,
-            Self::DirectTo => 6,
+            Self::DirectTo | Self::FplBefore | Self::FplAfter => 6,
             Self::ComStandby | Self::NavStandby => 7,
             Self::Transponder => 4,
         }
@@ -70,7 +78,7 @@ impl EntryTarget {
 
     /// Whether letters are accepted (waypoint identifiers) rather than digits only.
     pub fn alphanumeric(self) -> bool {
-        self == Self::DirectTo
+        matches!(self, Self::DirectTo | Self::FplBefore | Self::FplAfter)
     }
 
     /// Whether a decimal point is accepted. A baro in hPa is a whole number.
@@ -146,14 +154,35 @@ pub fn press(target: EntryTarget, hpa: bool, text: &str, key: PadKey) -> String 
 /// A parsed, range-checked entry, in the engine's units.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Entry {
-    Baro { pressure_pa: f64 },
-    Heading { rad: f64 },
-    Altitude { m: f64 },
-    Course { rad: f64 },
-    DirectTo { ident: String },
-    ComStandby { khz: u32 },
-    NavStandby { khz: u32 },
-    Transponder { code: String },
+    Baro {
+        pressure_pa: f64,
+    },
+    Heading {
+        rad: f64,
+    },
+    Altitude {
+        m: f64,
+    },
+    Course {
+        rad: f64,
+    },
+    DirectTo {
+        ident: String,
+    },
+    /// Insert a waypoint into the flight plan next to the selected one.
+    FplInsert {
+        ident: String,
+        after: bool,
+    },
+    ComStandby {
+        khz: u32,
+    },
+    NavStandby {
+        khz: u32,
+    },
+    Transponder {
+        code: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -268,15 +297,20 @@ pub fn parse(target: EntryTarget, hpa: bool, text: &str) -> Result<Entry, EntryE
                 m: f64::from(v) * M_PER_FT,
             })
         }
-        EntryTarget::DirectTo => {
+        EntryTarget::DirectTo | EntryTarget::FplBefore | EntryTarget::FplAfter => {
             if text.is_empty() {
                 return Err(EntryError::Empty);
             }
             if text.len() > target.max_len() || !text.bytes().all(|b| b.is_ascii_alphanumeric()) {
                 return Err(EntryError::Invalid("enter a waypoint identifier"));
             }
-            Ok(Entry::DirectTo {
-                ident: text.to_ascii_uppercase(),
+            let ident = text.to_ascii_uppercase();
+            Ok(match target {
+                EntryTarget::DirectTo => Entry::DirectTo { ident },
+                _ => Entry::FplInsert {
+                    ident,
+                    after: target == EntryTarget::FplAfter,
+                },
             })
         }
         EntryTarget::ComStandby => {

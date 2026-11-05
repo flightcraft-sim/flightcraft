@@ -60,19 +60,23 @@
   "flap_stages": [
     {
       "position": 0,
-      "max_speed_mps": 43.727777777777774
+      "max_speed_mps": 43.727777777777774,
+      "deflection_deg": 0
     },
     {
       "position": 0.3333333333333333,
-      "max_speed_mps": 43.727777777777774
+      "max_speed_mps": 43.727777777777774,
+      "deflection_deg": 10
     },
     {
       "position": 0.6666666666666666,
-      "max_speed_mps": 43.727777777777774
+      "max_speed_mps": 43.727777777777774,
+      "deflection_deg": 20
     },
     {
       "position": 1,
-      "max_speed_mps": 43.727777777777774
+      "max_speed_mps": 43.727777777777774,
+      "deflection_deg": 32
     }
   ],
   "fuel_capacity_kg": 108,

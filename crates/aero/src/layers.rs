@@ -112,6 +112,11 @@ pub struct Variant {
 pub struct FlapStage {
     pub position: f64,
     pub max_speed_mps: f64,
+    /// Surface deflection of this detent in degrees, for the flap position indicator's scale
+    /// (the POH's figure, not derived from `position`). Optional: without it the indicator
+    /// shows the position only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deflection_deg: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -677,6 +682,13 @@ impl Variant {
         )?;
         for stage in &self.flap_stages {
             positive(stage.max_speed_mps, "flap_stages.max_speed_mps")?;
+            if let Some(d) = stage.deflection_deg {
+                require(
+                    d.is_finite() && (0. ..=90.).contains(&d),
+                    "flap_stages.deflection_deg",
+                    "requires 0 to 90 degrees",
+                )?;
+            }
         }
         require(self.stations.len() <= 64, "stations", "at most 64 stations")?;
         let mut seen = BTreeSet::new();
@@ -1083,6 +1095,7 @@ pub fn migrate_v1(text: &str) -> Result<Vec<LayerFile>, AircraftError> {
             .map(|position| FlapStage {
                 position: *position,
                 max_speed_mps: 45.0,
+                deflection_deg: None,
             })
             .collect(),
         fuel_capacity_kg: 0.0,

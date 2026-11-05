@@ -297,6 +297,15 @@ against the surrounding background. Omitted colours use theme tokens. Label cont
 at least 4.5:1 against the panel and bezel; malformed colours and unreadable combinations are
 load errors. The console shares the face colour.
 
+`shell.floor` is an optional fourth outline, the cabin floor under the console: the footwells the
+control sticks stand in. The dash never draws it; the **Lower console** window draws it, with the
+console outline over it, rebased to the window, so the throttle, hand brake, park-brake valve, and
+sticks sit on drawn artwork. The window is a plan view (nose up the page), sized to the console
+region's own aspect: as wide as the screen allows up to 560 points, and no taller than the screen
+has room for. The Sling 2 pack authors its console this way; the choice of a drawn panel region
+over clickable 3D controls is explained in [cockpit interior](cockpit-interior.md): the 3D cabin is
+context, and the egui panel is the active surface.
+
 Every installation can declare an optional `appearance` object:
 
 | Field | Meaning and default |

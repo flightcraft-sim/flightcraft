@@ -3960,6 +3960,16 @@
           "description": "Transponder code.",
           "type": "string",
           "const": "transponder"
+        },
+        {
+          "description": "Identifier of a waypoint to insert before the selected flight-plan waypoint.",
+          "type": "string",
+          "const": "fpl_before"
+        },
+        {
+          "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+          "type": "string",
+          "const": "fpl_after"
         }
       ]
     },
@@ -4778,6 +4788,14 @@
     "FlapStage": {
       "type": "object",
       "properties": {
+        "deflection_deg": {
+          "description": "Surface deflection of this detent in degrees, for the flap position indicator's scale\n(the POH's figure, not derived from `position`). Optional: without it the indicator\nshows the position only.",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
         "max_speed_mps": {
           "type": "number",
           "format": "double"
@@ -5252,6 +5270,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "fpl_cursor": {
+          "description": "The waypoint selected on the FPL page, for Insert, Remove, and Activate Leg.",
+          "type": "integer",
+          "format": "uint",
+          "default": 0,
+          "minimum": 0
         },
         "heading_bug_rad": {
           "type": "number",
@@ -9104,6 +9129,17 @@
         },
         "fill": {
           "$ref": "#/$defs/PanelColor"
+        },
+        "floor": {
+          "description": "The cabin floor under the centre console, drawn behind it in the console window: the\nfootwells that the control sticks stand in.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outline"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "glare_shield": {
           "anyOf": [

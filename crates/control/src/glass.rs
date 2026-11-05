@@ -23,6 +23,9 @@ pub struct GlassSettings {
     pub flight_plan: Vec<String>,
     pub waypoints: Vec<GpsWaypoint>,
     pub active_leg: usize,
+    /// The waypoint selected on the FPL page, for Insert, Remove, and Activate Leg.
+    #[serde(default)]
+    pub fpl_cursor: usize,
     pub leg_origin_deg: Option<[f64; 2]>,
     /// Traffic on the MFD map (needs an ADS-B In installation).
     #[serde(default = "traffic_shown")]
@@ -54,6 +57,7 @@ impl Default for GlassSettings {
             flight_plan: Vec::new(),
             waypoints: Vec::new(),
             active_leg: 0,
+            fpl_cursor: 0,
             leg_origin_deg: None,
             traffic_shown: true,
             traffic_filter: TrafficFilter::Normal,
@@ -324,6 +328,7 @@ impl Session {
         self.glass.flight_plan = canonical;
         self.glass.course_manual = false;
         self.glass.active_leg = 0;
+        self.glass.fpl_cursor = 0;
         self.glass.leg_origin_deg = origin;
         Ok(())
     }
@@ -376,6 +381,7 @@ impl Session {
         self.glass.flight_plan = waypoints.iter().map(|w| w.ident.clone()).collect();
         self.glass.waypoints = waypoints;
         self.glass.active_leg = 0;
+        self.glass.fpl_cursor = 0;
         self.glass.course_manual = false;
         self.glass.leg_origin_deg = self.sim.world().geodetic(n, e);
         self.glass.generation = self.flight_generation;

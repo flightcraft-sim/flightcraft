@@ -91337,6 +91337,38 @@
             },
             {
               "additionalProperties": false,
+              "description": "Touch the CAS window: acknowledge the active warnings and cautions (BACK does the same).",
+              "properties": {
+                "kind": {
+                  "const": "acknowledge_cas",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Touch the FPL page: select, insert, remove, or activate a flight-plan waypoint.",
+              "properties": {
+                "edit": {
+                  "$ref": "#/$defs/FplEdit"
+                },
+                "kind": {
+                  "const": "flight_plan",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "edit"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "description": "Touch the map's zoom buttons: positive zooms in by that many steps of the range ladder.",
               "properties": {
                 "kind": {
@@ -91450,6 +91482,16 @@
               "const": "transponder",
               "description": "Transponder code.",
               "type": "string"
+            },
+            {
+              "const": "fpl_before",
+              "description": "Identifier of a waypoint to insert before the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_after",
+              "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
             }
           ]
         },
@@ -91535,6 +91577,83 @@
                 "kind",
                 "id",
                 "action"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "FplEdit": {
+          "description": "One touch on the FPL page.",
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "description": "Touch a waypoint in the list: it becomes the selected one.",
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "select",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Insert Before or Insert After the selected waypoint, then enter its identifier. With no\nplan the waypoint becomes the whole plan.",
+              "properties": {
+                "after": {
+                  "type": "boolean"
+                },
+                "ident": {
+                  "maxLength": 16,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "const": "insert",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "after",
+                "ident"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Remove the selected waypoint.",
+              "properties": {
+                "kind": {
+                  "const": "remove",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Activate Leg: the selected waypoint becomes the one flown to.",
+              "properties": {
+                "kind": {
+                  "const": "activate",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             }
@@ -93402,6 +93521,16 @@
             {
               "const": "transponder",
               "description": "Transponder code.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_before",
+              "description": "Identifier of a waypoint to insert before the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_after",
+              "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
               "type": "string"
             }
           ]
@@ -119578,6 +119707,16 @@
               "const": "transponder",
               "description": "Transponder code.",
               "type": "string"
+            },
+            {
+              "const": "fpl_before",
+              "description": "Identifier of a waypoint to insert before the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_after",
+              "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
             }
           ]
         },
@@ -119941,6 +120080,13 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "fpl_cursor": {
+              "default": 0,
+              "description": "The waypoint selected on the FPL page, for Insert, Remove, and Activate Leg.",
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
             },
             "heading_bug_rad": {
               "format": "double",
@@ -122766,6 +122912,16 @@
               "const": "transponder",
               "description": "Transponder code.",
               "type": "string"
+            },
+            {
+              "const": "fpl_before",
+              "description": "Identifier of a waypoint to insert before the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_after",
+              "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
             }
           ]
         },
@@ -123129,6 +123285,13 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "fpl_cursor": {
+              "default": 0,
+              "description": "The waypoint selected on the FPL page, for Insert, Remove, and Activate Leg.",
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
             },
             "heading_bug_rad": {
               "format": "double",

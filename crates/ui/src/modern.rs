@@ -233,6 +233,7 @@ impl PanelUi {
             let mut artwork = panel.clone();
             if let Some(shell) = &mut artwork.shell {
                 shell.centre_console = None;
+                shell.floor = None;
             }
             crate::panel_art::shell(ui, rect, &artwork);
         } else {
@@ -340,6 +341,26 @@ impl PanelUi {
                                             .map(|n| n.nav_standby_khz),
                                         xpdr_code: glass.settings.transponder_code.clone(),
                                         xpdr_mode: glass.settings.transponder_mode,
+                                        cas_active: !flightcraft_control::touch_cas::window(
+                                            input.systems.modern.as_ref(),
+                                            input.autopilot.map_or(&[][..], |a| a.failures.as_slice()),
+                                        )
+                                        .messages
+                                        .is_empty(),
+                                        fpl: crate::efis::FplView {
+                                            rows: glass
+                                                .gps
+                                                .legs
+                                                .iter()
+                                                .map(|leg| crate::efis::FplRow {
+                                                    ident: leg.airport.clone(),
+                                                    bearing_deg: leg.bearing_rad.to_degrees() as f32,
+                                                    distance_nm: leg.distance_nm as f32,
+                                                })
+                                                .collect(),
+                                            cursor: glass.settings.fpl_cursor,
+                                            active: glass.gps.active_leg,
+                                        },
                                     },
                                     &mut out,
                                 );
@@ -1183,7 +1204,7 @@ impl PanelUi {
                     .id(ui.id().with("lower-console"))
                     .constrain_to(t::window_bounds(ui.ctx()))
                     .open(&mut self.console_open)
-                    .fixed_size(egui::vec2(300., 300.))
+                    .fixed_size(console_window_size(ui.ctx(), &console))
                     .show(ui.ctx(), |ui| {
                         settings.extend(runtime.show(ui, &console, input, registry));
                     });
@@ -1967,4 +1988,19 @@ impl PanelUi {
             }
         }
     }
+}
+
+/// The lower console window's content size: the console region's own aspect, as wide as the
+/// screen allows up to a desktop size, and no taller than the screen has room for.
+pub(crate) fn console_window_size(
+    ctx: &egui::Context,
+    console: &flightcraft_aero::modern::EquipmentPanel,
+) -> egui::Vec2 {
+    let bounds = t::window_bounds(ctx);
+    let aspect = (console.size[1] / console.size[0].max(1.)) as f32;
+    let mut width = (bounds.width() - 24.).clamp(120., 560.);
+    if width * aspect > bounds.height() - 70. {
+        width = ((bounds.height() - 70.) / aspect).max(120.);
+    }
+    egui::vec2(width, width * aspect)
 }
