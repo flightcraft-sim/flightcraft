@@ -294,6 +294,8 @@ fn scripted_engine_out_landing_grades_radio_flow_and_missed_field() {
         .as_ref()
         .unwrap()
         .glide
+        .as_ref()
+        .unwrap()
         .fields
         .iter()
         .filter(|f| !f.airport)
@@ -404,7 +406,7 @@ fn debrief_survives_record_export_import_and_rejects_hostile_geometry() {
     let loaded = FlightRecord::from_json(&text).unwrap();
     let d = loaded.emergency.as_ref().unwrap();
     assert!(d.recognition_s.is_some());
-    assert_eq!(d.glide.boundary_m.len(), 72);
+    assert_eq!(d.glide.as_ref().unwrap().boundary_m.len(), 72);
     assert_eq!(d.procedure.id, "engine_failure");
     let mut value = serde_json::to_value(&loaded).unwrap();
     value["emergency"]["glide"]["boundary_m"] = json!([]);

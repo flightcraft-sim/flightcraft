@@ -174,7 +174,9 @@ pub struct EmergencyDebrief {
     pub touchdown_m: Option<[f64; 3]>,
     pub source: EventSource,
     pub procedure: EmergencyProcedure,
-    pub glide: GlideFootprint,
+    /// Absent when the procedure gives no glide numbers (ground and fire events).
+    #[serde(default)]
+    pub glide: Option<GlideFootprint>,
     pub recognition_s: Option<f64>,
     pub steps: Vec<EmergencyTiming>,
     pub chosen_field: Option<String>,
@@ -243,7 +245,10 @@ impl Command for EmergencyRecord {
                 if !text_ok(&id) {
                     return Err(invalid(Self::NAME, "invalid field id"));
                 }
-                d.field_reachable = d.glide.fields.iter().any(|f| f.id == id);
+                d.field_reachable = d
+                    .glide
+                    .as_ref()
+                    .is_some_and(|g| g.fields.iter().any(|f| f.id == id));
                 d.chosen_field = Some(id);
             }
         }
@@ -260,8 +265,18 @@ impl Session {
             return;
         }
         let f = self.sim.failures();
+        let on_ground = self.sim.readout().on_ground;
+        let installed = self
+            .aircraft_configuration()
+            .map(|c| &c.installed_systems.emergencies);
+        let has = |id: &str| installed.is_some_and(|e| e.iter().any(|p| p.id == id));
         let id = if f.engine_fire {
-            "engine_fire"
+            // On the ground the POH has its own fire procedure; use it when the pack carries one.
+            if on_ground && has("engine_fire_ground") {
+                "engine_fire_ground"
+            } else {
+                "engine_fire"
+            }
         } else if f.electrical_fire {
             "electrical_fire"
         } else if f.cabin_smoke {
@@ -298,20 +313,21 @@ impl Session {
             procedure.title = "Canopy unlatched".into();
         }
         let r = self.sim.readout();
-        let Ok(glide) = glide_footprint(
-            self.sim.world(),
-            self.sim.state().position_m,
-            r.wind_ned_mps,
-            procedure.glide_ratio,
-            procedure.best_glide_mps,
-        ) else {
-            return;
+        let origin = self.sim.state().position_m;
+        let glide = match procedure.glide() {
+            Some((ratio, speed)) => {
+                let Ok(g) = glide_footprint(self.sim.world(), origin, r.wind_ned_mps, ratio, speed) else {
+                    return;
+                };
+                Some(g)
+            }
+            None => None,
         };
         self.scenario.state.emergency = Some(EmergencyDebrief {
             failure_time_s: r.time_s,
             failure_agl_m: r.height_agl_m,
-            failure_location: failure_location(self.sim.world(), glide.origin_m),
-            track_m: vec![glide.origin_m],
+            failure_location: failure_location(self.sim.world(), origin),
+            track_m: vec![origin],
             touchdown_m: None,
             source,
             procedure,
@@ -379,10 +395,16 @@ impl Session {
                 d.touchdown_m = Some(position);
             }
             d.has_been_airborne |= !r.on_ground;
-            if r.time_s > d.last_sample_time_s && !r.on_ground && d.outcome == "in_progress" {
+            if d.procedure.best_glide_mps.is_some()
+                && d.procedure.speed_tolerance_mps.is_some()
+                && r.time_s > d.last_sample_time_s
+                && !r.on_ground
+                && d.outcome == "in_progress"
+            {
                 d.speed_samples += 1;
-                if (r.indicated_airspeed_mps - d.procedure.best_glide_mps).abs()
-                    <= d.procedure.speed_tolerance_mps
+                if let (Some(target), Some(tolerance)) =
+                    (d.procedure.best_glide_mps, d.procedure.speed_tolerance_mps)
+                    && (r.indicated_airspeed_mps - target).abs() <= tolerance
                 {
                     d.speed_in_tolerance += 1;
                 }
@@ -402,7 +424,7 @@ impl Session {
                 d.landed_at_chosen_field = d
                     .chosen_field
                     .as_ref()
-                    .and_then(|id| d.glide.fields.iter().find(|f| f.id == *id))
+                    .and_then(|id| d.glide.as_ref()?.fields.iter().find(|f| f.id == *id))
                     .is_some_and(|f| {
                         let [fnorth, feast] = f.position_m;
                         libm::hypot(n - fnorth, e - feast) <= 500.
@@ -439,27 +461,27 @@ impl EmergencyDebrief {
                 .flatten()
                 .chain(self.touchdown_m.iter().flatten())
                 .any(|v| !v.is_finite() || v.abs() > 1e7)
-            || self.glide.boundary_m.len() != 72
-            || self.glide.fields.len() > 16384
-            || self
-                .glide
-                .origin_m
-                .iter()
-                .chain(&self.glide.wind_ned_mps)
-                .chain(self.glide.boundary_m.iter().flatten())
-                .any(|v| !v.is_finite() || v.abs() > 1e7)
-            || self.glide.fields.iter().any(|f| {
-                !text_ok(&f.id)
-                    || !f.terrain_msl_m.is_finite()
-                    || [f.length_m, f.width_m, f.slope_percent, f.heading_grid_rad]
+            || self.glide.as_ref().is_some_and(|g| {
+                g.boundary_m.len() != 72
+                    || g.fields.len() > 16384
+                    || g.origin_m
                         .iter()
-                        .any(|v| !v.is_finite() || v.abs() > 1e5)
-                    || f.position_m.iter().any(|v| !v.is_finite() || v.abs() > 1e7)
+                        .chain(&g.wind_ned_mps)
+                        .chain(g.boundary_m.iter().flatten())
+                        .any(|v| !v.is_finite() || v.abs() > 1e7)
+                    || g.fields.iter().any(|f| {
+                        !text_ok(&f.id)
+                            || !f.terrain_msl_m.is_finite()
+                            || [f.length_m, f.width_m, f.slope_percent, f.heading_grid_rad]
+                                .iter()
+                                .any(|v| !v.is_finite() || v.abs() > 1e5)
+                            || f.position_m.iter().any(|v| !v.is_finite() || v.abs() > 1e7)
+                    })
+                    || !g.glide_ratio.is_finite()
+                    || !(2.0..=40.0).contains(&g.glide_ratio)
+                    || !g.best_glide_mps.is_finite()
+                    || !(10.0..=150.0).contains(&g.best_glide_mps)
             })
-            || !self.glide.glide_ratio.is_finite()
-            || !(2.0..=40.0).contains(&self.glide.glide_ratio)
-            || !self.glide.best_glide_mps.is_finite()
-            || !(10.0..=150.0).contains(&self.glide.best_glide_mps)
             || self.speed_in_tolerance > self.speed_samples
             || !matches!(self.outcome.as_str(), "in_progress" | "landed" | "crashed")
             || self.chosen_field.as_ref().is_some_and(|id| !text_ok(id))
@@ -552,22 +574,22 @@ impl EmergencyDebrief {
         let recognition = self
             .recognition_s
             .map_or("not yet recognized".into(), |s| format!("recognized in {s:.1} s"));
-        let speed = if self.speed_samples == 0 {
-            "best glide not yet sampled".into()
-        } else {
-            format!(
+        let speed = match (self.procedure.best_glide_mps, self.procedure.speed_tolerance_mps) {
+            (Some(target), Some(tolerance)) if self.speed_samples > 0 => format!(
                 "best glide {:.0} kt held {:.0}% of the time (target ±{:.0} kt)",
-                self.procedure.best_glide_mps / 0.514444,
+                target / 0.514444,
                 100. * self.speed_in_tolerance as f64 / self.speed_samples as f64,
-                self.procedure.speed_tolerance_mps / 0.514444
-            )
+                tolerance / 0.514444
+            ),
+            (Some(_), Some(_)) => "best glide not yet sampled".into(),
+            _ => "no glide speed for this emergency".into(),
         };
         let outcome = match (
             self.outcome.as_str(),
             self.touchdown_m,
             self.chosen_field
                 .as_ref()
-                .and_then(|id| self.glide.fields.iter().find(|f| f.id == *id)),
+                .and_then(|id| self.glide.as_ref()?.fields.iter().find(|f| f.id == *id)),
         ) {
             ("landed" | "crashed", Some([n, e, _]), Some(field)) => {
                 let [fnorth, feast] = field.position_m;
@@ -622,5 +644,71 @@ impl EmergencyDebrief {
                 "no 7700"
             }
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+    use super::*;
+    use flightcraft_aero::emergencies::EmergencyItem;
+    fn procedure(id: &str, glide: bool) -> EmergencyProcedure {
+        EmergencyProcedure {
+            id: id.into(),
+            title: id.into(),
+            best_glide_mps: glide.then_some(37.04),
+            glide_ratio: glide.then_some(10.),
+            speed_tolerance_mps: glide.then_some(5.),
+            items: vec![EmergencyItem {
+                id: "first".into(),
+                instruction: "Do it".into(),
+                memory: true,
+            }],
+            note: Some("A warning".into()),
+        }
+    }
+    fn session_with(procedures: Vec<EmergencyProcedure>) -> Session {
+        let mut s = Session::new().unwrap();
+        let config = s.active_configuration.as_mut().unwrap();
+        config.installed_systems.emergencies = procedures;
+        s
+    }
+    #[test]
+    fn a_procedure_without_glide_numbers_has_no_footprint_and_is_not_speed_graded() {
+        let mut s = session_with(vec![procedure("engine_fire_ground", false)]);
+        s.execute(
+            "failure.set",
+            serde_json::json!({"failure":{"kind":"engine_fire"}}),
+        )
+        .unwrap();
+        let d = s.scenario_state().emergency.as_ref().unwrap();
+        assert_eq!(
+            d.procedure.id, "engine_fire_ground",
+            "on the ground the ground fire procedure is used"
+        );
+        assert!(d.glide.is_none());
+        assert!(d.summary().contains("no glide speed"));
+        d.validate().unwrap();
+        s.execute("sim.step", serde_json::json!({"steps": 120}))
+            .unwrap_or_default();
+        let d = s.scenario_state().emergency.as_ref().unwrap();
+        assert_eq!(d.speed_samples, 0);
+        // The record survives a JSON round trip with no glide at all.
+        let text = serde_json::to_string(d).unwrap();
+        assert!(!text.contains("best_glide_mps"));
+        let back: EmergencyDebrief = serde_json::from_str(&text).unwrap();
+        assert!(back.glide.is_none() && back.procedure.note.as_deref() == Some("A warning"));
+    }
+    #[test]
+    fn a_procedure_with_glide_numbers_keeps_its_footprint() {
+        let mut s = session_with(vec![procedure("engine_fire", true)]);
+        s.execute(
+            "failure.set",
+            serde_json::json!({"failure":{"kind":"engine_fire"}}),
+        )
+        .unwrap();
+        let d = s.scenario_state().emergency.as_ref().unwrap();
+        assert_eq!(d.procedure.id, "engine_fire");
+        assert_eq!(d.glide.as_ref().unwrap().boundary_m.len(), 72);
     }
 }

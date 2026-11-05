@@ -1593,11 +1593,19 @@
       "type": "object",
       "properties": {
         "best_glide_mps": {
-          "type": "number",
+          "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "glide_ratio": {
-          "type": "number",
+          "description": "Glide ratio. Absent where gliding does not apply.",
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "id": {
@@ -1609,8 +1617,19 @@
             "$ref": "#/$defs/EmergencyItem"
           }
         },
+        "note": {
+          "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "speed_tolerance_mps": {
-          "type": "number",
+          "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
+          "type": [
+            "number",
+            "null"
+          ],
           "format": "double"
         },
         "title": {
@@ -1621,9 +1640,6 @@
       "required": [
         "id",
         "title",
-        "best_glide_mps",
-        "glide_ratio",
-        "speed_tolerance_mps",
         "items"
       ]
     },

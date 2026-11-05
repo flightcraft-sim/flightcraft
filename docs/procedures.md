@@ -1,6 +1,6 @@
 # Instrument procedures and NAV receivers
 
-(Normal procedures, checklists and the run-up are in [normal procedures](normal-procedures.md).)
+(Normal procedures, checklists and the run-up are in [normal procedures](normal-procedures.md). Aircraft emergency procedures, which the checklist panel lists on its Emergency tab, are in [emergencies](emergencies.md).)
 
 Instrument procedures come from the FAA CIFP, with plate names and PDF basenames linked from
 FAA d-TPP metadata. Both bundled geographic regions carry cycle **2611**, effective **2026-10-29**.

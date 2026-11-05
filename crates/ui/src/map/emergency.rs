@@ -3,10 +3,14 @@ use super::*;
 use flightcraft_control::scenario::EmergencyDebrief;
 
 pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
+    // A procedure with no glide numbers (a ground fire) has no footprint to draw.
+    let Some(glide) = d.glide.as_ref() else {
+        return;
+    };
     let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), 470.), Sense::hover());
     let p = ui.painter_at(rect);
     p.rect_filled(rect, 0., theme::BACKGROUND);
-    if s.sim().world().choice() != d.glide.world {
+    if s.sim().world().choice() != glide.world {
         p.text(
             rect.center(),
             Align2::CENTER_CENTER,
@@ -16,12 +20,11 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
         );
         return;
     }
-    let [n, e, _] = d.glide.origin_m;
+    let [n, e, _] = glide.origin_m;
     let Some([latitude_deg, longitude_deg]) = s.sim().world().geodetic(n, e) else {
         return;
     };
-    let span = d
-        .glide
+    let span = glide
         .boundary_m
         .iter()
         .copied()
@@ -47,7 +50,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
     terrain(&p, &v, s, &state, false, false);
     paint_features(&p, &v, s, &state);
     rings(&p, &v, &state);
-    let points = d.glide.boundary_m.iter().map(|p| v.local(*p)).collect();
+    let points = glide.boundary_m.iter().map(|p| v.local(*p)).collect();
     p.add(egui::Shape::closed_line(
         points,
         Stroke::new(2.0_f32, theme::ACCENT),
@@ -71,7 +74,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
         theme::AMBER,
         false,
     ));
-    for (index, field) in d.glide.fields.iter().filter(|f| !f.airport).enumerate() {
+    for (index, field) in glide.fields.iter().filter(|f| !f.airport).enumerate() {
         let at = v.local(field.position_m);
         let chosen = d.chosen_field.as_deref() == Some(&field.id);
         let color = if chosen { theme::GLASS_GPS } else { theme::TEXT };
@@ -102,7 +105,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
     if let Some(field) = d
         .chosen_field
         .as_ref()
-        .and_then(|id| d.glide.fields.iter().find(|f| f.id == *id))
+        .and_then(|id| glide.fields.iter().find(|f| f.id == *id))
     {
         let at = v.local(field.position_m);
         p.circle_stroke(at, 12., Stroke::new(3.0_f32, theme::GLASS_GPS));
@@ -168,7 +171,7 @@ pub(crate) fn show(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
         "NORTH UP   TERRAIN / FAA AIRPORTS   •   cyan: estimated reach   •   magenta: flown track",
         theme::TEXT,
     );
-    if d.glide.terrain_coverage_limited {
+    if glide.terrain_coverage_limited {
         label(
             &p,
             rect.left_bottom() + egui::vec2(10., -35.),

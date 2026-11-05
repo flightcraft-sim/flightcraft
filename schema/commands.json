@@ -37090,7 +37090,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -37168,7 +37177,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -37207,12 +37215,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -37223,9 +37239,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -37234,9 +37261,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -40929,7 +40953,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -41007,7 +41040,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -41046,12 +41078,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -41062,9 +41102,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -41073,9 +41124,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -43003,7 +43051,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -43081,7 +43138,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -43120,12 +43176,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -43136,9 +43200,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -43147,9 +43222,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -45085,7 +45157,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -45163,7 +45244,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -45202,12 +45282,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -45218,9 +45306,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -45229,9 +45328,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -51542,7 +51638,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -51620,7 +51725,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -51659,12 +51763,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -51675,9 +51787,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -51686,9 +51809,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -53890,7 +54010,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -53968,7 +54097,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -54007,12 +54135,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -54023,9 +54159,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -54034,9 +54181,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -74459,7 +74603,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -74537,7 +74690,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -74576,12 +74728,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -74592,9 +74752,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -74603,9 +74774,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -79060,7 +79228,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -79138,7 +79315,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -79177,12 +79353,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -79193,9 +79377,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -79204,9 +79399,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"
@@ -83663,7 +83855,16 @@
               "type": "integer"
             },
             "glide": {
-              "$ref": "#/$defs/GlideFootprint"
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/GlideFootprint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Absent when the procedure gives no glide numbers (ground and fire events)."
             },
             "has_been_airborne": {
               "type": "boolean"
@@ -83741,7 +83942,6 @@
             "failure_time_s",
             "source",
             "procedure",
-            "glide",
             "steps",
             "field_reachable",
             "speed_samples",
@@ -83780,12 +83980,20 @@
           "additionalProperties": false,
           "properties": {
             "best_glide_mps": {
+              "description": "Best glide speed. Absent for emergencies where gliding does not apply (ground and take-off-run\nevents, fires on the ground).",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "glide_ratio": {
+              "description": "Glide ratio. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "id": {
               "type": "string"
@@ -83796,9 +84004,20 @@
               },
               "type": "array"
             },
+            "note": {
+              "description": "POH warnings and notes for the whole procedure, shown beneath the items.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "speed_tolerance_mps": {
+              "description": "Allowed deviation from the best glide speed when grading speed. Absent where gliding does not apply.",
               "format": "double",
-              "type": "number"
+              "type": [
+                "number",
+                "null"
+              ]
             },
             "title": {
               "type": "string"
@@ -83807,9 +84026,6 @@
           "required": [
             "id",
             "title",
-            "best_glide_mps",
-            "glide_ratio",
-            "speed_tolerance_mps",
             "items"
           ],
           "type": "object"

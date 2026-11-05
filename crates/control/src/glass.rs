@@ -103,16 +103,16 @@ fn traffic_shown() -> bool {
 }
 /// The aircraft pack's speed for each Vspeed bug, in metres per second, in `VspeedBug::ALL` order:
 /// Vr, Vx, and Vy from the variant's V-speeds; Vg the best-glide speed of the engine-failure emergency
-/// procedure in the pack's systems (else the first procedure); Vapp the approach speed the crew pilot
+/// procedure in the pack's systems (else the first procedure that gives one); Vapp the approach speed the crew pilot
 /// flies, 1.3 Vso. A speed the pack does not give is none.
 pub fn vspeed_pack_defaults_mps(aircraft: &flightcraft_aero::ResolvedAircraft) -> [Option<f64>; 5] {
     let v = &aircraft.variant.v_speeds;
     let emergencies = &aircraft.installed_systems.emergencies;
     let glide = emergencies
         .iter()
-        .find(|p| p.id == "engine_failure")
-        .or_else(|| emergencies.first())
-        .map(|p| p.best_glide_mps);
+        .find(|p| p.id == "engine_failure" && p.best_glide_mps.is_some())
+        .or_else(|| emergencies.iter().find(|p| p.best_glide_mps.is_some()))
+        .and_then(|p| p.best_glide_mps);
     [
         Some(v.vr_mps),
         Some(v.vx_mps),

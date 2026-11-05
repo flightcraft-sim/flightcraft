@@ -3,6 +3,8 @@
 //! desktop and web: everything goes through commands.
 use crate::theme;
 use eframe::egui::{self, Color32, Rect, RichText, Stroke};
+use flightcraft_aero::emergencies::{EmergencyItem, EmergencyProcedure};
+use flightcraft_control::scenario::{EmergencyDebrief, EmergencyObservation, EmergencyRecord};
 use flightcraft_control::{
     ChecklistAbort, ChecklistComplete, ChecklistItemView, ChecklistSelect, ChecklistShowMe,
     ChecklistStateCommand, ChecklistView, CommandError, ItemStatus, Session,
@@ -75,13 +77,51 @@ pub(crate) fn walkaround_camera(s: &mut Session) -> Option<WalkaroundCamera> {
 enum Tab {
     #[default]
     Checklist,
+    Emergency,
     Preflight,
 }
 
 #[derive(Default)]
 pub(crate) struct ChecklistUi {
     tab: Tab,
+    /// The emergency procedure shown on the Emergency tab.
+    emergency: Option<String>,
+    /// The failure time of the last emergency the panel jumped to, so it jumps once per emergency.
+    jumped_to: Option<u64>,
     pub error: Option<String>,
+}
+
+/// The pack's emergency procedures, read straight from the aircraft data.
+pub(crate) fn pack_emergencies(s: &Session) -> Vec<EmergencyProcedure> {
+    s.aircraft_configuration()
+        .map(|c| c.installed_systems.emergencies.clone())
+        .unwrap_or_default()
+}
+
+/// The running emergency, if the scenario has raised one and the flight has not ended.
+pub(crate) fn active_emergency(s: &Session) -> Option<&EmergencyDebrief> {
+    s.scenario_state()
+        .emergency
+        .as_ref()
+        .filter(|d| d.outcome == "in_progress")
+}
+
+/// One emergency item as shown: memory items carry a visible mark.
+pub(crate) fn emergency_item_text(item: &EmergencyItem) -> String {
+    if item.memory {
+        format!("MEMORY - {}", item.instruction)
+    } else {
+        item.instruction.clone()
+    }
+}
+
+/// The glide line under an emergency's title, when the procedure gives glide numbers.
+pub(crate) fn emergency_glide_text(p: &EmergencyProcedure) -> Option<String> {
+    let (ratio, speed) = p.glide()?;
+    Some(format!(
+        "Best glide {:.0} kt, glide ratio {ratio:.0}:1",
+        speed / 0.514444
+    ))
 }
 
 fn marker(status: ItemStatus) -> (&'static str, Color32) {
@@ -97,11 +137,32 @@ impl ChecklistUi {
     pub fn show(&mut self, ui: &mut egui::Ui, s: &mut Session) {
         // The Preflight tab appears only when the walkaround provides `preflight.state`.
         let preflight = optional_command(s, "preflight.state");
-        if preflight.is_none() {
+        let has_emergencies = !pack_emergencies(s).is_empty();
+        // A new emergency takes the panel to its procedure, once.
+        if let Some(d) = active_emergency(s) {
+            let key = d.failure_time_s.to_bits();
+            if self.jumped_to != Some(key) {
+                self.jumped_to = Some(key);
+                self.tab = Tab::Emergency;
+                self.emergency = Some(d.procedure.id.clone());
+            }
+        }
+        if preflight.is_none() && self.tab == Tab::Preflight {
+            self.tab = Tab::Checklist;
+        }
+        if !has_emergencies && self.tab == Tab::Emergency {
             self.tab = Tab::Checklist;
         }
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.tab, Tab::Checklist, "Checklist");
+            if has_emergencies {
+                let label = if active_emergency(s).is_some() {
+                    RichText::new("Emergency").color(theme::DANGER).strong()
+                } else {
+                    RichText::new("Emergency")
+                };
+                ui.selectable_value(&mut self.tab, Tab::Emergency, label);
+            }
             if preflight.is_some() {
                 ui.selectable_value(&mut self.tab, Tab::Preflight, "Preflight");
             }
@@ -109,6 +170,7 @@ impl ChecklistUi {
         ui.separator();
         match (self.tab, preflight) {
             (Tab::Preflight, Some(state)) => self.preflight(ui, s, &state),
+            (Tab::Emergency, _) => self.emergency_tab(ui, s),
             _ => self.checklist(ui, s),
         }
         if let Some(e) = &self.error {
@@ -175,6 +237,96 @@ impl ChecklistUi {
             });
         ui.separator();
         self.warnings_and_buttons(ui, s, &view, current_item);
+    }
+
+    /// The pack's emergency procedures: pick one, read its items (memory items marked) and its POH note.
+    /// When the scenario has raised that emergency, items can be completed here and are timed.
+    fn emergency_tab(&mut self, ui: &mut egui::Ui, s: &mut Session) {
+        let procedures = pack_emergencies(s);
+        let active = active_emergency(s).cloned();
+        if let Some(d) = &active {
+            ui.label(
+                RichText::new(format!("ACTIVE EMERGENCY - {}", d.procedure.title))
+                    .color(theme::DANGER)
+                    .strong(),
+            );
+        }
+        ui.horizontal_wrapped(|ui| {
+            for p in &procedures {
+                let selected = self.emergency.as_deref() == Some(&p.id);
+                if ui.selectable_label(selected, &p.title).clicked() {
+                    self.emergency = Some(p.id.clone());
+                }
+            }
+        });
+        let Some(p) = procedures
+            .iter()
+            .find(|p| self.emergency.as_deref() == Some(&p.id))
+        else {
+            ui.label(RichText::new("Choose an emergency procedure.").color(theme::MUTED));
+            return;
+        };
+        ui.separator();
+        ui.label(RichText::new(&p.title).strong());
+        if let Some(g) = emergency_glide_text(p) {
+            ui.label(RichText::new(g).size(11.).color(theme::MUTED));
+        }
+        // Timing and completion only apply to the emergency that is actually running.
+        let running = active.as_ref().filter(|d| d.procedure.id == p.id);
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for item in &p.items {
+                    let done = running.and_then(|d| d.steps.iter().find(|t| t.item == item.id));
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(
+                            RichText::new(if done.is_some() { "[x]" } else { "[ ]" })
+                                .monospace()
+                                .color(if done.is_some() {
+                                    theme::GREEN
+                                } else {
+                                    theme::MUTED
+                                }),
+                        );
+                        let text = RichText::new(emergency_item_text(item));
+                        ui.label(if item.memory {
+                            text.strong().color(theme::DANGER)
+                        } else if done.is_some() {
+                            text.color(theme::MUTED)
+                        } else {
+                            text.color(theme::TEXT)
+                        });
+                        if let Some(t) = done {
+                            ui.label(
+                                RichText::new(format!(
+                                    "{:.1}s{}",
+                                    t.elapsed_s,
+                                    if t.in_order { "" } else { " - out of order" }
+                                ))
+                                .size(10.)
+                                .color(if t.in_order {
+                                    theme::GREEN
+                                } else {
+                                    theme::AMBER
+                                }),
+                            );
+                        } else if running.is_some() && ui.small_button("Done").clicked() {
+                            self.error = s
+                                .run(EmergencyRecord {
+                                    observation: EmergencyObservation::Checklist {
+                                        item: item.id.clone(),
+                                    },
+                                })
+                                .err()
+                                .map(|e| e.to_string());
+                        }
+                    });
+                }
+                if let Some(note) = &p.note {
+                    ui.separator();
+                    ui.label(RichText::new(note).size(11.).color(theme::AMBER));
+                }
+            });
     }
 
     fn warnings_and_buttons(
@@ -391,5 +543,60 @@ impl ChecklistUi {
                     }
                 }
             });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+    use super::*;
+
+    fn procedure(glide: bool) -> EmergencyProcedure {
+        EmergencyProcedure {
+            id: "x".into(),
+            title: "X".into(),
+            best_glide_mps: glide.then_some(37.04),
+            glide_ratio: glide.then_some(10.),
+            speed_tolerance_mps: glide.then_some(5.),
+            items: Vec::new(),
+            note: None,
+        }
+    }
+    #[test]
+    fn memory_items_are_visibly_marked() {
+        let item = |memory| EmergencyItem {
+            id: "a".into(),
+            instruction: "Throttle: idle.".into(),
+            memory,
+        };
+        assert_eq!(emergency_item_text(&item(true)), "MEMORY - Throttle: idle.");
+        assert_eq!(emergency_item_text(&item(false)), "Throttle: idle.");
+    }
+    #[test]
+    fn the_glide_line_only_appears_when_the_pack_gives_glide_numbers() {
+        assert_eq!(
+            emergency_glide_text(&procedure(true)).as_deref(),
+            Some("Best glide 72 kt, glide ratio 10:1")
+        );
+        assert_eq!(emergency_glide_text(&procedure(false)), None);
+    }
+    #[test]
+    fn the_panel_reads_the_aircrafts_own_emergencies_and_sees_a_running_one() {
+        let mut s = Session::new().unwrap();
+        let from_pack = pack_emergencies(&s);
+        assert!(!from_pack.is_empty());
+        assert_eq!(
+            from_pack.len(),
+            s.aircraft_configuration()
+                .unwrap()
+                .installed_systems
+                .emergencies
+                .len()
+        );
+        assert!(active_emergency(&s).is_none());
+        s.execute("failure.set", json!({"failure":{"kind":"engine"}}))
+            .unwrap();
+        let active = active_emergency(&s).expect("an engine failure raises its emergency");
+        assert!(from_pack.iter().any(|p| p.id == active.procedure.id));
     }
 }

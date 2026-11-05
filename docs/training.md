@@ -134,9 +134,12 @@ before the flight. The app runs it locally, so nothing waits on a model during t
 - **What is graded:**
   - recognition time;
   - the memory items and checklist flow from the aircraft's own POH emergency section (aircraft
-    packs carry it as data);
-  - best-glide speed held within tolerance;
-  - a landing site chosen within glide range (the app knows the terrain and fields);
+    packs carry it as data, and the checklist panel's Emergency tab lists it, with memory items
+    marked);
+  - best-glide speed held within tolerance, when the procedure has a glide speed (a fire on the
+    ground does not);
+  - a landing site chosen within glide range, for the same procedures (the app knows the terrain
+    and fields);
   - the radio call: 7700, "Mayday" or "Pan-pan" on the frequency in use or 121.5;
   - the outcome.
 - **The emergency debrief** shows the glide footprint at the moment of failure, the fields that were

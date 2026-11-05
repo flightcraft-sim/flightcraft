@@ -32,10 +32,35 @@ Warnings appear in the toolbar's **Emergency** menu and instructor panel.
 ## Aircraft procedures
 
 The optional `emergencies` array in an aircraft's systems layer carries its procedures. Each has
-an id, title, best-glide airspeed in m/s, glide ratio, speed tolerance, and ordered items with an
-id, instruction, and `memory` flag. This permits separate memory items and subsequent checklist
-steps, with aircraft-specific wording and references to the installed systems. Limits and unique
-item/procedure ids are validated on pack loading. Old packs can omit the array.
+an id, title, ordered items with an id, instruction, and `memory` flag, and optionally a best-glide
+airspeed in m/s, glide ratio, speed tolerance, and a `note` (POH warnings and notes for the whole
+procedure). This permits separate memory items and subsequent checklist steps, with
+aircraft-specific wording and references to the installed systems. Limits and unique item/procedure
+ids are validated on pack loading, and the glide ranges (speed 10 to 150 m/s, ratio 2 to 40,
+tolerance 0.1 to 20 m/s) apply whenever a value is given. Old packs can omit the array, and old
+procedures that give all three glide numbers load unchanged.
+
+The three glide numbers are optional because gliding does not apply to every emergency (a fire on
+the ground, an engine failure in the take-off run). A procedure with no glide numbers starts a
+debrief with no glide footprint and no landing-area choice, and best-glide speed is not graded.
+The Vg bug default is the best-glide speed of the `engine_failure` procedure, else of the first
+procedure that gives one.
+
+The failure scenarios start the procedure whose id matches the failure: `engine_failure`,
+`engine_fire`, `electrical_fire`, `cabin_smoke`, `door_open`, `carb_icing`, `airframe_icing`,
+`flap_asymmetry`, `trim_runaway`, `trim_stuck`, `radio_failure`, `vacuum_pump`. An engine fire on
+the ground uses `engine_fire_ground` when the pack has it. A pack may carry further procedures (an
+engine fire in the take-off run, a forced landing, a spin recovery); they are not started by a
+failure but are listed in the checklist panel.
+
+### The Emergency tab
+
+The checklist panel has an **Emergency** tab whenever the aircraft has `emergencies`. It reads the
+pack's procedures directly (they are not copied into the normal checklists). Memory items are marked
+`MEMORY` and shown in red, the glide line appears when the procedure has glide numbers, and the
+`note` is shown under the items. When a failure raises an emergency the panel jumps to that
+procedure once; its items can then be completed there with the same timing and ordering as the
+scenario window's **Complete** buttons.
 
 Corvid procedures are original fictional guidance for carburettor, magneto, and vacuum systems.
 Larrow procedures are original fictional guidance for its injected engine and electrical gyros;

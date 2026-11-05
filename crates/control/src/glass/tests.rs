@@ -340,15 +340,22 @@ fn vspeed_defaults_come_from_the_packs_vspeeds_glide_speed_and_approach_speed() 
     let procedure = |id: &str, speed: f64| EmergencyProcedure {
         id: id.into(),
         title: id.into(),
-        best_glide_mps: speed,
-        glide_ratio: 9.0,
-        speed_tolerance_mps: 2.0,
+        best_glide_mps: Some(speed),
+        glide_ratio: Some(9.0),
+        speed_tolerance_mps: Some(2.0),
         items: Vec::new(),
+        note: None,
     };
     aircraft.installed_systems.emergencies.clear();
     assert_eq!(defaults(&aircraft)[3], None);
     aircraft.installed_systems.emergencies = vec![procedure("fire", 40.0), procedure("other", 41.0)];
     assert_eq!(defaults(&aircraft)[3], Some(40.0));
+    // A procedure without glide numbers (a ground fire) is skipped.
+    let mut ground = procedure("ground_fire", 0.);
+    ground.best_glide_mps = None;
+    aircraft.installed_systems.emergencies.insert(0, ground);
+    assert_eq!(defaults(&aircraft)[3], Some(40.0));
+    aircraft.installed_systems.emergencies.remove(0);
     aircraft
         .installed_systems
         .emergencies

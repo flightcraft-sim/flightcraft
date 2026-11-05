@@ -226,11 +226,17 @@ pub(crate) fn debrief(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) 
             }
         });
     }
+    if let Some(note) = &d.procedure.note {
+        ui.colored_label(theme::AMBER, note);
+    }
+    let Some(glide) = &d.glide else {
+        return Ok(());
+    };
     glide_map(ui, s, d);
     ui.horizontal_wrapped(|ui| {
         ui.label("Choose landing area:");
         let mut open_index = 0;
-        for field in &d.glide.fields {
+        for field in &glide.fields {
             let label = if field.airport {
                 field.id.replace(':', " runway ")
             } else {
@@ -251,17 +257,20 @@ pub(crate) fn debrief(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) 
     Ok(())
 }
 pub(crate) fn glide_map(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief) {
+    let Some(glide) = &d.glide else {
+        return;
+    };
     crate::map::emergency::show(ui, s, d);
     ui.label("Reachable at failure • terrain candidates are unverified surfaces; inspect visually.");
     let mut open_index = 0;
-    for field in &d.glide.fields {
+    for field in &glide.fields {
         let prefix = if field.airport {
             String::new()
         } else {
             open_index += 1;
             format!("F{open_index} · ")
         };
-        ui.label(format!("{prefix}{}", field.description(d.glide.origin_m)));
+        ui.label(format!("{prefix}{}", field.description(glide.origin_m)));
     }
     ui.label("Terrain screening: ≥1,969 ft long × 197 ft wide, local slope ≤3%, sampled along the wind. Land cover and obstacles are not verified.");
 }
