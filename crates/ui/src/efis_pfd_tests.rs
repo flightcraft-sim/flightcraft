@@ -1955,3 +1955,57 @@ fn text_in_the_pfd_boxes_fits_the_box() {
         }
     }
 }
+
+/// Altitude tape numbers are masked under the selected-altitude and minimums bugs and the pointer
+/// box, and stay inside the tape window (full and split), wherever the bugs sit.
+#[test]
+fn altitude_tape_numbers_stay_clear_of_the_bugs_the_pointer_and_the_window_edges() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    for mode in [PfdMode::Full, PfdMode::Split] {
+        let geometry = MODEL.pfd_geometry(mode);
+        let tape = geometry.rect(E::AltitudeTape);
+        let pointer = geometry.rect(E::AltitudePointer);
+        let mid = tape[1] + tape[3] * 0.5;
+        for altitude in [1000., 1060., 4980., 5000., 5040.] {
+            for (selected, minimums) in [(5500., 4700.), (5100., 5300.), (5300., 4720.), (900., 9000.)] {
+                let mut g = flying(&s);
+                g.air_data.altitude_msl_m = altitude * 0.3048;
+                g.settings.selected_altitude_m = selected * 0.3048;
+                g.settings.minimums_m = Some(minimums * 0.3048);
+                let d = touch_pfd::panel(&g, input, &geometry, options());
+                let numbers: Vec<_> = labels(&d)
+                    .into_iter()
+                    .filter(|(t, at, size, _)| {
+                        inside(tape, *at)
+                            && !inside(pointer, *at)
+                            && t.chars().all(|c| c.is_ascii_digit() || c == ',')
+                            && (*size - 24.).abs() < 0.5
+                    })
+                    .collect();
+                for (text, at, size, _) in numbers {
+                    let (top, bottom) = (f64::from(at[1] - size * 0.5), f64::from(at[1] + size * 0.5));
+                    assert!(
+                        top >= tape[1] && bottom <= tape[1] + tape[3],
+                        "{mode:?}: {text} leaves the tape window"
+                    );
+                    // No number within the pointer box's band.
+                    assert!(
+                        bottom < pointer[1] || top > pointer[1] + pointer[3],
+                        "{mode:?} {altitude}: {text} is under the pointer"
+                    );
+                    // The bugs' y positions are those of the numbers they stand for.
+                    for bug in [selected, minimums] {
+                        let by = mid - (bug - altitude) * 0.43;
+                        let half = if bug == selected { 11. } else { 8. };
+                        let by = by.clamp(tape[1] + 8., tape[1] + tape[3] - 8.);
+                        assert!(
+                            bottom < by - half || top > by + half,
+                            "{mode:?} {altitude} sel {selected} min {minimums}: {text} sits under a bug at {by}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

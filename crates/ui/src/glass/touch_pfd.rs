@@ -627,6 +627,15 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
     let mid = y + h * 0.5;
     let at = |ft: f64| mid - (ft - alt) as f32 * ALT_PX_PER_FT;
     let base = (alt / 20.).floor() as i64;
+    // The tape numbers are masked where a bug sits: the selected-altitude bug and the minimums bug
+    // (both pinned to the tape's edge when off the scale). A number must also fit inside the window.
+    let selected = s.settings.selected_altitude_m * FEET;
+    let by = at(selected).clamp(y + 8., y + h - 8.);
+    let mut masks = vec![(by, 11.)];
+    if let Some(minimums) = s.settings.minimums_m {
+        masks.push((at(minimums * FEET).clamp(y + 8., y + h - 8.), 8.));
+    }
+    let number_half = 13. * t.tape;
     for i in (base - 16)..=(base + 16) {
         let ft = (i * 20) as f64;
         let ty = at(ft);
@@ -641,19 +650,20 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
             Ink::TapeText,
             2.,
         );
-        if major && (ty - mid).abs() > 26. {
+        let clear = ty - number_half >= y
+            && ty + number_half <= y + h
+            && masks.iter().all(|(m, half)| (ty - m).abs() > half + number_half);
+        if major && (ty - mid).abs() > 32. && clear {
             label(
                 d,
-                [x + w * 0.58, ty],
+                [x + w * 0.55, ty],
                 crate::instruments::formatting::integer(ft),
-                26. * t.tape,
+                24. * t.tape,
                 Ink::TapeText,
             );
         }
     }
     // Selected altitude bug on the tape's left edge, pinned to the nearest edge when off the scale.
-    let selected = s.settings.selected_altitude_m * FEET;
-    let by = at(selected).clamp(y + 8., y + h - 8.);
     polygon(
         d,
         vec![
