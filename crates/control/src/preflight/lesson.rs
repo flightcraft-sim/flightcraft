@@ -17,6 +17,9 @@ pub struct PreflightLesson {
     pub airport: String,
     /// Runway end the aircraft is parked at.
     pub runway_end: String,
+    /// Where the aircraft stands. Default: the ramp beside the runway.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spot: Option<crate::ParkingSpot>,
     /// Covers, ropes, and chocks are fitted when the lesson starts.
     pub covers_on: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -85,13 +88,12 @@ impl Session {
             "aircraft.load",
             serde_json::json!({"source":{"kind":"installed","id":lesson.aircraft},"reset":true}),
         )?;
-        self.execute(
-            "sim.reset",
-            serde_json::json!({
-                "world": lesson.region,
-                "start": {"kind":"airport_runway","airport":lesson.airport,"end":lesson.runway_end},
-            }),
-        )?;
+        self.reset_at_place(&crate::LessonPlace {
+            region: lesson.region.clone(),
+            airport: lesson.airport.clone(),
+            runway_end: lesson.runway_end.clone(),
+            spot: lesson.spot.unwrap_or(crate::ParkingSpot::Ramp),
+        })?;
         Ok(())
     }
 }

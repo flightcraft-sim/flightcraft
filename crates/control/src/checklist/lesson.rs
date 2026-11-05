@@ -25,6 +25,11 @@ pub struct ProcedureSetup {
     /// Installed aircraft pack id.
     pub aircraft: String,
     pub start: GroundStart,
+    /// Where the lesson happens: a region and an airport in it. Omitted means the default flat
+    /// training world. When the region is not installed the lesson still starts, on the default
+    /// training field, with a notice in the debrief.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub place: Option<LessonPlace>,
     /// Oil temperature in degrees Celsius for an idling start; omitted means warm (70).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oil_temperature_c: Option<f64>,
@@ -36,6 +41,31 @@ pub struct ProcedureSetup {
 }
 fn default_temperature() -> f64 {
     15.
+}
+/// A parked starting place at an airport of an installed region.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LessonPlace {
+    /// Installed region id, for example `eastern-pa`.
+    pub region: String,
+    /// Airport identifier in that region, for example `1N7`.
+    pub airport: String,
+    /// The runway end the spot belongs to, for example `07`.
+    pub runway_end: String,
+    pub spot: ParkingSpot,
+}
+/// Where on the airport the aircraft stands. The region data carries runways, not aprons or
+/// taxiways, so spots are placed from the real runway geometry (threshold and heading), not
+/// surveyed: close enough to practise on, not a chart of the airport.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ParkingSpot {
+    /// Parked on the apron beside the runway, facing it (cold and dark, pre-flight, securing).
+    Ramp,
+    /// The run-up area beside the runway end, heading along the runway.
+    RunUpArea,
+    /// Holding short of the runway end, facing the runway.
+    HoldShort,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -102,6 +132,9 @@ pub struct ProcedureDebrief {
     pub lesson: Option<String>,
     pub title: Option<String>,
     pub briefing: String,
+    /// Set when the lesson could not start where it asks (the region is not installed).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
     pub complete: bool,
     pub started_s: f64,
     pub tasks: Vec<ProcedureTaskGrade>,
@@ -318,7 +351,7 @@ impl Command for ProcedureLessonStart {
                 ));
             }
         }
-        s.execute("sim.reset", serde_json::json!({"start":{"kind":"runway"}}))?;
+        let notice = s.reset_for_lesson(setup.place.as_ref())?;
         s.sim_mut().set_systems(SystemSetting::Environment {
             temperature_c: setup.temperature_c,
             relative_humidity: 0.5,
@@ -329,6 +362,7 @@ impl Command for ProcedureLessonStart {
                 lesson: Some(doc.id.clone()),
                 title: Some(doc.title.clone()),
                 briefing: doc.briefing.clone(),
+                notice,
                 complete: false,
                 started_s: s.sim.state().time_s,
                 tasks: doc
@@ -392,7 +426,74 @@ impl Command for ProcedureLessonFinish {
     }
 }
 
+/// Parking offsets from the runway threshold: along the runway and to its right, in metres, and
+/// the heading change from the runway heading in radians.
+fn spot_offsets(spot: ParkingSpot) -> (f64, f64, f64) {
+    match spot {
+        ParkingSpot::Ramp => (300., 70., -core::f64::consts::FRAC_PI_2),
+        ParkingSpot::RunUpArea => (-30., 40., 0.),
+        ParkingSpot::HoldShort => (60., 45., -core::f64::consts::FRAC_PI_2),
+    }
+}
+
 impl Session {
+    /// Resets the flight to the lesson's place: a parked spot at its airport, or the default
+    /// training world when none is named or its region is not installed (the returned notice
+    /// says so).
+    fn reset_for_lesson(&mut self, place: Option<&LessonPlace>) -> Result<Option<String>, CommandError> {
+        let fallback = |s: &mut Session, notice: Option<String>| {
+            s.execute("sim.reset", serde_json::json!({"start":{"kind":"runway"}}))?;
+            Ok(notice)
+        };
+        let Some(place) = place else {
+            return fallback(self, None);
+        };
+        if !self.regions.contains_key(&place.region) {
+            let notice = format!(
+                "The {} region is not installed, so this lesson starts on the default training field instead of at {}.",
+                place.region, place.airport
+            );
+            return fallback(self, Some(notice));
+        }
+        self.reset_at_place(place)?;
+        Ok(None)
+    }
+
+    /// Resets the flight, parked at the place's spot, in its installed region.
+    pub(crate) fn reset_at_place(&mut self, place: &LessonPlace) -> Result<(), CommandError> {
+        let world = self.resolve_world(flightcraft_world::WorldChoice::Region(place.region.clone()))?;
+        let start = crate::regions::runway_start(
+            &world,
+            crate::regions::AirportRunwayStart {
+                airport: place.airport.clone(),
+                end: place.runway_end.clone(),
+            },
+        )?;
+        let flightcraft_sim::Start::RunwayAt {
+            threshold_ned_m,
+            heading_rad,
+        } = start
+        else {
+            return Err(CommandError::Failed("runway start expected".into()));
+        };
+        let (along, right, turn) = spot_offsets(place.spot);
+        let (sin, cos) = libm::sincos(heading_rad);
+        let north = threshold_ned_m[0] + along * cos - right * sin;
+        let east = threshold_ned_m[1] + along * sin + right * cos;
+        let reference =
+            flightcraft_sim::magnetic::reference_at(&world, [north, east, 0.], self.simulation_date())
+                .map_err(flightcraft_sim::SimError::from)?;
+        let heading = reference.grid_to_magnetic((heading_rad + turn).rem_euclid(core::f64::consts::TAU));
+        self.execute(
+            "sim.reset",
+            serde_json::json!({
+                "world": place.region,
+                "start": {"kind":"parked","north_m":north,"east_m":east,"heading_rad":heading},
+            }),
+        )?;
+        Ok(())
+    }
+
     /// Brings the aircraft to the lesson's starting state and seeds its fault.
     fn prepare_ground_state(&mut self, setup: &ProcedureSetup) -> Result<(), CommandError> {
         let lanes = self.sim.systems().modern.as_ref().is_some_and(|m| m.electronic);

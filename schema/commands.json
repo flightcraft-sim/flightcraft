@@ -20193,6 +20193,26 @@
           ],
           "type": "string"
         },
+        "ParkingSpot": {
+          "description": "Where on the airport the aircraft stands. The region data carries runways, not aprons or\ntaxiways, so spots are placed from the real runway geometry (threshold and heading), not\nsurveyed: close enough to practise on, not a chart of the airport.",
+          "oneOf": [
+            {
+              "const": "ramp",
+              "description": "Parked on the apron beside the runway, facing it (cold and dark, pre-flight, securing).",
+              "type": "string"
+            },
+            {
+              "const": "run_up_area",
+              "description": "The run-up area beside the runway end, heading along the runway.",
+              "type": "string"
+            },
+            {
+              "const": "hold_short",
+              "description": "Holding short of the runway end, facing the runway.",
+              "type": "string"
+            }
+          ]
+        },
         "PreflightLesson": {
           "additionalProperties": false,
           "properties": {
@@ -20247,6 +20267,17 @@
               "format": "uint64",
               "minimum": 0,
               "type": "integer"
+            },
+            "spot": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ParkingSpot"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the aircraft stands. Default: the ramp beside the runway."
             },
             "title": {
               "type": "string"
@@ -23329,6 +23360,54 @@
           ],
           "type": "string"
         },
+        "LessonPlace": {
+          "additionalProperties": false,
+          "description": "A parked starting place at an airport of an installed region.",
+          "properties": {
+            "airport": {
+              "description": "Airport identifier in that region, for example `1N7`.",
+              "type": "string"
+            },
+            "region": {
+              "description": "Installed region id, for example `eastern-pa`.",
+              "type": "string"
+            },
+            "runway_end": {
+              "description": "The runway end the spot belongs to, for example `07`.",
+              "type": "string"
+            },
+            "spot": {
+              "$ref": "#/$defs/ParkingSpot"
+            }
+          },
+          "required": [
+            "region",
+            "airport",
+            "runway_end",
+            "spot"
+          ],
+          "type": "object"
+        },
+        "ParkingSpot": {
+          "description": "Where on the airport the aircraft stands. The region data carries runways, not aprons or\ntaxiways, so spots are placed from the real runway geometry (threshold and heading), not\nsurveyed: close enough to practise on, not a chart of the airport.",
+          "oneOf": [
+            {
+              "const": "ramp",
+              "description": "Parked on the apron beside the runway, facing it (cold and dark, pre-flight, securing).",
+              "type": "string"
+            },
+            {
+              "const": "run_up_area",
+              "description": "The run-up area beside the runway end, heading along the runway.",
+              "type": "string"
+            },
+            {
+              "const": "hold_short",
+              "description": "Holding short of the runway end, facing the runway.",
+              "type": "string"
+            }
+          ]
+        },
         "ProcedureFault": {
           "oneOf": [
             {
@@ -23476,6 +23555,17 @@
                 "number",
                 "null"
               ]
+            },
+            "place": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LessonPlace"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the lesson happens: a region and an airport in it. Omitted means the default flat\ntraining world. When the region is not installed the lesson still starts, on the default\ntraining field, with a notice in the debrief."
             },
             "start": {
               "$ref": "#/$defs/GroundStart"
@@ -23584,6 +23674,54 @@
           ],
           "type": "string"
         },
+        "LessonPlace": {
+          "additionalProperties": false,
+          "description": "A parked starting place at an airport of an installed region.",
+          "properties": {
+            "airport": {
+              "description": "Airport identifier in that region, for example `1N7`.",
+              "type": "string"
+            },
+            "region": {
+              "description": "Installed region id, for example `eastern-pa`.",
+              "type": "string"
+            },
+            "runway_end": {
+              "description": "The runway end the spot belongs to, for example `07`.",
+              "type": "string"
+            },
+            "spot": {
+              "$ref": "#/$defs/ParkingSpot"
+            }
+          },
+          "required": [
+            "region",
+            "airport",
+            "runway_end",
+            "spot"
+          ],
+          "type": "object"
+        },
+        "ParkingSpot": {
+          "description": "Where on the airport the aircraft stands. The region data carries runways, not aprons or\ntaxiways, so spots are placed from the real runway geometry (threshold and heading), not\nsurveyed: close enough to practise on, not a chart of the airport.",
+          "oneOf": [
+            {
+              "const": "ramp",
+              "description": "Parked on the apron beside the runway, facing it (cold and dark, pre-flight, securing).",
+              "type": "string"
+            },
+            {
+              "const": "run_up_area",
+              "description": "The run-up area beside the runway end, heading along the runway.",
+              "type": "string"
+            },
+            {
+              "const": "hold_short",
+              "description": "Holding short of the runway end, facing the runway.",
+              "type": "string"
+            }
+          ]
+        },
         "ProcedureFault": {
           "oneOf": [
             {
@@ -23731,6 +23869,17 @@
                 "number",
                 "null"
               ]
+            },
+            "place": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LessonPlace"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the lesson happens: a region and an airport in it. Omitted means the default flat\ntraining world. When the region is not installed the lesson still starts, on the default\ntraining field, with a notice in the debrief."
             },
             "start": {
               "$ref": "#/$defs/GroundStart"
@@ -24071,6 +24220,13 @@
             "null"
           ]
         },
+        "notice": {
+          "description": "Set when the lesson could not start where it asks (the region is not installed).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "run_up": {
           "$ref": "#/$defs/RunupReport"
         },
@@ -24362,6 +24518,13 @@
             "null"
           ]
         },
+        "notice": {
+          "description": "Set when the lesson could not start where it asks (the region is not installed).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "run_up": {
           "$ref": "#/$defs/RunupReport"
         },
@@ -24648,6 +24811,13 @@
           "type": "boolean"
         },
         "lesson": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notice": {
+          "description": "Set when the lesson could not start where it asks (the region is not installed).",
           "type": [
             "string",
             "null"

@@ -150,6 +150,14 @@ through with no out-of-sequence action, no limit warning, no expired timer, and 
 A `stop_on_fault` task passes only if the student stops before carrying on past the defect.
 Every reason in the debrief carries its POH reference.
 
+`setup.place` (`region`, `airport`, `runway_end`, `spot`) says where the lesson happens. Every
+Sling lesson uses eastern-pa, 1N7, runway 07: `ramp` (before start, shutdown, and the pre-flight
+lessons, which may also set `spot`) or `run_up_area` (the run-up lessons); `hold_short` is also
+available. The region has runways, not aprons or taxiways, so a spot is placed from the real
+runway threshold and heading, not surveyed. When the region is not installed (for example the
+web build) the lesson starts on the default training field and the debrief's `notice` says so;
+`preflight.begin` with a lesson refuses with "lesson region is not installed".
+
 | Lesson | Tasks |
 |---|---|
 | Sling: before start, start, and warm-up | 4.5.1, 4.5.2 with 9.4.12, 4.5.3 |

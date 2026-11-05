@@ -260,6 +260,68 @@ fn invalid_procedure_data_is_rejected() {
     );
 }
 
+fn region_session() -> Option<Session> {
+    let mut s = session();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/terrain/eastern-pa");
+    // The region tiles are fetched, not checked in; without them only the fallback test runs.
+    let world = read_region(&root).ok()?;
+    s.install_region(world).unwrap();
+    Some(s)
+}
+
+#[test]
+fn every_sling_lesson_starts_parked_at_1n7_in_eastern_pa() {
+    let Some(mut s) = region_session() else {
+        eprintln!("eastern-pa tiles not installed: skipped");
+        return;
+    };
+    let lessons = run(&mut s, "procedure_lesson.list", json!({}));
+    for l in lessons.as_array().unwrap() {
+        let place = &l["setup"]["place"];
+        assert_eq!(place["region"], "eastern-pa", "{}", l["id"]);
+        assert_eq!(place["airport"], "1N7", "{}", l["id"]);
+        let mut s = region_session().unwrap();
+        let d = run(&mut s, "procedure_lesson.start", json!({"id": l["id"]}));
+        assert!(d["notice"].is_null(), "{}: {}", l["id"], d["notice"]);
+        let world = s.sim().world().clone();
+        let region = world.region().expect("the eastern-pa region is the active world");
+        assert_eq!(region.id, "eastern-pa");
+        let airport = world
+            .airports()
+            .unwrap()
+            .airports
+            .iter()
+            .find(|a| a.ident == "1N7")
+            .unwrap()
+            .clone();
+        let projection = flightcraft_world::geo::LocalProjection::new(
+            region.origin.latitude_deg,
+            region.origin.longitude_deg,
+        )
+        .unwrap();
+        let [n, e] = projection
+            .project(airport.latitude_deg, airport.longitude_deg)
+            .unwrap();
+        let p = s.sim().state().position_m;
+        let distance = ((p[0] - n).powi(2) + (p[1] - e).powi(2)).sqrt();
+        assert!(distance < 700., "{} starts {distance:.0} m from 1N7", l["id"]);
+        let r = s.sim().readout();
+        assert!(r.on_ground && r.ground_speed_mps < 0.5, "{} is parked", l["id"]);
+    }
+}
+
+#[test]
+fn a_missing_region_falls_back_to_the_training_field_with_a_notice() {
+    let mut s = session();
+    let d = run(&mut s, "procedure_lesson.start", json!({"id": "sling-runup"}));
+    let notice = d["notice"].as_str().expect("a notice");
+    assert!(
+        notice.contains("eastern-pa") && notice.contains("1N7"),
+        "{notice}"
+    );
+    assert!(s.sim().world().region().is_none());
+}
+
 #[test]
 fn library_lessons_load_deterministically_and_match_the_pack() {
     let mut s = session();

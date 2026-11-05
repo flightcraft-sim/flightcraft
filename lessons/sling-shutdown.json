@@ -6,6 +6,7 @@
   "setup": {
     "aircraft": "sling2",
     "start": "engine_running_after_flight",
+    "place": {"region": "eastern-pa", "airport": "1N7", "runway_end": "07", "spot": "ramp"},
     "oil_temperature_c": 85
   },
   "tasks": [

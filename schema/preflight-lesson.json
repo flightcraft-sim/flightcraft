@@ -55,6 +55,17 @@
       "format": "uint64",
       "minimum": 0
     },
+    "spot": {
+      "description": "Where the aircraft stands. Default: the ramp beside the runway.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ParkingSpot"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "title": {
       "type": "string"
     },
@@ -93,6 +104,26 @@
         "flap_hardware_missing",
         "damaged_tyre",
         "wheel_fairing_crack"
+      ]
+    },
+    "ParkingSpot": {
+      "description": "Where on the airport the aircraft stands. The region data carries runways, not aprons or\ntaxiways, so spots are placed from the real runway geometry (threshold and heading), not\nsurveyed: close enough to practise on, not a chart of the airport.",
+      "oneOf": [
+        {
+          "description": "Parked on the apron beside the runway, facing it (cold and dark, pre-flight, securing).",
+          "type": "string",
+          "const": "ramp"
+        },
+        {
+          "description": "The run-up area beside the runway end, heading along the runway.",
+          "type": "string",
+          "const": "run_up_area"
+        },
+        {
+          "description": "Holding short of the runway end, facing the runway.",
+          "type": "string",
+          "const": "hold_short"
+        }
       ]
     },
     "SeedSpec": {
