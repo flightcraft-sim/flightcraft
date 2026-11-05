@@ -427,7 +427,7 @@ never enters the state hash. Pure logic: `sim::avionics::glass_aids::GMeterTrack
 
 ### Vspeed bugs
 
-The airspeed tape draws a letter right of the tape at each enabled Vspeed: **R** (Vr), **X** (Vx), **Y** (Vy),
+The airspeed tape draws a boxed letter inside its right edge (clear of the G meter, CAS window, and flap and trim scales beside it) at each enabled Vspeed: **R** (Vr), **X** (Vx), **Y** (Vy),
 **G** (Vg, best glide), and **A** (Vapp, approach). MENU on a full-screen PFD, then **Vspeed bugs**, opens the
 configuration page: one row per bug, touching the row turns it ON or OFF, and **Set** opens a speed keypad
 (20 to 400 kt; each keypad also offers **Pack Default**). All five start on, at the aircraft pack's speed:

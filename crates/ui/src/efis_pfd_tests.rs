@@ -644,7 +644,9 @@ fn the_airspeed_tape_draws_the_enabled_vspeed_bugs_at_their_speeds() {
         labels(&d)
             .into_iter()
             .filter(|(t, at, ..)| {
-                ["R", "X", "Y", "G", "A"].contains(&t.as_str()) && at[0] > (tape[0] + tape[2]) as f32
+                ["R", "X", "Y", "G", "A"].contains(&t.as_str())
+                    && at[0] > (tape[0] + tape[2] - 30.) as f32
+                    && at[0] < (tape[0] + tape[2]) as f32
             })
             .map(|(t, at, ..)| (t, at[1]))
             .collect::<Vec<_>>()
@@ -685,7 +687,9 @@ fn the_tape_draws_the_aircraft_packs_speeds_by_default() {
     let letters: Vec<_> = labels(&d)
         .into_iter()
         .filter(|(t, at, ..)| {
-            ["R", "X", "Y", "G", "A"].contains(&t.as_str()) && at[0] > (tape[0] + tape[2]) as f32
+            ["R", "X", "Y", "G", "A"].contains(&t.as_str())
+                && at[0] > (tape[0] + tape[2] - 30.) as f32
+                && at[0] < (tape[0] + tape[2]) as f32
         })
         .collect();
     let y_of = |l: &str| letters.iter().find(|(t, ..)| t == l).map(|(_, at, ..)| at[1]);
@@ -1670,4 +1674,150 @@ fn render_efis_closeups() {
     })
     .unwrap();
     image.save(out.join("sling-left-pfd-cas.png")).unwrap();
+}
+
+/// Renders one touch display of `s` at `size` (the bezel is 272 x 195, so 1632 x 1170 draws the
+/// 1280 x 768 screen at about 1.08x) with `state` as its glass state. Reusable for any display model
+/// test that needs to see the real painter's output: the same path as the application, no GPU.
+pub(crate) fn render_display(
+    s: &mut Session,
+    state: &GlassState,
+    id: &str,
+    size: [u32; 2],
+) -> image::RgbaImage {
+    let config = s.aircraft_configuration().unwrap().clone();
+    let owned_skins: Vec<SkinContents> = s.skins().cloned().collect();
+    let skins: Vec<&SkinContents> = owned_skins.iter().collect();
+    let mut panel_config = config.panel.clone();
+    panel_config.equipment = Some(isolated(s, id));
+    let mut panel = InstrumentPanel::default();
+    crate::panel_preview::rasterize(size[0], size[1], |ui| {
+        panel
+            .show(
+                ui,
+                &panel_config,
+                InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+                    .with_pilot(s.sim().controls())
+                    .with_aircraft(&config)
+                    .with_skins(&skins)
+                    .with_glass(state)
+                    .with_autopilot(s.sim().installed_autopilot()),
+                s.flight_generation(),
+            )
+            .unwrap();
+        panel.show_shared_hosts(ui, s);
+    })
+    .unwrap()
+}
+
+/// Writes full-resolution captures of the recent touch features to `FLIGHTCRAFT_SHOTS_DIR`
+/// (default `out/g3x-verify`): above minimums, in the minimums band, and a split screen on the CAS
+/// message page.
+#[test]
+#[ignore = "writes full-resolution PFD previews"]
+fn render_touch_feature_previews() {
+    use flightcraft_control::{ClockReadout, DataBarField, GMeterReadout};
+    use flightcraft_sim::avionics::glass::BearingPointer as B;
+    let out = std::env::var_os("FLIGHTCRAFT_SHOTS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../out/g3x-verify"));
+    std::fs::create_dir_all(&out).unwrap();
+    let mut s = session();
+    let size = [1632, 1170];
+    // Real faults give the CAS window its messages (it reads the aircraft's annunciations).
+    for kind in ["alternator", "door_open", "engine_fire", "radio_failure"] {
+        s.execute("failure.set", json!({"failure":{"kind":kind}}))
+            .unwrap();
+    }
+    s.sim_mut()
+        .set_systems(flightcraft_sim::systems::SystemSetting::Equipment {
+            setting: flightcraft_sim::modern::ModernSetting::ParachutePin { inserted: false },
+        })
+        .unwrap();
+    s.execute("sim.step", json!({"steps":240})).unwrap();
+    let mut g = flying(&s);
+    g.gps.bearing_rad = 300f64.to_radians();
+    g.settings.data_bar_field = DataBarField::Timer;
+    g.clock = ClockReadout {
+        seconds: 12. * 3600. + 34. * 60. + 56.,
+        label: "UTC".into(),
+        timer_s: 754.,
+        timer_running: true,
+        timer_expired: false,
+        timer_down: false,
+    };
+    g.g_meter = GMeterReadout {
+        shown: true,
+        current_g: 1.04,
+        min_g: -0.3,
+        max_g: 2.55,
+    };
+    g.settings.bearing_pointer = B::Gps;
+    g.settings.bearing_pointer2 = B::Gps;
+    g.vnav = Some(vnav(1.5, false, Some(-600.)));
+    let entry = |kt: f64| flightcraft_control::VspeedEntry {
+        enabled: true,
+        speed_kt: Some(kt),
+    };
+    g.settings.vspeeds.r = entry(155.);
+    g.settings.vspeeds.x = entry(143.);
+    g.settings.vspeeds.y = entry(147.);
+    g.settings.vspeeds.g = entry(133.);
+    g.settings.vspeeds.app = entry(128.);
+    g.settings.minimums_m = Some(1000. * 0.3048);
+    g.air_data.altitude_msl_m = 1500. * 0.3048;
+    render_display(&mut s, &g, "left_display", size)
+        .save(out.join("pfd-above-minimums.png"))
+        .unwrap();
+    g.air_data.altitude_msl_m = 1060. * 0.3048;
+    render_display(&mut s, &g, "left_display", size)
+        .save(out.join("pfd-in-minimums-band.png"))
+        .unwrap();
+    g.air_data.altitude_msl_m = 5000. * 0.3048;
+    set(&mut s, "left_display", json!({"kind":"layout","layout":"split"}));
+    set(&mut s, "left_display", json!({"kind":"mfd_page","page":"cas"}));
+    g.touch = s.glass_state().touch;
+    render_display(&mut s, &g, "left_display", size)
+        .save(out.join("split-cas-list.png"))
+        .unwrap();
+}
+
+#[test]
+fn vspeed_bugs_stay_on_the_tape_clear_of_the_g_meter_cas_window_and_flap_and_trim_scales() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let tape = geometry.rect(E::AirspeedTape);
+    let mut g = flying(&s);
+    g.g_meter.shown = true;
+    let all = |kt| flightcraft_control::VspeedEntry {
+        enabled: true,
+        speed_kt: Some(kt),
+    };
+    // Fly at 150 kt and put a bug at every height of the tape, one at a time.
+    for kt in (112..=188).step_by(2) {
+        g.settings.vspeeds.r = all(f64::from(kt));
+        for other in [
+            &mut g.settings.vspeeds.x,
+            &mut g.settings.vspeeds.y,
+            &mut g.settings.vspeeds.g,
+            &mut g.settings.vspeeds.app,
+        ] {
+            other.enabled = false;
+        }
+        let d = touch_pfd::panel(&g, input, &geometry, options());
+        let Some((_, at, ..)) = labels(&d).into_iter().find(|(t, ..)| t == "R") else {
+            continue;
+        };
+        assert!(
+            at[0] >= tape[0] as f32 && at[0] <= (tape[0] + tape[2]) as f32,
+            "{kt} kt: the bug letter is on the tape"
+        );
+        for other in [E::GMeter, E::CasWindow, E::FlapIndicator, E::TrimIndicator] {
+            assert!(
+                !inside(geometry.rect(other), at),
+                "{kt} kt: the bug sits in {other:?}"
+            );
+        }
+    }
 }

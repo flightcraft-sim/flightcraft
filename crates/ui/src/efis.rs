@@ -663,11 +663,21 @@ pub(crate) fn chrome(
         ui.painter().rect_filled(bar, 0., crate::theme::PAGE_BAR);
         // Touching the page name opens the Select Page menu.
         let name = Rect::from_min_size(bar.min, Vec2::new(bar.width() * 0.3, bar.height()));
-        ui.painter().text(
-            name.left_center() + Vec2::new(4., 0.),
-            Align2::LEFT_CENTER,
-            page.label(),
-            style.font(bar.height() * 0.5),
+        // A long name ("CAS messages") shrinks to stay inside its third of the bar, clear of the tabs.
+        let mut size = bar.height() * 0.5;
+        let mut galley = ui
+            .painter()
+            .layout_no_wrap(page.label().into(), style.font(size), style.key_text);
+        let room = (name.width() - 14.).max(1.);
+        if galley.size().x > room {
+            size *= room / galley.size().x;
+            galley = ui
+                .painter()
+                .layout_no_wrap(page.label().into(), style.font(size), style.key_text);
+        }
+        ui.painter().galley(
+            name.left_center() + Vec2::new(4., -galley.size().y * 0.5),
+            galley,
             style.key_text,
         );
         if d.overlay == Overlay::None && hit(ui, name, "page-name") {

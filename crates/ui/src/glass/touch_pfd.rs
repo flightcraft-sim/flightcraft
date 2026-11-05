@@ -564,7 +564,8 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
         band(v.vno_mps, v.vne_mps, Ink::Yellow, d);
         band(v.vne_mps, v.vne_mps + 30., Ink::Red, d);
     }
-    // Speed reference bugs right of the tape: the enabled ones of Vr, Vx, Vy, Vg, and Vapp, at the
+    // Speed reference bugs inside the tape's right edge (the space beside it belongs to the G meter,
+    // the CAS window, and the flap and trim scales): the enabled ones of Vr, Vx, Vy, Vg, and Vapp, at the
     // pilot's speed or the aircraft pack's. A bug off the scale is not drawn.
     use flightcraft_control::VspeedBug;
     for bug in VspeedBug::ALL {
@@ -578,7 +579,8 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
         if let Some(kt) = s.settings.vspeeds.shown_kt(bug, pack) {
             let ry = at(kt);
             if ry > y + 6. && ry < y + h - 6. {
-                label(d, [x + w + 14., ry], bug.letter(), 22. * t.tape, Ink::Cyan);
+                bordered(d, [x + w - 29., ry - 11., 18., 22.], Ink::BoxFill, Ink::Cyan);
+                label(d, [x + w - 20., ry], bug.letter(), 20. * t.tape, Ink::Cyan);
             }
         }
     }
@@ -691,7 +693,7 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
             vec![[vx - 9., dy], [vx, dy - 11.], [vx + 9., dy], [vx, dy + 11.]],
             ink,
         );
-        label(d, [vx, y - 9.], "VNAV", 15. * t.tape, ink);
+        label(d, [vx - 8., y - 9.], "VNAV", 15. * t.tape, ink);
     }
     // Barometric minimums bug: an amber marker on the tape's left edge, pinned when off the scale.
     if let Some(minimums) = s.settings.minimums_m {
