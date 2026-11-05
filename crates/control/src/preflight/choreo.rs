@@ -482,6 +482,99 @@ fn along(points: &[[f32; 2]], d: f32) -> ([f32; 2], Option<f32>) {
     (points.last().copied().unwrap_or([0., 0.]), None)
 }
 
+/// Gap left between a touching hand and the keep-out rectangle it reaches, metres.
+const TOUCH_GAP_M: f32 = 0.03;
+
+/// Where a hand touches the aircraft for a target authored inside a keep-out rectangle: the
+/// rectangle's edge on the figure's side, because the figure reaches the skin, not the middle of
+/// the part. A target outside every rectangle is returned unchanged. Without this the torso
+/// leans into the fuselage, wing or wheel fairing to bring the hand to its centre.
+fn skin_target(def: &Preflight, from: [f32; 2], target: V3) -> V3 {
+    let mut out = target;
+    for k in &def.keepouts {
+        let min = [k.min_m[0] as f32, k.min_m[1] as f32];
+        let max = [k.max_m[0] as f32, k.max_m[1] as f32];
+        let p = [out[0], out[1]];
+        if !(0..2).all(|i| p[i] > min[i] && p[i] < max[i]) {
+            continue;
+        }
+        let d = [from[0] - p[0], from[1] - p[1]];
+        // Distance along the way to the figure at which the ray leaves the rectangle.
+        let exit = (0..2)
+            .filter(|&i| d[i].abs() > 1e-6)
+            .map(|i| ((if d[i] > 0. { max[i] } else { min[i] }) - p[i]) / d[i])
+            .fold(f32::INFINITY, f32::min);
+        if exit.is_finite() {
+            let len = d[0].hypot(d[1]);
+            let t = exit + TOUCH_GAP_M / len;
+            out = [p[0] + d[0] * t, p[1] + d[1] * t, out[2]];
+        }
+    }
+    out
+}
+
+/// Forward reach of the torso, head and cap brim beyond the spine line, plus a hand's width of
+/// air, metres.
+const BODY_CLEARANCE_M: f32 = 0.35;
+/// The mannequin's pelvis sits back over its heels by this much at full crouch
+/// (`walkaround.rs`), so a crouch adds this much room.
+const CROUCH_PELVIS_SHIFT_M: f32 = -0.05;
+/// Torso length, and the forward lean `walkaround.rs` adds per unit of crouch.
+const TORSO_M: f32 = 0.5;
+const CROUCH_LEAN_RAD: f32 = 0.45;
+
+/// Distance from `from` along `heading` to the first keep-out rectangle, if any within a metre.
+fn clear_ahead(def: &Preflight, from: [f32; 2], heading: f32) -> f32 {
+    let d = [heading.cos(), heading.sin()];
+    let mut best = 1.0_f32;
+    for k in &def.keepouts {
+        let min = [k.min_m[0] as f32, k.min_m[1] as f32];
+        let max = [k.max_m[0] as f32, k.max_m[1] as f32];
+        let (mut t0, mut t1) = (0.0_f32, best);
+        let mut hit = true;
+        for i in 0..2 {
+            if d[i].abs() < 1e-6 {
+                hit &= from[i] > min[i] && from[i] < max[i];
+            } else {
+                let (a, b) = ((min[i] - from[i]) / d[i], (max[i] - from[i]) / d[i]);
+                t0 = t0.max(a.min(b));
+                t1 = t1.min(a.max(b));
+            }
+        }
+        if hit && t0 <= t1 {
+            best = best.min(t0);
+        }
+    }
+    best
+}
+
+/// Keep the torso out of the aircraft: a figure standing close to a keep-out rectangle leans
+/// only as far as its chest can go without entering it. The hand reaches the skin by arm, not by
+/// leaning the body through the structure.
+fn limit_lean(def: &Preflight, f: &mut FigureState) {
+    if f.seated {
+        return;
+    }
+    // The shoulders are about 0.2 m either side of the spine.
+    let right = [-f.heading_rad.sin(), f.heading_rad.cos()];
+    let clear = [-0.2_f32, 0., 0.2]
+        .into_iter()
+        .map(|side| {
+            let from = [
+                f.position_m[0] + right[0] * side,
+                f.position_m[1] + right[1] * side,
+            ];
+            clear_ahead(def, from, f.heading_rad)
+        })
+        .fold(f32::INFINITY, f32::min);
+    let allowed = clear - BODY_CLEARANCE_M - CROUCH_PELVIS_SHIFT_M * f.crouch;
+    let max_lean = (allowed / TORSO_M).clamp(-0.2, 1.).asin();
+    let total = f.lean_rad + CROUCH_LEAN_RAD * f.crouch;
+    if total > max_lean {
+        f.lean_rad = max_lean - CROUCH_LEAN_RAD * f.crouch;
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn act(
     ctx: &Context<'_>,
@@ -529,7 +622,7 @@ fn act(
             f.gaze_m = Some(*target);
             if *touch {
                 let hw = ramp(u, 0.3, 0.5) * (1. - ramp(u, 0.7, 0.85));
-                f.right_hand_m = hand_to(h, 1., *target, hw);
+                f.right_hand_m = hand_to(h, 1., skin_target(ctx.def, pos2, *target), hw);
                 if hw > 0.5 {
                     f.action = FigureAction::Touching;
                 }
@@ -549,7 +642,7 @@ fn act(
             let mut f = base(h, FigureAction::MovingControl);
             f.lean_rad = 0.25 * rocking;
             let bob = [0., 0., 0.1 * wave * rocking * amplitude];
-            let hand = add(*target, bob);
+            let hand = add(skin_target(ctx.def, pos2, *target), bob);
             f.right_hand_m = hand_to(h, 1., hand, rocking);
             f.gaze_m = Some(*target);
             for p in parts {
@@ -607,7 +700,7 @@ fn act(
             ];
             let mut f = base(h, FigureAction::HandlingPropeller);
             f.lean_rad = 0.35 * on;
-            f.right_hand_m = hand_to(h, 1., blade, on);
+            f.right_hand_m = hand_to(h, 1., skin_target(ctx.def, pos2, blade), on);
             f.gaze_m = Some(blade);
             frame.propeller_phase = Some(angle);
             frame.item_target = Some(blade);
@@ -622,7 +715,8 @@ fn act(
             f.crouch = 0.7 * reach * (1. - lift);
             f.lean_rad = 0.35 * reach * (1. - lift);
             let rest = rest_hand(pos, h, 1., gz);
-            let hand = if carried { lerp(*at, rest, lift) } else { *at };
+            let at_hand = skin_target(ctx.def, pos2, *at);
+            let hand = if carried { lerp(at_hand, rest, lift) } else { at_hand };
             f.right_hand_m = hand_to(h, 1., hand, reach);
             f.gaze_m = Some(*at);
             if u >= 0.4 {
@@ -663,5 +757,13 @@ fn act(
             let _ = (inside, local);
             frame.figure = f;
         }
+    }
+    // Boarding passes through the door, and the fuel and oil checks reach over or into the
+    // structure on purpose.
+    if !matches!(
+        kind,
+        ActKind::Board { .. } | ActKind::Cabin { .. } | ActKind::Fuel { .. } | ActKind::Oil { .. }
+    ) {
+        limit_lean(ctx.def, &mut frame.figure);
     }
 }

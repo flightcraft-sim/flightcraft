@@ -31,6 +31,8 @@ const UPPER_ARM: f32 = 0.30;
 const FOREARM: f32 = 0.29;
 const HIP_HEIGHT: f32 = 0.92;
 const TORSO: f32 = 0.50;
+/// Most the torso leans beyond the commanded lean to bring a hand to its target, radians.
+const MAX_REACH_LEAN: f32 = 0.35;
 
 fn material(base: [f32; 4], metallic: f32, roughness: f32) -> PbrMaterial {
     PbrMaterial {
@@ -223,7 +225,7 @@ fn figure(b: &mut Builder, f: &FigureState, ground_z: f32) {
         pos + UP * 0.10
     } else {
         let hip = HIP_HEIGHT * (1. - 0.45 * crouch);
-        Vec3::new(pos.x, pos.y, ground_z) + UP * hip + fwd * (0.08 * crouch)
+        Vec3::new(pos.x, pos.y, ground_z) + UP * hip - fwd * (0.05 * crouch)
     };
     // Torso leans forward about the pelvis, as far as a hand target needs to be within reach.
     let base_lean = f.lean_rad + crouch * 0.45 + if f.seated { 0.05 } else { 0. };
@@ -239,9 +241,12 @@ fn figure(b: &mut Builder, f: &FigureState, ground_z: f32) {
             })
             .fold(0., f32::max)
     };
+    // Leaning further to bring a hand to its target is bounded: past this the arm simply stops
+    // at full reach. The session keeps the torso clear of the airframe by choosing `lean_rad`;
+    // an unbounded search would lean the body straight through the structure to touch it.
     let mut lean = base_lean;
     if !f.seated {
-        while lean < 1.2 && reach_gap(lean) > 0. {
+        while lean < (base_lean + MAX_REACH_LEAN).min(1.2) && reach_gap(lean) > 0. {
             lean += 0.05;
         }
     }

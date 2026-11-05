@@ -1625,6 +1625,8 @@ mod cockpit_preview;
 #[cfg(test)]
 mod exterior_preview;
 #[cfg(test)]
+mod walkaround_clearance;
+#[cfg(test)]
 mod walkaround_preview;
 
 /// Schema-only re-export for the repository schema generator.
