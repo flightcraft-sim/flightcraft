@@ -26,7 +26,9 @@ pub fn route(action: Action) -> Route {
         | StandbyCourseLeft | StandbyCourseRight | StandbyAltitudeUp | StandbyAltitudeDown
         | StandbyAttitudePower | StandbyHsiPower | StandbyReversion | StandbyDirectTo | GlassRangeIn
         | GlassRangeOut | GlassPage | GlassOrientation | GlassAltitudeUp | GlassAltitudeDown
-        | GlassCourseLeft | GlassCourseRight | GlassTraffic | GlassTrafficFilter => Route::Session,
+        | GlassCourseLeft | GlassCourseRight | GlassTraffic | GlassTrafficFilter | GlassIdent => {
+            Route::Session
+        }
         Pause | Reset | Camera | LookLeft | LookRight | LookUp | CrewHandover | ComPtt | IntercomPtt
         | RadioPanel | Kneeboard | RadioTransmit | PlanningMap | MapZoomIn | MapZoomOut | Search => {
             Route::Window

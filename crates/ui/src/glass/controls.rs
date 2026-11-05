@@ -18,6 +18,7 @@ impl GlassControls {
                 ("MAP", GlassPage::Map),
                 ("NRST", GlassPage::Nearest),
                 ("FPL", GlassPage::FlightPlan),
+                ("CAS", GlassPage::Cas),
             ] {
                 if ui.selectable_label(state.settings.page == page, label).clicked() {
                     commands.push(S::Page { page });
@@ -174,6 +175,12 @@ impl GlassControls {
                             });
                         }
                     }
+                    if ui
+                        .selectable_label(state.settings.ident_remaining_s > 0., "IDENT")
+                        .clicked()
+                    {
+                        commands.push(S::Ident {});
+                    }
                 });
             });
             ui.menu_button("GPS / PLAN", |ui| {
@@ -239,7 +246,8 @@ pub fn shortcut(action: Action, s: &GlassState) -> Option<S> {
             page: match s.settings.page {
                 GlassPage::Map => GlassPage::Nearest,
                 GlassPage::Nearest => GlassPage::FlightPlan,
-                GlassPage::FlightPlan => GlassPage::Map,
+                GlassPage::FlightPlan => GlassPage::Cas,
+                GlassPage::Cas => GlassPage::Map,
             },
         },
         Action::GlassOrientation => S::Orientation {
@@ -252,6 +260,7 @@ pub fn shortcut(action: Action, s: &GlassState) -> Option<S> {
         Action::GlassTraffic => S::Traffic {
             shown: !s.settings.traffic_shown,
         },
+        Action::GlassIdent => S::Ident {},
         Action::GlassTrafficFilter => S::TrafficFilter {
             filter: {
                 let all = TrafficFilter::ALL;

@@ -176,3 +176,118 @@ fn touching_the_cas_window_or_pressing_back_acknowledges_the_master_lamps() {
     assert!(!master(&s));
     assert_eq!(page(&s), before);
 }
+
+fn glass_set(s: &mut Session, setting: Value) -> Result<Value, CommandError> {
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":setting}}),
+    )
+}
+fn systems_set(s: &mut Session, setting: Value) {
+    s.execute(
+        "equipment.set",
+        json!({"setting":{"kind":"systems","setting":setting}}),
+    )
+    .unwrap();
+}
+
+#[test]
+fn the_cas_list_acknowledges_one_message_at_a_time_and_keeps_it_until_it_clears() {
+    require_region_data!();
+    let mut s = session();
+    let master = |s: &Session| s.sim().systems().modern.as_ref().unwrap().master_caution;
+    systems_set(&mut s, json!({"kind":"door","open":true}));
+    s.execute("sim.step", json!({"steps":4})).unwrap();
+    systems_set(
+        &mut s,
+        json!({"kind":"failure","component":"lane_a","failed":true}),
+    );
+    s.execute("sim.step", json!({"steps":240})).unwrap();
+    let list = s.glass_state().cas.list();
+    assert!(list.len() >= 2, "{list:?}");
+    assert!(list.iter().all(|m| !m.acknowledged));
+    assert!(s.glass_state().cas.unacknowledged && master(&s));
+    let first = list[0].text.clone();
+    glass_set(&mut s, json!({"kind":"cas_acknowledge","index":0})).unwrap();
+    let after = s.glass_state().cas.list();
+    assert_eq!(after.len(), list.len(), "an acknowledged message stays listed");
+    assert!(after.iter().find(|m| m.text == first).unwrap().acknowledged);
+    assert!(after.iter().any(|m| !m.acknowledged), "the others still flash");
+    assert!(master(&s), "the lamp stays lit while a caution is unacknowledged");
+    display(&mut s, json!({"kind":"acknowledge_cas"})).unwrap();
+    assert!(s.glass_state().cas.list().iter().all(|m| m.acknowledged));
+    assert!(!master(&s));
+    glass_set(&mut s, json!({"kind":"cas_acknowledge","index":0})).unwrap();
+    assert!(glass_set(&mut s, json!({"kind":"cas_acknowledge","index":99})).is_err());
+    // A message that clears leaves the list, and flashes again when it returns.
+    systems_set(&mut s, json!({"kind":"door","open":false}));
+    s.execute("sim.step", json!({"steps":4})).unwrap();
+    let gone = s.glass_state().cas.list();
+    assert!(gone.len() < list.len(), "{gone:?}");
+    systems_set(&mut s, json!({"kind":"door","open":true}));
+    s.execute("sim.step", json!({"steps":4})).unwrap();
+    let again = s.glass_state().cas.list();
+    assert_eq!(again.len(), list.len());
+    assert!(again.iter().any(|m| !m.acknowledged), "{again:?}");
+}
+
+#[test]
+fn the_cas_page_is_selectable_from_the_display_and_through_avionics_set() {
+    require_region_data!();
+    let mut s = session();
+    display(&mut s, json!({"kind":"mfd_page","page":"cas"})).unwrap();
+    let d = s
+        .touch_state()
+        .displays
+        .into_iter()
+        .find(|d| d.id == "right_display")
+        .unwrap();
+    assert_eq!(
+        touch_efis::effective_page(d.layout, d.mfd_page),
+        flightcraft_aero::modern::MfdPage::Cas
+    );
+    assert!(
+        touch_efis::select_page_entries(flightcraft_aero::modern::MfdPage::Map).contains(
+            &touch_efis::PageChoice::Main(flightcraft_aero::modern::MfdPage::Cas)
+        )
+    );
+    glass_set(&mut s, json!({"kind":"page","page":"cas"})).unwrap();
+    assert_eq!(s.glass_state().settings.page, GlassPage::Cas);
+    systems_set(&mut s, json!({"kind":"door","open":true}));
+    s.execute("sim.step", json!({"steps":4})).unwrap();
+    glass_set(&mut s, json!({"kind":"cas_acknowledge","index":0})).unwrap();
+    assert!(!s.sim().systems().modern.as_ref().unwrap().master_caution);
+}
+
+#[test]
+fn ident_lasts_eighteen_seconds_and_needs_the_transponder_on() {
+    require_region_data!();
+    let mut s = session();
+    let remaining = |s: &Session| s.glass_state().settings.ident_remaining_s;
+    assert_eq!(remaining(&s), 0.);
+    glass_set(
+        &mut s,
+        json!({"kind":"transponder","code":"1200","mode":"standby"}),
+    )
+    .unwrap();
+    assert!(
+        glass_set(&mut s, json!({"kind":"ident"})).is_err(),
+        "no ident in standby"
+    );
+    glass_set(&mut s, json!({"kind":"transponder","code":"4321","mode":"alt"})).unwrap();
+    glass_set(&mut s, json!({"kind":"ident"})).unwrap();
+    assert!((remaining(&s) - 18.).abs() < 0.02, "{}", remaining(&s));
+    s.execute("sim.step", json!({"steps":120 * 10})).unwrap();
+    assert!((remaining(&s) - 8.).abs() < 0.1, "{}", remaining(&s));
+    glass_set(&mut s, json!({"kind":"transponder","code":"1200","mode":"on"})).unwrap();
+    assert!(remaining(&s) > 7.);
+    s.execute("sim.step", json!({"steps":120 * 9})).unwrap();
+    assert_eq!(remaining(&s), 0.);
+    glass_set(&mut s, json!({"kind":"ident"})).unwrap();
+    glass_set(
+        &mut s,
+        json!({"kind":"transponder","code":"1200","mode":"standby"}),
+    )
+    .unwrap();
+    assert_eq!(remaining(&s), 0.);
+}

@@ -463,6 +463,12 @@ pub(crate) struct Shared {
     pub xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode,
     /// A crew alert (CAS message) is active: its window can be touched to acknowledge it.
     pub cas_active: bool,
+    /// More CAS messages than the window holds: its triangle opens the message list page.
+    pub cas_overflow: bool,
+    /// The CAS messages, for the message list page.
+    pub cas: flightcraft_control::touch_cas::CasWindow,
+    /// Seconds of transponder IDENT left; zero when not identing.
+    pub ident_remaining_s: f64,
     /// The active flight plan, for the FPL page.
     pub fpl: FplView,
 }
@@ -571,6 +577,16 @@ pub(crate) fn chrome(
             }
             // Touching the CAS window acknowledges the active alerts (pilot's guide 3.7).
             let cas = native_rect(screen, g.screen_rect(PfdElement::CasWindow));
+            if shared.cas_overflow && cas.width() > 0. {
+                // The down-pointing triangle at the window's lower right opens the message list.
+                let triangle = Rect::from_min_size(
+                    Pos2::new(cas.right() - cas.width() * 0.2, cas.bottom() - cas.height() * 0.3),
+                    Vec2::new(cas.width() * 0.2, cas.height() * 0.3),
+                );
+                if hit(ui, triangle, "cas-triangle") {
+                    act(out, id, DisplayAction::MfdPage { page: MfdPage::Cas });
+                }
+            }
             if shared.cas_active && cas.width() > 0. && hit(ui, cas, "cas-window") {
                 act(out, id, DisplayAction::AcknowledgeCas {});
             }
@@ -631,6 +647,12 @@ pub(crate) fn chrome(
                 act(out, id, DisplayAction::NearestPage { page: *p });
             }
         }
+    }
+    if page == MfdPage::Cas
+        && d.overlay == Overlay::None
+        && let Some(area) = pane_content(screen, mode, page)
+    {
+        cas_page(ui, area, style, shared, out);
     }
     if page == MfdPage::FlightPlan
         && d.overlay == Overlay::None
@@ -863,9 +885,14 @@ fn entry_panel(
         )),
         Overlay::TransponderWindow => header.push((
             format!(
-                "CODE {}    MODE {}",
+                "CODE {}    MODE {}{}",
                 shared.xpdr_code,
-                format!("{:?}", shared.xpdr_mode).to_uppercase()
+                format!("{:?}", shared.xpdr_mode).to_uppercase(),
+                if shared.ident_remaining_s > 0. {
+                    "    IDENT"
+                } else {
+                    ""
+                }
             ),
             false,
         )),
@@ -989,11 +1016,13 @@ fn entry_panel(
             Overlay::TransponderWindow => [("STBY", Mode::Standby), ("ALT", Mode::Alt), ("ON", Mode::On)]
                 .iter()
                 .map(|(l, m)| ((*l).to_owned(), shared.xpdr_mode == *m))
+                .chain([("IDENT".to_owned(), shared.ident_remaining_s > 0.)])
                 .collect(),
             _ => vec![("XFER".to_owned(), false)],
         };
         if let Some(i) = strip(ui, y, &buttons, "efis-pad-extra") {
             match d.overlay {
+                Overlay::TransponderWindow if i == 3 => out.glass.push(GlassSetting::Ident {}),
                 Overlay::TransponderWindow => {
                     let mode = [Mode::Standby, Mode::Alt, Mode::On]
                         .get(i)
@@ -1093,6 +1122,84 @@ fn entry_panel(
 
 /// The active flight plan page with touch editing (pilot's guide 6.5 and 6.6, pages 191 to 193):
 /// touch a waypoint to select it, then Activate Leg, Insert Before, Insert After, or Remove.
+/// The CAS message list page: every active message, warnings first and newest first within a
+/// severity, in the guide's colours. An unacknowledged message is highlighted and flashes; touching
+/// its row acknowledges it, and an acknowledged one stays listed until its condition clears.
+pub(crate) fn cas_page(ui: &mut egui::Ui, area: Rect, style: &Style, shared: &Shared, out: &mut Output) {
+    use flightcraft_control::touch_cas::CasSeverity;
+    ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+    let title_h = area.height() * 0.085;
+    ui.painter().text(
+        area.left_top() + Vec2::new(8., title_h * 0.5),
+        Align2::LEFT_CENTER,
+        "CAS MESSAGES",
+        style.font(title_h * 0.6),
+        style.key_text,
+    );
+    let list = Rect::from_min_max(Pos2::new(area.left(), area.top() + title_h), area.max);
+    let row_h = (area.height() * 0.085).max(8.);
+    let visible = ((list.height() / row_h).floor() as usize).max(1);
+    let messages = shared.cas.list();
+    if messages.is_empty() {
+        ui.painter().text(
+            list.center_top() + Vec2::new(0., row_h),
+            Align2::CENTER_CENTER,
+            "No active messages",
+            style.font(row_h * 0.6),
+            crate::theme::MUTED,
+        );
+    }
+    let flash_on = (ui.input(|i| i.time) * 2.).floor() as i64 % 2 == 0;
+    for (i, m) in messages.iter().enumerate().take(visible) {
+        let rect = Rect::from_min_size(
+            list.left_top() + Vec2::new(4., i as f32 * row_h),
+            Vec2::new(list.width() - 8., row_h - 2.),
+        );
+        let ink = match m.severity {
+            CasSeverity::Warning => crate::theme::FACE_RED,
+            CasSeverity::Caution => crate::theme::FACE_YELLOW,
+            CasSeverity::Advisory => crate::theme::FACE_WHITE,
+        };
+        let unacknowledged = !m.acknowledged;
+        let painter = ui.painter();
+        painter.rect(
+            rect,
+            2.,
+            if unacknowledged {
+                Color32::from_black_alpha(160)
+            } else {
+                Color32::from_black_alpha(60)
+            },
+            Stroke::new(
+                if unacknowledged { 2.0_f32 } else { 1.0_f32 },
+                if unacknowledged { ink } else { style.trim },
+            ),
+            egui::StrokeKind::Inside,
+        );
+        if !unacknowledged || flash_on {
+            painter.text(
+                rect.left_center() + Vec2::new(8., 0.),
+                Align2::LEFT_CENTER,
+                &m.text,
+                style.font(row_h * 0.55),
+                ink,
+            );
+        }
+        if unacknowledged {
+            painter.text(
+                rect.right_center() - Vec2::new(8., 0.),
+                Align2::RIGHT_CENTER,
+                "TOUCH TO ACKNOWLEDGE",
+                style.font(row_h * 0.35),
+                crate::theme::MUTED,
+            );
+            if hit(ui, rect, ("cas-row", i)) {
+                out.glass.push(GlassSetting::CasAcknowledge { index: i });
+            }
+        }
+    }
+}
+
 pub(crate) fn flight_plan_page(
     ui: &mut egui::Ui,
     area: Rect,

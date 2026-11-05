@@ -85,6 +85,11 @@ or NAV1 for both the displays and the installed autopilot. The Procedures tile e
 existing procedure/NAV controls: load CIFP procedures and transitions, activate an approach,
 select vectors, command a missed approach, sequence legs, and exit holds. Receiver power follows
 the navigator breaker when it is installed. COM audio and reception use the [radio service](radio.md).
+The optional Transponder page has STBY, ON, ALT, and IDENT keys; IDENT sends the glass setting `ident`
+through the navigator's `shared` action (rejected when the navigator has no transponder). A landscape
+touch display's transponder window has the same four keys; see [glass](glass.md#cas-message-list-and-ident).
+The glass settings `ident` and `cas_acknowledge` and the `cas` page are listed with the other `avionics.set`
+glass settings in [glass](glass.md#commands-and-controls).
 
 A navigator element can set `"audio_panel": true` to host the aircraft panel's single
 `panel.audio_panel` installation. The association belongs to that navigator installation id;

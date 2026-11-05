@@ -205,6 +205,9 @@ fn shared(rows: &[&str], cursor: usize, active: usize) -> crate::efis::Shared {
         xpdr_code: "1200".into(),
         xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode::Alt,
         cas_active: false,
+        cas_overflow: false,
+        cas: Default::default(),
+        ident_remaining_s: 0.,
         fpl: crate::efis::FplView {
             rows: rows
                 .iter()
@@ -350,4 +353,88 @@ fn touching_the_cas_window_sends_the_acknowledge_action_only_while_an_alert_is_a
             .iter()
             .any(|a| matches!(a, DisplayAction::AcknowledgeCas {}))
     );
+}
+
+#[test]
+fn the_cas_page_lists_newest_first_and_a_touched_unacknowledged_row_sends_cas_acknowledge() {
+    use flightcraft_control::GlassSetting;
+    use flightcraft_control::touch_cas::{CasMessage, CasSeverity, CasWindow};
+    let message = |text: &str, severity, acknowledged, sequence| CasMessage {
+        severity,
+        text: text.into(),
+        acknowledged,
+        sequence,
+        annunciation: Some(0),
+    };
+    let mut sh = shared(&[], 0, 0);
+    sh.cas = CasWindow {
+        messages: vec![
+            message("OLD CAUTION", CasSeverity::Caution, true, 1),
+            message("NEW CAUTION", CasSeverity::Caution, false, 2),
+            message("WARN", CasSeverity::Warning, false, 3),
+        ],
+        unacknowledged: true,
+    };
+    // Warnings first, then newest first within a severity.
+    let order: Vec<_> = sh.cas.list().into_iter().map(|m| m.text).collect();
+    assert_eq!(order, ["WARN", "NEW CAUTION", "OLD CAUTION"]);
+    let ctx = egui::Context::default();
+    crate::theme::install(&ctx);
+    let style = crate::efis::Style::built_in();
+    let area = Rect::from_min_size(egui::pos2(10., 10.), egui::vec2(600., 360.));
+    let run = |events: Vec<egui::Event>, time: f64| {
+        let mut out = crate::efis::Output::default();
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800., 480.))),
+                events,
+                time: Some(time),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default()
+                    .show(ctx, |ui| crate::efis::cas_page(ui, area, &style, &sh, &mut out));
+            },
+        );
+        out
+    };
+    let tap = |row: usize, time: f64| {
+        let at = egui::pos2(300., 10. + 360. * 0.085 + 360. * 0.085 * (row as f32 + 0.5));
+        let button = |pressed| egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        run(vec![egui::Event::PointerMoved(at)], time);
+        run(vec![button(true)], time + 0.1);
+        run(vec![button(false)], time + 0.2).glass
+    };
+    run(Vec::new(), 0.);
+    assert!(matches!(
+        tap(0, 1.).as_slice(),
+        [GlassSetting::CasAcknowledge { index: 0 }]
+    ));
+    assert!(matches!(
+        tap(1, 3.).as_slice(),
+        [GlassSetting::CasAcknowledge { index: 1 }]
+    ));
+    assert!(tap(2, 5.).is_empty(), "an acknowledged row sends nothing");
+}
+
+#[test]
+fn the_status_bar_shows_ident_only_while_the_ident_flag_is_up() {
+    assert_eq!(crate::glass::xpdr_label("4321", 12.), "4321 IDENT");
+    assert_eq!(crate::glass::xpdr_label("4321", 0.), "4321");
+}
+
+#[test]
+fn the_keyboard_ident_action_runs_the_ident_setting() {
+    use crate::keymap::Action;
+    assert!(Action::GLASS.contains(&Action::GlassIdent));
+    let s = flightcraft_control::Session::new().unwrap();
+    assert!(matches!(
+        crate::glass::shortcut(Action::GlassIdent, &s.glass_state()),
+        Some(flightcraft_control::GlassSetting::Ident {})
+    ));
 }

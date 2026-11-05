@@ -22,8 +22,33 @@ pub(super) fn draw(s: &GlassState, options: crate::instruments::DisplayOptions) 
         GlassPage::Map => map(&mut d, s),
         GlassPage::Nearest => table(&mut d, s, ListKind::Nearest, 302., 49., 1.),
         GlassPage::FlightPlan => table(&mut d, s, ListKind::FlightPlan, 302., 49., 1.),
+        GlassPage::Cas => cas_list(&mut d, s),
     }
     d
+}
+/// The crew alerting messages: warnings, cautions, advisories, newest first within each. An
+/// unacknowledged message is starred and flashes; an acknowledged one stays until it clears.
+fn cas_list(d: &mut DrawList, s: &GlassState) {
+    label(d, [302., 49.], "CAS MESSAGES", 14., Ink::Text);
+    let messages = s.cas.list();
+    if messages.is_empty() {
+        label(d, [302., 109.], "NO MESSAGES", 12., Ink::Muted);
+    }
+    for (i, m) in messages.iter().take(8).enumerate() {
+        use flightcraft_control::touch_cas::CasSeverity;
+        let ink = match m.severity {
+            CasSeverity::Warning => Ink::Red,
+            CasSeverity::Caution => Ink::Yellow,
+            CasSeverity::Advisory => Ink::White,
+        };
+        label(
+            d,
+            [302., 86. + 24. * i as f32],
+            format!("{} {}", if m.acknowledged { " " } else { "*" }, m.text),
+            12.,
+            ink,
+        );
+    }
 }
 /// The lists the MFD and the touch displays share.
 #[derive(Clone, Copy, PartialEq)]

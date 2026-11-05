@@ -92049,12 +92049,21 @@
           "type": "string"
         },
         "GlassPage": {
-          "enum": [
-            "map",
-            "nearest",
-            "flight_plan"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "nearest",
+                "flight_plan"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list.",
+              "type": "string"
+            }
+          ]
         },
         "GlassSetting": {
           "oneOf": [
@@ -92212,6 +92221,40 @@
                 "kind",
                 "code",
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Press IDENT on the transponder: the reply carries the ident flag for 18 seconds.",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Acknowledge one message of the CAS list, by its position in the list page (warnings first,\nnewest first within a severity). Acknowledging an autopilot failure message does nothing.",
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "cas_acknowledge",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
               ],
               "type": "object"
             },
@@ -92584,18 +92627,27 @@
           "type": "string"
         },
         "MfdPage": {
-          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
-          "enum": [
-            "map",
-            "waypoint",
-            "flight_plan",
-            "terrain",
-            "traffic",
-            "info",
-            "engine",
-            "nearest"
-          ],
-          "type": "string"
+          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is\npart of the knob cycle.",
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "waypoint",
+                "flight_plan",
+                "terrain",
+                "traffic",
+                "info",
+                "engine",
+                "nearest"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list, opened from the CAS window's triangle or Select Page.",
+              "type": "string"
+            }
+          ]
         },
         "ModernSetting": {
           "oneOf": [
@@ -92795,6 +92847,26 @@
               "required": [
                 "kind",
                 "severity"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Acknowledge one active annunciation (an index into the aircraft's annunciation list).",
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "acknowledge_message",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
               ],
               "type": "object"
             },
@@ -93894,18 +93966,27 @@
           ]
         },
         "MfdPage": {
-          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
-          "enum": [
-            "map",
-            "waypoint",
-            "flight_plan",
-            "terrain",
-            "traffic",
-            "info",
-            "engine",
-            "nearest"
-          ],
-          "type": "string"
+          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is\npart of the knob cycle.",
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "waypoint",
+                "flight_plan",
+                "terrain",
+                "traffic",
+                "info",
+                "engine",
+                "nearest"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list, opened from the CAS window's triangle or Select Page.",
+              "type": "string"
+            }
+          ]
         },
         "NavigatorPage": {
           "enum": [
@@ -98855,11 +98936,23 @@
         },
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -99646,6 +99739,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -103163,11 +103263,23 @@
         },
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -103954,6 +104066,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -111555,11 +111674,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -112302,6 +112433,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -113094,11 +113232,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -113841,6 +113991,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -114641,11 +114798,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -115388,6 +115557,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -116449,6 +116625,26 @@
             },
             {
               "additionalProperties": false,
+              "description": "Acknowledge one active annunciation (an index into the aircraft's annunciation list).",
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "acknowledge_message",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "door",
@@ -116961,11 +117157,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -117708,6 +117916,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -119008,12 +119223,21 @@
           "type": "string"
         },
         "GlassPage": {
-          "enum": [
-            "map",
-            "nearest",
-            "flight_plan"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "nearest",
+                "flight_plan"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list.",
+              "type": "string"
+            }
+          ]
         },
         "GlassSetting": {
           "oneOf": [
@@ -119171,6 +119395,40 @@
                 "kind",
                 "code",
                 "mode"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Press IDENT on the transponder: the reply carries the ident flag for 18 seconds.",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Acknowledge one message of the CAS list, by its position in the list page (warnings first,\nnewest first within a severity). Acknowledging an autopilot failure message does nothing.",
+              "properties": {
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "cas_acknowledge",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
               ],
               "type": "object"
             },
@@ -120392,6 +120650,84 @@
           ],
           "type": "string"
         },
+        "CasMessage": {
+          "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message; it stays listed until its condition clears.",
+              "type": "boolean"
+            },
+            "annunciation": {
+              "default": null,
+              "description": "Position in the aircraft's annunciation list, or none for an autopilot failure.",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Activation order: a later message has a larger number. Autopilot failures are 0.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "severity": {
+              "$ref": "#/$defs/CasSeverity"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "severity",
+            "text"
+          ],
+          "type": "object"
+        },
+        "CasSeverity": {
+          "description": "A message's urgency, in the guide's colours.",
+          "oneOf": [
+            {
+              "const": "warning",
+              "description": "Red: requires immediate attention.",
+              "type": "string"
+            },
+            {
+              "const": "caution",
+              "description": "Yellow: pilot awareness and possible corrective action.",
+              "type": "string"
+            },
+            {
+              "const": "advisory",
+              "description": "White: general information.",
+              "type": "string"
+            }
+          ]
+        },
+        "CasWindow": {
+          "description": "What the CAS window shows.",
+          "properties": {
+            "messages": {
+              "description": "Every active message, warnings first, then cautions, then advisories, each group in\ndeclaration order.",
+              "items": {
+                "$ref": "#/$defs/CasMessage"
+              },
+              "type": "array"
+            },
+            "unacknowledged": {
+              "description": "A warning or caution has not been acknowledged: the window's text flashes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "messages",
+            "unacknowledged"
+          ],
+          "type": "object"
+        },
         "CdiSource": {
           "enum": [
             "gps",
@@ -121277,12 +121613,21 @@
           "type": "object"
         },
         "GlassPage": {
-          "enum": [
-            "map",
-            "nearest",
-            "flight_plan"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "nearest",
+                "flight_plan"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list.",
+              "type": "string"
+            }
+          ]
         },
         "GlassSettings": {
           "properties": {
@@ -121315,6 +121660,12 @@
               "type": "integer"
             },
             "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "ident_remaining_s": {
+              "default": 0.0,
+              "description": "Seconds of IDENT left (the reply carries the ident flag); 0 when not identing.",
               "format": "double",
               "type": "number"
             },
@@ -121410,6 +121761,14 @@
             "baro_pa": {
               "format": "double",
               "type": "number"
+            },
+            "cas": {
+              "$ref": "#/$defs/CasWindow",
+              "default": {
+                "messages": [],
+                "unacknowledged": false
+              },
+              "description": "The crew alerting messages, for the CAS list page."
             },
             "comms": {
               "$ref": "#/$defs/CommsSnapshot"
@@ -121911,18 +122270,27 @@
           "type": "object"
         },
         "MfdPage": {
-          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
-          "enum": [
-            "map",
-            "waypoint",
-            "flight_plan",
-            "terrain",
-            "traffic",
-            "info",
-            "engine",
-            "nearest"
-          ],
-          "type": "string"
+          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is\npart of the knob cycle.",
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "waypoint",
+                "flight_plan",
+                "terrain",
+                "traffic",
+                "info",
+                "engine",
+                "nearest"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list, opened from the CAS window's triangle or Select Page.",
+              "type": "string"
+            }
+          ]
         },
         "NavGuidance": {
           "additionalProperties": false,
@@ -123597,6 +123965,84 @@
           ],
           "type": "string"
         },
+        "CasMessage": {
+          "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message; it stays listed until its condition clears.",
+              "type": "boolean"
+            },
+            "annunciation": {
+              "default": null,
+              "description": "Position in the aircraft's annunciation list, or none for an autopilot failure.",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Activation order: a later message has a larger number. Autopilot failures are 0.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "severity": {
+              "$ref": "#/$defs/CasSeverity"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "severity",
+            "text"
+          ],
+          "type": "object"
+        },
+        "CasSeverity": {
+          "description": "A message's urgency, in the guide's colours.",
+          "oneOf": [
+            {
+              "const": "warning",
+              "description": "Red: requires immediate attention.",
+              "type": "string"
+            },
+            {
+              "const": "caution",
+              "description": "Yellow: pilot awareness and possible corrective action.",
+              "type": "string"
+            },
+            {
+              "const": "advisory",
+              "description": "White: general information.",
+              "type": "string"
+            }
+          ]
+        },
+        "CasWindow": {
+          "description": "What the CAS window shows.",
+          "properties": {
+            "messages": {
+              "description": "Every active message, warnings first, then cautions, then advisories, each group in\ndeclaration order.",
+              "items": {
+                "$ref": "#/$defs/CasMessage"
+              },
+              "type": "array"
+            },
+            "unacknowledged": {
+              "description": "A warning or caution has not been acknowledged: the window's text flashes.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "messages",
+            "unacknowledged"
+          ],
+          "type": "object"
+        },
         "CdiSource": {
           "enum": [
             "gps",
@@ -124482,12 +124928,21 @@
           "type": "object"
         },
         "GlassPage": {
-          "enum": [
-            "map",
-            "nearest",
-            "flight_plan"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "nearest",
+                "flight_plan"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list.",
+              "type": "string"
+            }
+          ]
         },
         "GlassSettings": {
           "properties": {
@@ -124520,6 +124975,12 @@
               "type": "integer"
             },
             "heading_bug_rad": {
+              "format": "double",
+              "type": "number"
+            },
+            "ident_remaining_s": {
+              "default": 0.0,
+              "description": "Seconds of IDENT left (the reply carries the ident flag); 0 when not identing.",
               "format": "double",
               "type": "number"
             },
@@ -124615,6 +125076,14 @@
             "baro_pa": {
               "format": "double",
               "type": "number"
+            },
+            "cas": {
+              "$ref": "#/$defs/CasWindow",
+              "default": {
+                "messages": [],
+                "unacknowledged": false
+              },
+              "description": "The crew alerting messages, for the CAS list page."
             },
             "comms": {
               "$ref": "#/$defs/CommsSnapshot"
@@ -125116,18 +125585,27 @@
           "type": "object"
         },
         "MfdPage": {
-          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
-          "enum": [
-            "map",
-            "waypoint",
-            "flight_plan",
-            "terrain",
-            "traffic",
-            "info",
-            "engine",
-            "nearest"
-          ],
-          "type": "string"
+          "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is\npart of the knob cycle.",
+          "oneOf": [
+            {
+              "enum": [
+                "map",
+                "waypoint",
+                "flight_plan",
+                "terrain",
+                "traffic",
+                "info",
+                "engine",
+                "nearest"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "cas",
+              "description": "The crew alerting message list, opened from the CAS window's triangle or Select Page.",
+              "type": "string"
+            }
+          ]
         },
         "NavGuidance": {
           "additionalProperties": false,
@@ -126761,11 +127239,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -127508,6 +127998,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -128333,11 +128830,23 @@
       "$defs": {
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -129080,6 +129589,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"
@@ -130894,11 +131410,23 @@
         },
         "Annunciation": {
           "properties": {
+            "acknowledged": {
+              "default": false,
+              "description": "The pilot has acknowledged this message since it last became active.",
+              "type": "boolean"
+            },
             "active": {
               "type": "boolean"
             },
             "label": {
               "type": "string"
+            },
+            "sequence": {
+              "default": 0,
+              "description": "Order of activation: a later message has a larger number.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
             },
             "severity": {
               "$ref": "#/$defs/Severity"
@@ -131685,6 +132213,13 @@
         },
         "ModernState": {
           "properties": {
+            "annunciation_sequence": {
+              "default": 0,
+              "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
             "annunciations": {
               "items": {
                 "$ref": "#/$defs/Annunciation"

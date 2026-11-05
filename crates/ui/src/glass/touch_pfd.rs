@@ -1052,7 +1052,11 @@ pub(crate) fn bars(
         label(
             &mut d,
             [xp[0] + xp[2] * 0.76, xp[1] + xp[3] * 0.52],
-            format!("{:?}", s.settings.transponder_mode).to_uppercase(),
+            if s.settings.ident_remaining_s > 0. {
+                "IDENT".to_owned()
+            } else {
+                format!("{:?}", s.settings.transponder_mode).to_uppercase()
+            },
             size * 0.6,
             Ink::Green,
         );

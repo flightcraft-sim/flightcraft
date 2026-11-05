@@ -437,3 +437,37 @@ fn declared_controls_guards_and_independent_lights_are_command_state() {
     assert!(s.electrical.loads.iter().any(|l| l.id == "landing" && l.powered));
     assert!(!s.electrical.loads.iter().any(|l| l.id == "taxi" && l.powered));
 }
+
+#[test]
+fn single_message_acknowledge_keeps_the_message_and_clears_the_lamp_with_the_last() {
+    let (mut s, m, r) = bench();
+    action(&mut s, &m, ModernSetting::Door { open: true });
+    advance(&mut s, &m, r, 1);
+    let door = s
+        .modern
+        .as_ref()
+        .unwrap()
+        .annunciations
+        .iter()
+        .position(|a| a.active)
+        .unwrap();
+    assert!(!s.modern.as_ref().unwrap().annunciations[door].acknowledged);
+    assert!(s.modern.as_ref().unwrap().annunciations[door].sequence > 0);
+    action(&mut s, &m, ModernSetting::AcknowledgeMessage { index: door });
+    let state = s.modern.as_ref().unwrap();
+    assert!(state.annunciations[door].acknowledged && state.annunciations[door].active);
+    assert!(!state.master_caution);
+    // It clears, and the next time it appears it is unacknowledged again.
+    action(&mut s, &m, ModernSetting::Door { open: false });
+    advance(&mut s, &m, r, 1);
+    assert!(!s.modern.as_ref().unwrap().annunciations[door].acknowledged);
+    assert!(
+        s.set(
+            SystemSetting::Equipment {
+                setting: ModernSetting::AcknowledgeMessage { index: door }
+            },
+            Some(&m)
+        )
+        .is_err()
+    );
+}

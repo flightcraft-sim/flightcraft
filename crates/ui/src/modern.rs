@@ -341,12 +341,10 @@ impl PanelUi {
                                             .map(|n| n.nav_standby_khz),
                                         xpdr_code: glass.settings.transponder_code.clone(),
                                         xpdr_mode: glass.settings.transponder_mode,
-                                        cas_active: !flightcraft_control::touch_cas::window(
-                                            input.systems.modern.as_ref(),
-                                            input.autopilot.map_or(&[][..], |a| a.failures.as_slice()),
-                                        )
-                                        .messages
-                                        .is_empty(),
+                                        cas_active: !glass.cas.messages.is_empty(),
+                                        cas_overflow: glass.cas.overflow(),
+                                        cas: glass.cas.clone(),
+                                        ident_remaining_s: glass.settings.ident_remaining_s,
                                         fpl: crate::efis::FplView {
                                             rows: glass
                                                 .gps
@@ -1543,8 +1541,14 @@ impl PanelUi {
                     ui,
                     part(screen, 0., 0., 1., 0.25),
                     &format!(
-                        "XPDR {} {:?}",
-                        glass.settings.transponder_code, glass.settings.transponder_mode
+                        "XPDR {} {:?}{}",
+                        glass.settings.transponder_code,
+                        glass.settings.transponder_mode,
+                        if glass.settings.ident_remaining_s > 0. {
+                            " IDENT"
+                        } else {
+                            ""
+                        }
                     ),
                     font,
                     t::GREEN,
@@ -1589,7 +1593,7 @@ impl PanelUi {
                     if button(
                         ui,
                         i,
-                        part(screen, i as f32 / 3., 0.72, 0.32, 0.25),
+                        part(screen, i as f32 / 4., 0.72, 0.24, 0.25),
                         label,
                         false,
                         font,
@@ -1603,6 +1607,20 @@ impl PanelUi {
                             },
                         });
                     }
+                }
+                if button(
+                    ui,
+                    "ident",
+                    part(screen, 0.75, 0.72, 0.24, 0.25),
+                    "IDENT",
+                    glass.settings.ident_remaining_s > 0.,
+                    font,
+                )
+                .clicked()
+                {
+                    self.nav(NavigatorAction::Shared {
+                        setting: GlassSetting::Ident {},
+                    });
                 }
             }
         }

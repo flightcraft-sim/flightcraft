@@ -75,6 +75,10 @@ pub enum ModernSetting {
     Acknowledge {
         severity: Severity,
     },
+    /// Acknowledge one active annunciation (an index into the aircraft's annunciation list).
+    AcknowledgeMessage {
+        index: usize,
+    },
     Door {
         open: bool,
     },
@@ -162,6 +166,12 @@ pub struct Annunciation {
     pub severity: Severity,
     pub label: String,
     pub active: bool,
+    /// The pilot has acknowledged this message since it last became active.
+    #[serde(default)]
+    pub acknowledged: bool,
+    /// Order of activation: a later message has a larger number.
+    #[serde(default)]
+    pub sequence: u64,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct BackupBusState {
@@ -202,6 +212,9 @@ pub struct ModernState {
     pub master_caution: bool,
     pub master_warning: bool,
     pub annunciations: Vec<Annunciation>,
+    /// Count of annunciation activations so far, the source of `Annunciation::sequence`.
+    #[serde(default)]
+    pub annunciation_sequence: u64,
     pub recovery: Option<RecoveryState>,
 }
 impl ModernState {
@@ -261,10 +274,13 @@ impl ModernState {
                             severity: a.severity,
                             label: a.label.clone(),
                             active: false,
+                            acknowledged: false,
+                            sequence: 0,
                         })
                         .collect()
                 })
                 .unwrap_or_default(),
+            annunciation_sequence: 0,
             recovery: d
                 .and_then(|d| d.parachute.as_ref())
                 .map(|_| RecoveryState::default()),
@@ -377,10 +393,35 @@ impl ModernState {
                 }
                 self.key = position;
             }
-            ModernSetting::Acknowledge { severity } => match severity {
-                Severity::Caution => self.master_caution = false,
-                Severity::Warning => self.master_warning = false,
-            },
+            ModernSetting::Acknowledge { severity } => {
+                match severity {
+                    Severity::Caution => self.master_caution = false,
+                    Severity::Warning => self.master_warning = false,
+                }
+                for a in self.annunciations.iter_mut().filter(|a| a.severity == severity) {
+                    a.acknowledged = true;
+                }
+            }
+            ModernSetting::AcknowledgeMessage { index } => {
+                let severity = match self.annunciations.get_mut(index) {
+                    Some(a) if a.active => {
+                        a.acknowledged = true;
+                        a.severity
+                    }
+                    _ => return Err(invalid("no such active message")),
+                };
+                // The master lamp goes out once nothing of its severity is left to acknowledge.
+                if !self
+                    .annunciations
+                    .iter()
+                    .any(|a| a.active && !a.acknowledged && a.severity == severity)
+                {
+                    match severity {
+                        Severity::Caution => self.master_caution = false,
+                        Severity::Warning => self.master_warning = false,
+                    }
+                }
+            }
             ModernSetting::Door { open } => self.door_open = open,
             ModernSetting::BackupCharge {
                 circuit,
@@ -495,10 +536,16 @@ impl ModernState {
                 }
             };
             if active && !a.active {
+                self.annunciation_sequence += 1;
+                a.sequence = self.annunciation_sequence;
+                a.acknowledged = false;
                 match a.severity {
                     Severity::Caution => self.master_caution = true,
                     Severity::Warning => self.master_warning = true,
                 }
+            }
+            if !active {
+                a.acknowledged = false;
             }
             a.active = active;
         }

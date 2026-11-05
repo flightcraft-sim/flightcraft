@@ -456,7 +456,12 @@ pub fn select_page_entries(current: MfdPage) -> Vec<PageChoice> {
             .map(PageChoice::Nearest)
             .collect()
     } else {
-        MfdPage::MAIN.iter().copied().map(PageChoice::Main).collect()
+        MfdPage::MAIN
+            .iter()
+            .copied()
+            .chain([MfdPage::Cas])
+            .map(PageChoice::Main)
+            .collect()
     }
 }
 
@@ -694,8 +699,13 @@ mod tests {
     #[test]
     fn select_page_menu_lists_main_pages_or_nearest_pages() {
         let main = select_page_entries(MfdPage::Map);
-        assert_eq!(main.len(), MfdPage::MAIN.len());
+        assert_eq!(main.len(), MfdPage::MAIN.len() + 1);
         assert_eq!(main[0], PageChoice::Main(MfdPage::Map));
+        assert_eq!(
+            main.last(),
+            Some(&PageChoice::Main(MfdPage::Cas)),
+            "the CAS list follows the main pages"
+        );
         let nearest = select_page_entries(MfdPage::Nearest);
         assert_eq!(nearest.len(), 5);
         assert_eq!(nearest[1], PageChoice::Nearest(NearestPage::Vors));

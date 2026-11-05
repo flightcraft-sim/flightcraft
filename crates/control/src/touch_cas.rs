@@ -9,12 +9,15 @@
 use flightcraft_aero::modern::Severity;
 use flightcraft_sim::equipment::EquipmentFailure;
 use flightcraft_sim::modern::ModernState;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 /// How many messages the PFD's window has room for; more show the down-pointing triangle.
 pub const CAS_WINDOW_LINES: usize = 3;
 
 /// A message's urgency, in the guide's colours.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum CasSeverity {
     /// Red: requires immediate attention.
     Warning,
@@ -24,19 +27,28 @@ pub enum CasSeverity {
     Advisory,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct CasMessage {
     pub severity: CasSeverity,
     pub text: String,
+    /// The pilot has acknowledged this message; it stays listed until its condition clears.
+    #[serde(default)]
+    pub acknowledged: bool,
+    /// Activation order: a later message has a larger number. Autopilot failures are 0.
+    #[serde(default)]
+    pub sequence: u64,
+    /// Position in the aircraft's annunciation list, or none for an autopilot failure.
+    #[serde(default)]
+    pub annunciation: Option<usize>,
 }
 
 /// What the CAS window shows.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct CasWindow {
     /// Every active message, warnings first, then cautions, then advisories, each group in
     /// declaration order.
     pub messages: Vec<CasMessage>,
-    /// The warning or caution has not been acknowledged: the text flashes.
+    /// A warning or caution has not been acknowledged: the window's text flashes.
     pub unacknowledged: bool,
 }
 
@@ -44,6 +56,14 @@ impl CasWindow {
     /// The messages the window has room for.
     pub fn visible(&self) -> &[CasMessage] {
         self.messages.get(..CAS_WINDOW_LINES).unwrap_or(&self.messages)
+    }
+
+    /// The message list page's order: warnings, then cautions, then advisories, newest first
+    /// within each. `cas_acknowledge` indices refer to this order.
+    pub fn list(&self) -> Vec<CasMessage> {
+        let mut list = self.messages.clone();
+        list.sort_by(|a, b| a.severity.cmp(&b.severity).then(b.sequence.cmp(&a.sequence)));
+        list
     }
 
     /// More messages than lines: the guide's upside-down triangle appears.
@@ -68,8 +88,11 @@ fn failure_text(f: EquipmentFailure) -> &'static str {
 pub fn window(modern: Option<&ModernState>, autopilot_failures: &[EquipmentFailure]) -> CasWindow {
     let mut messages = Vec::new();
     if let Some(m) = modern {
-        for a in m.annunciations.iter().filter(|a| a.active) {
+        for (i, a) in m.annunciations.iter().enumerate().filter(|(_, a)| a.active) {
             messages.push(CasMessage {
+                acknowledged: a.acknowledged,
+                sequence: a.sequence,
+                annunciation: Some(i),
                 severity: match a.severity {
                     Severity::Warning => CasSeverity::Warning,
                     Severity::Caution => CasSeverity::Caution,
@@ -84,14 +107,19 @@ pub fn window(modern: Option<&ModernState>, autopilot_failures: &[EquipmentFailu
             messages.push(CasMessage {
                 severity: CasSeverity::Caution,
                 text: text.to_owned(),
+                acknowledged: true,
+                sequence: 0,
+                annunciation: None,
             });
         }
     }
     // A stable sort keeps declaration order within a group.
     messages.sort_by_key(|m| m.severity);
+    let messages_acknowledged = messages.iter().all(|m| m.acknowledged);
     CasWindow {
         messages,
-        unacknowledged: modern.is_some_and(|m| m.master_caution || m.master_warning),
+        unacknowledged: !messages_acknowledged
+            || modern.is_some_and(|m| m.master_caution || m.master_warning),
     }
 }
 

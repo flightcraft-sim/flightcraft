@@ -369,10 +369,10 @@ display actions `open_overlay`, `enter`, `shortcut`).
 The data bar's radio box has the guide's two touch targets (section 4.1 and 4.3): the active frequency
 transfers active and standby, and the standby frequency opens the COM1 window, which shows both
 frequencies, the keypad, and XFER. NAV1 has the same window from the main menu, as does the transponder
-(code keypad and STBY, ALT, ON keys; section 4 transponder code and mode selection), which in split mode
+(code keypad and STBY, ALT, ON, and IDENT keys; section 4 transponder code and mode selection), which in split mode
 also has its box in the data bar. They are wired to the existing comms tuning (`comms.tune`), the NAV radio,
 and the glass transponder setting; no new state exists. Not modelled: COM monitor, volume and squelch, the audio
-panel page, ident. **COM2 and NAV2 are deliberately absent** (they are not a gap in the model of the Sling
+panel page. **COM2 and NAV2 are deliberately absent** (they are not a gap in the model of the Sling
 but in the Sling): the Sling 2 POH lists one GTR 200 COM radio (6.1 installed equipment, 7.10 item 9) and no
 second radio or navigation receiver, so the touch displays' radio box and windows address radio 1 only. The
 engine's second logical receiver exists for aircraft that fit one, and the Sling pack's audio-panel load
@@ -509,7 +509,8 @@ everything are the engine's for every skin.
 The model is not a screen-for-screen copy. **Matched** (from the guide's figures and text): the full-screen
 and split-screen PFD arrangement and colour meanings, the AFCS status box and flight director bars, the data
 bar and status bar, the CAS window, the trim and flap position indicators, touch flight-plan editing
-(select, insert before and after, remove, activate leg), the touch entry keypads (baro, heading, altitude,
+(select, insert before and after, remove, activate leg), the CAS message list page (opened from the
+window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry keypads (baro, heading, altitude,
 course, direct-to) with their shortcuts, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
 flight director bug knob and course-sync push, the Select Page menu, the VOR, NDB, intersection, and
 airspace nearest pages, and reversion with the autopilot rule.
@@ -526,22 +527,45 @@ airspace nearest pages, and reversion with the autopilot rule.
   altitudes at waypoints, no required descent angle). The autopilot's vocabulary has a VNAV mode name and
   approaches carry an LNAV/VNAV capability, but neither computes a vertical path, so there is nothing for the
   indicator (guide items 43 and 44, page 22) to show. The glidepath of a loaded approach is drawn as before.
-- The CAS window has no message list page on the MFD (the guide's page opens from the triangle), no
-  acknowledgement of one message at a time, no external lamps, and shows only the aircraft's own annunciations
-  and the autopilot's failures. The trim and flap indicators have no PFD-options toggle (always shown when the
+- The CAS window has no external lamps, and shows only the aircraft's own annunciations and the
+  autopilot's failures (autopilot failures are listed but have no acknowledgement of their own). The trim and flap indicators have no PFD-options toggle (always shown when the
   host supplies the pilot's controls) and no aileron or rudder trim.
 - Touching the AFCS box (autopilot controls on the display), the selected-altitude and selected-heading
   bugs' "Set to Current" on the tapes themselves, PFD options beyond synthetic vision, and the pitch offset
   are not drawn.
 - Flight director altitude-hold reference stepping (needs a hold-altitude autopilot setting).
-- COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows, transponder
-  ident. COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
+- COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows. The
+  controller does not ask for IDENT (see the CAS and IDENT section). COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
   receiver (see the radio windows above).
 - Nearest pages for weather, user waypoints, cities, centres, flight service stations, and visual
   reporting points; the FPL page's Find tabs, map editing, saved plans, and import; weather, charts,
   checklists, and video pages.
 - Synthetic vision shows the existing engine view; the guide's pathway boxes are not drawn.
 - The round-gauge PFD presentation, and the guide's inset window set beyond what a pack lists.
+
+### CAS message list and IDENT
+
+**CAS message list.** The CAS window's down-pointing triangle (shown when more messages are active than the
+window holds) opens the CAS page on the MFD pane; Select Page offers it too, as `CAS messages` after the main
+pages, and `equipment.set` display action `mfd_page` with `page: "cas"` selects it. The page lists every active
+message: warnings (red), then cautions (yellow), then advisories (white), newest first within each. An
+unacknowledged message is boxed and flashes, with "touch to acknowledge"; touching its row sends the glass
+setting `cas_acknowledge` with `index`, the row's position in that order. An acknowledged message stays listed
+until its condition clears, and flashes again if the condition returns. The master caution or warning lamp goes
+out when the last message of its severity is acknowledged. Touching the CAS window on the PFD, or BACK,
+still acknowledges everything at once. The state is per-annunciation (`acknowledged` and `sequence` in
+`systems.modern.annunciations`), and `glass_state().cas` carries the same list for any front end. An index past
+the end of the list is an error; acknowledging an autopilot failure message, or one already acknowledged, does
+nothing. The legacy application MFD has the same list as `page: "cas"` in the `page` setting (and a CAS button).
+
+**Transponder IDENT.** The transponder window has an IDENT key beside STBY, ALT, and ON. It sends the glass
+setting `ident` (no fields; also the unassigned keyboard action "Transponder IDENT"). The ident flag stays up
+for 18 seconds of simulated time (`settings.ident_remaining_s` counts down), the status bar shows the code
+followed by IDENT, and the PFD's transponder box reads IDENT in place of the mode. Like a real transponder it
+works only in ON or ALT: in OFF or STBY the setting is rejected, and switching to STBY or OFF cancels a running
+ident. Pressing it again restarts the 18 seconds. The ATC vocabulary has no "ident" request or instruction
+(controllers assign squawk codes only), so no controller call asks for it; the flag is available to
+`glass_state()` for a future controller instruction.
 
 ## Commands and controls
 
@@ -562,10 +586,11 @@ oversized plans, and non-octal squawks return errors.
 {"setting":{"kind":"glass","setting":{"kind":"transponder","code":"1200","mode":"alt"}}}
 ```
 
-Other settings are `heading_bug` (`heading_rad`), `course` (`course_rad`), `selected_altitude`
+`ident` (no fields) presses the transponder IDENT button and `cas_acknowledge` (`index`) acknowledges one
+CAS message; both are described under "CAS message list and IDENT" below. Other settings are `heading_bug` (`heading_rad`), `course` (`course_rad`), `selected_altitude`
 (`altitude_m`), `baro` (`pressure_pa`), `pressure_units` (`hpa`), `bearing_pointer`
 (`source`: `off` or `gps`), `map_range` (`range_nm`: 1–200), `orientation` (`north_up` or
-`track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, or `flight_plan`; the application MFD), `display_page` (`display`, `page`), `display_data` (`display`, `area`), `pilot_seat` (`seat`), `display_reversion` (`enabled`), `active_leg` (`index`, zero-based),
+`track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, `flight_plan`, or `cas`; the application MFD), `display_page` (`display`, `page`), `display_data` (`display`, `area`), `pilot_seat` (`seat`), `display_reversion` (`enabled`), `active_leg` (`index`, zero-based),
 and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Units are SI
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
 

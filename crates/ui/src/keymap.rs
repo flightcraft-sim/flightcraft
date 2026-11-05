@@ -80,10 +80,12 @@ pub enum Action {
     GlassCourseRight,
     GlassTraffic,
     GlassTrafficFilter,
+    /// Press the transponder IDENT button.
+    GlassIdent,
 }
 
 impl Action {
-    pub const ALL: [Self; 74] = [
+    pub const ALL: [Self; 75] = [
         Self::CrewHandover,
         Self::RadioTransmit,
         Self::ComPtt,
@@ -158,6 +160,7 @@ impl Action {
         Self::GlassCourseRight,
         Self::GlassTraffic,
         Self::GlassTrafficFilter,
+        Self::GlassIdent,
     ];
     /// Systems shortcuts are optional, and can be bound in the same persisted keymap.
     pub const SYSTEMS: [Self; 18] = [
@@ -206,7 +209,7 @@ impl Action {
         Self::StandbyDirectTo,
     ];
 
-    pub const GLASS: [Self; 12] = [
+    pub const GLASS: [Self; 13] = [
         Self::GlassRangeIn,
         Self::GlassRangeOut,
         Self::GlassPage,
@@ -217,6 +220,7 @@ impl Action {
         Self::GlassCourseRight,
         Self::GlassTraffic,
         Self::GlassTrafficFilter,
+        Self::GlassIdent,
         Self::HeadingBugLeft,
         Self::HeadingBugRight,
     ];
@@ -296,6 +300,7 @@ impl Action {
             Self::GlassCourseRight => "Glass course right",
             Self::GlassTraffic => "Glass traffic on / off (TFC)",
             Self::GlassTrafficFilter => "Glass traffic altitude filter (FLT)",
+            Self::GlassIdent => "Transponder IDENT",
         }
     }
 }

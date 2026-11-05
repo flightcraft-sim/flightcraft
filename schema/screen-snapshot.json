@@ -650,11 +650,23 @@
     "Annunciation": {
       "type": "object",
       "properties": {
+        "acknowledged": {
+          "description": "The pilot has acknowledged this message since it last became active.",
+          "type": "boolean",
+          "default": false
+        },
         "active": {
           "type": "boolean"
         },
         "label": {
           "type": "string"
+        },
+        "sequence": {
+          "description": "Order of activation: a later message has a larger number.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 0,
+          "minimum": 0
         },
         "severity": {
           "$ref": "#/$defs/Severity"
@@ -1877,6 +1889,84 @@
         "sliding",
         "open_fraction",
         "latched"
+      ]
+    },
+    "CasMessage": {
+      "type": "object",
+      "properties": {
+        "acknowledged": {
+          "description": "The pilot has acknowledged this message; it stays listed until its condition clears.",
+          "type": "boolean",
+          "default": false
+        },
+        "annunciation": {
+          "description": "Position in the aircraft's annunciation list, or none for an autopilot failure.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "default": null,
+          "minimum": 0
+        },
+        "sequence": {
+          "description": "Activation order: a later message has a larger number. Autopilot failures are 0.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 0,
+          "minimum": 0
+        },
+        "severity": {
+          "$ref": "#/$defs/CasSeverity"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "text"
+      ]
+    },
+    "CasSeverity": {
+      "description": "A message's urgency, in the guide's colours.",
+      "oneOf": [
+        {
+          "description": "Red: requires immediate attention.",
+          "type": "string",
+          "const": "warning"
+        },
+        {
+          "description": "Yellow: pilot awareness and possible corrective action.",
+          "type": "string",
+          "const": "caution"
+        },
+        {
+          "description": "White: general information.",
+          "type": "string",
+          "const": "advisory"
+        }
+      ]
+    },
+    "CasWindow": {
+      "description": "What the CAS window shows.",
+      "type": "object",
+      "properties": {
+        "messages": {
+          "description": "Every active message, warnings first, then cautions, then advisories, each group in\ndeclaration order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CasMessage"
+          }
+        },
+        "unacknowledged": {
+          "description": "A warning or caution has not been acknowledged: the window's text flashes.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "messages",
+        "unacknowledged"
       ]
     },
     "Catalog": {
@@ -5330,11 +5420,20 @@
       ]
     },
     "GlassPage": {
-      "type": "string",
-      "enum": [
-        "map",
-        "nearest",
-        "flight_plan"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "map",
+            "nearest",
+            "flight_plan"
+          ]
+        },
+        {
+          "description": "The crew alerting message list.",
+          "type": "string",
+          "const": "cas"
+        }
       ]
     },
     "GlassSettings": {
@@ -5371,6 +5470,12 @@
         "heading_bug_rad": {
           "type": "number",
           "format": "double"
+        },
+        "ident_remaining_s": {
+          "description": "Seconds of IDENT left (the reply carries the ident flag); 0 when not identing.",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
         },
         "leg_origin_deg": {
           "type": [
@@ -5464,6 +5569,14 @@
         "baro_pa": {
           "type": "number",
           "format": "double"
+        },
+        "cas": {
+          "description": "The crew alerting messages, for the CAS list page.",
+          "$ref": "#/$defs/CasWindow",
+          "default": {
+            "messages": [],
+            "unacknowledged": false
+          }
         },
         "comms": {
           "$ref": "#/$defs/CommsSnapshot"
@@ -7742,22 +7855,38 @@
       ]
     },
     "MfdPage": {
-      "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and is not part of the knob cycle.",
-      "type": "string",
-      "enum": [
-        "map",
-        "waypoint",
-        "flight_plan",
-        "terrain",
-        "traffic",
-        "info",
-        "engine",
-        "nearest"
+      "description": "The pages of a landscape touch EFIS multi-function display, in page-bar order.\n\n`Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;\n`Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is\npart of the knob cycle.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "map",
+            "waypoint",
+            "flight_plan",
+            "terrain",
+            "traffic",
+            "info",
+            "engine",
+            "nearest"
+          ]
+        },
+        {
+          "description": "The crew alerting message list, opened from the CAS window's triangle or Select Page.",
+          "type": "string",
+          "const": "cas"
+        }
       ]
     },
     "ModernState": {
       "type": "object",
       "properties": {
+        "annunciation_sequence": {
+          "description": "Count of annunciation activations so far, the source of `Annunciation::sequence`.",
+          "type": "integer",
+          "format": "uint64",
+          "default": 0,
+          "minimum": 0
+        },
         "annunciations": {
           "type": "array",
           "items": {

@@ -405,7 +405,7 @@ pub(crate) fn paint_touch(
                 (
                     0.27,
                     0.21,
-                    format!("{:.2} XPDR {}", s.baro_pa / 3386.389, s.settings.transponder_code),
+                    format!("{:.2} XPDR {}", s.baro_pa / 3386.389, xpdr_status(s)),
                 ),
                 (
                     0.48,
@@ -449,11 +449,7 @@ pub(crate) fn paint_touch(
                 ),
                 (
                     0.84,
-                    format!(
-                        "{:.2}  XPDR {}",
-                        s.baro_pa / 3386.389,
-                        s.settings.transponder_code
-                    ),
+                    format!("{:.2}  XPDR {}", s.baro_pa / 3386.389, xpdr_status(s)),
                 ),
             ] {
                 ui.painter().text(
@@ -859,6 +855,10 @@ fn mfd_page(
                 data_area(ui, data, shared, input, display.data_area, style);
             }
         }
+        // The message list and its touch rows are drawn by the display chrome (`efis::cas_page`).
+        MfdPage::Cas => {
+            ui.painter().rect_filled(area, 0., crate::theme::BACKGROUND);
+        }
         MfdPage::Engine => touch_engine(ui, area, shared, input, style),
         MfdPage::FlightPlan => list_page(ui, area, shared, mfd::ListKind::FlightPlan),
         MfdPage::Nearest => nearest_page(ui, area, shared, display.nearest_page),
@@ -896,6 +896,17 @@ fn mfd_page(
                 format!("XPDR    {}", s.settings.transponder_code),
             ],
         ),
+    }
+}
+/// The transponder code for the status bar, followed by IDENT while the ident flag is up.
+pub(crate) fn xpdr_status(s: &GlassState) -> String {
+    xpdr_label(&s.settings.transponder_code, s.settings.ident_remaining_s)
+}
+pub(crate) fn xpdr_label(code: &str, ident_remaining_s: f64) -> String {
+    if ident_remaining_s > 0. {
+        format!("{code} IDENT")
+    } else {
+        code.to_owned()
     }
 }
 /// A plain titled list of lines for the pages that have no table.

@@ -10,7 +10,11 @@ pub enum GlassPage {
     Map,
     Nearest,
     FlightPlan,
+    /// The crew alerting message list.
+    Cas,
 }
+/// How long a transponder reply stays flagged after IDENT is pressed, in seconds.
+pub const IDENT_DURATION_S: f64 = 18.0;
 /// The altitude window a glass unit shows traffic in, relative to the aircraft.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -134,6 +138,13 @@ pub enum GlassSetting {
         #[schemars(length(min=4,max=4),extend("pattern"="^[0-7]{4}$"))]
         code: String,
         mode: TransponderMode,
+    },
+    /// Press IDENT on the transponder: the reply carries the ident flag for 18 seconds.
+    Ident {},
+    /// Acknowledge one message of the CAS list, by its position in the list page (warnings first,
+    /// newest first within a severity). Acknowledging an autopilot failure message does nothing.
+    CasAcknowledge {
+        index: usize,
     },
     MapRange {
         #[schemars(range(min = 1, max = 200))]

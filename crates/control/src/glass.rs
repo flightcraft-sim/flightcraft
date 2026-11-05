@@ -17,6 +17,12 @@ pub struct GlassSettings {
     pub bearing_pointer: BearingPointer,
     pub transponder_code: String,
     pub transponder_mode: TransponderMode,
+    /// Seconds of IDENT left (the reply carries the ident flag); 0 when not identing.
+    #[serde(default)]
+    pub ident_remaining_s: f64,
+    /// Simulation step at which the ident flag drops; internal.
+    #[serde(skip)]
+    pub ident_until_step: u64,
     pub range_nm: f64,
     pub orientation: MapOrientation,
     pub page: GlassPage,
@@ -51,6 +57,8 @@ impl Default for GlassSettings {
             bearing_pointer: BearingPointer::Off,
             transponder_code: "1200".into(),
             transponder_mode: TransponderMode::Alt,
+            ident_remaining_s: 0.0,
+            ident_until_step: 0,
             range_nm: 40.0,
             orientation: MapOrientation::NorthUp,
             page: GlassPage::Map,
@@ -215,6 +223,9 @@ pub struct GlassState {
     pub airports: Vec<MapAirport>,
     pub region: Option<String>,
     pub aircraft_heading_relative_rad: f64,
+    /// The crew alerting messages, for the CAS list page.
+    #[serde(default)]
+    pub cas: crate::touch_cas::CasWindow,
 }
 impl Session {
     pub fn set_glass(&mut self, setting: GlassSetting) -> Result<(), CommandError> {
@@ -255,6 +266,38 @@ impl Session {
                 }
                 self.glass.transponder_code = code;
                 self.glass.transponder_mode = mode;
+                if !matches!(mode, TransponderMode::On | TransponderMode::Alt) {
+                    self.glass.ident_until_step = 0;
+                }
+            }
+            GlassSetting::Ident {} => {
+                if !matches!(
+                    self.glass.transponder_mode,
+                    TransponderMode::On | TransponderMode::Alt
+                ) {
+                    return Err(invalid(NAME, "transponder must be on or altitude to ident"));
+                }
+                let steps = (IDENT_DURATION_S / flightcraft_sim::DT_S).round() as u64;
+                self.glass.ident_until_step = self.sim.steps() + steps;
+            }
+            GlassSetting::CasAcknowledge { index } => {
+                let failures = self
+                    .sim
+                    .installed_autopilot()
+                    .map(|a| a.failures.clone())
+                    .unwrap_or_default();
+                let list = crate::touch_cas::window(self.sim.systems().modern.as_ref(), &failures).list();
+                let message = list
+                    .get(index)
+                    .ok_or_else(|| invalid(NAME, "no such CAS message"))?;
+                if let Some(i) = message.annunciation
+                    && !message.acknowledged
+                {
+                    self.sim
+                        .set_systems(flightcraft_sim::systems::SystemSetting::Equipment {
+                            setting: flightcraft_sim::modern::ModernSetting::AcknowledgeMessage { index: i },
+                        })?;
+                }
             }
             GlassSetting::MapRange { range_nm } => {
                 range(
@@ -435,6 +478,8 @@ impl Session {
         } else {
             GlassSettings::default()
         };
+        settings.ident_remaining_s =
+            settings.ident_until_step.saturating_sub(sim.steps()) as f64 * flightcraft_sim::DT_S;
         settings.range_nm = self.map.range_nm.max(crate::touch_efis::MAP_RANGE_MIN_NM * 0.99);
         settings.orientation = self.map.orientation.into();
         settings.heading_bug_rad = sys.controls.heading_bug_rad;
@@ -765,6 +810,11 @@ impl Session {
             airports,
             region: world.region().map(|r| r.name.clone()),
             aircraft_heading_relative_rad: r.heading_grid_rad - angle,
+            cas: crate::touch_cas::window(
+                sys.modern.as_ref(),
+                sim.installed_autopilot()
+                    .map_or(&[][..], |a| a.failures.as_slice()),
+            ),
         }
     }
 }

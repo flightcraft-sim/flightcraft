@@ -259,7 +259,8 @@ impl TouchLayout {
 /// The pages of a landscape touch EFIS multi-function display, in page-bar order.
 ///
 /// `Map`, `Waypoint`, `FlightPlan`, `Terrain`, `Traffic`, `Info`, and `Engine` are the main pages;
-/// `Nearest` is reached with the NEAREST key and is not part of the knob cycle.
+/// `Nearest` is reached with the NEAREST key and `Cas` from the CAS window or Select Page; neither is
+/// part of the knob cycle.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MfdPage {
@@ -272,6 +273,8 @@ pub enum MfdPage {
     Info,
     Engine,
     Nearest,
+    /// The crew alerting message list, opened from the CAS window's triangle or Select Page.
+    Cas,
 }
 impl MfdPage {
     /// The main pages the MFD knob cycles through.
@@ -295,6 +298,7 @@ impl MfdPage {
             Self::Info => "Info",
             Self::Engine => "Eng",
             Self::Nearest => "Nrst",
+            Self::Cas => "CAS",
         }
     }
     pub fn label(self) -> &'static str {
@@ -307,6 +311,7 @@ impl MfdPage {
             Self::Info => "Info",
             Self::Engine => "Engine",
             Self::Nearest => "Nearest",
+            Self::Cas => "CAS messages",
         }
     }
     /// The page a legacy full-screen layout shows, if it is one.

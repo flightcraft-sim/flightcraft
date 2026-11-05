@@ -975,7 +975,9 @@ impl Session {
                     return Err(invalid(NAME, "navigator has no power"));
                 }
                 if let NavigatorAction::Shared { setting } = action {
-                    if matches!(setting, GlassSetting::Transponder { .. }) && !nav.transponder {
+                    if matches!(setting, GlassSetting::Transponder { .. } | GlassSetting::Ident {})
+                        && !nav.transponder
+                    {
                         return Err(invalid(NAME, "transponder control not installed here"));
                     }
                     self.set_glass(setting)?;
