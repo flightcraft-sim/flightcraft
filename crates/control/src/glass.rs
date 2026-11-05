@@ -55,6 +55,9 @@ pub struct GlassSettings {
     #[serde(skip)]
     pub g_sampled_s: f64,
 
+    /// The PFD pitch attitude offset, degrees (limits `PITCH_OFFSET_LIMIT_DEG`).
+    #[serde(default)]
+    pub pitch_offset_deg: f64,
     /// The vertical navigation descent angle, degrees.
     #[serde(default = "default_vnav_angle")]
     pub vnav_angle_deg: f64,
@@ -121,6 +124,8 @@ pub fn vspeed_pack_defaults_mps(aircraft: &flightcraft_aero::ResolvedAircraft) -
         Some(1.3 * v.vso_mps),
     ]
 }
+/// The most the PFD pitch attitude offset can move the pitch scale, degrees either way.
+pub const PITCH_OFFSET_LIMIT_DEG: f64 = 2.5;
 fn default_clock_start() -> f64 {
     DEFAULT_START_UTC_S
 }
@@ -147,6 +152,7 @@ impl Default for GlassSettings {
             g_meter_shown: false,
             g_track: GMeterTrack::default(),
             g_sampled_s: f64::NEG_INFINITY,
+            pitch_offset_deg: 0.0,
             vnav_angle_deg: vnav::DEFAULT_ANGLE_DEG,
             vnav_hold_m: None,
             vnav_active: false,
@@ -454,6 +460,17 @@ impl Session {
                     )?;
                 }
                 self.glass.vspeeds.entry_mut(bug).speed_kt = speed_kt;
+            }
+            GlassSetting::PitchOffset { degrees } => {
+                range(
+                    NAME,
+                    "degrees",
+                    degrees,
+                    -PITCH_OFFSET_LIMIT_DEG,
+                    PITCH_OFFSET_LIMIT_DEG,
+                )?;
+                // Keep to the 0.1 degree the display shows.
+                self.glass.pitch_offset_deg = (degrees * 10.).round() / 10.;
             }
             GlassSetting::VnavAngle { degrees } => {
                 range(NAME, "degrees", degrees, vnav::MIN_ANGLE_DEG, vnav::MAX_ANGLE_DEG)?;

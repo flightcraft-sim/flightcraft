@@ -5807,6 +5807,12 @@
         "page": {
           "$ref": "#/$defs/GlassPage"
         },
+        "pitch_offset_deg": {
+          "description": "The PFD pitch attitude offset, degrees (limits `PITCH_OFFSET_LIMIT_DEG`).",
+          "type": "number",
+          "format": "double",
+          "default": 0.0
+        },
         "pressure_hpa": {
           "type": "boolean"
         },
@@ -9080,6 +9086,11 @@
           "description": "The Vspeed bugs' configuration page, opened from the PFD options.",
           "type": "string",
           "const": "vspeeds"
+        },
+        {
+          "description": "The on-screen autopilot controls, opened by touching the AFCS status box.",
+          "type": "string",
+          "const": "afcs"
         }
       ]
     },

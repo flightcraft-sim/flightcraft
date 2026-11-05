@@ -24,7 +24,7 @@ pub(super) fn draw_composed(
         return d;
     }
     // The full-width attitude underlays both tapes, with a fixed viewport at every pitch and bank.
-    backdrop(&mut d, s, input, [500., 440.], [250., 125.]);
+    backdrop(&mut d, s, input, [500., 440.], [250., 125.], 0.);
     let horizon = |x, y| rotated([x, y], [250., 125.], -a.roll_rad);
     if let Some(ap) = input.autopilot {
         crate::autopilot::strip_draw(&mut d, ap, [0., 0., 500., 28.]);
@@ -377,14 +377,17 @@ pub(super) fn backdrop(
     input: InstrumentInput<'_>,
     size: [f32; 2],
     center: [f32; 2],
+    pitch_offset_rad: f64,
 ) {
     let a = &s.air_data;
+    // The pilot's pitch attitude offset moves the scene against the aircraft symbol.
+    let pitch_rad = a.pitch_rad + pitch_offset_rad;
     let [w, h] = size;
     let [cx, cy] = center;
     let (shift_x, shift_y) = (cx - 250., cy - 125.);
     rect(d, [0., 0., w, h], Ink::Sky);
     let horizon = |x, y| rotated([x, y], center, -a.roll_rad);
-    let pitch = flightcraft_render::pfd_pitch_y(a.pitch_rad);
+    let pitch = flightcraft_render::pfd_pitch_y(pitch_rad);
     polygon(
         d,
         clip_polygon(
@@ -404,7 +407,7 @@ pub(super) fn backdrop(
         && a.powered
         && let Some((world, state)) = input.vision
         && let Some(view) =
-            flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, a.pitch_rad, a.altitude_msl_m)
+            flightcraft_render::SyntheticVision::new(world, state, a.roll_rad, pitch_rad, a.altitude_msl_m)
     {
         d.items.push(DrawItem::SyntheticVision {
             min: [0., 0.],

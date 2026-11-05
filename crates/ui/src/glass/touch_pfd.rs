@@ -85,6 +85,11 @@ fn cell_ink(cell: &AfcsCell) -> Ink {
     }
 }
 
+/// The pilot's pitch attitude offset as it is added to the sensed pitch for the scene and scale.
+fn pitch_offset_rad(s: &GlassState) -> f64 {
+    s.settings.pitch_offset_deg.to_radians()
+}
+
 /// Sky, ground, and synthetic vision under the panel, optical centre at the aircraft symbol.
 pub(crate) fn backdrop(s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeometry) -> DrawList {
     let [_, _, pw, ph] = g.panel.map(|v| v as f32);
@@ -95,7 +100,7 @@ pub(crate) fn backdrop(s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeomet
     ];
     let mut d = canvas();
     d.size = size;
-    pfd::backdrop(&mut d, s, input, size, center);
+    pfd::backdrop(&mut d, s, input, size, center, pitch_offset_rad(s));
     d
 }
 
@@ -108,7 +113,7 @@ pub(crate) fn panel(s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeometry,
     let t = o.typography;
     let [cx, cy] = g.aircraft_symbol.map(|v| v as f32);
     if a.attitude_valid {
-        attitude(&mut d, input, g, a, o);
+        attitude(&mut d, input, g, a, o, pitch_offset_rad(s));
     } else {
         let aligning = a.alignment_remaining_s > 0. && a.powered && !a.ahrs_failed;
         flag(
@@ -291,8 +296,11 @@ fn attitude(
     g: &PfdGeometry,
     a: &flightcraft_sim::avionics::sensor::AirDataComputer,
     o: Options,
+    offset_rad: f64,
 ) {
     let [cx, cy] = g.aircraft_symbol.map(|v| v as f32);
+    // The pitch the scale is drawn at: the sensed pitch plus the pilot's offset.
+    let shown_pitch = a.pitch_rad + offset_rad;
     let radius = g.roll_arc_radius as f32;
     let center = [cx, cy];
     // Pitch scale: marks every 2.5 degrees through all ranges, numbered at multiples of 10.
@@ -304,7 +312,7 @@ fn attitude(
         }
         // A mark's offset from the aircraft symbol along the pitch axis.
         let y_axis =
-            flightcraft_render::pfd_pitch_y(a.pitch_rad - f64::from(deg).to_radians()) * BACKDROP_SCALE;
+            flightcraft_render::pfd_pitch_y(shown_pitch - f64::from(deg).to_radians()) * BACKDROP_SCALE;
         let (half, number) = if step % 4 == 0 {
             (46., true)
         } else if step % 2 == 0 {
@@ -337,7 +345,7 @@ fn attitude(
         }
     }
     // Horizon line, part of the pitch scale.
-    let hy = flightcraft_render::pfd_pitch_y(a.pitch_rad) * BACKDROP_SCALE;
+    let hy = flightcraft_render::pfd_pitch_y(shown_pitch) * BACKDROP_SCALE;
     line(d, horizon(-2000., hy), horizon(2000., hy), Ink::White, 2.);
     // Roll scale: 60 degrees either side, major ticks at 30 and 60, minor at 10, 20, and 45.
     let arc: Vec<[f32; 2]> = (-60..=60)

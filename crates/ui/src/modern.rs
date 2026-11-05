@@ -347,6 +347,8 @@ impl PanelUi {
                                         ident_remaining_s: glass.settings.ident_remaining_s,
                                         user_field: glass.settings.data_bar_field,
                                         g_meter: glass.settings.g_meter_shown,
+                                        pitch_offset_deg: glass.settings.pitch_offset_deg,
+                                        afcs: input.autopilot.cloned(),
                                         bearing: [
                                             glass.settings.bearing_pointer,
                                             glass.settings.bearing_pointer2,
@@ -376,6 +378,11 @@ impl PanelUi {
                                     &mut out,
                                 );
                                 self.commands.extend(out.equipment);
+                                self.avionics.extend(
+                                    out.autopilot
+                                        .into_iter()
+                                        .map(|setting| AvionicsSetting::Autopilot { setting }),
+                                );
                                 self.avionics.extend(
                                     out.glass
                                         .into_iter()

@@ -396,6 +396,20 @@ fn the_second_bearing_pointer_is_a_gps_or_off_setting() {
     assert_eq!(s.glass_state().settings.bearing_pointer2, BearingPointer::Off);
 }
 #[test]
+fn the_pitch_offset_is_a_validated_setting_limited_to_two_and_a_half_degrees() {
+    let mut s = glass_session();
+    assert_eq!(s.glass_state().settings.pitch_offset_deg, 0.);
+    for bad in [-2.6, 2.6, f64::NAN] {
+        assert!(s.set_glass(GlassSetting::PitchOffset { degrees: bad }).is_err());
+    }
+    s.set_glass(GlassSetting::PitchOffset { degrees: 1.23 }).unwrap();
+    assert_eq!(s.glass_state().settings.pitch_offset_deg, 1.2);
+    s.set_glass(GlassSetting::PitchOffset { degrees: -2.5 }).unwrap();
+    assert_eq!(s.glass_state().settings.pitch_offset_deg, -2.5);
+    s.set_glass(GlassSetting::PitchOffset { degrees: 0. }).unwrap();
+    assert_eq!(s.glass_state().settings.pitch_offset_deg, 0.);
+}
+#[test]
 fn the_g_meter_samples_the_load_factor_keeps_extremes_and_resets() {
     let mut s = glass_session();
     s.sim.step(600);

@@ -954,10 +954,13 @@ impl Session {
                         let allowed = overlay.entry_target().is_some()
                             || matches!(
                                 overlay,
-                                Overlay::SelectPage | Overlay::PfdOptions | Overlay::Vspeeds
+                                Overlay::SelectPage | Overlay::PfdOptions | Overlay::Vspeeds | Overlay::Afcs
                             );
                         if !allowed {
                             return Err(invalid(NAME, "that overlay opens with a key, not by touch"));
+                        }
+                        if overlay == Overlay::Afcs && self.sim.installed_autopilot().is_none() {
+                            return Err(invalid(NAME, "no autopilot is installed to control"));
                         }
                         runtime.overlay = overlay;
                     }

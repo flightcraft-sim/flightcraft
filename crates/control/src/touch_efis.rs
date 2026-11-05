@@ -322,6 +322,8 @@ pub enum Overlay {
     SelectPage,
     /// The Vspeed bugs' configuration page, opened from the PFD options.
     Vspeeds,
+    /// The on-screen autopilot controls, opened by touching the AFCS status box.
+    Afcs,
 }
 
 impl Overlay {

@@ -238,6 +238,8 @@ pub(crate) fn pane_content(screen: Rect, mode: ScreenMode, page: MfdPage) -> Opt
 pub(crate) struct Output {
     pub equipment: Vec<EquipmentSetting>,
     pub glass: Vec<GlassSetting>,
+    /// Autopilot commands from the on-screen AFCS controls.
+    pub autopilot: Vec<flightcraft_sim::equipment::PanelSetting>,
 }
 
 fn act(out: &mut Output, id: &str, action: DisplayAction) {
@@ -476,6 +478,10 @@ pub(crate) struct Shared {
     pub pack_vspeeds_kt: [Option<f64>; 5],
     /// The G meter is shown.
     pub g_meter: bool,
+    /// The PFD pitch attitude offset, degrees.
+    pub pitch_offset_deg: f64,
+    /// The installed autopilot's state; touching the AFCS status box opens its controls.
+    pub afcs: Option<flightcraft_sim::equipment::EquipmentState>,
     /// The two bearing pointers follow GPS.
     pub bearing: [bool; 2],
     /// The active flight plan, for the FPL page.
@@ -637,6 +643,17 @@ pub(crate) fn chrome(
                     },
                 );
             }
+            // Touching the AFCS status box opens the on-screen autopilot controls.
+            let afcs = native_rect(screen, g.screen_rect(PfdElement::AfcsBox));
+            if shared.afcs.is_some() && afcs.width() > 0. && hit(ui, afcs, "afcs-box") {
+                act(
+                    out,
+                    id,
+                    DisplayAction::OpenOverlay {
+                        overlay: Overlay::Afcs,
+                    },
+                );
+            }
             // Touching the G meter starts its record over.
             let meter = native_rect(screen, g.screen_rect(PfdElement::GMeter));
             if shared.g_meter && meter.width() > 0. && hit(ui, meter, "g-meter") {
@@ -783,12 +800,17 @@ fn overlay(
     out: &mut Output,
 ) {
     let tall = d.overlay.entry_target().is_some();
+    let afcs = d.overlay == Overlay::Afcs;
     let panel = Rect::from_center_size(
         screen.center(),
-        Vec2::new(
-            screen.width() * if tall { 0.5 } else { 0.46 },
-            screen.height() * if tall { 0.9 } else { 0.72 },
-        ),
+        if afcs {
+            Vec2::new(screen.width() * 0.6, screen.height() * 0.8)
+        } else {
+            Vec2::new(
+                screen.width() * if tall { 0.5 } else { 0.46 },
+                screen.height() * if tall { 0.9 } else { 0.72 },
+            )
+        },
     );
     ui.painter().rect(
         panel,
@@ -799,6 +821,10 @@ fn overlay(
     );
     if let Some(target) = d.overlay.entry_target() {
         entry_panel(ui, panel, id, d, style, shared, out, target);
+        return;
+    }
+    if afcs {
+        afcs_panel(ui, panel, id, style, shared, out);
         return;
     }
     let title = match d.overlay {
@@ -861,6 +887,59 @@ fn overlay(
             }
             if shared.g_meter && entry(ui, "Reset G meter", false) {
                 out.glass.push(GlassSetting::GMeterReset {});
+            }
+            // Pitch attitude offset: moves the pitch scale against the aircraft symbol, 2.5 degrees
+            // either way. Touching the label zeroes it.
+            {
+                let row_rect = Rect::from_min_size(
+                    Pos2::new(panel.left() + 6., rows_top + row.get() as f32 * (row_h + 2.)),
+                    Vec2::new(panel.width() - 12., row_h),
+                );
+                row.set(row.get() + 1);
+                let offset = shared.pitch_offset_deg;
+                let cell_w = row_rect.width() / 6.;
+                let cell = |i: f32, w: f32| {
+                    Rect::from_min_size(
+                        row_rect.min + Vec2::new(i * cell_w, 0.),
+                        Vec2::new(cell_w * w, row_rect.height()),
+                    )
+                    .shrink2(Vec2::new(2., 0.))
+                };
+                let label_rect = cell(0., 2.);
+                ui.painter().text(
+                    label_rect.left_center() + Vec2::new(4., 0.),
+                    Align2::LEFT_CENTER,
+                    format!("Pitch offset {offset:+.1}"),
+                    style.font(row_h * 0.4),
+                    style.key_text,
+                );
+                for (i, (text, delta)) in [("-0.5", -0.5), ("-0.1", -0.1), ("+0.1", 0.1), ("+0.5", 0.5)]
+                    .into_iter()
+                    .enumerate()
+                {
+                    if chip(
+                        ui,
+                        cell(2. + i as f32, 1.),
+                        text,
+                        false,
+                        style,
+                        ("pitch-offset", i),
+                    ) {
+                        out.glass.push(GlassSetting::PitchOffset {
+                            degrees: (offset + delta).clamp(
+                                -flightcraft_control::PITCH_OFFSET_LIMIT_DEG,
+                                flightcraft_control::PITCH_OFFSET_LIMIT_DEG,
+                            ),
+                        });
+                    }
+                }
+                if offset != 0.
+                    && ui
+                        .interact(label_rect, ui.id().with("pitch-offset-zero"), Sense::click())
+                        .clicked()
+                {
+                    out.glass.push(GlassSetting::PitchOffset { degrees: 0. });
+                }
             }
             if entry(ui, "Vspeed bugs", false) {
                 act(
@@ -1000,6 +1079,144 @@ fn overlay(
             }
         }
         _ => {}
+    }
+}
+
+/// Where the on-screen AFCS controls' keys sit inside their window.
+pub(crate) struct AfcsLayout {
+    pub keys: Vec<(flightcraft_control::touch_pfd::AfcsKey, Rect)>,
+    /// The nose pair's reference readout, between the two keys.
+    pub reference: Rect,
+    pub close: Rect,
+}
+
+/// The window the AFCS status box opens: three rows of mode keys (AP FD YD, HDG TRK NAV APR, ALT VS
+/// IAS LVL), then NOSE UP, the reference, and NOSE DN, then Close.
+pub(crate) fn afcs_layout(panel: Rect) -> AfcsLayout {
+    use flightcraft_control::touch_pfd::AfcsKey;
+    let rows: [&[AfcsKey]; 3] = [
+        &[AfcsKey::Ap, AfcsKey::Fd, AfcsKey::Yd],
+        &[AfcsKey::Hdg, AfcsKey::Trk, AfcsKey::Nav, AfcsKey::Apr],
+        &[AfcsKey::Alt, AfcsKey::Vs, AfcsKey::Ias, AfcsKey::Lvl],
+    ];
+    let top = panel.top() + panel.height() * 0.13;
+    let row_h = panel.height() * 0.135;
+    let pitch = row_h + panel.height() * 0.02;
+    let inner = panel.shrink2(Vec2::new(10., 0.));
+    let mut keys = Vec::new();
+    for (r, row) in rows.iter().enumerate() {
+        let w = inner.width() / row.len() as f32;
+        for (c, key) in row.iter().enumerate() {
+            keys.push((
+                *key,
+                Rect::from_min_size(
+                    Pos2::new(inner.left() + c as f32 * w, top + r as f32 * pitch),
+                    Vec2::new(w, row_h),
+                )
+                .shrink(3.),
+            ));
+        }
+    }
+    let nose_top = top + 3. * pitch;
+    let w = inner.width() / 3.;
+    for (c, key) in [AfcsKey::NoseUp, AfcsKey::NoseDown].into_iter().enumerate() {
+        keys.push((
+            key,
+            Rect::from_min_size(
+                Pos2::new(inner.left() + c as f32 * 2. * w, nose_top),
+                Vec2::new(w, row_h),
+            )
+            .shrink(3.),
+        ));
+    }
+    AfcsLayout {
+        keys,
+        reference: Rect::from_min_size(Pos2::new(inner.left() + w, nose_top), Vec2::new(w, row_h)).shrink(3.),
+        close: Rect::from_min_size(
+            Pos2::new(inner.left() + w, top + 4. * pitch),
+            Vec2::new(w, row_h * 0.8),
+        )
+        .shrink(3.),
+    }
+}
+
+/// The on-screen autopilot controls: mode keys lit green when active and white when armed, the
+/// nose up and nose down pair around the active mode's reference, and a close key.
+fn afcs_panel(ui: &mut egui::Ui, panel: Rect, id: &str, style: &Style, shared: &Shared, out: &mut Output) {
+    use flightcraft_control::touch_pfd::AfcsTone;
+    ui.painter().text(
+        Pos2::new(panel.center().x, panel.top() + panel.height() * 0.06),
+        Align2::CENTER_CENTER,
+        "AUTOMATIC FLIGHT CONTROL",
+        style.font(panel.height() * 0.055),
+        style.key_text,
+    );
+    let Some(ap) = &shared.afcs else {
+        return;
+    };
+    let window = flightcraft_control::touch_pfd::afcs_window(ap);
+    let layout = afcs_layout(panel);
+    let mut pressed = None;
+    for (key, rect) in &layout.keys {
+        let Some(b) = window.buttons.iter().find(|b| b.key == *key) else {
+            continue;
+        };
+        let (fill, edge, ink, width) = match (b.enabled, b.tone) {
+            (false, _) => (
+                Color32::from_black_alpha(120),
+                style.trim.gamma_multiply(0.4),
+                style.key_text.gamma_multiply(0.35),
+                1.0_f32,
+            ),
+            (true, Some(AfcsTone::Active)) => (
+                Color32::from_rgb(10, 70, 30),
+                Color32::from_rgb(40, 220, 90),
+                Color32::from_rgb(70, 255, 120),
+                3.0,
+            ),
+            (true, Some(AfcsTone::Armed)) => (
+                Color32::from_black_alpha(190),
+                Color32::WHITE,
+                Color32::WHITE,
+                3.0,
+            ),
+            _ => (Color32::from_black_alpha(190), style.trim, style.key_text, 1.0),
+        };
+        ui.painter().rect(
+            *rect,
+            3.,
+            fill,
+            Stroke::new(width, edge),
+            egui::StrokeKind::Inside,
+        );
+        ui.painter().text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            b.label,
+            style.font((rect.height() * 0.42).min(rect.width() / (b.label.len().max(1) as f32 * 0.7))),
+            ink,
+        );
+        if ui
+            .interact(*rect, ui.id().with(("afcs-key", b.label)), Sense::click())
+            .clicked()
+            && b.enabled
+        {
+            pressed = Some(*key);
+        }
+    }
+    ui.painter().text(
+        layout.reference.center(),
+        Align2::CENTER_CENTER,
+        &window.reference,
+        style.font(layout.reference.height() * 0.4),
+        Color32::from_rgb(70, 255, 120),
+    );
+    if chip(ui, layout.close, "Close", false, style, "afcs-close") {
+        act(out, id, DisplayAction::CloseOverlay {});
+    }
+    if let Some(key) = pressed {
+        out.autopilot
+            .extend(flightcraft_control::touch_pfd::afcs_press(ap, key));
     }
 }
 

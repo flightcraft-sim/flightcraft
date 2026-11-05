@@ -210,6 +210,8 @@ fn shared(rows: &[&str], cursor: usize, active: usize) -> crate::efis::Shared {
         ident_remaining_s: 0.,
         user_field: flightcraft_control::DataBarField::SafeAltitude,
         g_meter: false,
+        pitch_offset_deg: 0.,
+        afcs: None,
         bearing: [false, false],
         vspeeds: Default::default(),
         pack_vspeeds_kt: [Some(58.), Some(62.), Some(70.), Some(65.), Some(60.)],

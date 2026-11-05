@@ -182,6 +182,13 @@ pub enum GlassSetting {
         #[schemars(range(min = 20, max = 400))]
         speed_kt: Option<f64>,
     },
+    /// The PFD pitch attitude offset, degrees: moves the pitch scale (and the synthetic-vision
+    /// scene) against the aircraft symbol, like trimming the symbol up or down on a mechanical
+    /// attitude indicator. Positive reads the aircraft as pitched higher; 0 removes the offset.
+    PitchOffset {
+        #[schemars(range(min = -2.5, max = 2.5))]
+        degrees: f64,
+    },
     /// The vertical navigation descent angle, degrees.
     VnavAngle {
         #[schemars(range(min = 1, max = 6))]

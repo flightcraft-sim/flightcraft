@@ -156,6 +156,236 @@ pub fn course_sync_target(guidance_valid: bool, desired_track_rad: f64, heading_
     degrees.to_radians()
 }
 
+/// A button of the on-screen AFCS controls (the window the AFCS status box opens on a unit with no
+/// separate mode controller).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AfcsKey {
+    Ap,
+    Fd,
+    Yd,
+    Hdg,
+    Trk,
+    Nav,
+    Apr,
+    Alt,
+    Vs,
+    Ias,
+    Lvl,
+    NoseUp,
+    NoseDown,
+}
+
+/// One button as drawn: lit green when its mode is active, white when armed, dimmed when the
+/// installed autopilot lacks the function.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AfcsButton {
+    pub key: AfcsKey,
+    pub label: &'static str,
+    pub tone: Option<AfcsTone>,
+    pub enabled: bool,
+}
+
+/// The window's buttons in `AfcsKey::ALL` order, and the reference line between the nose pair.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AfcsWindow {
+    pub buttons: Vec<AfcsButton>,
+    /// What the nose up and nose down pair adjusts, with its present value: "VS +500 fpm",
+    /// "IAS 90 kt", "ALT 5000 ft", "PIT +3 deg", or "NO MODE".
+    pub reference: String,
+}
+
+impl AfcsKey {
+    pub const ALL: [Self; 13] = [
+        Self::Ap,
+        Self::Fd,
+        Self::Yd,
+        Self::Hdg,
+        Self::Trk,
+        Self::Nav,
+        Self::Apr,
+        Self::Alt,
+        Self::Vs,
+        Self::Ias,
+        Self::Lvl,
+        Self::NoseUp,
+        Self::NoseDown,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Ap => "AP",
+            Self::Fd => "FD",
+            Self::Yd => "YD",
+            Self::Hdg => "HDG",
+            Self::Trk => "TRK",
+            Self::Nav => "NAV",
+            Self::Apr => "APR",
+            Self::Alt => "ALT",
+            Self::Vs => "VS",
+            Self::Ias => "IAS",
+            Self::Lvl => "LVL",
+            Self::NoseUp => "NOSE UP",
+            Self::NoseDown => "NOSE DN",
+        }
+    }
+}
+
+const VS_STEP_MPS: f64 = 0.508;
+/// The altitude hold reference moves 20 ft a press, as the pitch wheel does in ALT.
+const HOLD_STEP_M: f64 = 6.096;
+
+/// The vertical mode the nose pair steps, if the autopilot is in one it can step.
+fn nose_mode(s: &EquipmentState) -> Option<VerticalMode> {
+    s.active_vertical.filter(|m| {
+        matches!(
+            m,
+            VerticalMode::Pit | VerticalMode::Alt | VerticalMode::Vs | VerticalMode::Ias
+        )
+    })
+}
+
+fn nose_available(s: &EquipmentState) -> bool {
+    (s.engaged || s.flight_director)
+        && (nose_mode(s).is_some()
+            || (s.active_vertical.is_none() && s.installation.vertical_modes.contains(&VerticalMode::Vs)))
+}
+
+fn lateral_key(key: AfcsKey) -> Option<LateralMode> {
+    match key {
+        AfcsKey::Hdg => Some(LateralMode::Hdg),
+        AfcsKey::Trk => Some(LateralMode::Trk),
+        AfcsKey::Nav => Some(LateralMode::Nav),
+        AfcsKey::Apr => Some(LateralMode::Apr),
+        _ => None,
+    }
+}
+
+fn vertical_key(key: AfcsKey) -> Option<VerticalMode> {
+    match key {
+        AfcsKey::Alt => Some(VerticalMode::Alt),
+        AfcsKey::Vs => Some(VerticalMode::Vs),
+        AfcsKey::Ias => Some(VerticalMode::Ias),
+        _ => None,
+    }
+}
+
+/// The on-screen AFCS controls for an autopilot state: which buttons are lit (green for the active
+/// mode, white for the armed one) and which the installed autopilot can use.
+pub fn afcs_window(s: &EquipmentState) -> AfcsWindow {
+    let modes_shown = s.flight_director || s.engaged;
+    let buttons = AfcsKey::ALL
+        .iter()
+        .map(|&key| {
+            let (tone, enabled) = if let Some(mode) = lateral_key(key) {
+                let tone = if !modes_shown {
+                    None
+                } else if s.active_lateral == Some(mode) {
+                    Some(AfcsTone::Active)
+                } else if s.armed_lateral == Some(mode) {
+                    Some(AfcsTone::Armed)
+                } else {
+                    None
+                };
+                (tone, s.installation.lateral_modes.contains(&mode))
+            } else if let Some(mode) = vertical_key(key) {
+                let tone = if !modes_shown {
+                    None
+                } else if s.active_vertical == Some(mode) {
+                    Some(AfcsTone::Active)
+                } else if s.armed_vertical == Some(mode) || (mode == VerticalMode::Alt && s.alts_armed) {
+                    Some(AfcsTone::Armed)
+                } else {
+                    None
+                };
+                (tone, s.installation.vertical_modes.contains(&mode))
+            } else {
+                match key {
+                    AfcsKey::Ap => (s.engaged.then_some(AfcsTone::Active), true),
+                    AfcsKey::Fd => (s.flight_director.then_some(AfcsTone::Active), true),
+                    AfcsKey::Yd => (
+                        s.yaw_damper.then_some(AfcsTone::Active),
+                        s.installation.yaw_damper,
+                    ),
+                    AfcsKey::Lvl => (
+                        (s.engaged
+                            && s.active_lateral == Some(LateralMode::Rol)
+                            && matches!(s.active_vertical, Some(VerticalMode::Pit) | None))
+                        .then_some(AfcsTone::Active),
+                        true,
+                    ),
+                    _ => (None, nose_available(s)),
+                }
+            };
+            AfcsButton {
+                key,
+                label: key.label(),
+                tone,
+                enabled,
+            }
+        })
+        .collect();
+    let reference = match nose_mode(s) {
+        Some(VerticalMode::Vs) => format!("VS {:+.0} fpm", s.vertical_speed_mps * FEET * 60.),
+        Some(VerticalMode::Ias) => format!("IAS {:.0} kt", s.airspeed_mps * KNOTS),
+        Some(VerticalMode::Alt) => format!("ALT {:.0} ft", s.captured_altitude_m * FEET),
+        Some(VerticalMode::Pit) => format!("PIT {:+.0} deg", s.pitch_rad.to_degrees()),
+        _ => "NO MODE".to_owned(),
+    };
+    AfcsWindow { buttons, reference }
+}
+
+/// The autopilot commands one press of a button sends: the same commands the mode controller's
+/// keys send. A button the installed autopilot lacks sends nothing. The nose pair steps the
+/// reference of the active vertical mode (vertical speed 100 fpm, airspeed 1 kt, held altitude
+/// 20 ft, pitch 1 degree); with no vertical mode it starts vertical speed first.
+pub fn afcs_press(s: &EquipmentState, key: AfcsKey) -> Vec<PanelSetting> {
+    let enabled = afcs_window(s).buttons.iter().any(|b| b.key == key && b.enabled);
+    if !enabled {
+        return Vec::new();
+    }
+    if let Some(mode) = lateral_key(key) {
+        return vec![PanelSetting::Lateral { mode }];
+    }
+    if let Some(mode) = vertical_key(key) {
+        return vec![PanelSetting::Vertical { mode }];
+    }
+    match key {
+        AfcsKey::Ap => vec![PanelSetting::Engage { on: !s.engaged }],
+        AfcsKey::Fd => vec![PanelSetting::FlightDirector {
+            on: !s.flight_director,
+        }],
+        AfcsKey::Yd => vec![PanelSetting::YawDamper { on: !s.yaw_damper }],
+        AfcsKey::Lvl => vec![PanelSetting::Level],
+        _ => {
+            let n = if key == AfcsKey::NoseUp { 1. } else { -1. };
+            match nose_mode(s) {
+                Some(VerticalMode::Vs) => vec![PanelSetting::VerticalSpeed {
+                    vertical_speed_mps: ((s.vertical_speed_mps / VS_STEP_MPS).round() * VS_STEP_MPS
+                        + n * VS_STEP_MPS)
+                        .clamp(-7.62, 7.62),
+                }],
+                Some(VerticalMode::Ias) => vec![PanelSetting::Airspeed {
+                    airspeed_mps: ((s.airspeed_mps * KNOTS).round() + n).clamp(40., 174.) / KNOTS,
+                }],
+                Some(VerticalMode::Alt) => vec![PanelSetting::HoldAltitude {
+                    altitude_m: (s.captured_altitude_m + n * HOLD_STEP_M).clamp(2., 10_000.),
+                }],
+                Some(VerticalMode::Pit) => vec![PanelSetting::Pitch {
+                    pitch_rad: (s.pitch_rad + n.to_radians()).clamp(-0.25, 0.35),
+                }],
+                _ => vec![
+                    PanelSetting::Vertical {
+                        mode: VerticalMode::Vs,
+                    },
+                    PanelSetting::VerticalSpeed {
+                        vertical_speed_mps: n * VS_STEP_MPS,
+                    },
+                ],
+            }
+        }
+    }
+}
+
 /// One display for the reversion rules.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DisplayHealth {
@@ -250,6 +480,134 @@ mod tests {
         assert_eq!(text(&b.vertical_armed), Some(("ALTS".into(), AfcsTone::Armed)));
         assert_eq!(b.reference.as_deref(), Some("5000ft"));
         assert!(b.flight_director && !b.hand_flying);
+    }
+
+    fn tone(w: &AfcsWindow, key: AfcsKey) -> Option<AfcsTone> {
+        w.buttons.iter().find(|b| b.key == key).unwrap().tone
+    }
+
+    #[test]
+    fn afcs_buttons_show_active_and_armed_modes_and_dim_what_is_not_installed() {
+        let mut s = state();
+        s.engaged = true;
+        s.flight_director = true;
+        s.active_lateral = Some(LateralMode::Hdg);
+        s.armed_lateral = Some(LateralMode::Nav);
+        s.active_vertical = Some(VerticalMode::Vs);
+        s.alts_armed = true;
+        let w = afcs_window(&s);
+        assert_eq!(tone(&w, AfcsKey::Ap), Some(AfcsTone::Active));
+        assert_eq!(tone(&w, AfcsKey::Fd), Some(AfcsTone::Active));
+        assert_eq!(tone(&w, AfcsKey::Hdg), Some(AfcsTone::Active));
+        assert_eq!(tone(&w, AfcsKey::Nav), Some(AfcsTone::Armed));
+        assert_eq!(tone(&w, AfcsKey::Apr), None);
+        assert_eq!(tone(&w, AfcsKey::Vs), Some(AfcsTone::Active));
+        assert_eq!(tone(&w, AfcsKey::Alt), Some(AfcsTone::Armed));
+        assert_eq!(tone(&w, AfcsKey::Lvl), None);
+        assert_eq!(w.reference, "VS +0 fpm");
+        // The installation has no yaw damper: the button is dimmed and sends nothing.
+        assert!(!w.buttons.iter().find(|b| b.key == AfcsKey::Yd).unwrap().enabled);
+        assert!(afcs_press(&s, AfcsKey::Yd).is_empty());
+        // A wing leveler has no TRK, and no vertical modes at all.
+        s.installation = AutopilotInstallation::new(AutopilotFamily::WingLeveler);
+        assert!(afcs_press(&s, AfcsKey::Trk).is_empty());
+        assert!(afcs_press(&s, AfcsKey::Alt).is_empty());
+        // With the autopilot and director off nothing is lit but the buttons stay usable.
+        let off = afcs_window(&state());
+        assert!(off.buttons.iter().all(|b| b.tone.is_none()));
+        assert!(
+            !off.buttons
+                .iter()
+                .find(|b| b.key == AfcsKey::NoseUp)
+                .unwrap()
+                .enabled
+        );
+    }
+
+    #[test]
+    fn afcs_presses_send_the_mode_controllers_commands() {
+        let mut s = state();
+        assert_eq!(
+            afcs_press(&s, AfcsKey::Ap),
+            vec![PanelSetting::Engage { on: true }]
+        );
+        assert_eq!(
+            afcs_press(&s, AfcsKey::Fd),
+            vec![PanelSetting::FlightDirector { on: true }]
+        );
+        assert_eq!(afcs_press(&s, AfcsKey::Lvl), vec![PanelSetting::Level]);
+        for (key, mode) in [
+            (AfcsKey::Hdg, LateralMode::Hdg),
+            (AfcsKey::Trk, LateralMode::Trk),
+            (AfcsKey::Nav, LateralMode::Nav),
+            (AfcsKey::Apr, LateralMode::Apr),
+        ] {
+            assert_eq!(afcs_press(&s, key), vec![PanelSetting::Lateral { mode }]);
+        }
+        for (key, mode) in [
+            (AfcsKey::Alt, VerticalMode::Alt),
+            (AfcsKey::Vs, VerticalMode::Vs),
+            (AfcsKey::Ias, VerticalMode::Ias),
+        ] {
+            assert_eq!(afcs_press(&s, key), vec![PanelSetting::Vertical { mode }]);
+        }
+        s.engaged = true;
+        assert_eq!(
+            afcs_press(&s, AfcsKey::Ap),
+            vec![PanelSetting::Engage { on: false }]
+        );
+        // Nose up and down step the active mode's reference.
+        s.active_vertical = Some(VerticalMode::Vs);
+        s.vertical_speed_mps = 0.;
+        assert_eq!(
+            afcs_press(&s, AfcsKey::NoseUp),
+            vec![PanelSetting::VerticalSpeed {
+                vertical_speed_mps: 0.508
+            }]
+        );
+        assert_eq!(
+            afcs_press(&s, AfcsKey::NoseDown),
+            vec![PanelSetting::VerticalSpeed {
+                vertical_speed_mps: -0.508
+            }]
+        );
+        s.active_vertical = Some(VerticalMode::Alt);
+        s.captured_altitude_m = 1000.;
+        assert_eq!(
+            afcs_press(&s, AfcsKey::NoseUp),
+            vec![PanelSetting::HoldAltitude { altitude_m: 1006.096 }]
+        );
+        s.active_vertical = Some(VerticalMode::Ias);
+        s.airspeed_mps = 40.;
+        let Some(PanelSetting::Airspeed { airspeed_mps }) = afcs_press(&s, AfcsKey::NoseUp).pop() else {
+            panic!("airspeed step")
+        };
+        assert!(
+            (airspeed_mps * KNOTS - 79.).abs() < 1e-6,
+            "{}",
+            airspeed_mps * KNOTS
+        );
+        s.active_vertical = Some(VerticalMode::Pit);
+        s.pitch_rad = 0.;
+        assert_eq!(
+            afcs_press(&s, AfcsKey::NoseDown),
+            vec![PanelSetting::Pitch {
+                pitch_rad: -1_f64.to_radians()
+            }]
+        );
+        // No vertical mode: the pair starts vertical speed.
+        s.active_vertical = None;
+        assert_eq!(
+            afcs_press(&s, AfcsKey::NoseUp),
+            vec![
+                PanelSetting::Vertical {
+                    mode: VerticalMode::Vs
+                },
+                PanelSetting::VerticalSpeed {
+                    vertical_speed_mps: 0.508
+                }
+            ]
+        );
     }
 
     #[test]

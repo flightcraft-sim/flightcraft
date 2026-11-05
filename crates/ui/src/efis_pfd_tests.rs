@@ -559,7 +559,9 @@ pub(crate) fn frame(
                     view.show(
                         ui,
                         panel,
-                        InstrumentInput::new(s.sim().systems(), 0.).with_glass(&state),
+                        InstrumentInput::new(s.sim().systems(), 0.)
+                            .with_glass(&state)
+                            .with_autopilot(s.sim().installed_autopilot()),
                         &Registry::default(),
                     );
                 });
@@ -889,6 +891,221 @@ fn the_g_meter_shows_the_load_factor_with_its_extremes_only_when_enabled_and_res
             setting: GlassSetting::GMeterReset {}
         }
     )));
+}
+
+#[test]
+fn the_pitch_offset_moves_the_pitch_scale_against_the_aircraft_symbol() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let mut g = flying(&s);
+    g.air_data.roll_rad = 0.;
+    // The horizon is the one line that runs far past the display on both sides.
+    let y_of = |g: &GlassState, _text: &str| {
+        let d = touch_pfd::panel(g, input, &geometry, options());
+        d.flat_items()
+            .into_iter()
+            .find_map(|i| match i {
+                DrawItem::Line { a, b, .. } if (b[0] - a[0]).abs() > 3000. => Some(a[1]),
+                _ => None,
+            })
+            .expect("the horizon line")
+    };
+    let level = y_of(&g, "");
+    g.settings.pitch_offset_deg = 2.;
+    let raised = y_of(&g, "");
+    g.settings.pitch_offset_deg = -2.;
+    let lowered = y_of(&g, "");
+    // 2 degrees of offset is 2 degrees of scale (7.25 px a degree), up or down.
+    assert!((raised - level - 14.5).abs() < 0.6, "{level} {raised}");
+    assert!((level - lowered - 14.5).abs() < 0.6, "{level} {lowered}");
+    // The aircraft symbol does not move.
+    let symbol = |g: &GlassState| {
+        touch_pfd::panel(g, input, &geometry, options())
+            .flat_items()
+            .into_iter()
+            .filter(
+                |i| matches!(i, DrawItem::Circle { radius, ink, .. } if *radius == 4. && *ink == Ink::Yellow),
+            )
+            .count()
+    };
+    assert_eq!(symbol(&g), 1);
+}
+
+#[test]
+fn the_pfd_options_page_steps_the_pitch_offset_in_tenths_and_halves_and_zeroes_it() {
+    use flightcraft_control::{AvionicsSetting, GlassSetting};
+    let mut s = session();
+    s.set_glass(GlassSetting::PitchOffset { degrees: 1.0 }).unwrap();
+    let panel = isolated(&s, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"pfd_options"}),
+    );
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), 0.0);
+    let w = screen.width() * 0.46;
+    let h = screen.height() * 0.72;
+    let left = screen.center().x - w / 2.;
+    let top = screen.center().y - h / 2.;
+    let row_h = h * 0.085;
+    // Synthetic vision, two bearings, and the G meter come first; the offset is the fifth row.
+    let y = top + h * 0.11 + 2. + 4. * (row_h + 2.) + row_h / 2.;
+    let cell_w = (w - 12.) / 6.;
+    let mut t = 1.;
+    for (i, want) in [(2., 0.5), (3., 0.9), (4., 1.1), (5., 1.5)] {
+        let at = egui::pos2(left + 6. + (i + 0.5) * cell_w, y);
+        tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+        let sent = std::mem::take(&mut view.avionics);
+        assert!(
+            sent.iter().any(|a| matches!(a, AvionicsSetting::Glass {
+                setting: GlassSetting::PitchOffset { degrees }
+            } if (*degrees - want).abs() < 1e-9)),
+            "{want}: {sent:?}"
+        );
+    }
+    // Touching the label zeroes a non-zero offset.
+    tap(
+        &ctx,
+        &mut view,
+        &panel,
+        &s,
+        size,
+        egui::pos2(left + 6. + cell_w * 0.5, y),
+        &mut t,
+    );
+    assert!(view.avionics.iter().any(|a| matches!(
+        a,
+        AvionicsSetting::Glass {
+            setting: GlassSetting::PitchOffset { degrees }
+        } if *degrees == 0.
+    )));
+}
+
+#[test]
+fn touching_the_afcs_box_opens_the_controls_and_each_key_sends_the_autopilot_command() {
+    use flightcraft_control::AvionicsSetting;
+    use flightcraft_control::touch_pfd::AfcsKey;
+    use flightcraft_sim::equipment::PanelSetting;
+    let mut s = session();
+    let panel = isolated(&s, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), 0.0);
+    let mut t = 1.;
+    // Touching the AFCS status box asks for the overlay.
+    let at = efis::native_rect(screen, geometry.screen_rect(E::AfcsBox)).center();
+    tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+    assert!(actions(&mut view).iter().any(|a| matches!(
+        a,
+        DisplayAction::OpenOverlay { overlay } if *overlay == Overlay::Afcs
+    )));
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"afcs"}),
+    );
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), t);
+    t += 1.;
+    let window = Rect::from_center_size(
+        screen.center(),
+        egui::vec2(screen.width() * 0.6, screen.height() * 0.8),
+    );
+    let layout = efis::afcs_layout(window);
+    let press = |ctx: &egui::Context, view: &mut PanelUi, s: &Session, t: &mut f64, key: AfcsKey| {
+        let rect = layout.keys.iter().find(|(k, _)| *k == key).unwrap().1;
+        tap(ctx, view, &panel, s, size, rect.center(), t);
+        std::mem::take(&mut view.avionics)
+            .into_iter()
+            .filter_map(|a| match a {
+                AvionicsSetting::Autopilot { setting } => Some(setting),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        press(&ctx, &mut view, &s, &mut t, AfcsKey::Ap),
+        vec![PanelSetting::Engage { on: true }]
+    );
+    assert_eq!(
+        press(&ctx, &mut view, &s, &mut t, AfcsKey::Hdg),
+        vec![PanelSetting::Lateral {
+            mode: LateralMode::Hdg
+        }]
+    );
+    assert_eq!(
+        press(&ctx, &mut view, &s, &mut t, AfcsKey::Vs),
+        vec![PanelSetting::Vertical {
+            mode: VerticalMode::Vs
+        }]
+    );
+    assert_eq!(
+        press(&ctx, &mut view, &s, &mut t, AfcsKey::Lvl),
+        vec![PanelSetting::Level]
+    );
+    // Close sends BACK to the display state.
+    let close = layout.close.center();
+    tap(&ctx, &mut view, &panel, &s, size, close, &mut t);
+    assert!(
+        actions(&mut view)
+            .iter()
+            .any(|a| matches!(a, DisplayAction::CloseOverlay {}))
+    );
+}
+
+#[test]
+fn the_afcs_window_lights_active_green_and_armed_white_and_its_keys_stay_apart_inside_it() {
+    let s = session();
+    // Keys never overlap each other or the readout, and all sit inside the window.
+    let screen = Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1632., 1170.));
+    let window = Rect::from_center_size(
+        screen.center(),
+        egui::vec2(screen.width() * 0.6, screen.height() * 0.8),
+    );
+    let layout = efis::afcs_layout(window);
+    assert_eq!(layout.keys.len(), 13);
+    let mut all: Vec<Rect> = layout.keys.iter().map(|(_, r)| *r).collect();
+    all.push(layout.reference);
+    all.push(layout.close);
+    for (i, a) in all.iter().enumerate() {
+        assert!(window.contains_rect(*a), "{a:?}");
+        // The longest label fits its key at the font the key uses.
+        for b in &all[i + 1..] {
+            assert!(!a.intersects(*b), "{a:?} meets {b:?}");
+        }
+    }
+    for (key, rect) in &layout.keys {
+        let size = (rect.height() * 0.42).min(rect.width() / (key.label().len() as f32 * 0.7));
+        assert!(
+            key.label().len() as f32 * size * 0.7 <= rect.width() + 0.5,
+            "{} fits its key",
+            key.label()
+        );
+    }
+    // The window is on the screen but clear of the bezel edges.
+    assert!(screen.contains_rect(window));
+    // The state drives the tone of each key.
+    let mut ap = autopilot_state(&s);
+    ap.engaged = true;
+    ap.flight_director = true;
+    ap.active_lateral = Some(LateralMode::Hdg);
+    ap.armed_lateral = Some(LateralMode::Nav);
+    ap.active_vertical = Some(VerticalMode::Vs);
+    let w = flightcraft_control::touch_pfd::afcs_window(&ap);
+    use flightcraft_control::touch_pfd::{AfcsKey, AfcsTone};
+    let tone = |k| w.buttons.iter().find(|b| b.key == k).unwrap().tone;
+    assert_eq!(tone(AfcsKey::Hdg), Some(AfcsTone::Active));
+    assert_eq!(tone(AfcsKey::Nav), Some(AfcsTone::Armed));
+    assert_eq!(tone(AfcsKey::Vs), Some(AfcsTone::Active));
 }
 
 #[test]
@@ -1377,7 +1594,9 @@ fn every_keypad_and_window_offers_its_keys_and_shortcuts() {
                         view.show(
                             ui,
                             &panel,
-                            InstrumentInput::new(s.sim().systems(), 0.).with_glass(&state),
+                            InstrumentInput::new(s.sim().systems(), 0.)
+                                .with_glass(&state)
+                                .with_autopilot(s.sim().installed_autopilot()),
                             &Registry::default(),
                         );
                     });
@@ -1417,7 +1636,9 @@ fn every_keypad_and_window_offers_its_keys_and_shortcuts() {
                     view.show(
                         ui,
                         &panel,
-                        InstrumentInput::new(s.sim().systems(), 0.).with_glass(&state),
+                        InstrumentInput::new(s.sim().systems(), 0.)
+                            .with_glass(&state)
+                            .with_autopilot(s.sim().installed_autopilot()),
                         &Registry::default(),
                     );
                 });
@@ -1700,6 +1921,18 @@ pub(crate) fn render_display(
     size: [u32; 2],
     systems: Option<&flightcraft_sim::systems::SystemsState>,
 ) -> image::RgbaImage {
+    render_display_with(s, state, id, size, systems, None)
+}
+
+/// As `render_display`, with an autopilot state standing in for the session's own.
+fn render_display_with(
+    s: &mut Session,
+    state: &GlassState,
+    id: &str,
+    size: [u32; 2],
+    systems: Option<&flightcraft_sim::systems::SystemsState>,
+    autopilot: Option<&flightcraft_sim::equipment::EquipmentState>,
+) -> image::RgbaImage {
     let config = s.aircraft_configuration().unwrap().clone();
     let owned_skins: Vec<SkinContents> = s.skins().cloned().collect();
     let skins: Vec<&SkinContents> = owned_skins.iter().collect();
@@ -1716,7 +1949,7 @@ pub(crate) fn render_display(
                     .with_aircraft(&config)
                     .with_skins(&skins)
                     .with_glass(state)
-                    .with_autopilot(s.sim().installed_autopilot()),
+                    .with_autopilot(autopilot.or(s.sim().installed_autopilot())),
                 s.flight_generation(),
             )
             .unwrap();
@@ -1810,6 +2043,48 @@ fn render_touch_feature_previews() {
     g.touch = s.glass_state().touch;
     render_display(&mut s, &g, "left_display", size, Some(&systems))
         .save(out.join("split-cas-list.png"))
+        .unwrap();
+    // The on-screen AFCS controls over the full PFD, with the autopilot in HDG and VS and NAV
+    // armed, then the PFD options with a pitch offset.
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"layout","layout":"full_pfd"}),
+    );
+    let mut ap = s.sim().installed_autopilot().unwrap().clone();
+    ap.engaged = true;
+    ap.flight_director = true;
+    ap.active_lateral = Some(LateralMode::Hdg);
+    ap.armed_lateral = Some(LateralMode::Nav);
+    ap.active_vertical = Some(VerticalMode::Vs);
+    ap.vertical_speed_mps = 500. * 0.3048 / 60.;
+    ap.alts_armed = true;
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"afcs"}),
+    );
+    g.air_data.altitude_msl_m = 5000. * 0.3048;
+    g.touch = s.glass_state().touch;
+    render_display_with(&mut s, &g, "left_display", size, Some(&systems), Some(&ap))
+        .save(out.join("pfd-afcs-controls.png"))
+        .unwrap();
+    s.set_glass(flightcraft_control::GlassSetting::PitchOffset { degrees: 1.5 })
+        .unwrap();
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"pfd_options"}),
+    );
+    g.settings.pitch_offset_deg = 1.5;
+    g.touch = s.glass_state().touch;
+    render_display(&mut s, &g, "left_display", size, Some(&systems))
+        .save(out.join("pfd-options-pitch-offset.png"))
+        .unwrap();
+    set(&mut s, "left_display", json!({"kind":"close_overlay"}));
+    g.touch = s.glass_state().touch;
+    render_display(&mut s, &g, "left_display", size, Some(&systems))
+        .save(out.join("pfd-pitch-offset-applied.png"))
         .unwrap();
 }
 

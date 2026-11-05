@@ -414,6 +414,43 @@ opposite, labelled `BRG1 GPS` and `BRG2 GPS` beside the rose. They need a valid 
 read the magnetic bearing the data bar's BRG field shows. A radio is not a source: the engine has one navigation
 receiver and no NAV2 (see the radio windows), so the setting knows only `off` and `gps`.
 
+### Touch AFCS controls
+
+On a touch display with an autopilot installed, touching the **AFCS status box** at the top of the PFD opens the
+**Automatic Flight Control** window, the pilot's guide's way to work the autopilot when no separate mode controller
+is fitted (the guide's supplement names the window and says BACK closes it; its mode keys are the engine's own
+layout, drawn from scratch). The window holds three rows of mode keys, **AP FD YD**, **HDG TRK NAV APR**, and
+**ALT VS IAS LVL**, then **NOSE UP**, a readout, and **NOSE DN**, then **Close** (BACK also closes it).
+
+- Every key sends the same autopilot command the controller faceplate in `ui::autopilot` sends
+  (`engage`, `flight_director`, `lateral`, `vertical`, `level`, `yaw_damper`), through the same
+  `avionics.set` autopilot path, so the mode machine, the AFCS box, and the faceplate agree.
+- A key is lit **green** when its mode is active and outlined **white** when armed (ALT also when altitude capture
+  is armed). AP, FD, and YD are green while on; LVL is green with the autopilot on in ROL and PIT. A key the installed
+  autopilot lacks (no TRK on a rate-based unit, no YD without a yaw damper, no vertical modes on a wing leveler) is
+  dimmed and sends nothing; NOSE UP and DN dim until the director or autopilot is on.
+- NOSE UP and NOSE DN step the reference of the active vertical mode, shown between them: vertical speed 100 fpm,
+  airspeed 1 kt, pitch 1 degree, and in ALT the held altitude 20 ft (the `hold_altitude` setting). With no
+  vertical mode they start VS and step it.
+- `flightcraft_control::touch_pfd::afcs_window` (what each key shows) and `afcs_press` (what a press sends) are pure
+  functions of the autopilot's state; the window is the display overlay `afcs`, opened with the
+  `open_overlay` display action (refused when no autopilot is installed).
+
+What the real unit does differently: the guide documents the window's existence (and an ESP key for the GFC 500's
+stability protection, which this engine does not model as a key) but not its exact key set; the keys here follow the
+mode controller's.
+
+### PFD pitch attitude offset
+
+The guide's *PFD pitch attitude offset* lets the pilot move the yellow aircraft symbol up or down on the attitude
+indicator, up to +/-2.5 degrees, entered in the PFD menu's More Options. The glass setting `pitch_offset`
+(`degrees`: -2.5 to 2.5, stored to 0.1 degree, 0 clears it) does the same here: the aircraft symbol, roll scale,
+and flight director bars stay put, and the pitch scale, horizon, and synthetic-vision scene move against the
+symbol by the offset (a positive offset reads the aircraft as pitched that much higher, which is the symbol raised
+against the scale). It changes the display only: the autopilot, the flight director's pitch error, and the
+state hash are untouched. MENU on a full-screen PFD shows **Pitch offset** with **-0.5 -0.1 +0.1 +0.5** keys and
+touching the label zeroes it. The value is in `glass_suite.settings.pitch_offset_deg`.
+
 ### G meter
 
 A PFD option (MENU on a full-screen PFD, **G meter**; glass setting `g_meter` with `shown`) draws a small box left
@@ -651,7 +688,7 @@ bar and status bar, the CAS window, the trim and flap position indicators, touch
 (select, insert before and after, remove, activate leg), the CAS message list page (opened from the
 window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry
 keypads (baro, heading, altitude, course, minimums, direct-to) with their shortcuts, baro minimums (bug,
-annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, the two bearing pointers, Set To Current by touching the altitude tape or compass, altitude-hold reference stepping, vertical navigation (altitude
+annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, the PFD pitch attitude offset, the on-screen AFCS controls opened from the AFCS box, the two bearing pointers, Set To Current by touching the altitude tape or compass, altitude-hold reference stepping, vertical navigation (altitude
 constraints on flight-plan waypoints, the descent path computed back from them, the deviation indicator,
 vertical speed required, and path tracking by the autopilot), the COM1, NAV1, and transponder windows, the
 23-step range ladder with zoom buttons, the
@@ -733,7 +770,7 @@ CAS message; both are described under "CAS message list and IDENT" below. Other 
 (`source`: `off` or `gps`), `map_range` (`range_nm`: 1–200), `orientation` (`north_up` or
 `track_up`), `traffic` (`shown`), `traffic_filter` (`filter`), `page` (`map`, `nearest`, `flight_plan`, or `cas`; the application MFD), `display_page` (`display`, `page`), `display_data` (`display`, `area`), `pilot_seat` (`seat`), `display_reversion` (`enabled`), `active_leg` (`index`, zero-based),
 `minimums` (`altitude_m`) and `minimums_off`, `clock_format`, `clock_set`, `timer`, `data_bar_field`,
-`vnav_angle` (`degrees`: 1 to 6), `waypoint_altitude` (`index`, `constraint`: `{"kind":"at"|"at_or_above"|
+`vnav_angle` (`degrees`: 1 to 6), `pitch_offset` (`degrees`: -2.5 to 2.5), `waypoint_altitude` (`index`, `constraint`: `{"kind":"at"|"at_or_above"|
 "at_or_below","altitude_m":n}` or `null` to clear),
 and `failure` (`target`: `ahrs`, `adc`, `pfd`, or `mfd`; `failed`: boolean). Units are SI
 unless explicitly named otherwise. Baro defaults to inHg; the knob menu offers hPa.
