@@ -627,6 +627,38 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         vec![[x + 17., by - 11.], [x + 28., by], [x + 17., by + 11.]],
         Ink::Cyan,
     );
+    // Vertical navigation indicator: a scale of dots (100 ft each) beside the tape's left edge and
+    // a magenta diamond that sits below the middle when the aircraft is above the path, so the
+    // pilot flies toward it. Green once the autopilot is tracking the path.
+    if let Some(v) = &s.vnav {
+        let vx = x - 14.;
+        let spacing = h * 0.5 / (flightcraft_sim::avionics::vnav::FULL_SCALE_DOTS as f32 + 0.5);
+        line(
+            d,
+            [vx, mid - spacing * 2.5],
+            [vx, mid + spacing * 2.5],
+            Ink::TapeText,
+            1.,
+        );
+        for dot in [-2_f32, -1., 1., 2.] {
+            circle(d, [vx, mid + dot * spacing], 3.5, Ink::White);
+        }
+        line(d, [vx - 8., mid], [vx + 8., mid], Ink::White, 2.);
+        let dy = mid + v.dots as f32 * spacing;
+        let ink = if v.tracking { Ink::Green } else { Ink::Magenta };
+        polygon(
+            d,
+            vec![[vx - 9., dy], [vx, dy - 11.], [vx + 9., dy], [vx, dy + 11.]],
+            ink,
+        );
+        label(d, [vx, y - 9.], "VNAV", 15. * t.tape, ink);
+    }
+    // Barometric minimums bug: an amber marker on the tape's left edge, pinned when off the scale.
+    if let Some(minimums) = s.settings.minimums_m {
+        let my = at(minimums * FEET).clamp(y + 8., y + h - 8.);
+        polygon(d, vec![[x, my - 7.], [x + 14., my], [x, my + 7.]], Ink::Yellow);
+        line(d, [x, my], [x + 22., my], Ink::Yellow, 2.);
+    }
     // Altitude trend vector, to the predicted altitude in 6 seconds.
     let trend = (a.altitude_trend_m * FEET) as f32 * ALT_PX_PER_FT;
     if trend.abs() > 1. {
@@ -681,6 +713,18 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
             20. * t.boxes,
             Ink::Green,
         );
+    }
+    // MINIMUMS: amber text within 100 ft above the minimums, and solid amber at or below them.
+    match flightcraft_control::minimums::state(a.altitude_msl_m, s.settings.minimums_m) {
+        flightcraft_control::minimums::MinimumsState::Approaching => {
+            bordered(d, [x + 3., y + 3., w - 6., 24.], Ink::BoxFill, Ink::Yellow);
+            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::Yellow);
+        }
+        flightcraft_control::minimums::MinimumsState::Reached => {
+            rect(d, [x + 3., y + 3., w - 6., 24.], Ink::Yellow);
+            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::BoxFill);
+        }
+        _ => {}
     }
     // The pointer: black, with the altitude; its tens digits roll.
     let [px, py, pw, ph] = r4(g.rect(E::AltitudePointer));
@@ -772,6 +816,23 @@ fn boxes(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &PfdGe
         },
         Ink::Cyan,
         size,
+    );
+    // The minimums box under the baro box: the set altitude, or dashes.
+    boxed(
+        d,
+        E::MinimumsBox,
+        s.settings.minimums_m.map_or("MIN ----".into(), |m| {
+            format!(
+                "MIN {}",
+                crate::instruments::formatting::integer((m * FEET).round())
+            )
+        }),
+        if s.settings.minimums_m.is_some() {
+            Ink::Yellow
+        } else {
+            Ink::White
+        },
+        15. * t.boxes,
     );
     // Selected heading (cyan) and selected course (magenta for GPS, green for a radio).
     boxed(
@@ -1068,6 +1129,21 @@ pub(crate) fn bars(
             let minutes = (seconds.max(0.) / 60.) as u64;
             format!("{:02}:{:02}", minutes / 60, minutes % 60)
         };
+        // The minimum safe altitude slot is the user field: dashes, the clock, or the flight timer.
+        let (label_text, ink) = match (field, s.settings.data_bar_field) {
+            (F::SafeAltitude, flightcraft_control::DataBarField::Clock) => {
+                (s.clock.label.as_str(), Ink::Magenta)
+            }
+            (F::SafeAltitude, flightcraft_control::DataBarField::Timer) => (
+                "TMR",
+                if s.clock.timer_expired {
+                    Ink::Yellow
+                } else {
+                    Ink::Magenta
+                },
+            ),
+            _ => (field.label(), Ink::Magenta),
+        };
         let value = match field {
             F::Waypoint => gps.destination.clone().unwrap_or_else(|| "_____".into()),
             F::Bearing => {
@@ -1087,11 +1163,26 @@ pub(crate) fn bars(
             F::TimeEnRoute => gps.ete_s.map_or("--:--".into(), duration),
             F::GroundSpeed => format!("{:.0}KT", s.ground_speed_mps * KNOTS),
             F::Track => format!("{:03.0}°", s.ground_track_rad.to_degrees().rem_euclid(360.)),
-            // The engine models no minimum safe altitude or vertical speed required.
-            F::SafeAltitude | F::VerticalSpeedRequired => "-----".into(),
+            F::SafeAltitude => match s.settings.data_bar_field {
+                flightcraft_control::DataBarField::SafeAltitude => "-----".into(),
+                flightcraft_control::DataBarField::Clock => {
+                    flightcraft_sim::avionics::glass_aids::hms(s.clock.seconds)
+                }
+                flightcraft_control::DataBarField::Timer => {
+                    flightcraft_sim::avionics::glass_aids::timer_text(s.clock.timer_s)
+                }
+            },
+            // Vertical speed required to meet the next altitude constraint, once the flight plan has one.
+            F::VerticalSpeedRequired => s
+                .vnav
+                .as_ref()
+                .and_then(|v| v.required_vs_fpm)
+                .map_or("-----".into(), |fpm| {
+                    format!("{:+.0}FPM", (fpm / 10.).round() * 10.)
+                }),
         };
-        label(&mut d, [*fx as f32, y + 14.], field.label(), small, Ink::White);
-        label(&mut d, [*fx as f32, y + h * 0.68], value, size, Ink::Magenta);
+        label(&mut d, [*fx as f32, y + 14.], label_text, small, Ink::White);
+        label(&mut d, [*fx as f32, y + h * 0.68], value, size, ink);
     }
     // Status bar: knob functions at the ends, outside air temperature and messages in the middle.
     let [bx, by, bw, bh] = r4(g.rect(E::StatusBar));

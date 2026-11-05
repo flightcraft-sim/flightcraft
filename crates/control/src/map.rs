@@ -466,6 +466,7 @@ mod tests {
                 latitude_deg: 40.8,
                 longitude_deg: -74.7,
             },
+            altitude_constraint: None,
         }])
         .unwrap();
         assert_eq!(s.gps_map_waypoints().len(), 1);

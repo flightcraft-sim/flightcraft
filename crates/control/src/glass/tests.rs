@@ -252,3 +252,305 @@ fn glass_settings_validate_against_schemas_and_queries_do_not_advance_sensors() 
         assert!(!validator.is_valid(&serde_json::json!({"setting":{"kind":"glass","setting":setting}})));
     }
 }
+fn glass_session() -> Session {
+    let mut s = Session::new().unwrap();
+    s.execute(
+        "aircraft.load",
+        serde_json::json!({"source":{"kind":"installed","id":"corvid-glass"},"reset":true}),
+    )
+    .unwrap();
+    s
+}
+#[test]
+fn minimums_are_validated_stored_and_removed() {
+    let mut s = glass_session();
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    assert!(
+        s.set_glass(GlassSetting::Minimums { altitude_m: f64::NAN })
+            .is_err()
+    );
+    assert!(
+        s.set_glass(GlassSetting::Minimums { altitude_m: 20000. })
+            .is_err()
+    );
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    s.set_glass(GlassSetting::Minimums { altitude_m: 76.2 }).unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, Some(76.2));
+    s.set_glass(GlassSetting::MinimumsOff {}).unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, None);
+    // The tagged JSON a client sends.
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"minimums","altitude_m":300.0}}}),
+    )
+    .unwrap();
+    assert_eq!(s.glass_state().settings.minimums_m, Some(300.));
+}
+#[test]
+fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
+    let mut s = glass_session();
+    s.sim.step(1);
+    let altitude = s.sim.glass_computers().primary.altitude_msl_m;
+    let spoken = |s: &Session| {
+        s.comms
+            .record
+            .events
+            .iter()
+            .filter(|e| format!("{e:?}").contains("Minimums."))
+            .count()
+    };
+    // Minimums well below the aircraft: watching, silent.
+    s.set_glass(GlassSetting::Minimums {
+        altitude_m: altitude - 200.,
+    })
+    .unwrap();
+    for _ in 0..3 {
+        s.sequence_minimums();
+    }
+    assert_eq!(spoken(&s), 0);
+    // The aircraft is now below its minimums: one callout, not one per step.
+    s.glass.minimums_m = Some(altitude + 20.);
+    for _ in 0..5 {
+        s.sequence_minimums();
+    }
+    assert_eq!(spoken(&s), 1);
+    // Setting minimums while already below them calls for nothing.
+    s.set_glass(GlassSetting::Minimums {
+        altitude_m: altitude + 50.,
+    })
+    .unwrap();
+    s.sequence_minimums();
+    assert_eq!(spoken(&s), 1);
+}
+#[test]
+fn the_clock_runs_on_simulation_time_and_can_be_set_and_changed_to_local() {
+    let mut s = glass_session();
+    let t0 = s.sim.state().time_s;
+    let g = s.glass_state();
+    assert_eq!(g.clock.label, "UTC");
+    assert!((g.clock.seconds - (17. * 3600. + t0)).abs() < 1e-6);
+    // Set the clock to 08:30:00 UTC; it then follows simulation time.
+    s.set_glass(GlassSetting::ClockSet {
+        utc_seconds: 8.5 * 3600.,
+    })
+    .unwrap();
+    assert!((s.glass_state().clock.seconds - 8.5 * 3600.).abs() < 1e-6);
+    s.sim.step(600);
+    let elapsed = s.sim.state().time_s - t0;
+    assert!(elapsed > 1.);
+    assert!((s.glass_state().clock.seconds - (8.5 * 3600. + elapsed)).abs() < 1e-6);
+    // A bad time is refused and leaves the clock alone.
+    for bad in [f64::NAN, -1., 90_000.] {
+        assert!(s.set_glass(GlassSetting::ClockSet { utc_seconds: bad }).is_err());
+    }
+    // Local time differs from UTC by a whole number of hours (the aircraft's time zone).
+    let utc = s.glass_state().clock.seconds;
+    s.set_glass(GlassSetting::ClockFormat {
+        format: ClockFormat::Local,
+    })
+    .unwrap();
+    let local = s.glass_state().clock;
+    assert_eq!(local.label, "LCL");
+    let hours = (local.seconds - utc) / 3600.;
+    assert!((hours - hours.round()).abs() < 1e-6, "{hours}");
+}
+#[test]
+fn the_flight_timer_is_a_glass_setting_that_follows_simulation_time() {
+    let mut s = glass_session();
+    let timer = |s: &Session| s.glass_state().clock;
+    assert!(!timer(&s).timer_running);
+    assert_eq!(timer(&s).timer_s, 0.);
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"timer","operation":{"kind":"start"}}}}),
+    )
+    .unwrap();
+    let t0 = s.sim.state().time_s;
+    s.sim.step(1200);
+    let elapsed = s.sim.state().time_s - t0;
+    assert!(timer(&s).timer_running && (timer(&s).timer_s - elapsed).abs() < 1e-6);
+    // Stopped, it holds while the simulation runs on.
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Stop {},
+    })
+    .unwrap();
+    let held = timer(&s).timer_s;
+    s.sim.step(600);
+    assert_eq!(timer(&s).timer_s, held);
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Reset {},
+    })
+    .unwrap();
+    assert_eq!(timer(&s).timer_s, 0.);
+    // Counting down from a preset, and the preset is validated.
+    assert!(
+        s.set_glass(GlassSetting::Timer {
+            operation: TimerAction::Preset { seconds: 0. }
+        })
+        .is_err()
+    );
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Preset { seconds: 3. },
+    })
+    .unwrap();
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Direction {
+            direction: TimerDirection::Down,
+        },
+    })
+    .unwrap();
+    assert_eq!(timer(&s).timer_s, 3.);
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Start {},
+    })
+    .unwrap();
+    s.sim.step(120 * 10);
+    let c = timer(&s);
+    assert!(c.timer_down && c.timer_expired && c.timer_s == 0.);
+    // The data bar field choice is a setting too.
+    s.set_glass(GlassSetting::DataBarField {
+        field: DataBarField::Timer,
+    })
+    .unwrap();
+    assert_eq!(s.glass_state().settings.data_bar_field, DataBarField::Timer);
+}
+
+fn vnav_session(constraints: [Option<AltitudeConstraint>; 2]) -> Session {
+    let mut s = regional_session();
+    s.sim.step(600);
+    let [n, e, _] = s.sim.state().position_m;
+    let [lat, lon] = s.sim.world().geodetic(n, e).unwrap();
+    // Two waypoints due north, 6 and 12 NM out (a degree of latitude is 60 NM).
+    let waypoint = |ident: &str, miles: f64, altitude_constraint| GpsWaypoint {
+        ident: ident.into(),
+        kind: WaypointKind::Fix,
+        position: flightcraft_world::GeoPoint {
+            latitude_deg: lat + miles / 60.,
+            longitude_deg: lon,
+        },
+        altitude_constraint,
+    };
+    s.set_gps_waypoints(vec![
+        waypoint("ALPHA", 6., constraints[0]),
+        waypoint("BRAVO", 12., constraints[1]),
+    ])
+    .unwrap();
+    // Every command and display frame sequences the plan, which hands the receiver its leg.
+    s.sequence_glass();
+    s
+}
+fn feet(f: f64) -> f64 {
+    f * 0.3048
+}
+#[test]
+fn the_vertical_path_is_computed_back_from_the_constraint_with_its_deviation_and_required_speed() {
+    require_region_data!();
+    let at = |kind, ft| Some(AltitudeConstraint::new(kind, ft));
+    // 500 ft at ALPHA, 6 NM out; the aircraft is at about 3,000 ft.
+    let s = vnav_session([at(ConstraintKind::At, 500.), None]);
+    let g = s.glass_state();
+    let v = g.vnav.expect("a constraint ahead gives a path");
+    assert_eq!(v.target_ident, "ALPHA");
+    assert!(
+        (v.target_distance_nm - 6.).abs() < 0.05,
+        "{}",
+        v.target_distance_nm
+    );
+    let altitude = g.air_data.altitude_msl_m;
+    assert!((altitude / 0.3048 - 3000.).abs() < 150., "{}", altitude / 0.3048);
+    // A 3 degree path, 6 NM from a 500 ft constraint, is at about 2,410 ft.
+    let want = feet(500.) + v.target_distance_nm * 1852. * 3f64.to_radians().tan();
+    assert!((v.path_altitude_m - want).abs() < 1.0);
+    assert!((v.deviation_m - (altitude - want)).abs() < 1.0);
+    assert!(v.dots.abs() <= 2.5);
+    // Above the path is positive, so the indicator reads high; the data bar says to descend.
+    assert!(v.deviation_m > 0. && v.dots > 0., "{v:?}");
+    assert!(v.required_vs_fpm.is_some_and(|f| f < 0.), "{v:?}");
+    assert!(v.top_of_descent_nm.is_some_and(|t| t < 0.1), "{v:?}");
+    assert!((v.angle_deg - 3.).abs() < 1e-12 && !v.tracking);
+    // The same aircraft below the path reads negative: constrain BRAVO high enough that the
+    // path to it is far above the aircraft.
+    let s = vnav_session([None, at(ConstraintKind::At, 4000.)]);
+    let v = s.glass_state().vnav.unwrap();
+    assert_eq!(v.target_ident, "BRAVO");
+    assert!(v.deviation_m < 0. && v.dots < 0., "{v:?}");
+    // A climb is needed to be at 4,000 ft there.
+    assert!(v.required_vs_fpm.is_some_and(|f| f > 0.), "{v:?}");
+    // No constraint, no path.
+    assert!(vnav_session([None, None]).glass_state().vnav.is_none());
+}
+#[test]
+fn the_descent_angle_is_a_validated_setting_that_moves_the_path() {
+    require_region_data!();
+    let mut s = vnav_session([Some(AltitudeConstraint::new(ConstraintKind::At, 500.)), None]);
+    let path = |s: &Session| s.glass_state().vnav.unwrap().path_altitude_m;
+    let three = path(&s);
+    for bad in [0.5, 6.5, f64::NAN] {
+        assert!(s.set_glass(GlassSetting::VnavAngle { degrees: bad }).is_err());
+    }
+    assert_eq!(path(&s), three);
+    s.set_glass(GlassSetting::VnavAngle { degrees: 5. }).unwrap();
+    assert!(path(&s) > three, "a steeper path is higher this far out");
+    assert_eq!(s.glass_state().settings.vnav_angle_deg, 5.);
+}
+#[test]
+fn the_receiver_leg_carries_the_path_and_the_autopilot_sees_the_deviation() {
+    require_region_data!();
+    let s = vnav_session([Some(AltitudeConstraint::new(ConstraintKind::At, 500.)), None]);
+    let leg = s.sim.receiver_vnav().expect("the active leg has a path");
+    assert!((leg.target_altitude_m - feet(500.)).abs() < 1e-9);
+    assert!(leg.beyond_m.abs() < 1e-6, "the leg ends at the constraint");
+    // A plan with no constraint hands the autopilot no vertical guidance at all.
+    let plain = vnav_session([None, None]);
+    assert!(plain.sim.receiver_vnav().is_none());
+}
+#[test]
+fn constraints_are_edited_on_the_fpl_page_validated_and_survive_other_edits() {
+    require_region_data!();
+    use crate::touch_fpl::FplEdit;
+    let mut s = vnav_session([None, None]);
+    let constraint = |s: &Session, i: usize| s.glass_state().gps.legs[i].constraint.clone();
+    // Nothing selected past the plan, and a bad constraint, are refused.
+    s.edit_flight_plan(FplEdit::Select { index: 1 }).unwrap();
+    assert!(
+        s.edit_flight_plan(FplEdit::Altitude {
+            constraint: Some(AltitudeConstraint {
+                kind: ConstraintKind::At,
+                altitude_m: f64::NAN
+            })
+        })
+        .is_err()
+    );
+    assert!(
+        s.set_glass(GlassSetting::WaypointAltitude {
+            index: 7,
+            constraint: None
+        })
+        .is_err()
+    );
+    // Set BRAVO at or above 2,500 ft, as the keypad does.
+    s.edit_flight_plan(FplEdit::Altitude {
+        constraint: Some(AltitudeConstraint::new(ConstraintKind::AtOrAbove, 2500.)),
+    })
+    .unwrap();
+    assert_eq!(constraint(&s, 1).as_deref(), Some("2500FT A"));
+    assert_eq!(constraint(&s, 0), None);
+    // Removing ALPHA keeps the constraint on BRAVO, now the only waypoint.
+    s.edit_flight_plan(FplEdit::Select { index: 0 }).unwrap();
+    s.edit_flight_plan(FplEdit::Remove {}).unwrap();
+    assert_eq!(s.glass_state().gps.legs.len(), 1);
+    assert_eq!(constraint(&s, 0).as_deref(), Some("2500FT A"));
+    // Clear it.
+    s.edit_flight_plan(FplEdit::Select { index: 0 }).unwrap();
+    s.edit_flight_plan(FplEdit::Altitude { constraint: None })
+        .unwrap();
+    assert_eq!(constraint(&s, 0), None);
+    // The tagged JSON a client sends.
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"waypoint_altitude","index":0,
+            "constraint":{"kind":"at_or_below","altitude_m":900.0}}}}),
+    )
+    .unwrap();
+    assert_eq!(constraint(&s, 0).as_deref(), Some("2953FT B"));
+}

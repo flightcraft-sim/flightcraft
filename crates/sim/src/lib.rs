@@ -1210,6 +1210,17 @@ impl Sim {
     pub fn set_receiver_leg(&mut self, leg: Option<nav_source::ReceiverLeg>) {
         self.receiver_leg = leg;
     }
+    /// Give the active leg a vertical navigation path (or take it away). Nothing happens without
+    /// a leg.
+    pub fn set_receiver_vnav(&mut self, vnav: Option<avionics::vnav::LegPath>) {
+        if let Some(leg) = &mut self.receiver_leg {
+            leg.vnav = vnav;
+        }
+    }
+    /// The active leg's vertical path, if it has one.
+    pub fn receiver_vnav(&self) -> Option<avionics::vnav::LegPath> {
+        self.receiver_leg.and_then(|leg| leg.vnav)
+    }
 
     fn refresh_equipment_sensors(&mut self) {
         let Some(ap) = &self.equipment else {
@@ -1327,9 +1338,19 @@ impl Sim {
                                 .iter()
                                 .any(|l| l.id == "glass_mfd" && l.powered);
                             if self.navigator_powered() || (powered && !self.glass.mfd_failed) {
-                                self.receiver_leg
-                                    .as_ref()
-                                    .and_then(|leg| leg.guidance(north, east))
+                                self.receiver_leg.as_ref().and_then(|leg| {
+                                    if leg.vnav.is_some() {
+                                        // The vertical path is judged against the indicated altitude.
+                                        let altitude = if self.glass.primary.air_data_valid {
+                                            self.glass.primary.altitude_msl_m
+                                        } else {
+                                            self.readout().altitude_msl_m
+                                        };
+                                        leg.guidance_at(north, east, altitude)
+                                    } else {
+                                        leg.guidance(north, east)
+                                    }
+                                })
                             } else {
                                 None
                             }

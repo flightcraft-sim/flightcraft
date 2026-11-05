@@ -21,6 +21,7 @@ pub use modern::*;
 pub mod skins;
 pub use skins::*;
 pub mod glass;
+pub mod minimums;
 pub mod touch_cas;
 pub mod touch_efis;
 pub mod touch_entry;

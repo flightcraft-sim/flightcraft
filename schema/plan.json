@@ -46,6 +46,46 @@
     "reserve_s"
   ],
   "$defs": {
+    "AltitudeConstraint": {
+      "description": "An altitude restriction at a flight-plan waypoint.",
+      "type": "object",
+      "properties": {
+        "altitude_m": {
+          "description": "Metres MSL.",
+          "type": "number",
+          "format": "double",
+          "maximum": 15000,
+          "minimum": 0
+        },
+        "kind": {
+          "$ref": "#/$defs/ConstraintKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "altitude_m"
+      ]
+    },
+    "ConstraintKind": {
+      "oneOf": [
+        {
+          "description": "Cross at this altitude.",
+          "type": "string",
+          "const": "at"
+        },
+        {
+          "description": "Cross at or above this altitude.",
+          "type": "string",
+          "const": "at_or_above"
+        },
+        {
+          "description": "Cross at or below this altitude.",
+          "type": "string",
+          "const": "at_or_below"
+        }
+      ]
+    },
     "CruisePerformance": {
       "type": "object",
       "properties": {
@@ -94,6 +134,17 @@
       "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
       "type": "object",
       "properties": {
+        "altitude_constraint": {
+          "description": "The altitude restriction at this waypoint, for vertical navigation.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AltitudeConstraint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "ident": {
           "type": "string",
           "maxLength": 64,

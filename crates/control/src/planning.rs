@@ -763,6 +763,7 @@ pub fn import_plan(text: &str, format: PlanFormat) -> Result<FlightPlan, Command
                             latitude_deg: attr("lat")?,
                             longitude_deg: attr("lon")?,
                         },
+                        altitude_constraint: None,
                     },
                     altitude_m: if child(n, "ele").is_some() {
                         number(n, "ele")?
@@ -799,6 +800,7 @@ pub fn import_plan(text: &str, format: PlanFormat) -> Result<FlightPlan, Command
                             latitude_deg: number(n, "lat")?,
                             longitude_deg: number(n, "lon")?,
                         },
+                        altitude_constraint: None,
                     },
                     altitude_m: if child(n, "elevation").is_some() {
                         number(n, "elevation")?

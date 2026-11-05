@@ -6,6 +6,12 @@ use serde::Serialize;
 const NM: f64 = 1852.0;
 
 pub use flightcraft_sim::avionics::glass::*;
+pub use flightcraft_sim::avionics::glass_aids::{
+    ClockFormat, DataBarField, FlightTimer, TimerAction, TimerDirection,
+};
+use flightcraft_sim::avionics::glass_aids::{DEFAULT_START_UTC_S, clock_seconds, utc_seconds};
+use flightcraft_sim::avionics::vnav::{self, LegPath, RoutePoint};
+pub use flightcraft_sim::avionics::vnav::{AltitudeConstraint, ConstraintKind};
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassSettings {
     pub synthetic_vision: bool,
@@ -13,7 +19,38 @@ pub struct GlassSettings {
     pub course_rad: f64,
     pub course_manual: bool,
     pub selected_altitude_m: f64,
+    /// Barometric minimums altitude, metres MSL; none until the pilot sets one.
+    #[serde(default)]
+    pub minimums_m: Option<f64>,
+    /// Whether the aircraft was last seen above the minimums altitude; the callout sounds on the
+    /// step it is first seen at or below, so it sounds once per descent through the altitude.
+    #[serde(skip)]
+    pub minimums_above: Option<bool>,
     pub pressure_hpa: bool,
+    /// Which time the clock field shows.
+    #[serde(default)]
+    pub clock_format: ClockFormat,
+    /// Time of day (UTC, seconds) at simulation time zero; the clock runs on simulation time.
+    #[serde(default = "default_clock_start")]
+    pub clock_start_utc_s: f64,
+    /// The flight timer.
+    #[serde(default)]
+    pub timer: FlightTimer,
+    /// What the data bar's user field shows.
+    #[serde(default)]
+    pub data_bar_field: DataBarField,
+    /// The vertical navigation descent angle, degrees.
+    #[serde(default = "default_vnav_angle")]
+    pub vnav_angle_deg: f64,
+    /// The altitude of the last vertical path the aircraft met, held level after the last
+    /// constraint is passed so a tracking autopilot levels off instead of losing its path.
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub vnav_hold_m: Option<f64>,
+    /// A vertical path was last handed to the receiver leg.
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub vnav_active: bool,
     pub bearing_pointer: BearingPointer,
     pub transponder_code: String,
     pub transponder_mode: TransponderMode,
@@ -48,6 +85,12 @@ pub struct GlassSettings {
 fn traffic_shown() -> bool {
     true
 }
+fn default_clock_start() -> f64 {
+    DEFAULT_START_UTC_S
+}
+fn default_vnav_angle() -> f64 {
+    vnav::DEFAULT_ANGLE_DEG
+}
 impl Default for GlassSettings {
     fn default() -> Self {
         Self {
@@ -56,7 +99,16 @@ impl Default for GlassSettings {
             course_rad: 0.0,
             course_manual: false,
             selected_altitude_m: 914.4,
+            minimums_m: None,
+            minimums_above: None,
             pressure_hpa: false,
+            clock_format: ClockFormat::Utc,
+            clock_start_utc_s: DEFAULT_START_UTC_S,
+            timer: FlightTimer::default(),
+            data_bar_field: DataBarField::SafeAltitude,
+            vnav_angle_deg: vnav::DEFAULT_ANGLE_DEG,
+            vnav_hold_m: None,
+            vnav_active: false,
             bearing_pointer: BearingPointer::Off,
             transponder_code: "1200".into(),
             transponder_mode: TransponderMode::Alt,
@@ -83,6 +135,9 @@ pub struct NavigationLeg {
     pub distance_nm: f64,
     pub bearing_rad: f64,
     pub ete_s: Option<f64>,
+    /// The waypoint's altitude constraint as the FPL page writes it, if it has one.
+    #[serde(default)]
+    pub constraint: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GpsState {
@@ -184,6 +239,43 @@ pub struct MapTraffic {
     #[serde(default)]
     pub highlighted: bool,
 }
+/// The vertical path to the next altitude constraint, for the VNAV indicator and the data bar.
+#[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
+pub struct VnavReadout {
+    /// The constrained waypoint the path leads to.
+    pub target_ident: String,
+    /// The path's altitude at that waypoint, metres.
+    pub target_altitude_m: f64,
+    pub target_distance_nm: f64,
+    /// The path's altitude at the aircraft, metres.
+    pub path_altitude_m: f64,
+    /// Aircraft above (positive) or below the path, metres.
+    pub deviation_m: f64,
+    /// The indicator's displacement in dots (100 ft each), positive above the path, at most 2.5.
+    pub dots: f64,
+    /// The vertical speed that reaches the target altitude at the target, feet per minute
+    /// (negative descends); none without ground speed.
+    pub required_vs_fpm: Option<f64>,
+    /// Distance to the top of descent, nautical miles; zero or negative once past it.
+    pub top_of_descent_nm: Option<f64>,
+    pub angle_deg: f64,
+    /// The autopilot is flying the path (GP mode active).
+    pub tracking: bool,
+}
+/// The clock and flight timer as the data bar shows them, at the snapshot's simulation time.
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
+pub struct ClockReadout {
+    /// Seconds from midnight in the chosen format.
+    pub seconds: f64,
+    /// `UTC` or `LCL`.
+    pub label: String,
+    /// The timer's value: elapsed counting up, remaining counting down.
+    pub timer_s: f64,
+    pub timer_running: bool,
+    /// A count-down timer that has reached zero.
+    pub timer_expired: bool,
+    pub timer_down: bool,
+}
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassState {
     pub comms: crate::CommsSnapshot,
@@ -230,6 +322,11 @@ pub struct GlassState {
     /// The crew alerting messages, for the CAS list page.
     #[serde(default)]
     pub cas: crate::touch_cas::CasWindow,
+    #[serde(default)]
+    pub clock: ClockReadout,
+    /// The vertical navigation path, when the flight plan has an altitude constraint ahead.
+    #[serde(default)]
+    pub vnav: Option<VnavReadout>,
 }
 impl Session {
     pub fn set_glass(&mut self, setting: GlassSetting) -> Result<(), CommandError> {
@@ -259,10 +356,41 @@ impl Session {
                 }
                 self.glass.selected_altitude_m = altitude_m;
             }
+            GlassSetting::Minimums { altitude_m } => {
+                range(NAME, "altitude_m", altitude_m, -500.0, 15000.0)?;
+                self.glass.minimums_m = Some(altitude_m);
+                // A new setting starts a new watch: it never calls for a descent already made.
+                self.glass.minimums_above = None;
+            }
+            GlassSetting::MinimumsOff {} => {
+                self.glass.minimums_m = None;
+                self.glass.minimums_above = None;
+            }
             GlassSetting::Baro { pressure_pa } => self
                 .sim
                 .set_systems(flightcraft_sim::systems::SystemSetting::Altimeter { pressure_pa })?,
             GlassSetting::PressureUnits { hpa } => self.glass.pressure_hpa = hpa,
+            GlassSetting::ClockFormat { format } => self.glass.clock_format = format,
+            GlassSetting::ClockSet { utc_seconds } => {
+                range(NAME, "utc_seconds", utc_seconds, 0.0, 86_399.999)?;
+                // The clock runs on simulation time, so setting it moves its zero point.
+                self.glass.clock_start_utc_s = (utc_seconds - self.sim.state().time_s).rem_euclid(86_400.0);
+            }
+            GlassSetting::Timer { operation } => {
+                let now = self.sim.state().time_s;
+                self.glass
+                    .timer
+                    .apply(operation, now)
+                    .map_err(|e| invalid(NAME, e))?;
+            }
+            GlassSetting::DataBarField { field } => self.glass.data_bar_field = field,
+            GlassSetting::VnavAngle { degrees } => {
+                range(NAME, "degrees", degrees, vnav::MIN_ANGLE_DEG, vnav::MAX_ANGLE_DEG)?;
+                self.glass.vnav_angle_deg = degrees;
+            }
+            GlassSetting::WaypointAltitude { index, constraint } => {
+                self.set_waypoint_constraint(index, constraint)?
+            }
             GlassSetting::BearingPointer { source } => self.glass.bearing_pointer = source,
             GlassSetting::Transponder { code, mode } => {
                 if code.len() != 4 || !code.bytes().all(|b| (b'0'..=b'7').contains(&b)) {
@@ -373,6 +501,7 @@ impl Session {
         self.sim
             .set_avionics(flightcraft_sim::avionics::AvionicsSetting::ClearProcedure {})?;
         self.glass.waypoints.clear();
+        self.glass.vnav_hold_m = None;
         self.glass.flight_plan = canonical;
         self.glass.course_manual = false;
         self.glass.active_leg = 0;
@@ -405,9 +534,85 @@ impl Session {
                 start_deg: start,
                 end_deg: end,
                 projection_origin_deg: [region.origin.latitude_deg, region.origin.longitude_deg],
+                vnav: None,
             })
         })();
-        self.sim.set_receiver_leg(leg);
+        let vnav = self.current_leg_path();
+        self.glass.vnav_active = vnav.is_some() && leg.is_some();
+        self.sim.set_receiver_leg(leg.map(|mut l| {
+            l.vnav = vnav;
+            l
+        }));
+    }
+
+    /// The vertical path along the active leg, from the flight plan's altitude constraints: the
+    /// path to the next constraint the aircraft still has to meet, else (after the last one) level
+    /// at the altitude of the last path while the autopilot is still tracking it.
+    fn current_leg_path(&self) -> Option<LegPath> {
+        if !has_constraints(&self.glass) && self.glass.vnav_hold_m.is_none() {
+            return None;
+        }
+        if !self.sim.procedure_receiver().loaded.is_empty() {
+            return None;
+        }
+        let world = self.sim.world();
+        let [n, e, _] = self.sim.state().position_m;
+        let position = world.geodetic(n, e)?;
+        let computers = self.sim.glass_computers();
+        let altitude = if computers.primary.air_data_valid {
+            computers.primary.altitude_msl_m
+        } else {
+            self.sim.readout().altitude_msl_m
+        };
+        let points = vnav_points(world, &self.glass, position);
+        match vnav::solve(
+            &points,
+            altitude,
+            self.sim.readout().ground_speed_mps,
+            self.glass.vnav_angle_deg,
+        ) {
+            Some(sol) => Some(LegPath {
+                target_altitude_m: sol.target_altitude_m,
+                beyond_m: (sol.target_distance_m - points.first()?.distance_m).max(0.0),
+                angle_rad: sol.angle_rad,
+            }),
+            None => self.glass.vnav_hold_m.map(|target_altitude_m| LegPath {
+                target_altitude_m,
+                // Far behind the aircraft, so the path is level whatever the leg.
+                beyond_m: -1.0e9,
+                angle_rad: self.glass.vnav_angle_deg.to_radians(),
+            }),
+        }
+    }
+
+    /// Each step: remember the altitude of the path being flown, and hand the receiver leg its
+    /// current vertical path. A session with no altitude constraints never touches the leg.
+    pub(crate) fn sequence_vnav(&mut self) {
+        self.reset_glass_generation();
+        let path = self.current_leg_path();
+        let tracking = self
+            .sim
+            .installed_autopilot()
+            .is_some_and(|a| a.active_vertical == Some(flightcraft_sim::equipment::VerticalMode::Gp));
+        if let Some(p) = path
+            && p.beyond_m > -1.0e8
+        {
+            self.glass.vnav_hold_m = Some(p.target_altitude_m);
+        } else if !tracking && self.glass.vnav_hold_m.is_some() {
+            // Not flying the held level any more: forget it once the aircraft has left it.
+            let altitude = self.sim.glass_computers().primary.altitude_msl_m;
+            if self
+                .glass
+                .vnav_hold_m
+                .is_some_and(|h| (altitude - h).abs() > 100.0)
+            {
+                self.glass.vnav_hold_m = None;
+            }
+        }
+        if path.is_some() || self.glass.vnav_active {
+            self.sim.set_receiver_vnav(path);
+            self.glass.vnav_active = path.is_some();
+        }
     }
 
     /// Replace GPS navigation atomically with resolved airports, navaids, fixes, pins, or coordinates.
@@ -422,12 +627,16 @@ impl Session {
             w.position
                 .validate()
                 .map_err(|e| CommandError::Failed(e.to_string()))?;
+            if let Some(c) = &w.altitude_constraint {
+                c.validate().map_err(|e| invalid("avionics.set", e))?;
+            }
         }
         self.sim
             .set_avionics(flightcraft_sim::avionics::AvionicsSetting::ClearProcedure {})?;
         let [n, e, _] = self.sim.state().position_m;
         self.glass.flight_plan = waypoints.iter().map(|w| w.ident.clone()).collect();
         self.glass.waypoints = waypoints;
+        self.glass.vnav_hold_m = None;
         self.glass.active_leg = 0;
         self.glass.fpl_cursor = 0;
         self.glass.course_manual = false;
@@ -467,6 +676,22 @@ impl Session {
             self.glass.active_leg += 1;
         }
         self.sync_receiver_leg();
+    }
+    /// The minimums callout: once per descent through the pilot's minimums altitude, sounded on
+    /// the crew voice path (the same spoken callouts as "Five hundred"). Presentation only.
+    pub(crate) fn sequence_minimums(&mut self) {
+        self.reset_glass_generation();
+        let computers = self.sim.glass_computers();
+        let state = if computers.primary.air_data_valid {
+            crate::minimums::state(computers.primary.altitude_msl_m, self.glass.minimums_m)
+        } else {
+            crate::minimums::MinimumsState::Off
+        };
+        let (call, above) = crate::minimums::callout(self.glass.minimums_above, state);
+        self.glass.minimums_above = above;
+        if call {
+            self.crew_callout("Minimums.".into());
+        }
     }
     pub fn glass_state(&self) -> GlassState {
         if let Some(state) = &self.presentation_glass {
@@ -558,6 +783,7 @@ impl Session {
                         .map_or(0., |(a, b)| inverse(b, [a.latitude_deg, a.longitude_deg]).0 / NM),
                     bearing_rad: l.course_magnetic_deg.unwrap_or(0.).to_radians(),
                     ete_s: None,
+                    constraint: None,
                 })
                 .collect();
         }
@@ -602,6 +828,7 @@ impl Session {
                                 distance_nm: d / NM,
                                 bearing_rad: reference.true_to_magnetic(b),
                                 ete_s: ete(d, r.ground_speed_mps),
+                                constraint: None,
                             }
                         })
                     })
@@ -721,6 +948,55 @@ impl Session {
                     .collect()
             })
             .unwrap_or_default();
+        let vnav_readout =
+            (receiver.loaded.is_empty() && computers.primary.air_data_valid && has_constraints(&settings))
+                .then_some(position)
+                .flatten()
+                .and_then(|p| {
+                    let points = vnav_points(world, &settings, p);
+                    let sol = vnav::solve(
+                        &points,
+                        computers.primary.altitude_msl_m,
+                        r.ground_speed_mps,
+                        settings.vnav_angle_deg,
+                    )?;
+                    let ident = settings
+                        .flight_plan
+                        .get(settings.active_leg + sol.target_index)
+                        .cloned()
+                        .unwrap_or_default();
+                    Some(VnavReadout {
+                        target_ident: ident,
+                        target_altitude_m: sol.target_altitude_m,
+                        target_distance_nm: sol.target_distance_m / NM,
+                        path_altitude_m: sol.path_altitude_m,
+                        deviation_m: sol.deviation_m,
+                        dots: sol.dots(),
+                        required_vs_fpm: sol.required_vs_mps.map(|v| v / 0.3048 * 60.),
+                        top_of_descent_nm: sol.top_of_descent_m.map(|m| m / NM),
+                        angle_deg: settings.vnav_angle_deg,
+                        tracking: sim.installed_autopilot().is_some_and(|a| {
+                            a.active_vertical == Some(flightcraft_sim::equipment::VerticalMode::Gp)
+                        }),
+                    })
+                });
+        let clock_readout = {
+            let now = sim.state().time_s;
+            let utc = utc_seconds(settings.clock_start_utc_s, now);
+            let timer = &settings.timer;
+            ClockReadout {
+                seconds: clock_seconds(settings.clock_format, utc, position.map_or(0., |p| p[1])),
+                label: match settings.clock_format {
+                    ClockFormat::Utc => "UTC",
+                    ClockFormat::Local => "LCL",
+                }
+                .into(),
+                timer_s: timer.display_s(now),
+                timer_running: timer.running,
+                timer_expired: timer.expired(now),
+                timer_down: timer.direction == TimerDirection::Down,
+            }
+        };
         let touch = self.touch_state();
         let mut wanted = std::collections::BTreeSet::new();
         for d in touch.displays.iter().filter(|d| d.powered && !d.failed) {
@@ -820,6 +1096,8 @@ impl Session {
                 sim.installed_autopilot()
                     .map_or(&[][..], |a| a.failures.as_slice()),
             ),
+            clock: clock_readout,
+            vnav: vnav_readout,
         }
     }
 }
@@ -938,6 +1216,47 @@ impl Session {
 fn ete(distance: f64, speed: f64) -> Option<f64> {
     (speed > 1.0).then_some(distance / speed.max(1.0))
 }
+/// Some waypoint of the flight plan carries an altitude constraint.
+fn has_constraints(s: &GlassSettings) -> bool {
+    s.waypoints.len() == s.flight_plan.len() && s.waypoints.iter().any(|w| w.altitude_constraint.is_some())
+}
+/// The flight plan from the active waypoint on as route points for vertical navigation: the
+/// distance along the route from the aircraft, and each waypoint's altitude constraint.
+fn vnav_points(world: &flightcraft_world::World, s: &GlassSettings, position: [f64; 2]) -> Vec<RoutePoint> {
+    let resolved = s.waypoints.len() == s.flight_plan.len();
+    let mut points = Vec::new();
+    let mut from = position;
+    let mut total = 0.0;
+    for index in s.active_leg..s.flight_plan.len() {
+        let Some(to) = gps_destination(s, world, index) else {
+            break;
+        };
+        if index == s.active_leg {
+            // To the active waypoint along its leg: zero once the aircraft is abeam or past it.
+            let start = if index == 0 {
+                s.leg_origin_deg
+            } else {
+                gps_destination(s, world, index - 1)
+            };
+            total = match start {
+                Some(start) => (inverse(start, to).0 - track(start, to, position).1).max(0.0),
+                None => inverse(position, to).0,
+            };
+        } else {
+            total += inverse(from, to).0;
+        }
+        from = to;
+        points.push(RoutePoint {
+            distance_m: total,
+            constraint: s
+                .waypoints
+                .get(index)
+                .filter(|_| resolved)
+                .and_then(|w| w.altitude_constraint),
+        });
+    }
+    points
+}
 fn gps_destination(s: &GlassSettings, world: &flightcraft_world::World, index: usize) -> Option<[f64; 2]> {
     if let Some(w) = s.waypoints.get(index) {
         return Some([w.position.latitude_deg, w.position.longitude_deg]);
@@ -963,6 +1282,12 @@ fn gps(
                 distance_nm: d / NM,
                 bearing_rad: b,
                 ete_s: ete(d, speed),
+                constraint: s
+                    .waypoints
+                    .get(index)
+                    .filter(|_| s.waypoints.len() == s.flight_plan.len())
+                    .and_then(|w| w.altitude_constraint)
+                    .map(|c| c.text()),
             });
             previous = Some(dest);
         }
