@@ -2009,3 +2009,72 @@ fn altitude_tape_numbers_stay_clear_of_the_bugs_the_pointer_and_the_window_edges
         }
     }
 }
+
+/// Airspeed tape numbers are masked where they would run under a Vspeed bug's box or show beside the
+/// pointer box, and stay inside the tape window (full and split), wherever the bugs sit.
+#[test]
+fn airspeed_tape_numbers_stay_clear_of_the_bugs_the_pointer_and_the_window_edges() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let entry = |kt: f64| flightcraft_control::VspeedEntry {
+        enabled: true,
+        speed_kt: Some(kt),
+    };
+    for mode in [PfdMode::Full, PfdMode::Split] {
+        let geometry = MODEL.pfd_geometry(mode);
+        let tape = geometry.rect(E::AirspeedTape);
+        let pointer = geometry.rect(E::AirspeedPointer);
+        let mut bugs_seen = 0;
+        for ias in [62., 75., 100., 104., 133.] {
+            for bugs in [
+                [60., 70., 80., 90., 100.],
+                [110., 120., 130., 140., 150.],
+                [95., 105., 115., 85., 75.],
+            ] {
+                let mut g = flying(&s);
+                g.air_data.indicated_airspeed_mps = ias * 0.514_444;
+                g.settings.vspeeds.r = entry(bugs[0]);
+                g.settings.vspeeds.x = entry(bugs[1]);
+                g.settings.vspeeds.y = entry(bugs[2]);
+                g.settings.vspeeds.g = entry(bugs[3]);
+                g.settings.vspeeds.app = entry(bugs[4]);
+                let d = touch_pfd::panel(&g, input, &geometry, options());
+                let all = labels(&d);
+                let bug_ys: Vec<f64> = all
+                    .iter()
+                    .filter(|(t, at, ..)| {
+                        ["R", "X", "Y", "G", "A"].contains(&t.as_str()) && inside(tape, *at)
+                    })
+                    .map(|(_, at, ..)| f64::from(at[1]))
+                    .collect();
+                bugs_seen += bug_ys.len();
+                for (text, at, size, _) in all.iter().filter(|(t, at, size, _)| {
+                    inside(tape, *at) && !inside(pointer, *at) && t.parse::<u32>().is_ok() && *size > 24.
+                }) {
+                    let (top, bottom) = (f64::from(at[1] - size * 0.5), f64::from(at[1] + size * 0.5));
+                    assert!(
+                        top >= tape[1] && bottom <= tape[1] + tape[3],
+                        "{mode:?} {ias}: {text} leaves the tape window"
+                    );
+                    assert!(
+                        bottom < pointer[1] || top > pointer[1] + pointer[3],
+                        "{mode:?} {ias}: {text} shows beside the pointer"
+                    );
+                    let right = f64::from(at[0]) + text.len() as f64 * f64::from(*size) * 0.3;
+                    if right >= tape[0] + tape[2] - 29. {
+                        for by in &bug_ys {
+                            assert!(
+                                bottom < by - 11. || top > by + 11.,
+                                "{mode:?} {ias} bugs {bugs:?}: {text} runs under a bug at {by}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            bugs_seen > 20,
+            "{mode:?}: only {bugs_seen} bugs drawn on the scale"
+        );
+    }
+}

@@ -523,6 +523,27 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
     let ias = a.indicated_airspeed_mps * KNOTS;
     let mid = y + h * 0.5;
     let at = |kt: f64| mid - (kt - ias) as f32 * SPEED_PX_PER_KT;
+    // Speed reference bugs inside the tape's right edge (the space beside it belongs to the G meter,
+    // the CAS window, and the flap and trim scales): the enabled ones of Vr, Vx, Vy, Vg, and Vapp, at the
+    // pilot's speed or the aircraft pack's. A bug off the scale is not drawn.
+    use flightcraft_control::VspeedBug;
+    let pack_speeds = input.aircraft.map(flightcraft_control::vspeed_pack_defaults_mps);
+    let bugs: Vec<(VspeedBug, f32)> = VspeedBug::ALL
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, bug)| {
+            let pack = pack_speeds
+                .as_ref()
+                .and_then(|speeds| speeds.get(i).copied().flatten());
+            let ry = at(s.settings.vspeeds.shown_kt(bug, pack)?);
+            (ry > y + 6. && ry < y + h - 6.).then_some((bug, ry))
+        })
+        .collect();
+    // The tape numbers are masked where they would be cut by the window's top or bottom edge, where
+    // they would show beside the pointer box, and where they would run under a bug's box.
+    let [_, pointer_y, _, pointer_h] = r4(g.rect(E::AirspeedPointer));
+    let number_size = 28. * t.tape;
+    let number_half = number_size * 0.5;
     for tick in (30..=((ias + 40.) as i32 / 5 * 5 + 5)).step_by(5) {
         let v = f64::from(tick);
         let ty = at(v);
@@ -537,14 +558,14 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
             Ink::TapeText,
             2.,
         );
-        if major && (ty - mid).abs() > 26. {
-            label(
-                d,
-                [x + w * 0.38, ty],
-                format!("{tick}"),
-                28. * t.tape,
-                Ink::TapeText,
-            );
+        let text = format!("{tick}");
+        let right = x + w * 0.38 + text.len() as f32 * number_size * 0.3;
+        let shown = ty - number_half >= y
+            && ty + number_half <= y + h
+            && (ty + number_half < pointer_y || ty - number_half > pointer_y + pointer_h)
+            && (right < x + w - 29. || bugs.iter().all(|(_, by)| (ty - by).abs() > 11. + number_half));
+        if major && shown {
+            label(d, [x + w * 0.38, ty], text, number_size, Ink::TapeText);
         }
     }
     // The speed range strip down the right edge of the tape.
@@ -564,25 +585,9 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
         band(v.vno_mps, v.vne_mps, Ink::Yellow, d);
         band(v.vne_mps, v.vne_mps + 30., Ink::Red, d);
     }
-    // Speed reference bugs inside the tape's right edge (the space beside it belongs to the G meter,
-    // the CAS window, and the flap and trim scales): the enabled ones of Vr, Vx, Vy, Vg, and Vapp, at the
-    // pilot's speed or the aircraft pack's. A bug off the scale is not drawn.
-    use flightcraft_control::VspeedBug;
-    for bug in VspeedBug::ALL {
-        let pack = input.aircraft.and_then(|aircraft| {
-            let i = VspeedBug::ALL.iter().position(|b| *b == bug)?;
-            flightcraft_control::vspeed_pack_defaults_mps(aircraft)
-                .get(i)
-                .copied()
-                .flatten()
-        });
-        if let Some(kt) = s.settings.vspeeds.shown_kt(bug, pack) {
-            let ry = at(kt);
-            if ry > y + 6. && ry < y + h - 6. {
-                bordered(d, [x + w - 29., ry - 11., 18., 22.], Ink::BoxFill, Ink::Cyan);
-                label(d, [x + w - 20., ry], bug.letter(), 20. * t.tape, Ink::Cyan);
-            }
-        }
+    for (bug, ry) in bugs {
+        bordered(d, [x + w - 29., ry - 11., 18., 22.], Ink::BoxFill, Ink::Cyan);
+        label(d, [x + w - 20., ry], bug.letter(), 20. * t.tape, Ink::Cyan);
     }
     // Trend vector: vertical magenta line beside the strip, to the predicted speed in 6 seconds.
     let trend = (a.airspeed_trend_mps * KNOTS) as f32 * SPEED_PX_PER_KT;
