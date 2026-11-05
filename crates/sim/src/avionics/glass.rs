@@ -1,4 +1,5 @@
 //! Integrated suite settings and installation wiring; sensors are shared with standby units.
+use super::glass_aids::{ClockFormat, DataBarField, TimerAction};
 use super::sensor::{AirDataComputer, ComputerInput};
 use crate::{Readout, systems::SystemsState};
 use schemars::JsonSchema;
@@ -133,6 +134,23 @@ pub enum GlassSetting {
     MinimumsOff {},
     PressureUnits {
         hpa: bool,
+    },
+    /// Which time the clock shows: UTC, or local time at the aircraft.
+    ClockFormat {
+        format: ClockFormat,
+    },
+    /// Set the clock to this time of day (UTC, seconds from midnight) now.
+    ClockSet {
+        #[schemars(range(min = 0, max = 86399))]
+        utc_seconds: f64,
+    },
+    /// Start, stop, or reset the flight timer, or choose its direction and count-down preset.
+    Timer {
+        operation: TimerAction,
+    },
+    /// What the data bar's user field shows: the minimum safe altitude (dashes), the clock, or the timer.
+    DataBarField {
+        field: DataBarField,
     },
     BearingPointer {
         source: BearingPointer,

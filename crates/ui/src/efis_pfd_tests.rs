@@ -612,6 +612,121 @@ fn set(s: &mut Session, id: &str, action: serde_json::Value) {
 }
 
 #[test]
+fn the_data_bar_user_field_shows_dashes_the_clock_or_the_flight_timer() {
+    use flightcraft_control::{ClockReadout, DataBarField};
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let bar = geometry.rect(E::DataBar);
+    let slot_x = geometry
+        .data_fields
+        .iter()
+        .find(|(f, _)| *f == DataField::SafeAltitude)
+        .unwrap()
+        .1 as f32;
+    let draw =
+        |g: &GlassState| touch_pfd::bars(g, input, &geometry, Typography::default(), [("", ""), ("", "")]);
+    let in_slot = |d: &DrawList, text: &str| {
+        labels(d)
+            .into_iter()
+            .find(|(t, at, ..)| t == text && (at[0] - slot_x).abs() < 1. && at[1] < bar[3] as f32)
+    };
+    let mut g = flying(&s);
+    g.clock = ClockReadout {
+        seconds: 12. * 3600. + 34. * 60. + 56.,
+        label: "LCL".into(),
+        timer_s: 754.,
+        timer_running: true,
+        timer_expired: false,
+        timer_down: false,
+    };
+    // Default: the minimum safe altitude slot, dashes.
+    let d = draw(&g);
+    assert!(in_slot(&d, "MSA").is_some() && in_slot(&d, "-----").is_some());
+    // Clock: its label and HH:MM:SS.
+    g.settings.data_bar_field = DataBarField::Clock;
+    let d = draw(&g);
+    assert!(in_slot(&d, "LCL").is_some() && in_slot(&d, "12:34:56").is_some());
+    assert!(in_slot(&d, "MSA").is_none());
+    // Timer: TMR and MM:SS, magenta while counting, amber once a count-down has expired.
+    g.settings.data_bar_field = DataBarField::Timer;
+    let d = draw(&g);
+    assert_eq!(in_slot(&d, "12:34").unwrap().3, Ink::Magenta);
+    assert!(in_slot(&d, "TMR").is_some());
+    g.clock.timer_down = true;
+    g.clock.timer_expired = true;
+    g.clock.timer_s = 0.;
+    let d = draw(&g);
+    assert_eq!(in_slot(&d, "00:00").unwrap().3, Ink::Yellow);
+    // An hour or more reads H:MM:SS.
+    g.clock.timer_s = 3725.;
+    g.clock.timer_expired = false;
+    assert!(in_slot(&draw(&g), "1:02:05").is_some());
+}
+
+#[test]
+fn touching_the_user_field_cycles_it_and_the_timer_half_starts_and_stops_the_timer() {
+    use flightcraft_control::{DataBarField, GlassSetting, TimerAction};
+    let mut s = session();
+    let panel = isolated(&s, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), 0.0);
+    let fx = geometry
+        .data_fields
+        .iter()
+        .find(|(f, _)| *f == DataField::SafeAltitude)
+        .unwrap()
+        .1;
+    let mut t = 1.;
+    let glass = |view: &mut PanelUi| std::mem::take(&mut view.avionics);
+    // Left of the field: the choice advances.
+    let at = efis::native_rect(screen, [fx - 30., 10., 20., 40.]).center();
+    tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+    let sent = glass(&mut view);
+    assert!(
+        sent.iter().any(|a| matches!(
+            a,
+            flightcraft_control::AvionicsSetting::Glass {
+                setting: GlassSetting::DataBarField {
+                    field: DataBarField::Clock
+                }
+            }
+        )),
+        "{sent:?}"
+    );
+    // Nothing to start or stop until the timer is the field shown.
+    let at = efis::native_rect(screen, [fx + 20., 10., 20., 40.]).center();
+    tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+    assert!(!glass(&mut view).iter().any(|a| matches!(
+        a,
+        flightcraft_control::AvionicsSetting::Glass {
+            setting: GlassSetting::Timer { .. }
+        }
+    )));
+    // With the timer shown, its right half toggles it.
+    s.set_glass(GlassSetting::DataBarField {
+        field: DataBarField::Timer,
+    })
+    .unwrap();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), t);
+    glass(&mut view);
+    tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+    assert!(glass(&mut view).iter().any(|a| matches!(
+        a,
+        flightcraft_control::AvionicsSetting::Glass {
+            setting: GlassSetting::Timer {
+                operation: TimerAction::Toggle {}
+            }
+        }
+    )));
+}
+
+#[test]
 fn minimums_bug_box_and_annunciation_follow_the_altitude() {
     let s = session();
     let input = InstrumentInput::new(s.sim().systems(), 0.);

@@ -6,6 +6,10 @@ use serde::Serialize;
 const NM: f64 = 1852.0;
 
 pub use flightcraft_sim::avionics::glass::*;
+pub use flightcraft_sim::avionics::glass_aids::{
+    ClockFormat, DataBarField, FlightTimer, TimerAction, TimerDirection,
+};
+use flightcraft_sim::avionics::glass_aids::{DEFAULT_START_UTC_S, clock_seconds, utc_seconds};
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassSettings {
     pub synthetic_vision: bool,
@@ -21,6 +25,18 @@ pub struct GlassSettings {
     #[serde(skip)]
     pub minimums_above: Option<bool>,
     pub pressure_hpa: bool,
+    /// Which time the clock field shows.
+    #[serde(default)]
+    pub clock_format: ClockFormat,
+    /// Time of day (UTC, seconds) at simulation time zero; the clock runs on simulation time.
+    #[serde(default = "default_clock_start")]
+    pub clock_start_utc_s: f64,
+    /// The flight timer.
+    #[serde(default)]
+    pub timer: FlightTimer,
+    /// What the data bar's user field shows.
+    #[serde(default)]
+    pub data_bar_field: DataBarField,
     pub bearing_pointer: BearingPointer,
     pub transponder_code: String,
     pub transponder_mode: TransponderMode,
@@ -46,6 +62,9 @@ pub struct GlassSettings {
 fn traffic_shown() -> bool {
     true
 }
+fn default_clock_start() -> f64 {
+    DEFAULT_START_UTC_S
+}
 impl Default for GlassSettings {
     fn default() -> Self {
         Self {
@@ -57,6 +76,10 @@ impl Default for GlassSettings {
             minimums_m: None,
             minimums_above: None,
             pressure_hpa: false,
+            clock_format: ClockFormat::Utc,
+            clock_start_utc_s: DEFAULT_START_UTC_S,
+            timer: FlightTimer::default(),
+            data_bar_field: DataBarField::SafeAltitude,
             bearing_pointer: BearingPointer::Off,
             transponder_code: "1200".into(),
             transponder_mode: TransponderMode::Alt,
@@ -181,6 +204,20 @@ pub struct MapTraffic {
     #[serde(default)]
     pub highlighted: bool,
 }
+/// The clock and flight timer as the data bar shows them, at the snapshot's simulation time.
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
+pub struct ClockReadout {
+    /// Seconds from midnight in the chosen format.
+    pub seconds: f64,
+    /// `UTC` or `LCL`.
+    pub label: String,
+    /// The timer's value: elapsed counting up, remaining counting down.
+    pub timer_s: f64,
+    pub timer_running: bool,
+    /// A count-down timer that has reached zero.
+    pub timer_expired: bool,
+    pub timer_down: bool,
+}
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct GlassState {
     pub comms: crate::CommsSnapshot,
@@ -224,6 +261,8 @@ pub struct GlassState {
     pub airports: Vec<MapAirport>,
     pub region: Option<String>,
     pub aircraft_heading_relative_rad: f64,
+    #[serde(default)]
+    pub clock: ClockReadout,
 }
 impl Session {
     pub fn set_glass(&mut self, setting: GlassSetting) -> Result<(), CommandError> {
@@ -267,6 +306,20 @@ impl Session {
                 .sim
                 .set_systems(flightcraft_sim::systems::SystemSetting::Altimeter { pressure_pa })?,
             GlassSetting::PressureUnits { hpa } => self.glass.pressure_hpa = hpa,
+            GlassSetting::ClockFormat { format } => self.glass.clock_format = format,
+            GlassSetting::ClockSet { utc_seconds } => {
+                range(NAME, "utc_seconds", utc_seconds, 0.0, 86_399.999)?;
+                // The clock runs on simulation time, so setting it moves its zero point.
+                self.glass.clock_start_utc_s = (utc_seconds - self.sim.state().time_s).rem_euclid(86_400.0);
+            }
+            GlassSetting::Timer { operation } => {
+                let now = self.sim.state().time_s;
+                self.glass
+                    .timer
+                    .apply(operation, now)
+                    .map_err(|e| invalid(NAME, e))?;
+            }
+            GlassSetting::DataBarField { field } => self.glass.data_bar_field = field,
             GlassSetting::BearingPointer { source } => self.glass.bearing_pointer = source,
             GlassSetting::Transponder { code, mode } => {
                 if code.len() != 4 || !code.bytes().all(|b| (b'0'..=b'7').contains(&b)) {
@@ -706,6 +759,23 @@ impl Session {
                     .collect()
             })
             .unwrap_or_default();
+        let clock_readout = {
+            let now = sim.state().time_s;
+            let utc = utc_seconds(settings.clock_start_utc_s, now);
+            let timer = &settings.timer;
+            ClockReadout {
+                seconds: clock_seconds(settings.clock_format, utc, position.map_or(0., |p| p[1])),
+                label: match settings.clock_format {
+                    ClockFormat::Utc => "UTC",
+                    ClockFormat::Local => "LCL",
+                }
+                .into(),
+                timer_s: timer.display_s(now),
+                timer_running: timer.running,
+                timer_expired: timer.expired(now),
+                timer_down: timer.direction == TimerDirection::Down,
+            }
+        };
         let touch = self.touch_state();
         let mut wanted = std::collections::BTreeSet::new();
         for d in touch.displays.iter().filter(|d| d.powered && !d.failed) {
@@ -800,6 +870,7 @@ impl Session {
             airports,
             region: world.region().map(|r| r.name.clone()),
             aircraft_heading_relative_rad: r.heading_grid_rad - angle,
+            clock: clock_readout,
         }
     }
 }

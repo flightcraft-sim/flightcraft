@@ -322,3 +322,95 @@ fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
     s.sequence_minimums();
     assert_eq!(spoken(&s), 1);
 }
+#[test]
+fn the_clock_runs_on_simulation_time_and_can_be_set_and_changed_to_local() {
+    let mut s = glass_session();
+    let t0 = s.sim.state().time_s;
+    let g = s.glass_state();
+    assert_eq!(g.clock.label, "UTC");
+    assert!((g.clock.seconds - (17. * 3600. + t0)).abs() < 1e-6);
+    // Set the clock to 08:30:00 UTC; it then follows simulation time.
+    s.set_glass(GlassSetting::ClockSet {
+        utc_seconds: 8.5 * 3600.,
+    })
+    .unwrap();
+    assert!((s.glass_state().clock.seconds - 8.5 * 3600.).abs() < 1e-6);
+    s.sim.step(600);
+    let elapsed = s.sim.state().time_s - t0;
+    assert!(elapsed > 1.);
+    assert!((s.glass_state().clock.seconds - (8.5 * 3600. + elapsed)).abs() < 1e-6);
+    // A bad time is refused and leaves the clock alone.
+    for bad in [f64::NAN, -1., 90_000.] {
+        assert!(s.set_glass(GlassSetting::ClockSet { utc_seconds: bad }).is_err());
+    }
+    // Local time differs from UTC by a whole number of hours (the aircraft's time zone).
+    let utc = s.glass_state().clock.seconds;
+    s.set_glass(GlassSetting::ClockFormat {
+        format: ClockFormat::Local,
+    })
+    .unwrap();
+    let local = s.glass_state().clock;
+    assert_eq!(local.label, "LCL");
+    let hours = (local.seconds - utc) / 3600.;
+    assert!((hours - hours.round()).abs() < 1e-6, "{hours}");
+}
+#[test]
+fn the_flight_timer_is_a_glass_setting_that_follows_simulation_time() {
+    let mut s = glass_session();
+    let timer = |s: &Session| s.glass_state().clock;
+    assert!(!timer(&s).timer_running);
+    assert_eq!(timer(&s).timer_s, 0.);
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"timer","operation":{"kind":"start"}}}}),
+    )
+    .unwrap();
+    let t0 = s.sim.state().time_s;
+    s.sim.step(1200);
+    let elapsed = s.sim.state().time_s - t0;
+    assert!(timer(&s).timer_running && (timer(&s).timer_s - elapsed).abs() < 1e-6);
+    // Stopped, it holds while the simulation runs on.
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Stop {},
+    })
+    .unwrap();
+    let held = timer(&s).timer_s;
+    s.sim.step(600);
+    assert_eq!(timer(&s).timer_s, held);
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Reset {},
+    })
+    .unwrap();
+    assert_eq!(timer(&s).timer_s, 0.);
+    // Counting down from a preset, and the preset is validated.
+    assert!(
+        s.set_glass(GlassSetting::Timer {
+            operation: TimerAction::Preset { seconds: 0. }
+        })
+        .is_err()
+    );
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Preset { seconds: 3. },
+    })
+    .unwrap();
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Direction {
+            direction: TimerDirection::Down,
+        },
+    })
+    .unwrap();
+    assert_eq!(timer(&s).timer_s, 3.);
+    s.set_glass(GlassSetting::Timer {
+        operation: TimerAction::Start {},
+    })
+    .unwrap();
+    s.sim.step(120 * 10);
+    let c = timer(&s);
+    assert!(c.timer_down && c.timer_expired && c.timer_s == 0.);
+    // The data bar field choice is a setting too.
+    s.set_glass(GlassSetting::DataBarField {
+        field: DataBarField::Timer,
+    })
+    .unwrap();
+    assert_eq!(s.glass_state().settings.data_bar_field, DataBarField::Timer);
+}

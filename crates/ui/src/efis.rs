@@ -463,6 +463,8 @@ pub(crate) struct Shared {
     pub xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode,
     /// A crew alert (CAS message) is active: its window can be touched to acknowledge it.
     pub cas_active: bool,
+    /// What the data bar's user field shows.
+    pub user_field: flightcraft_control::DataBarField,
     /// The active flight plan, for the FPL page.
     pub fpl: FplView,
 }
@@ -546,6 +548,28 @@ pub(crate) fn chrome(
                     overlay: Overlay::ComWindow,
                 },
             );
+        }
+        // The data bar's user field (where the guide has minimum safe altitude): the left half
+        // cycles dashes, clock, and timer; with the timer shown, the right half starts and stops it.
+        if let Some(fx) = boxes.as_ref().and_then(|g| {
+            g.data_fields
+                .iter()
+                .find(|(f, _)| *f == flightcraft_aero::display_model::DataField::SafeAltitude)
+                .map(|(_, fx)| *fx)
+        }) {
+            let field = native_rect(screen, [fx - 55., 0., 110., 60.]);
+            let timer = shared.user_field == flightcraft_control::DataBarField::Timer;
+            let (left, right) = field.split_left_right_at_fraction(if timer { 0.5 } else { 1. });
+            if hit(ui, left, "user-field") {
+                out.glass.push(flightcraft_control::GlassSetting::DataBarField {
+                    field: shared.user_field.next(),
+                });
+            }
+            if timer && hit(ui, right, "user-field-timer") {
+                out.glass.push(flightcraft_control::GlassSetting::Timer {
+                    operation: flightcraft_control::TimerAction::Toggle {},
+                });
+            }
         }
         if let Some(g) = &boxes {
             for (element, overlay) in [

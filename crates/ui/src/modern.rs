@@ -341,6 +341,7 @@ impl PanelUi {
                                             .map(|n| n.nav_standby_khz),
                                         xpdr_code: glass.settings.transponder_code.clone(),
                                         xpdr_mode: glass.settings.transponder_mode,
+                                        user_field: glass.settings.data_bar_field,
                                         cas_active: !flightcraft_control::touch_cas::window(
                                             input.systems.modern.as_ref(),
                                             input.autopilot.map_or(&[][..], |a| a.failures.as_slice()),

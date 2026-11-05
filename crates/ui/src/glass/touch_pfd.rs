@@ -1099,6 +1099,21 @@ pub(crate) fn bars(
             let minutes = (seconds.max(0.) / 60.) as u64;
             format!("{:02}:{:02}", minutes / 60, minutes % 60)
         };
+        // The minimum safe altitude slot is the user field: dashes, the clock, or the flight timer.
+        let (label_text, ink) = match (field, s.settings.data_bar_field) {
+            (F::SafeAltitude, flightcraft_control::DataBarField::Clock) => {
+                (s.clock.label.as_str(), Ink::Magenta)
+            }
+            (F::SafeAltitude, flightcraft_control::DataBarField::Timer) => (
+                "TMR",
+                if s.clock.timer_expired {
+                    Ink::Yellow
+                } else {
+                    Ink::Magenta
+                },
+            ),
+            _ => (field.label(), Ink::Magenta),
+        };
         let value = match field {
             F::Waypoint => gps.destination.clone().unwrap_or_else(|| "_____".into()),
             F::Bearing => {
@@ -1118,11 +1133,20 @@ pub(crate) fn bars(
             F::TimeEnRoute => gps.ete_s.map_or("--:--".into(), duration),
             F::GroundSpeed => format!("{:.0}KT", s.ground_speed_mps * KNOTS),
             F::Track => format!("{:03.0}°", s.ground_track_rad.to_degrees().rem_euclid(360.)),
-            // The engine models no minimum safe altitude or vertical speed required.
-            F::SafeAltitude | F::VerticalSpeedRequired => "-----".into(),
+            F::SafeAltitude => match s.settings.data_bar_field {
+                flightcraft_control::DataBarField::SafeAltitude => "-----".into(),
+                flightcraft_control::DataBarField::Clock => {
+                    flightcraft_sim::avionics::glass_aids::hms(s.clock.seconds)
+                }
+                flightcraft_control::DataBarField::Timer => {
+                    flightcraft_sim::avionics::glass_aids::timer_text(s.clock.timer_s)
+                }
+            },
+            // The engine models no vertical speed required until a path exists.
+            F::VerticalSpeedRequired => "-----".into(),
         };
-        label(&mut d, [*fx as f32, y + 14.], field.label(), small, Ink::White);
-        label(&mut d, [*fx as f32, y + h * 0.68], value, size, Ink::Magenta);
+        label(&mut d, [*fx as f32, y + 14.], label_text, small, Ink::White);
+        label(&mut d, [*fx as f32, y + h * 0.68], value, size, ink);
     }
     // Status bar: knob functions at the ends, outside air temperature and messages in the middle.
     let [bx, by, bw, bh] = r4(g.rect(E::StatusBar));

@@ -302,8 +302,9 @@ degrees, the selected-heading bug, the track triangle, the course pointer and de
 GPS, green for a radio), and the source and CDI scale annunciations; the wind box with an arrow and speed
 over direction; and the top data bar (COM1 active and standby, then waypoint, bearing, distance, time en
 route, ground speed, track, minimum safe altitude, and vertical speed required) and the bottom status bar
-(the function of each knob's two rings, outside air temperature, Messages). Minimum safe altitude and
-vertical speed required are not modelled and read as dashes.
+(the function of each knob's two rings, outside air temperature, Messages). The minimum safe altitude is
+not modelled (its slot reads dashes, or shows the clock or flight timer, below), and vertical speed required
+reads dashes until a vertical path exists.
 
 Colours are by meaning, as in the guide: cyan for selected values, bugs, baro, and the standby frequency;
 magenta for the flight director, trend vectors, GPS guidance, and data bar values; green for active modes,
@@ -384,6 +385,25 @@ and "One hundred"), sounded once on the step that first finds the aircraft at or
 step that found it above. It sounds again only after a climb back above, never at the moment the minimums are
 set below the aircraft, and never while the altitude data is invalid. The warning tone (`audio::Audio`) is
 tied to the autopilot disconnect and has no named callouts, so the voice path is the hook the engine has.
+
+### Clock and flight timer
+
+The data bar's minimum safe altitude slot (the engine models no minimum safe altitude, so it read dashes) is
+also the **user field**: touching its left half cycles dashes, the clock, and the flight timer; with the timer
+shown, touching its right half starts and stops it. The same choices are glass settings, so they work from
+`avionics.set` and replay: `data_bar_field` (`field`: `safe_altitude`, `clock`, `timer`), `clock_format`
+(`format`: `utc` or `local`), `clock_set` (`utc_seconds`, 0 to 86,399), and `timer` with an `operation` of
+`{"kind":"start"}`, `stop`, `toggle`, `reset`, `{"kind":"direction","direction":"up"|"down"}`, or
+`{"kind":"preset","seconds":n}` (1 to 359,999 s, finite; a bad preset is refused and changes nothing).
+
+Both run on **simulation time** (`flightcraft_sim::avionics::glass_aids`, pure and unit tested), so they stop
+when the simulation is paused and give the same readings on replay. The sim has no calendar clock: the flight
+starts at 17:00 UTC (the renderer's default illumination hour) unless `clock_set` says otherwise, which moves
+the clock's zero point. Local time is UTC plus the aircraft's nautical time zone, one hour per 15 degrees of
+longitude rounded; there is no time-zone database, daylight time, or date. The timer counts up from zero or down
+from its preset and holds while stopped; a count-down stops at zero, cannot be started again until reset, and
+turns amber on the data bar. The clock reads `HH:MM:SS` labelled UTC or LCL; the timer reads `MM:SS`, or
+`H:MM:SS` from an hour. `avionics.state` carries the readings in `glass_suite.clock`.
 
 ### Radio and transponder windows
 
@@ -531,7 +551,8 @@ The model is not a screen-for-screen copy. **Matched** (from the guide's figures
 and split-screen PFD arrangement and colour meanings, the AFCS status box and flight director bars, the data
 bar and status bar, the CAS window, the trim and flap position indicators, touch flight-plan editing
 (select, insert before and after, remove, activate leg), the touch entry keypads (baro, heading, altitude,
-course, minimums, direct-to) with their shortcuts, baro minimums (bug, annunciation, and callout), the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
+course, minimums, direct-to) with their shortcuts, baro minimums (bug, annunciation, and callout), the
+data bar's clock and flight timer, the COM1, NAV1, and transponder windows, the 23-step range ladder with zoom buttons, the
 flight director bug knob and course-sync push, the Select Page menu, the VOR, NDB, intersection, and
 airspace nearest pages, and reversion with the autopilot rule.
 
@@ -540,9 +561,8 @@ airspace nearest pages, and reversion with the autopilot rule.
 - The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
   positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
 - The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
-- Minimum safe altitude and vertical speed required (data bar), the flight timer and clock, the
-  second bearing pointer, the G meter, and the Vspeed bugs' configuration page are not
-  modelled; the airspeed Vspeed letters show only R, X, and Y.
+- The minimum safe altitude (data bar), the second bearing pointer, the G meter, and the Vspeed bugs'
+  configuration page are not modelled; the airspeed Vspeed letters show only R, X, and Y.
 - **VNAV and its indicator** are not drawn: the engine has no vertical-navigation profile (no target
   altitudes at waypoints, no required descent angle). The autopilot's vocabulary has a VNAV mode name and
   approaches carry an LNAV/VNAV capability, but neither computes a vertical path, so there is nothing for the

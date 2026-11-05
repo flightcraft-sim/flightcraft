@@ -205,6 +205,7 @@ fn shared(rows: &[&str], cursor: usize, active: usize) -> crate::efis::Shared {
         xpdr_code: "1200".into(),
         xpdr_mode: flightcraft_sim::avionics::glass::TransponderMode::Alt,
         cas_active: false,
+        user_field: flightcraft_control::DataBarField::SafeAltitude,
         fpl: crate::efis::FplView {
             rows: rows
                 .iter()
