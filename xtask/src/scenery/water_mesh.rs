@@ -144,6 +144,32 @@ fn rect_clip(ring: &[[f64; 2]], rect: [f64; 4]) -> Vec<[f64; 2]> {
     points
 }
 /// Douglas-Peucker on an open polyline; endpoints are kept.
+/// Longest triangle edge in a water mesh. A triangle is a flat chord of the curved Earth: over a
+/// 10 km river reach it sags 2 m below the terrain at its middle, so the DEM pokes through it in
+/// long streaks. At 1.5 km the sag is under 0.1 m.
+const MAX_WATER_EDGE_M: f64 = 1_500.;
+/// Split triangles at the midpoint of their longest edge until none is longer than `limit`.
+fn refine(triangles: Vec<super::city::Triangle>, limit: f64) -> Vec<super::city::Triangle> {
+    let mut out = Vec::with_capacity(triangles.len());
+    let mut stack = triangles;
+    while let Some(t) = stack.pop() {
+        let edges = [t[0].distance(t[1]), t[1].distance(t[2]), t[2].distance(t[0])];
+        let (longest, length) = edges
+            .iter()
+            .copied()
+            .enumerate()
+            .fold((0, 0.), |best, e| if e.1 > best.1 { e } else { best });
+        if length <= limit {
+            out.push(t);
+            continue;
+        }
+        let (a, b, c) = (t[longest], t[(longest + 1) % 3], t[(longest + 2) % 3]);
+        let m = (a + b) * 0.5;
+        stack.push([a, m, c]);
+        stack.push([m, b, c]);
+    }
+    out
+}
 fn simplify(points: &[[f64; 2]], epsilon: f64) -> Vec<[f64; 2]> {
     if points.len() < 3 {
         return points.to_vec();
@@ -347,15 +373,36 @@ pub(super) fn tessellate(
                 continue; // adjacent HU-8 subbasins repeat features along their shared edge
             }
             let mut rings = Vec::new();
+            let mut raw_exterior: Vec<[f64; 2]> = Vec::new();
             for (index, ring) in local_rings.iter().enumerate() {
                 let clipped = rect_clip(ring, local_rect);
-                let mut simple = simplify(&clipped[..clipped.len().saturating_sub(1)], 0.4);
+                if index == 0 {
+                    raw_exterior = clipped[..clipped.len().saturating_sub(1)].to_vec();
+                }
+                // Tidal shorelines are drawn to 3 m: a finer line only costs triangles.
+                let epsilon = if is_tidal || (tidal && *layer == "NHDArea") {
+                    6.0
+                } else if tidal {
+                    2.0
+                } else {
+                    0.4
+                };
+                let mut simple = simplify(&clipped[..clipped.len().saturating_sub(1)], epsilon);
                 if let Some(first) = simple.first().copied() {
                     simple.push(first);
                 }
                 // The exterior must survive; a hole reduced below a triangle simply vanishes.
                 // Tidal holes are piers and tiny islands: below this the water simply runs under them.
-                let minimum = if tidal && index > 0 { 1_500. } else { 1. };
+                let minimum = if tidal && index > 0 {
+                    // Islands and piers inside tidal water are not cut out: the water plane runs
+                    // under them and the terrain, above it there, hides it. (Cutting them out left
+                    // long sliver gaps where simplified rings nearly touched.)
+                    f64::INFINITY
+                } else if tidal && standing {
+                    5_000.
+                } else {
+                    1.
+                };
                 if simple.len() >= 4 && ring_area(&simple).abs() > minimum {
                     rings.push(simple);
                 } else if index == 0 {
@@ -401,8 +448,29 @@ pub(super) fn tessellate(
                 rings.truncate(1);
                 triangulated = city_mesh::triangulate(&rings3);
             }
+            // A coarse simplification can fold the bank across itself. Redraw the exterior with a
+            // finer tolerance until it is a simple polygon.
+            if triangulated.as_ref().is_err_and(|e| e.contains("intersecting")) {
+                for epsilon in [3.0, 1.5, 0.7, 0.3] {
+                    let mut simple = simplify(&raw_exterior, epsilon);
+                    if let Some(first) = simple.first().copied() {
+                        simple.push(first);
+                    }
+                    if simple.len() < 4 || simple.len() > MAX_TESSELLATION_VERTICES {
+                        continue;
+                    }
+                    let candidate: Vec<DVec3> = simple.iter().map(|p| DVec3::new(p[0], p[1], 0.)).collect();
+                    let attempt = city_mesh::triangulate(std::slice::from_ref(&candidate));
+                    if attempt.is_ok() {
+                        rings = vec![simple];
+                        rings3 = vec![candidate];
+                        triangulated = attempt;
+                        break;
+                    }
+                }
+            }
             let triangles = match triangulated {
-                Ok(t) => t,
+                Ok(t) => refine(t, MAX_WATER_EDGE_M),
                 Err(reason) => {
                     out.audit.skipped.push(Skipped {
                         layer,
@@ -427,6 +495,28 @@ pub(super) fn tessellate(
                         rim.push((world.height)(lat, lon)?);
                     }
                     level = Some(median(&mut rim));
+                } else if is_tidal {
+                    // Tidal water is level: a triangle spanning a river must not tilt up to the
+                    // quay heights on its banks. Use a low percentile of the lowest nearby DEM
+                    // sample at the shoreline vertices (the hydro-flattened water surface).
+                    let mut lows = Vec::new();
+                    for p in rings3.iter().flatten().step_by(2) {
+                        let [lat, lon] = to_geodetic(*p)?;
+                        let dlat = 6. / 110_574.;
+                        let dlon = 6. / (111_320. * libm::cos(lat.to_radians()));
+                        let mut lowest = (world.height)(lat, lon)?;
+                        for (a, b) in [(dlat, 0.), (-dlat, 0.), (0., dlon), (0., -dlon)] {
+                            if let Ok(h) = (world.height)(lat + a, lon + b) {
+                                lowest = lowest.min(h);
+                            }
+                        }
+                        lows.push(lowest);
+                    }
+                    lows.sort_by(f64::total_cmp);
+                    // The upper quartile: the plane must sit above the hydro-flattened river bed
+                    // samples (0 m where the DEM has no water return), or terrain pokes through it in streaks.
+                    let upper = lows.get(lows.len() * 3 / 4).copied().unwrap_or(0.);
+                    level = Some(upper.clamp(0.4, 1.5));
                 }
                 let mut staged = Staged::default();
                 for t in &triangles {

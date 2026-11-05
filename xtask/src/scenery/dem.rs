@@ -22,6 +22,9 @@ struct Dem {
 }
 pub(super) struct Dems {
     dems: Vec<Dem>,
+    /// Chunks the TIFF decoder rejected (a nonconformant LZW stream): the sample is treated as
+    /// absent in that DEM and the next overlapping DEM is tried. Reported, never hidden.
+    pub decode_errors: u64,
 }
 impl Dems {
     pub fn open(request: &Request, sources: &Sources) -> Result<Self, String> {
@@ -43,7 +46,10 @@ impl Dems {
         if dems.is_empty() {
             return Err("no verified 1 m DEM inputs; run scenery fetch first".into());
         }
-        Ok(Self { dems })
+        Ok(Self {
+            dems,
+            decode_errors: 0,
+        })
     }
     /// As `height`, but `Ok(None)` where no DEM has a valid sample (outside coverage or nodata).
     pub fn height_opt(&mut self, lat: f64, lon: f64) -> Result<Option<f64>, String> {
@@ -66,8 +72,18 @@ impl Dems {
             }
         }
         for dem in &mut self.dems {
-            if let Some(value) = dem.height(lat, lon)? {
-                return Ok(value);
+            match dem.height(lat, lon) {
+                Ok(Some(value)) => return Ok(value),
+                Ok(None) => {}
+                Err(error) => {
+                    dem.cache.clear();
+                    self.decode_errors += 1;
+                    if self.decode_errors <= 5 {
+                        eprintln!(
+                            "DEM chunk near {lat:.6},{lon:.6} is undecodable ({error}); trying the next DEM"
+                        );
+                    }
+                }
             }
         }
         Err(format!(

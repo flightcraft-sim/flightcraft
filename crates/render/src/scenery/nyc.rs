@@ -14,7 +14,7 @@ pub const NYC_BUILDING_BUDGET: u64 = 250_000_000;
 pub const WEB_BUDGET: u64 = 1_000_000_000;
 pub const NYC_EPT: &str = "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept.json";
 const EPT_PREFIX: &str = "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/";
-pub const NYC_ATTRIBUTION: &str = "Buildings: USGS 3DEP, NY_NewYorkCity classified lidar, public domain (US government data). Reconstructed by FlightCraft; original procedural materials. For simulation only.";
+pub const NYC_ATTRIBUTION: &str = "Buildings: USGS 3DEP, NY_NewYorkCity lidar, public domain (US government data). Reconstructed by FlightCraft; original procedural materials. For simulation only.";
 
 /// Geographic order is west, south, east, north, in degrees. Source cube order is
 /// xmin, ymin, zmin, xmax, ymax, zmax, in the EPT source frame; padding is not ground elevation.

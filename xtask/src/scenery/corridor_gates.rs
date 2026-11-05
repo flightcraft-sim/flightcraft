@@ -4,7 +4,7 @@
 //! against NAIP (no runway lies inside the fly-nyc.json envelope), and lidar acceptance.
 use super::{
     corridor::{self, Plan},
-    corridor_buildings::{REG_R, Totals},
+    corridor_buildings::{REG_N, REG_R, Totals},
     dem::Dems,
     download,
 };
@@ -35,6 +35,7 @@ pub(super) struct AlignmentAudit {
     pub best_shift_magnitude_m: f64,
     pub contrast_at_best: f64,
     pub contrast_at_zero: f64,
+    pub border_ring_max_contrast: f64,
     pub mean_contrast_over_window: f64,
     pub blocks_peaking_within_2_m: usize,
     pub contrast_by_shift: Vec<Vec<f64>>,
@@ -101,14 +102,27 @@ pub(super) fn evaluate(
         .iter()
         .filter(|b| libm::hypot(f64::from(b[0]), f64::from(b[1])) <= 2.)
         .count();
-    let registered =
-        r.buildings >= 300 && magnitude <= 2. && at_best >= 1.10 * mean && at_zero >= 1.05 * mean;
+    // The correlation surface is one broad hill, so "above the window mean" says little: the peak
+    // must also beat every shift on the window's border ring (|shift| = 5 m) by 3%.
+    let border_max = r
+        .sum
+        .iter()
+        .enumerate()
+        .flat_map(|(iy, row)| row.iter().enumerate().map(move |(ix, v)| (ix, iy, *v)))
+        .filter(|(ix, iy, _)| *ix == 0 || *iy == 0 || *ix == REG_N - 1 || *iy == REG_N - 1)
+        .map(|(_, _, v)| per_building(v))
+        .fold(f64::NEG_INFINITY, f64::max);
+    let registered = r.buildings >= 300
+        && magnitude <= 2.
+        && at_best >= 1.03 * border_max
+        && at_best >= 1.05 * mean
+        && at_zero >= 1.02 * mean;
     let alignment = AlignmentAudit {
         passed: registered && !partial,
         method: "lidar-building-footprints-vs-naip",
         runway_in_envelope: false,
         notes: vec![
-            "No runway lies inside the fly-nyc.json envelope (KTEB, KEWR, KLGA and KJFK are outside it; the heliports are not surveyed runways). Horizontal registration is therefore validated by shifting lidar building footprints over the NAIP orthophoto in 1 m steps and requiring the inside/outside colour contrast to peak within 2 m of zero shift.".into(),
+            "No runway lies inside the fly-nyc.json envelope (KTEB, KEWR, KLGA and KJFK are outside it; the heliports are not surveyed runways). Horizontal registration is therefore validated by shifting lidar building footprints over the NAIP orthophoto in 1 m steps and requiring the summed luminance edge strength along the footprint outlines to peak within 2 m of zero shift, above every shift on the window border.".into(),
             "Only low-rise roofs (3.5 to 9 m) are used: the orthophoto is rectified to bare earth, so a roof leans away from the camera by its height times the view angle (about 1 m for a 9 m roof, 3 m for a 20 m one). Footprints come from the lidar alone.".into(),
         ],
         buildings_used: r.buildings,
@@ -117,6 +131,7 @@ pub(super) fn evaluate(
         best_shift_magnitude_m: magnitude,
         contrast_at_best: at_best,
         contrast_at_zero: at_zero,
+        border_ring_max_contrast: border_max,
         mean_contrast_over_window: mean,
         blocks_peaking_within_2_m: within,
         contrast_by_shift: r.sum.iter().map(|row| row.iter().map(|v| per_building(*v)).collect()).collect(),
@@ -202,7 +217,7 @@ pub(super) fn evaluate(
             "footprints register with NAIP",
             alignment.passed,
             serde_json::json!({"best_shift_east_north_m":alignment.best_shift_east_north_m,"contrast_at_best":at_best,"contrast_at_zero":at_zero,"window_mean":mean,"buildings":r.buildings}),
-            "contrast peaks within 2 m of zero shift and clearly above the window mean",
+            "the footprint edge-strength surface peaks within 2 m of zero shift, above every shift on the window border",
         ),
     ];
     Ok(Gates {

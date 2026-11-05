@@ -237,6 +237,19 @@ impl Plan {
                 stack.extend(self.children(key));
             }
         }
+        // Levels above the forest are real (coarse) content tiles, not content-less groups: the
+        // renderer shows a node's parent until every child it needs is resident, so a
+        // content-less node over dozens of tiles would show nothing until all of them loaded.
+        let forest: Vec<TileKey> = out.iter().map(|(k, _)| *k).collect();
+        let mut above = std::collections::BTreeSet::new();
+        for key in forest {
+            let mut k = key;
+            while let Some(parent) = k.parent().filter(|p| p.level < FOREST) {
+                above.insert(parent);
+                k = parent;
+            }
+        }
+        out.extend(above.into_iter().map(|k| (k, false)));
         out.sort();
         out
     }
@@ -703,7 +716,7 @@ mod tests {
         let tiles = plan.tiles();
         let set: std::collections::BTreeMap<_, _> = tiles.iter().copied().collect();
         for (key, leaf) in &tiles {
-            if !leaf {
+            if !leaf && key.level >= FOREST {
                 assert!(plan.children(*key).iter().all(|c| set.contains_key(c)), "{key:?}");
             }
             if let Some(parent) = key.parent().filter(|p| p.level >= FOREST) {
@@ -746,5 +759,46 @@ mod tests {
         assert!(plan.lidar_wants([m[0] - 10., m[1] - 10., m[0] + 10., m[1] + 10.]));
         let teb = merc(40.8501, -74.0608);
         assert!(!plan.lidar_wants([teb[0] - 10., teb[1] - 10., teb[0] + 10., teb[1] + 10.]));
+    }
+
+    /// Plans the full lidar selection from the cached hierarchy pages (no downloads):
+    /// `cargo test -p xtask plan_the_full_lidar -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "needs the hudson-corridor cache"]
+    fn plan_the_full_lidar_selection_from_the_cached_hierarchy() {
+        struct Cached(std::path::PathBuf, usize);
+        impl ept::Acquisition for Cached {
+            fn metadata(&mut self, _: ept::MetadataKind, url: &str, _: usize) -> Result<Vec<u8>, String> {
+                std::fs::read(self.0.join(download::sha256(url.as_bytes())))
+                    .map_err(|e| format!("{url}: {e}"))
+            }
+            fn points(&mut self, _: &str) -> Result<(), String> {
+                self.1 += 1;
+                Ok(())
+            }
+        }
+        let plan = plan();
+        let mut query = plan.envelope();
+        query[0] -= 150.;
+        query[1] -= 150.;
+        query[2] += 150.;
+        query[3] += 150.;
+        let mut cache = Cached(
+            "/home/ray/builds/codex-jobs/scenery/new-york/hudson-corridor/cache/objects".into(),
+            0,
+        );
+        let summary = ept::fetch_zone(
+            ept::NYC_ROOT,
+            query,
+            &|r| plan.lidar_wants(r),
+            EPT_SPACING_M,
+            ept::ZoneBudget {
+                points: 2_000_000_000,
+                nodes: 100_000,
+            },
+            &mut cache,
+        )
+        .unwrap();
+        eprintln!("{summary:?}");
     }
 }

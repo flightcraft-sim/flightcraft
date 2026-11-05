@@ -71,7 +71,11 @@ fn render_fly_nyc_proof_shots() {
         let mut scene = Scene::default();
         scene.set_world(&world);
         scene.set_scenery(Some(stream.clone()));
-        scene.scenery_quality = Quality::Medium;
+        scene.scenery_quality = match std::env::var("FLIGHTCRAFT_FLYNYC_QUALITY").as_deref() {
+            Ok("high") => Quality::High,
+            Ok("low") => Quality::Low,
+            _ => Quality::Medium,
+        };
         scene.airspace_visible = false;
         let out = std::env::var_os("FLIGHTCRAFT_FLYNYC_OUT")
             .map(std::path::PathBuf::from)

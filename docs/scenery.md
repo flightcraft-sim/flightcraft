@@ -583,8 +583,7 @@ from public-domain data only: NAIP imagery, the USGS 1 m DEM, NHD water, and the
 The tile tree is a *sparse, variable-resolution* quadtree, unlike the square single-resolution
 1N7 pyramid. The root is a 103.8 km Web Mercator square of 512-pixel tiles, 2^8 tiles across at
 0.6 m (level 8); a tile is refined only where a zone asks for finer imagery, and a refined tile
-always has all four children, so replacement refinement never leaves a hole. Levels 0 to 2 are
-content-less grouping nodes (the browser's selector always descends them).
+always has all four children, so replacement refinement never leaves a hole. Levels 0 to 2 carry their own coarse imagery tiles: the selector refines a content-less node unconditionally and waits for all of its children, which starves a bounded cache, so every internal node is a real (low detail) tile.
 
 | Level | Ground sample | Where (ground distance) |
 |---|---|---|
@@ -594,7 +593,7 @@ content-less grouping nodes (the browser's selector always descends them).
 | 5 | 4.8 m | 12 km of the river, 7 km around the envelope |
 | 4 | 9.6 m | 18 km of the river (coarsest content) |
 
-`{{LEAVES}}` leaf tiles in all (`corridor::plan`, unit-tested for completeness). Buildings and
+3,129 leaf tiles (4,178 terrain tiles with their ancestors) in all (`corridor::plan`, unit-tested for completeness). Buildings and
 trees are reconstructed only inside the fly-nyc.json envelope (40.66-40.84 N, 74.04-73.90 W) and
 within 4.2 km of the river, in 2 km Mercator blocks with a 96 m margin (`corridor_buildings.rs`),
 so no block exceeds the 4.19 million cell DSM limit.
@@ -618,12 +617,12 @@ cargo xtask scenery fetch --region new-york --area hudson-corridor --layer lidar
 ```
 
 * **DEM**: only TNM 1 m products whose footprint touches a tile of 4.8 m or finer (the 2014 NJ
-  Sandy product is skipped in favour of the 2017 and 2023 NJ lidar DEMs). `{{DEMS}}` products,
-  `{{DEM_GB}}` GB.
-* **NAIP**: one 512 x 512 JPEG per leaf tile at its own level (`{{IMAGERY_N}}` requests, `{{IMAGERY_MB}}` MB).
+  Sandy product is skipped in favour of the 2017 and 2023 NJ lidar DEMs). 53 products,
+  9.0 GB (one chunk of one 2017 product cannot be decoded by the LZW reader; those posts fall back to the next product and are counted in `dem_undecodable_chunk_hits`).
+* **NAIP**: one 512 x 512 JPEG per leaf tile at its own level (3,129 requests, 135.6 MB; the ImageServer takes about 24 s per tile, so the fetch keeps 24 requests in flight with request starts still one second apart).
 * **Lidar**: `ept::fetch_zone` walks only the hierarchy pages that intersect the lidar zone and
   keeps every ancestor (EPT is additive). Depth 8 (0.73 m ground voxels, about 2 returns per square
-  metre of roof) is the density the 1 m DSM needs: `{{NODES}}` nodes, `{{POINTS}}` points, `{{LAZ_GB}}` GB.
+  metre of roof) is the density the 1 m DSM needs: 5,338 nodes, 353,829,991 points, 2.06 GB.
 * `FLIGHTCRAFT_HUDSON_ZONE=midtown` restricts the lidar layer to a Midtown test window, which is
   how reconstruction was checked before committing to the full corridor.
 
@@ -635,8 +634,8 @@ cargo xtask scenery build --region new-york --area hudson-corridor --out <new-di
 
 (`FLIGHTCRAFT_CORRIDOR_BLOCKS=n` builds only the first n blocks, which can never pass the gates.)
 
-Output: `tileset.json`, `tiles/<level>/<x>/<y>.glb` (terrain and imagery), `buildings/{0,1}/*.glb`,
-`trees/`, `water/0.glb`, `sources.json`, `build-report.json`, `datum-audit.json`,
+Output: `tileset.json`, `tiles/<level>/<x>/<y>.glb` (terrain and imagery), `buildings/{0,1,2}/*.glb`,
+`trees/`, `water/{0..3}.glb`, `sources.json`, `build-report.json`, `datum-audit.json`,
 `alignment-audit.json`, `lidar-acceptance.json`, `lidar-ground-audit.json`, `water-audit.json`.
 
 **Buildings.** The 1N7 builder gives every building its own texture; a city cannot afford that.
@@ -648,13 +647,16 @@ plausible detail, not a survey of real windows. Roofs are the measured planes (r
 plane, courtyards preserved) and walls run from each roof edge to the DEM, or from the higher roof
 to the lower one at a step, merged along runs and split into 8 m bays. NY_NewYorkCity labels no building class (see below), so roofs are inferred from planar
 unclassified returns more than 2.5 m above the DEM, exactly as for the NJ survey; every building
-record says `inferred_classification: true`. A coarse parent tile per 1 km (4 m cells, the highest roof
-in each, so towers on podiums survive) is replaced by the 16 fine cells as the camera approaches.
-Both LODs are reconstructed from the same lidar; there is no footprint, height or extrusion
-fallback.
+record says `inferred_classification: true`. The LOD tree has three real levels, all reconstructed from the same lidar (there is no footprint,
+height or extrusion fallback): a 2 km group tile per block (the block's towers of at least 30 m as
+16 m boxes), a 1 km coarse tile (8 m cells, 4 m height steps, the highest roof in each so towers
+on podiums survive) and the 256 m fine cells. Fine tiles hang under their coarse parent, and parents
+under their group tile; content-less aggregators of at most eight group tiles sit above those.
 
 **Trees** are the canopy-height-model detections of 1N7 (`trees.rs`) as GPU-instanced crowns in a
-quadtree of at most 1,200 trees per tile.
+quadtree of at most 1,500 trees per tile (a tile's instanced draw is limited to 4 million vertices
+by the renderer). Coarse tree tiles show at most 12,000 trees as crossed billboards, and the crown
+meshes are welded so each tile carries only two small variants per species.
 
 ### Release gates
 
@@ -673,11 +675,36 @@ inside/outside colour contrast must peak within 2 m of zero shift, clearly above
   plausible heights (buildings up to 560 m), class 6 buildings, tall and stepped Manhattan present,
   and footprint registration.
 
-`{{GATES}}`
+Results of the release build (`built/build-report.json`: `release_ready: true`, `lidar_accepted: true`,
+`vertical_datum_verified: true`, `runway_alignment_verified: true`):
+
+| Gate | Result |
+|---|---|
+| Vertical datum | GEOID18 grid -31.8115 m against the NGS control -31.811 m (residual 0.0005 m); the highest KTEB paved-runway DEM sample is 2.559 m MSL against the FAA field elevation of 8.3 ft (2.530 m), residual 0.029 m. KLGA, KEWR and KJFK lie outside the envelope, so KTEB is the only airport control. |
+| Footprint registration | 1,303 low-rise lidar footprints in 52 blocks; best shift 1.0 m (0, +1 m), contrast 21.16 at best against 20.90 at zero shift and 20.27 on the window border ring, mean 19.89. |
+| Lidar acceptance | 5,338 of 5,338 EPT nodes and 353,829,991 points decoded; classified ground median 0.022 m (p95 0.164 m) against the DEM; 69,915 roof planes, 99.997% within 0.25 m RMS; 0.48% interpolated roof cells; 45,859 buildings, 646 over 100 m (tallest 430 m); NHD polygons contain 97.9% of sampled lidar water cells. |
+
+Findings worth knowing. NY_NewYorkCity has no building class at all (classes 1, 2, 7, 9, 10, 17 and
+18 only; the Empire State Building is entirely class 1, and class 17 carries more roof and wall
+returns), so every building is inferred from planar unclassified returns and says so
+(`inferred_classification`). The envelope's north edge (40.84 N) stops short of the George
+Washington Bridge (about 40.85 N): the bridge is imagery only, with no lidar model.
 
 ### Budgets
 
-`{{BUDGETS}}`
+Measured on the release build (`build-report.json`, decimal MB):
+
+| Part | Size |
+|---|---|
+| Buildings (`buildings/`, 2,349 tiles, 9.6 million vertices) | 238.6 MB of the 250 MB allocation |
+| Terrain imagery (3,129 NAIP JPEG tiles plus composed parents) | 214.8 MB |
+| Terrain meshes | 99.9 MB |
+| Trees (336,628 crowns) | 175 MB |
+| Water (209,376 triangles) | 22 MB |
+| Whole built directory | about 770 MB |
+| Staged package checked by `cargo xtask web --check` | 872,349,750 bytes; the Wasm app adds about 10 MB (the full-site check runs in CI) |
+
+The release is seven archives of at most 135 MB (`release/`, 739 MB compressed).
 
 ### Publishing for the website
 
@@ -687,11 +714,38 @@ The website is built by CI (`.github/workflows/ci.yml`, job `wasm`: `cargo xtask
 job's `data fetch` installs them under `assets/terrain/new-york/scenery/hudson-corridor/` before
 `web` copies and budget-checks them.
 
-{{PUBLISH}}
+To publish a new build (the flight lead runs this; nothing here pushes or creates a release):
+
+```sh
+cargo xtask scenery package --region new-york --built <built> --name hudson-corridor \
+  --tag region-data-2611-scenery-hudson-corridor-20261105 --out <release-dir>
+bash <release-dir>/PUBLISH.sh      # gh release create + gh release upload of the *.zip and *.manifest.json
+git add data.lock && git commit    # package already rewrote data.lock with every archive hash
+```
+
+CI then needs no change: every job runs `cargo xtask data fetch`, which downloads and verifies the
+`scenery` archives and installs them (gitignored). The desktop release tarballs exclude this area
+(it is a website-only dataset).
 
 ### Defaults and proof
 
-`{{DEFAULTS}}`
+The website opens **southbound over the Hudson at 1,000 ft just north of the George Washington
+Bridge** (`crates/ui/src/fly_nyc.rs`), not at Teterboro: KTEB is about 9 km west of the river and
+outside the building envelope, so a departure spends its first minutes over unmodelled suburbs,
+while the air start puts the measured skyline in the first frame. `?start=kteb` departs KTEB runway
+06; `?start=runway` keeps the 1N7 runway start.
+
+Offscreen proof renders (`cargo test -p flightcraft-ui render_fly_nyc_proof_shots -- --ignored`,
+`FLIGHTCRAFT_FLYNYC_QUALITY=high` for the 192 MiB cache; Medium is the default and shows fewer
+tiles at once) are written to `out/scenery/fly-nyc/`: southbound abeam midtown, the Statue of Liberty
+and the Battery, the George Washington Bridge from both sides, a KTEB runway 06 departure and the
+climb-out toward Manhattan.
+
+Known limits. (1) The selector's cache holds about 90 to 150 tiles of decoded memory, so
+mid-distance buildings drop to the coarse LOD. (2) Water over the harbor and the river shows
+polygonal dark patches and long streaks in the proof shots; the water mesh is complete (the audit
+rasterises to the full NHD extent) and sits above the DEM, so this is the water pass receiving the
+scene's cascaded sun shadows (a property of `lighting.wgsl`/shadow cascades, not of the data).
 
 ### Web showcase scope
 
@@ -700,6 +754,14 @@ the staged data against a **900,000,000-byte** budget; full `cargo xtask web` ap
 the complete installed site (Wasm, support files, every terrain, building and tree tile, imagery,
 mip levels, charts). The 250 MB building allocation is the size of `hudson-corridor/buildings/`.
 Splitting release assets does not exempt any installed file from the website limit.
+
+Urban reconstruction acceptance requires tall buildings, flat and stepped roofs, and open
+courtyards, in addition to the airport's long, low gable and flat hangars. Use roof planes from
+planar returns (building-class occupancy where the survey has it); preserve footprint interior
+rings and roof height discontinuities. A convex hull or a single roof plane over a connected block
+cannot satisfy these cases. Keep separate roof levels, texture each roof from registered NAIP, and
+extend exterior and courtyard walls to the DEM. Return density, source units/datum,
+reconstruction uncertainty, and unsupported roof regions stay explicit in the output audit.
 
 ## LAS/LAZ decoding and source classification audits
 
@@ -807,11 +869,11 @@ it does not introduce a separate building renderer.
 After merging the city lane, a `nyc-lidar` reconstruction reads the single shared
 `assets/scenery/fly-nyc.json` area definition and emits its `extras.flightcraft.nycLidar` contract:
 `selection`, `reconstructionBuildings`, `reconstructionLeavesAreBuildings`,
-`usesExternalFootprints`, and `receipts`. NYC output requires actual `NY_NewYorkCity` receipts
-and classified building returns. NJ inference cannot be relabeled as NYC. The city lane builds
-its own showcase LODs from these complete-building leaves. Real NYC source and full-area scaling
-remain separate acceptance work; the current dense-urban evidence is synthetic geometry tests
-covering tall and stepped roofs, courtyard preservation, and gable/hip fitting.
+`usesExternalFootprints`, and `receipts`. NYC output requires actual `NY_NewYorkCity` receipts. That survey has no building class, so its roofs
+are inferred from planar unclassified returns (and class 17) and labelled as such. The city lane builds
+its own showcase LODs from these complete-building leaves. The real NYC source, the full-area
+build and its gates are described under "Hudson corridor" above; the unit tests cover tall and stepped
+roofs, courtyard preservation, and gable/hip fitting.
 
 For the next real urban data check, fetch the small Midtown test block first (about 1.23 km per
 side around Bryant Park, including the Empire State Building and Grand Central area):

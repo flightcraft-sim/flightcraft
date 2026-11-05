@@ -28,7 +28,7 @@ pub(super) const PARENT_M: f64 = 1024.;
 pub(super) const BLOCK_M: f64 = 2048.;
 const MARGIN_M: f64 = 96.;
 /// Plane clutter smaller than this (cells) is absorbed into its neighbours' plane.
-const MIN_PLANE_CELLS: usize = 6;
+const MIN_PLANE_CELLS: usize = 16;
 const WALL_SINK_M: f64 = 1.2;
 /// NY_NewYorkCity class 17 carries roof and wall returns like class 1 (see `Grid`).
 const NYC_STRUCTURE_ALIAS_CLASS: u8 = 17;
@@ -262,8 +262,8 @@ fn raster_fine(b: &Building, grid: &Grid, imagery: &mut Imagery<'_>) -> Raster {
         colors: plane_colors(b, grid, imagery),
     }
 }
-fn raster_coarse(b: &Building, grid: &Grid, imagery: &mut Imagery<'_>) -> Raster {
-    const S: i32 = 4;
+fn raster_coarse(b: &Building, grid: &Grid, imagery: &mut Imagery<'_>, s: i32) -> Raster {
+    let step = s;
     let colors = plane_colors(b, grid, imagery);
     // Highest roof in each 4 m cell wins, so a tower on a podium survives.
     let mut top: BTreeMap<(i32, i32), (f64, f32, u32)> = BTreeMap::new();
@@ -271,9 +271,11 @@ fn raster_coarse(b: &Building, grid: &Grid, imagery: &mut Imagery<'_>) -> Raster
         let (x, y) = ((index % grid.width) as i32, (index / grid.width) as i32);
         let z = b.roof_planes[plane].z(f64::from(x), f64::from(y));
         let ground = grid.cells.get(index).map_or(0., |c| c.ground);
-        let e =
-            top.entry((x.div_euclid(S), y.div_euclid(S)))
-                .or_insert((f64::NEG_INFINITY, f32::INFINITY, 0));
+        let e = top.entry((x.div_euclid(step), y.div_euclid(step))).or_insert((
+            f64::NEG_INFINITY,
+            f32::INFINITY,
+            0,
+        ));
         e.1 = e.1.min(ground);
         if z > e.0 {
             e.0 = z;
@@ -285,16 +287,16 @@ fn raster_coarse(b: &Building, grid: &Grid, imagery: &mut Imagery<'_>) -> Raster
     let mut ids: BTreeMap<(i64, u32), u32> = BTreeMap::new();
     let mut cells = BTreeMap::new();
     for (key, (z, ground, color)) in top {
-        let level = libm::round(z / 2.5) as i64;
+        let level = libm::round(z / 4.) as i64;
         let id = *ids.entry((level, color)).or_insert_with(|| {
-            planes.push(flat(level as f64 * 2.5));
+            planes.push(flat(level as f64 * 4.));
             out_colors.push(color);
             planes.len() as u32 - 1
         });
         cells.insert(key, (id, ground));
     }
     Raster {
-        step: S,
+        step,
         cells,
         planes,
         colors: out_colors,
@@ -673,42 +675,11 @@ pub(super) fn process_block(
     grid.unclassified_alias = Some(NYC_STRUCTURE_ALIAS_CLASS);
     let mut ground = lidar_ground::Check::default();
     let mut decoded = 0;
-    // Developer probe: per-class point count and Z range within 40 m of the Empire State Building.
-    let debug_probe =
-        std::env::var_os("FLIGHTCRAFT_CORRIDOR_DEBUG").map(|_| corridor::merc(40.74844, -73.98566));
-    let mut probe: BTreeMap<u8, (u64, f64, f64)> = BTreeMap::new();
-    let mut n17 = 0_u64;
-    let mut hist: BTreeMap<u8, Vec<u32>> = BTreeMap::new();
     for node in nodes.iter().filter(|n| intersects(n.rect, spec.grid)) {
         let file = std::fs::File::open(&node.path).map_err(|e| e.to_string())?;
         let mut points = 0_u64;
         let audit = lidar::scan(std::io::BufReader::new(file), |p| {
             points += 1;
-            if debug_probe.is_some() && (p.classification == 17 || p.classification == 1) {
-                n17 += 1;
-                if n17 % 997 == 0
-                    && let Ok([lat, lon]) = scenery::inverse_mercator(p.xyz[0], p.xyz[1])
-                    && let Ok(Some(g)) = dem.height_opt(lat, lon)
-                {
-                    let h = (p.xyz[2] - g).clamp(-5., 400.);
-                    let bin = ((h + 5.) / 10.) as usize;
-                    if p.classification == 17 && n17 % 99_700 == 0 {
-                        eprintln!("class 17 sample: {lat:.5}, {lon:.5}, {h:.1} m above ground");
-                    }
-                    let e = hist.entry(p.classification).or_insert_with(|| vec![0_u32; 42]);
-                    if let Some(c) = e.get_mut(bin) {
-                        *c += 1;
-                    }
-                }
-            }
-            if debug_probe.is_some_and(|c| libm::hypot(p.xyz[0] - c[0], p.xyz[1] - c[1]) < 40.) {
-                let e = probe
-                    .entry(p.classification)
-                    .or_insert((0_u64, f64::NEG_INFINITY, f64::INFINITY));
-                e.0 += 1;
-                e.1 = e.1.max(p.xyz[2]);
-                e.2 = e.2.min(p.xyz[2]);
-            }
             ground.sample(p, spec.core, dem, Some(o.geoid))?;
             grid.insert(p)
         })?;
@@ -721,10 +692,6 @@ pub(super) fn process_block(
         decoded += 1;
     }
     totals.ground.absorb(ground);
-    if debug_probe.is_some() {
-        eprintln!("class (count, max z, min z) within 40 m of the Empire State Building: {probe:?}");
-        eprintln!("height-above-ground histogram (10 m bins from -5 m) of sampled returns: {hist:?}");
-    }
     if decoded == 0 {
         totals
             .skipped_blocks
@@ -769,43 +736,52 @@ pub(super) fn process_block(
             }
         }
     }
-    if std::env::var_os("FLIGHTCRAFT_CORRIDOR_DEBUG").is_some() {
-        let populated = grid.cells.iter().filter(|c| c.count > 0).count();
-        let roof = grid.cells.iter().filter(|c| c.flags & 4 != 0).count();
-        let veg = grid.cells.iter().filter(|c| c.flags & 2 != 0).count();
-        let tall = grid
-            .cells
-            .iter()
-            .filter(|c| c.flags & 4 != 0 && c.height() > 2.5)
-            .count();
-        eprintln!(
-            "block grid {}x{}: populated {populated}, class-6 cells {roof}, vegetation cells {veg}, class-6 above 2.5 m {tall}, missing DEM {missing}; classes {:?}",
-            grid.width, grid.height, totals.classes
-        );
-    }
-    let found = buildings::detect(&mut grid)?;
+    let all_found = buildings::detect(&mut grid)?;
     let mut trees = trees::detect(&grid)?;
     let owned = |lat: f64, lon: f64| {
         scenery::mercator(lat, lon).is_ok_and(|[x, y]| {
             x >= spec.core[0] && x < spec.core[2] && y >= spec.core[1] && y < spec.core[3]
         })
     };
-    let found: Vec<Building> = found
+    // Every detected roof cell, including neighbours' beyond this block's core.
+    let mut roof = vec![false; grid.cells.len()];
+    for b in &all_found {
+        for index in b.cells.keys() {
+            if let Some(cell) = roof.get_mut(*index) {
+                *cell = true;
+            }
+        }
+    }
+    let found: Vec<Building> = all_found
         .into_iter()
         .filter(|b| owned(b.center_lat_lon[0], b.center_lat_lon[1]))
         .collect();
+    // NY_NewYorkCity has no vegetation class, so crowns are inferred from unclassified returns,
+    // and a tall, rough roof edge can look like a tree. Keep a tree only if it is plausible
+    // (at most 40 m tall, crown radius at most 10 m) and not standing among roof cells.
     trees.retain(|t| {
         let Ok([x, y]) = scenery::mercator(t.lat, t.lon) else {
             return false;
         };
-        if !owned(t.lat, t.lon) {
+        if !owned(t.lat, t.lon) || t.height_m > 40. || t.crown_radii_m.iter().any(|r| *r > 10.) {
             return false;
         }
-        let col = libm::floor((x - grid.bounds[0]) / grid.step) as usize;
-        let row = libm::floor((y - grid.bounds[1]) / grid.step) as usize;
-        !found
-            .iter()
-            .any(|b| b.cells.contains_key(&(row * grid.width + col)))
+        let col = libm::floor((x - grid.bounds[0]) / grid.step) as i64;
+        let row = libm::floor((y - grid.bounds[1]) / grid.step) as i64;
+        let mut roofs = 0;
+        for dr in -4..=4_i64 {
+            for dc in -4..=4_i64 {
+                let (c, r) = (col + dc, row + dr);
+                if c >= 0
+                    && r >= 0
+                    && c < grid.width as i64
+                    && roof.get(r as usize * grid.width + c as usize) == Some(&true)
+                {
+                    roofs += 1;
+                }
+            }
+        }
+        roofs < 8
     });
     for b in &found {
         totals.buildings += 1;
@@ -839,14 +815,36 @@ pub(super) fn process_block(
     };
     let mut fine: BTreeMap<(i64, i64), Vec<&Building>> = BTreeMap::new();
     let mut coarse: BTreeMap<(i64, i64), Vec<&Building>> = BTreeMap::new();
+    // One group tile per block: the block's towers as 16 m boxes. It is the always-resident
+    // parent of the block's 1 km tiles, so the renderer never has to guess at (and budget for)
+    // dozens of unknown-size children to see the skyline.
+    let mut group: BTreeMap<(i64, i64), Vec<&Building>> = BTreeMap::new();
+    let block = (
+        ((spec.core[0] - root[0]) / BLOCK_M).round() as i64,
+        ((spec.core[1] - root[1]) / BLOCK_M).round() as i64,
+    );
     for b in &found {
+        // Low-rise buildings (under 12 m, under 700 m^2 of roof: row houses, sheds, garages) are
+        // already in the NAIP imagery the terrain carries and are not worth a tile's bytes at the
+        // showcase's altitudes; taller or larger roofs (warehouses, piers) are meshed. They still
+        // count in the audit.
+        if b.height_m < 12. && b.cells.len() < 700 {
+            continue;
+        }
         if let (Some(f), Some(c)) = (cell_of(b, CELL_M), cell_of(b, PARENT_M)) {
             fine.entry(f).or_default().push(b);
             coarse.entry(c).or_default().push(b);
+            group.entry(block).or_default().push(b);
         }
     }
+    if let Some(list) = group.get_mut(&block) {
+        // Towers first; a block with none still gets its tallest few so its group is not empty.
+        list.sort_by(|a, b| b.height_m.total_cmp(&a.height_m));
+        let towers = list.iter().take_while(|b| b.height_m >= 30.).count();
+        list.truncate(towers.max(8));
+    }
     let mut tiles = Vec::new();
-    for (lod, groups) in [(1_u8, &fine), (0_u8, &coarse)] {
+    for (lod, groups) in [(1_u8, &fine), (0_u8, &coarse), (2_u8, &group)] {
         for (&cell, list) in groups {
             let used: BTreeSet<(u8, u8)> = list
                 .iter()
@@ -860,12 +858,16 @@ pub(super) fn process_block(
             let atlas = Atlas::new(&used);
             let mut mesh = Mesh::default();
             let mut bounds = Bounds::new();
-            let bay = if lod == 1 { 8. } else { 16. };
+            let bay = match lod {
+                1 => 20.,
+                0 => 24.,
+                _ => 48.,
+            };
             for b in list {
-                let raster = if lod == 1 {
-                    raster_fine(b, &grid, imagery)
-                } else {
-                    raster_coarse(b, &grid, imagery)
+                let raster = match lod {
+                    1 => raster_fine(b, &grid, imagery),
+                    0 => raster_coarse(b, &grid, imagery, 8),
+                    _ => raster_coarse(b, &grid, imagery, 16),
                 };
                 mesh_raster(
                     &ctx,
@@ -1203,7 +1205,7 @@ mod tests {
         let transform = flightcraft_world::tiles3d::enu_transform(origin[0], origin[1], 0.).unwrap();
         for (raster, bay) in [
             (raster_fine(&b, &grid, &mut imagery), 8.),
-            (raster_coarse(&b, &grid, &mut imagery), 16.),
+            (raster_coarse(&b, &grid, &mut imagery, 8), 16.),
         ] {
             let mut mesh = Mesh::default();
             let mut bounds = Bounds::new();
@@ -1221,8 +1223,8 @@ mod tests {
             assert!(!mesh.is_empty() && mesh.indices.iter().all(|i| (*i as usize) < mesh.positions.len()));
             assert!(mesh.positions.len() < 1500, "{} vertices", mesh.positions.len());
             assert!(mesh.uv.iter().flatten().all(|v| (0. ..=1.).contains(v)));
-            // The tower reaches its 150 m roof; ellipsoidal bounds follow H + N.
-            assert!((bounds.hi - (150. - 33.)).abs() < 1.5 && bounds.lo < 2. - 33.);
+            // The tower reaches its 150 m roof (coarse tiles round heights to 4 m); bounds follow H + N.
+            assert!((bounds.hi - (150. - 33.)).abs() < 2.5 && bounds.lo < 2. - 33.);
             let bytes = write_glb(&mesh, Texture::Webp(&atlas.webp().unwrap()), None).unwrap();
             let decoded =
                 flightcraft_render::scenery::decode_glb_with_geoid(&bytes, transform, origin, Some(&geoid))

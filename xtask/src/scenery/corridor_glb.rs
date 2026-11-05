@@ -113,7 +113,7 @@ pub(super) fn write_glb(mesh: &Mesh, texture: Texture<'_>, extras: Option<Value>
             {"bufferView":i,"componentType":if small {5123} else {5125},"count":mesh.indices.len(),"type":"SCALAR"}],
         "images":[{"bufferView":img,"mimeType":mime}],
         "samplers":[{"magFilter":9729,"minFilter":9987,"wrapS":33071,"wrapT":33071}],
-        "textures":[{"sampler":0}],
+        "textures":[{"sampler":0,"source":0}],
         "materials":[{"doubleSided":true,"pbrMetallicRoughness":{"baseColorTexture":{"index":0},"metallicFactor":0,"roughnessFactor":0.95}}],
         "meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2,"material":0}]}],
         "nodes":[{"mesh":0}],"scenes":[{"nodes":[0]}],"scene":0

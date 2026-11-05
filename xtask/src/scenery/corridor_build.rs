@@ -2,7 +2,7 @@
 //! trees, NHD water, the three release gates, and one 3D Tiles tileset.
 use super::{
     InputKind, Request, Sources,
-    corridor::{self, AREA, FINEST, FOREST, Plan, TILE_PX},
+    corridor::{self, AREA, FINEST, Plan, TILE_PX},
     corridor_buildings::{self as cb, Bounds, Imagery, TileMeta, Totals},
     corridor_glb::{self as glb, Frame, Mesh, Texture},
     datum,
@@ -113,7 +113,11 @@ fn terrain(
         } else {
             let mut mosaic = image::RgbaImage::new(2 * TILE_PX, 2 * TILE_PX);
             for (i, child) in plan.children(key).iter().enumerate() {
-                let bytes = download::read(&work.join(format!("{}.jpg", child.name())), 8 * 1024 * 1024)?;
+                // Coarse levels above the forest have children that do not exist: black, never seen.
+                let Ok(bytes) = download::read(&work.join(format!("{}.jpg", child.name())), 8 * 1024 * 1024)
+                else {
+                    continue;
+                };
                 let image = super::decode_image(&bytes, Some(TILE_PX))?;
                 image::imageops::replace(
                     &mut mosaic,
@@ -191,8 +195,9 @@ fn terrain_node(
         Vec::new()
     };
     for child in candidates {
-        let present = tiles.contains_key(&child) || child.level < FOREST;
-        if present && let Some(node) = terrain_node(plan, child, tiles, leaves)? {
+        if tiles.contains_key(&child)
+            && let Some(node) = terrain_node(plan, child, tiles, leaves)?
+        {
             children.push(node);
         }
     }
@@ -221,9 +226,7 @@ fn terrain_node(
             lo,
             hi,
         ]),
-        geometric_error: if !content {
-            1_000_000.
-        } else if is_leaf {
+        geometric_error: if is_leaf {
             0.
         } else {
             (e - w) / f64::from(grid_cells(key.level))
@@ -237,6 +240,8 @@ fn terrain_node(
     }))
 }
 
+/// Content-less spatial aggregator over group tiles (<= 8 children each). The group tiles below
+/// are small and always wanted, so requiring all children resident costs little.
 fn group(mut nodes: Vec<Tile>, depth: u32) -> Result<Tile, String> {
     let mut region_bounds = nodes
         .first()
@@ -256,7 +261,7 @@ fn group(mut nodes: Vec<Tile>, depth: u32) -> Result<Tile, String> {
         content: None,
         children: Vec::new(),
     };
-    if nodes.len() <= 32 {
+    if nodes.len() <= 8 {
         node.children = nodes;
     } else {
         let axis = (depth % 2) as usize;
@@ -278,8 +283,11 @@ fn group(mut nodes: Vec<Tile>, depth: u32) -> Result<Tile, String> {
 pub(super) fn building_tree(metas: &[TileMeta]) -> Result<Option<Tile>, String> {
     type Parent<'a> = (Option<&'a TileMeta>, Vec<&'a TileMeta>);
     let mut parents: BTreeMap<(i64, i64), Parent<'_>> = BTreeMap::new();
+    let mut groups: BTreeMap<(i64, i64), &TileMeta> = BTreeMap::new();
     for m in metas {
-        if m.lod == 0 {
+        if m.lod == 2 {
+            groups.insert(m.cell, m);
+        } else if m.lod == 0 {
             parents.entry(m.cell).or_default().0 = Some(m);
         } else {
             parents
@@ -289,7 +297,7 @@ pub(super) fn building_tree(metas: &[TileMeta]) -> Result<Option<Tile>, String> 
                 .push(m);
         }
     }
-    let mut nodes = Vec::new();
+    let mut under_group: BTreeMap<(i64, i64), Vec<(Tile, Bounds)>> = BTreeMap::new();
     for (coarse, fine) in parents.values() {
         let mut bounds = Bounds {
             rect: [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY],
@@ -314,22 +322,56 @@ pub(super) fn building_tree(metas: &[TileMeta]) -> Result<Option<Tile>, String> 
         if !bounds.valid() {
             continue;
         }
-        nodes.push(Tile {
+        let key = coarse
+            .map(|m| m.cell)
+            .or_else(|| {
+                fine.first()
+                    .map(|m| (m.cell.0.div_euclid(4), m.cell.1.div_euclid(4)))
+            })
+            .ok_or("parent without tiles")?;
+        let tile = Tile {
             bounding_volume: BoundingVolume::region(region(&bounds)?),
             geometric_error: if children.is_empty() { 0. } else { 16. },
             refine: Some(Refine::Replace),
             transform: None,
             content: coarse.map(|m| Content { uri: m.uri.clone() }),
             children,
+        };
+        under_group
+            .entry((key.0.div_euclid(2), key.1.div_euclid(2)))
+            .or_default()
+            .push((tile, bounds));
+    }
+    let mut nodes = Vec::new();
+    for (cell, members) in under_group {
+        let mut bounds = Bounds {
+            rect: [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY],
+            lo: f64::INFINITY,
+            hi: f64::NEG_INFINITY,
+        };
+        for (_, b) in &members {
+            bounds.union(b);
+        }
+        let g = groups.get(&cell);
+        if let Some(m) = g {
+            bounds.union(&m.bounds);
+        }
+        if !bounds.valid() {
+            continue;
+        }
+        nodes.push(Tile {
+            bounding_volume: BoundingVolume::region(region(&bounds)?),
+            geometric_error: 64.,
+            refine: Some(Refine::Replace),
+            transform: None,
+            content: g.map(|m| Content { uri: m.uri.clone() }),
+            children: members.into_iter().map(|(t, _)| t).collect(),
         });
     }
     if nodes.is_empty() {
         return Ok(None);
     }
-    let mut node = group(nodes, 0)?;
-    // A lone group still needs the shared invariant: children <= parent error.
-    node.geometric_error = 100_000.;
-    Ok(Some(node))
+    Ok(Some(group(nodes, 0)?))
 }
 
 fn percentile(values: &mut [f32], q: f64) -> Option<f64> {
@@ -410,7 +452,12 @@ fn build_inner(
 ) -> Result<(), String> {
     let started = std::time::Instant::now();
     let mut dem = Dems::open(request, sources)?;
-    let grid = geoid::load(request, sources)?.ok_or("corridor build needs the receipted GEOID18 grid")?;
+    // The coarse tiles above the forest span the whole root square, so the regional geoid subset
+    // (embedded in the tileset and applied by the renderer to every vertex) must cover it too.
+    let mut geoid_sources = sources.clone();
+    geoid_sources.bounds = plan.root;
+    let grid =
+        geoid::load(request, &geoid_sources)?.ok_or("corridor build needs the receipted GEOID18 grid")?;
     let vertical = datum::evaluate(request, sources, Some(&grid), Some(&mut dem))?;
     download::write_json(&out.join("datum-audit.json"), &vertical)?;
     eprintln!("vertical datum gate: passed={}", vertical.passed);
@@ -440,6 +487,17 @@ fn build_inner(
     for (n, spec) in specs.iter().enumerate() {
         if only.is_some_and(|limit| n >= limit) {
             break;
+        }
+        // Development: only the block holding Midtown (with FLIGHTCRAFT_CORRIDOR_BLOCKS set).
+        let midtown = corridor::merc(40.7536, -73.9832);
+        if only.is_some()
+            && std::env::var_os("FLIGHTCRAFT_CORRIDOR_MIDTOWN").is_some()
+            && !(midtown[0] >= spec.core[0]
+                && midtown[0] < spec.core[2]
+                && midtown[1] >= spec.core[1]
+                && midtown[1] < spec.core[3])
+        {
+            continue;
         }
         let t = std::time::Instant::now();
         let (m, t_trees) = cb::process_block(spec, &nodes, &output, &mut dem, &mut imagery, &mut totals)?;
@@ -502,7 +560,9 @@ fn build_inner(
         &grid,
         objects::TreeSplit {
             max_level: 6,
-            leaf: 1200,
+            leaf: 1500,
+            parent_cap: 12_000,
+            variants: 2,
         },
     )?;
     // NHD water, with the data bounds narrowed to where water surfaces are drawn.
@@ -633,6 +693,7 @@ fn build_inner(
         },
         "max_building_tile_vertices": totals.max_tile_vertices,
         "dem_fallback_vertices": terrain_stats.dem_fallback_vertices,
+        "dem_undecodable_chunk_hits": dem.decode_errors,
         "dem_missing_lidar_cells": totals.dem_missing_cells,
         "skipped_blocks": totals.skipped_blocks,
         "water": water.as_ref().map(|w| json!({"drawn":w.drawn.len(),"skipped":w.skipped.len(),"triangles":w.triangles,"lidar_water_cells":w.lidar_water_cells,"lidar_water_inside_polygons":w.lidar_water_inside_polygons})),
@@ -673,6 +734,40 @@ fn download_files(root: &Path) -> Result<Vec<std::path::PathBuf>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Decodes every content of a built tileset with the renderer's loader:
+    /// `FLIGHTCRAFT_DECODE_DIR=<built dir> cargo test -p xtask decode_every_tile -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "needs a built hudson-corridor directory"]
+    fn decode_every_tile_with_the_renderer_loader() {
+        let dir = std::path::PathBuf::from(std::env::var_os("FLIGHTCRAFT_DECODE_DIR").unwrap());
+        let set: Tileset = serde_json::from_slice(&std::fs::read(dir.join("tileset.json")).unwrap()).unwrap();
+        let geoid = set.geoid_grid().unwrap();
+        let transform = set.root.transform.unwrap();
+        let origin = corridor::ROOT_CENTER;
+        let mut pending = vec![&set.root];
+        let (mut n, mut bad) = (0, 0);
+        while let Some(t) = pending.pop() {
+            pending.extend(&t.children);
+            if let Some(c) = &t.content {
+                n += 1;
+                let bytes = std::fs::read(dir.join(&c.uri)).unwrap();
+                if let Err(e) = flightcraft_render::scenery::decode_glb_with_geoid(
+                    &bytes,
+                    transform,
+                    origin,
+                    geoid.as_ref(),
+                ) {
+                    bad += 1;
+                    if bad <= 10 {
+                        eprintln!("{} ({} bytes): {e}", c.uri, bytes.len());
+                    }
+                }
+            }
+        }
+        eprintln!("{n} contents, {bad} failed");
+        assert_eq!(bad, 0);
+    }
 
     /// NHD water for the whole corridor from the fetched cache:
     /// `cargo test -p xtask real_water -- --ignored --nocapture`.
@@ -733,6 +828,7 @@ mod tests {
         )
         .unwrap()
         .unwrap();
+        std::fs::write(out.join("water-tileset.json"), serde_json::to_vec(&set).unwrap()).unwrap();
         eprintln!(
             "water: {} polygons drawn, {} skipped, {} triangles, {} B, {:?}",
             audit.drawn.len(),

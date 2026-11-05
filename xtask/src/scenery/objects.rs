@@ -180,7 +180,39 @@ fn tree_variant(species: Species, coarse: bool, variant: u32) -> Result<Mesh, St
         let length = libm::sqrtf(n.iter().map(|v| v * v).sum());
         *n = n.map(|v| v / length);
     }
-    Ok(mesh)
+    Ok(weld(mesh))
+}
+/// Share identical vertices: the smooth lobes repeat each corner in about five triangles, so an
+/// indexed mesh is a third of the size (and every tree tile carries several copies).
+fn weld(mesh: Mesh) -> Mesh {
+    let mut seen: std::collections::HashMap<[u32; 8], u32> = std::collections::HashMap::new();
+    let mut out = Mesh::default();
+    for &index in &mesh.indices {
+        let i = index as usize;
+        let (Some(p), Some(n), Some(uv)) = (mesh.positions.get(i), mesh.normals.get(i), mesh.uv.get(i))
+        else {
+            continue;
+        };
+        let key = [
+            p[0].to_bits(),
+            p[1].to_bits(),
+            p[2].to_bits(),
+            n[0].to_bits(),
+            n[1].to_bits(),
+            n[2].to_bits(),
+            uv[0].to_bits(),
+            uv[1].to_bits(),
+        ];
+        let next = out.positions.len() as u32;
+        let id = *seen.entry(key).or_insert_with(|| {
+            out.positions.push(*p);
+            out.normals.push(*n);
+            out.uv.push(*uv);
+            next
+        });
+        out.indices.push(id);
+    }
+    out
 }
 fn atlas() -> Result<Vec<u8>, String> {
     use image::ImageEncoder;
@@ -394,20 +426,20 @@ pub(super) fn set_origin(origin: [f64; 2]) {
         *o = Some(origin);
     }
 }
-fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<u8>, String> {
+fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid, variants: u32) -> Result<Vec<u8>, String> {
     let mut doc = Document::default();
     let mut meshes = Vec::new();
     let mut nodes = Vec::new();
     for (species, variant) in [Species::Deciduous, Species::Conifer]
         .into_iter()
-        .flat_map(|species| (0..4).map(move |variant| (species, variant)))
+        .flat_map(|species| (0..variants).map(move |variant| (species, variant)))
     {
         let selected: Vec<_> = trees
             .iter()
             .filter(|t| {
                 let seed =
                     (t.lat.to_bits() ^ t.lon.to_bits().rotate_left(17)).wrapping_mul(0x9e3779b97f4a7c15);
-                t.species == species && (seed >> 32) as u32 % 4 == variant
+                t.species == species && (seed >> 32) as u32 % variants == variant
             })
             .collect();
         if selected.is_empty() {
@@ -465,6 +497,8 @@ pub(super) fn write_trees(
         TreeSplit {
             max_level: 2,
             leaf: 64,
+            parent_cap: usize::MAX,
+            variants: 4,
         },
     )
 }
@@ -473,6 +507,10 @@ pub(super) fn write_trees(
 pub(super) struct TreeSplit {
     pub max_level: u8,
     pub leaf: usize,
+    /// A coarse (replaced) tile shows at most this many of its trees, evenly thinned.
+    pub parent_cap: usize,
+    /// Crown variants per species in each tile (each is a mesh copy in every GLB).
+    pub variants: u32,
 }
 pub(super) fn write_trees_split(
     out: &Path,
@@ -549,7 +587,20 @@ pub(super) fn write_trees_split(
         }
         let coarse = !children.is_empty();
         let uri = format!("trees/{level}-{x}-{y}.glb");
-        std::fs::write(out.join(&uri), tree_content(trees, coarse, geoid)?).map_err(|e| e.to_string())?;
+        let shown: Vec<&Tree> = if coarse && trees.len() > split.parent_cap {
+            trees
+                .iter()
+                .step_by(trees.len().div_ceil(split.parent_cap))
+                .copied()
+                .collect()
+        } else {
+            trees.to_vec()
+        };
+        std::fs::write(
+            out.join(&uri),
+            tree_content(&shown, coarse, geoid, split.variants)?,
+        )
+        .map_err(|e| e.to_string())?;
         let [w, s, e, n, lo, hi] = bounds;
         Ok(Tile {
             bounding_volume: BoundingVolume::region([
