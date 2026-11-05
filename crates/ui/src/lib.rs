@@ -19,6 +19,7 @@ mod ifr;
 mod ifr_preview;
 mod input;
 pub mod instruments;
+mod key_actions;
 pub mod keymap;
 pub mod map;
 mod modern;
@@ -1200,105 +1201,15 @@ impl FlightCraftApp {
         {
             self.error = Some(e.to_string());
         }
-        if frame.pressed(Action::Hood) {
-            let enabled = !self.session.sim().hood();
-            if let Err(e) = self.session.run(flightcraft_control::SetHood { enabled }) {
-                self.error = Some(e.to_string());
-            }
+        if frame.pressed(Action::StandbyDirectTo) && self.session.sim().systems().avionics.installed {
+            self.instrument_panel.avionics_controls.open_direct_to();
         }
-        if frame.pressed(Action::Airspace) {
-            let visible = !self.session.airspace_visible();
-            if let Err(e) = self.session.run(flightcraft_control::SetAirspaceView { visible }) {
-                self.error = Some(e.to_string());
-            }
-        }
-        let glass_active = self
-            .session
-            .aircraft_configuration()
-            .is_some_and(|c| c.panel.instruments.iter().any(|i| i.module == "glass_pfd"));
-        for action in [
-            Action::HeadingBugLeft,
-            Action::HeadingBugRight,
-            Action::HeadingBugSync,
-        ] {
-            if frame.pressed(action) {
-                let setting = match action {
-                    Action::HeadingBugSync => flightcraft_control::AvionicsSetting::HeadingBugSync {},
-                    _ => flightcraft_control::AvionicsSetting::HeadingBugStep {
-                        detents: if action == Action::HeadingBugLeft { -1 } else { 1 },
-                        interval_ms: None,
-                    },
-                };
-                if let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting }) {
-                    self.error = Some(e.to_string());
-                }
-            }
-        }
-        for action in Action::AVIONICS {
-            if matches!(
-                action,
-                Action::HeadingBugLeft | Action::HeadingBugRight | Action::HeadingBugSync
-            ) {
-                continue;
-            }
-            if frame.pressed(action) {
-                if action == Action::StandbyDirectTo && self.session.sim().systems().avionics.installed {
-                    self.instrument_panel.avionics_controls.open_direct_to();
-                }
-                if let Some(setting) = instruments::avionics_shortcut_with_options(
-                    action,
-                    &self.session.sim().systems().avionics,
-                    self.instrument_panel.options,
-                ) && let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting })
-                {
-                    self.error = Some(e.to_string());
-                }
-            }
-        }
-        if glass_active {
-            let state = self.session.glass_state();
-            for action in Action::GLASS {
-                if matches!(action, Action::HeadingBugLeft | Action::HeadingBugRight) {
-                    continue;
-                }
-                if frame.pressed(action)
-                    && let Some(setting) = glass::shortcut(action, &state)
-                    && let Err(e) = self.session.run(flightcraft_control::SetAvionics {
-                        setting: flightcraft_control::AvionicsSetting::Glass { setting },
-                    })
-                {
-                    self.error = Some(e.to_string());
-                }
-            }
-        }
-        for action in Action::SYSTEMS {
-            if matches!(action, Action::HeadingBugLeft | Action::HeadingBugRight)
-                || (self.session.sim().systems().avionics.installed
-                    && matches!(action, Action::AltimeterUp | Action::AltimeterDown))
-            {
-                continue;
-            }
-            if frame.pressed(action)
-                && let Some(setting) = instruments::shortcut_with_options(
-                    action,
-                    self.session.sim().systems(),
-                    self.instrument_panel.options,
-                )
-                && let Err(e) = self.session.run(flightcraft_control::SetSystems { setting })
-            {
-                self.error = Some(e.to_string());
-            }
-        }
-        if let Some(state) = self.session.sim().installed_autopilot().cloned() {
-            for action in Action::AUTOPILOT {
-                if frame.pressed(action)
-                    && let Some(setting) = autopilot::shortcut(action, &state)
-                    && let Err(e) = self.session.run(flightcraft_control::SetAvionics { setting })
-                {
-                    self.error = Some(e.to_string());
-                }
-            }
-        }
+        key_actions::apply_session_actions(
+            &mut self.session,
+            &frame,
+            self.instrument_panel.options,
+            &mut self.error,
+        );
         let [yaw, pitch] = frame.cockpit_look();
         if let Some(camera) = self.session.camera() {
             let looking =
@@ -1331,12 +1242,7 @@ impl FlightCraftApp {
                     .unwrap_or(false)
             });
             if frame.pressed(Action::ParkBrake) {
-                let on = !self.session.sim().systems().controls.park_brake;
-                if let Err(e) = self.session.run(flightcraft_control::SetSystems {
-                    setting: flightcraft_sim::systems::SystemSetting::ParkBrake { on },
-                }) {
-                    self.error = Some(e.to_string());
-                }
+                key_actions::toggle_park_brake(&mut self.session, &mut self.error);
             }
             let controls = self
                 .input

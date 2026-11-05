@@ -509,6 +509,18 @@ impl eframe::App for ScreenApp {
                 } else if let Some([yaw, pitch]) = self.glance.take() {
                     let _ = crate::actions::cockpit_look(&mut self.main.session, yaw, pitch);
                 }
+                // The same cockpit shortcuts as the desktop window: hood, airspace, avionics, glass,
+                // systems, and autopilot keys.
+                self.main.instrument_panel.starter_key_held = frame.held(Action::Starter);
+                crate::key_actions::apply_session_actions(
+                    &mut self.main.session,
+                    &frame,
+                    self.main.instrument_panel.options,
+                    &mut self.error,
+                );
+                if frame.pressed(Action::CrewHandover) {
+                    crate::crew::exchange(&mut self.main.session, &mut self.error);
+                }
                 if frame.pressed(Action::PlanningMap) {
                     self.page = if self.page == Some(PageKind::Map) {
                         None
@@ -528,6 +540,9 @@ impl eframe::App for ScreenApp {
                     }
                 }
                 if !self.remote && self.screen == 0 {
+                    if frame.pressed(Action::ParkBrake) {
+                        crate::key_actions::toggle_park_brake(&mut self.main.session, &mut self.error);
+                    }
                     self.input.trim = self.main.session.sim().systems().controls.trim;
                     let controls = self
                         .input
