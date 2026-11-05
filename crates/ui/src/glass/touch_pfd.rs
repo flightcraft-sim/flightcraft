@@ -259,7 +259,7 @@ fn cas_window(d: &mut DrawList, input: InstrumentInput<'_>, g: &PfdGeometry, t: 
         .map(|m| m.text.chars().count())
         .max()
         .unwrap_or(1) as f32;
-    let size = (15. * t.annunciation).min((w - 8.) / (longest * 0.62));
+    let size = (15. * t.annunciation).min((w - 22.) / (longest * 0.62));
     let lines = cas.visible().len() as f32;
     let row = (h / flightcraft_control::touch_cas::CAS_WINDOW_LINES as f32).min(size * 1.25);
     let top = y + (h - row * lines) * 0.5 + row * 0.5;
@@ -724,8 +724,8 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
     for (fpm, text) in [(2000., "2"), (1000., "1"), (500., ".5")] {
         for sign in [-1_f64, 1.] {
             let ty = vmid - scale(fpm * sign);
-            line(d, [vx + 2., ty], [vx + 12., ty], Ink::TapeText, 2.);
-            label(d, [vx + vw * 0.68, ty], text, 20. * t.tape, Ink::TapeText);
+            line(d, [vx + 2., ty], [vx + 8., ty], Ink::TapeText, 2.);
+            label(d, [vx + vw * 0.5, ty], text, 17. * t.tape, Ink::TapeText);
         }
     }
     line(d, [vx + 2., vmid], [vx + 14., vmid], Ink::TapeText, 2.);
@@ -735,8 +735,8 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         d,
         vec![
             [vx + vw - 2., py],
-            [vx + vw - 16., py - 8.],
-            [vx + vw - 16., py + 8.],
+            [vx + vw - 12., py - 7.],
+            [vx + vw - 12., py + 7.],
         ],
         Ink::White,
     );
@@ -756,15 +756,30 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
             Ink::Green,
         );
     }
-    // MINIMUMS: amber text within 100 ft above the minimums, and solid amber at or below them.
+    // MINIMUMS: an amber annunciation under the minimums box (clear of the tape and the selected
+    // altitude), outlined within 100 ft above the minimums and solid at or below them.
+    let [mx, my, mw, mh] = r4(g.rect(E::MinimumsBox));
+    let alert = [mx, my + mh + 4., mw, mh];
     match flightcraft_control::minimums::state(a.altitude_msl_m, s.settings.minimums_m) {
         flightcraft_control::minimums::MinimumsState::Approaching => {
-            bordered(d, [x + 3., y + 3., w - 6., 24.], Ink::BoxFill, Ink::Yellow);
-            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::Yellow);
+            bordered(d, alert, Ink::BoxFill, Ink::Yellow);
+            label(
+                d,
+                [mx + mw * 0.5, alert[1] + mh * 0.5],
+                "MINIMUMS",
+                14. * t.boxes,
+                Ink::Yellow,
+            );
         }
         flightcraft_control::minimums::MinimumsState::Reached => {
-            rect(d, [x + 3., y + 3., w - 6., 24.], Ink::Yellow);
-            label(d, [x + w * 0.5, y + 15.], "MINIMUMS", 18. * t.boxes, Ink::BoxFill);
+            rect(d, alert, Ink::Yellow);
+            label(
+                d,
+                [mx + mw * 0.5, alert[1] + mh * 0.5],
+                "MINIMUMS",
+                14. * t.boxes,
+                Ink::BoxFill,
+            );
         }
         _ => {}
     }
@@ -794,34 +809,41 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
 fn boxes(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeometry, t: Typography) {
     let a = &s.air_data;
     let size = 21. * t.boxes;
-    let small = 15. * t.boxes;
     let boxed = |d: &mut DrawList, e: E, text: String, ink: Ink, size: f32| {
         let r = r4(g.rect(e));
         bordered(d, r, Ink::BoxFill, Ink::BoxBorder);
-        label(d, [r[0] + r[2] * 0.5, r[1] + r[3] * 0.5], text, size, ink);
+        // The text shrinks to stay inside its box.
+        let fit = (r[2] - 6.) / (text.chars().count().max(1) as f32 * 0.6);
+        label(
+            d,
+            [r[0] + r[2] * 0.5, r[1] + r[3] * 0.5],
+            text,
+            size.min(fit),
+            ink,
+        );
     };
     let [x, y, w, h] = r4(g.rect(E::TrueAirspeedBox));
     bordered(d, [x, y, w, h], Ink::BoxFill, Ink::BoxBorder);
-    left_text(d, x + 5., y + h * 0.5, "TAS", small, Ink::White);
+    left_text(d, x + 4., y + h * 0.5, "TAS", 13. * t.boxes, Ink::White);
     label(
         d,
-        [x + w * 0.66, y + h * 0.5],
+        [x + w * 0.70, y + h * 0.5],
         if a.air_data_valid {
             format!("{:.0}KT", a.true_airspeed_mps * KNOTS)
         } else {
             "---".into()
         },
-        size,
+        16. * t.boxes,
         Ink::White,
     );
     let [x, y, w, h] = r4(g.rect(E::GroundSpeedBox));
     bordered(d, [x, y, w, h], Ink::BoxFill, Ink::BoxBorder);
-    left_text(d, x + 5., y + h * 0.5, "GS", small, Ink::White);
+    left_text(d, x + 4., y + h * 0.5, "GS", 13. * t.boxes, Ink::White);
     label(
         d,
-        [x + w * 0.66, y + h * 0.5],
+        [x + w * 0.70, y + h * 0.5],
         format!("{:.0}KT", s.ground_speed_mps * KNOTS),
-        size,
+        16. * t.boxes,
         Ink::Magenta,
     );
     // Selected altitude with its bug icon, and the baro setting.
@@ -1073,9 +1095,10 @@ fn hsi(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         }
     }
     // Source and scale annunciations.
+    // They sit right of the rose, clear of the compass numbers.
     label(
         d,
-        [cx - r * 0.5, cy - r * 0.32],
+        [cx + r * 1.3, cy - 12.],
         s.gps.source.clone(),
         17. * t.boxes,
         ink,
@@ -1083,7 +1106,7 @@ fn hsi(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
     if s.gps.source == "GPS" {
         label(
             d,
-            [cx + r * 0.52, cy - r * 0.32],
+            [cx + r * 1.3, cy + 10.],
             format!("{:.2}nm", s.gps.cdi_full_scale_nm),
             15. * t.boxes,
             ink,

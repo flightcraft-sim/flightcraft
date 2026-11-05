@@ -283,7 +283,7 @@ AFCS box top-centre under the data bar.
 | Heading, selected heading, course boxes | 608,423,64,34 / 483,435,84,27 / 708,435,92,27 |
 | Wind box | 393,469,90,47 |
 | Aircraft symbol, roll arc | centre 640,261, radius 135 |
-| Compass rose | centre 637,603, radius 131 |
+| Compass rose | centre 637,603, radius 131 (split: centre 283,592, radius 118, so the heading, course, and baro boxes clear it) |
 | CAS window | 436,102,108,54 |
 | Flap position indicator, elevator trim indicator | 440,282,26,104 / 472,282,26,104 |
 
@@ -299,7 +299,7 @@ speed scale (compressed above 1,000 fpm) with its pointer and digital readout; t
 pitch marks every 2.5 degrees, the roll scale (ticks at 10, 20, 30, 45, and 60 degrees, an inverted triangle
 at zero), the slip ball, and the standard-rate turn scale; the heading-up compass with ticks every 10 and 5
 degrees, the selected-heading bug, the track triangle, the course pointer and deviation bar (magenta for
-GPS, green for a radio), and the source and CDI scale annunciations; the wind box with an arrow and speed
+GPS, green for a radio), and the source and CDI scale annunciations (right of the rose, clear of the compass numbers); the wind box with an arrow and speed
 over direction; and the top data bar (COM1 active and standby, then waypoint, bearing, distance, time en
 route, ground speed, track, minimum safe altitude, and vertical speed required) and the bottom status bar
 (the function of each knob's two rings, outside air temperature, Messages). The minimum safe altitude is
@@ -376,7 +376,7 @@ Minimums Off button). While set, the altitude tape carries an amber minimums bug
 the tape's edge when off the scale, and the box shows `MIN 1,000`; unset it shows `MIN ----`.
 `flightcraft_control::minimums` is the pure part, comparing the indicated (baro) altitude with the minimums:
 more than 100 ft above, nothing but the bug; within 100 ft above, an amber outlined **MINIMUMS** annunciation
-at the top of the altitude tape; at or below the minimums, the same annunciation solid amber with dark text, so
+directly under the minimums box, clear of the tape and the selected-altitude box (the value stays visible above it); at or below the minimums, the same annunciation solid amber with dark text, so
 the two states differ by more than the word. The guide's own colours for this annunciation were not available
 to the model; the choice here keeps amber for a caution and reserves red for warnings, as the rest of the
 display does.

@@ -1117,14 +1117,28 @@ fn minimums_bug_box_and_annunciation_follow_the_altitude() {
     );
     assert!(!drawn_in(&d, tape, "MINIMUMS"));
     assert!(amber_items(&d) >= 1, "the minimums bug is amber");
-    // Within 100 ft above, then at or below: the annunciation, amber, in the tape.
+    // Within 100 ft above, then at or below: the amber annunciation under the minimums box, clear of
+    // the tape and the selected-altitude box, with the minimums value still showing above it.
+    let m = geometry.rect(E::MinimumsBox);
+    let alert = [m[0], m[1] + m[3] + 4., m[2], m[3]];
     for (altitude, ink) in [(1080., Ink::Yellow), (1000., Ink::BoxFill), (940., Ink::BoxFill)] {
         let d = draw(altitude, Some(1000.));
         let text = labels(&d)
             .into_iter()
-            .find(|(t, at, ..)| t == "MINIMUMS" && inside(tape, *at))
+            .find(|(t, ..)| t == "MINIMUMS")
             .unwrap_or_else(|| panic!("no annunciation at {altitude} ft"));
+        assert!(inside(alert, text.1), "{altitude}: {:?}", text.1);
         assert_eq!(text.3, ink, "{altitude}");
+        assert!(drawn_in(&d, m, "MIN 1,000") || drawn_in(&d, m, "MIN 1000"));
+    }
+    for other in [
+        E::AltitudeTape,
+        E::SelectedAltitudeBox,
+        E::BaroBox,
+        E::MinimumsBox,
+        E::VerticalSpeedScale,
+    ] {
+        assert!(!rects_meet(alert, geometry.rect(other)), "{other:?}");
     }
 }
 
@@ -1684,6 +1698,7 @@ pub(crate) fn render_display(
     state: &GlassState,
     id: &str,
     size: [u32; 2],
+    systems: Option<&flightcraft_sim::systems::SystemsState>,
 ) -> image::RgbaImage {
     let config = s.aircraft_configuration().unwrap().clone();
     let owned_skins: Vec<SkinContents> = s.skins().cloned().collect();
@@ -1696,7 +1711,7 @@ pub(crate) fn render_display(
             .show(
                 ui,
                 &panel_config,
-                InstrumentInput::new(s.sim().systems(), s.sim().state().time_s)
+                InstrumentInput::new(systems.unwrap_or(s.sim().systems()), s.sim().state().time_s)
                     .with_pilot(s.sim().controls())
                     .with_aircraft(&config)
                     .with_skins(&skins)
@@ -1724,19 +1739,35 @@ fn render_touch_feature_previews() {
     std::fs::create_dir_all(&out).unwrap();
     let mut s = session();
     let size = [1632, 1170];
-    // Real faults give the CAS window its messages (it reads the aircraft's annunciations).
-    for kind in ["alternator", "door_open", "engine_fire", "radio_failure"] {
-        s.execute("failure.set", json!({"failure":{"kind":kind}}))
-            .unwrap();
+    // Drive four annunciations of mixed severity straight into the systems state the display
+    // reads (the demo pack cannot raise them all with faults): two warnings and two cautions, one
+    // of them acknowledged.
+    let mut systems = s.sim().systems().clone();
+    {
+        let modern = systems.modern.as_mut().unwrap();
+        let mut raised = 0;
+        for (i, (label, acknowledged)) in [
+            ("FUEL PRESSURE", false),
+            ("DOOR OPEN", true),
+            ("LOW VOLTAGE", false),
+            ("COOLANT HOT", false),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let Some(a) = modern.annunciations.iter_mut().find(|a| a.label == label) else {
+                continue;
+            };
+            a.active = true;
+            a.acknowledged = acknowledged;
+            a.sequence = i as u64 + 1;
+            raised += 1;
+        }
+        assert_eq!(raised, 4, "the demo pack has these annunciations");
     }
-    s.sim_mut()
-        .set_systems(flightcraft_sim::systems::SystemSetting::Equipment {
-            setting: flightcraft_sim::modern::ModernSetting::ParachutePin { inserted: false },
-        })
-        .unwrap();
-    s.execute("sim.step", json!({"steps":240})).unwrap();
     let mut g = flying(&s);
     g.gps.bearing_rad = 300f64.to_radians();
+    g.cas = flightcraft_control::touch_cas::window(systems.modern.as_ref(), &[]);
     g.settings.data_bar_field = DataBarField::Timer;
     g.clock = ClockReadout {
         seconds: 12. * 3600. + 34. * 60. + 56.,
@@ -1766,18 +1797,18 @@ fn render_touch_feature_previews() {
     g.settings.vspeeds.app = entry(128.);
     g.settings.minimums_m = Some(1000. * 0.3048);
     g.air_data.altitude_msl_m = 1500. * 0.3048;
-    render_display(&mut s, &g, "left_display", size)
+    render_display(&mut s, &g, "left_display", size, Some(&systems))
         .save(out.join("pfd-above-minimums.png"))
         .unwrap();
     g.air_data.altitude_msl_m = 1060. * 0.3048;
-    render_display(&mut s, &g, "left_display", size)
+    render_display(&mut s, &g, "left_display", size, Some(&systems))
         .save(out.join("pfd-in-minimums-band.png"))
         .unwrap();
     g.air_data.altitude_msl_m = 5000. * 0.3048;
     set(&mut s, "left_display", json!({"kind":"layout","layout":"split"}));
     set(&mut s, "left_display", json!({"kind":"mfd_page","page":"cas"}));
     g.touch = s.glass_state().touch;
-    render_display(&mut s, &g, "left_display", size)
+    render_display(&mut s, &g, "left_display", size, Some(&systems))
         .save(out.join("split-cas-list.png"))
         .unwrap();
 }
@@ -1818,6 +1849,109 @@ fn vspeed_bugs_stay_on_the_tape_clear_of_the_g_meter_cas_window_and_flap_and_tri
                 !inside(geometry.rect(other), at),
                 "{kt} kt: the bug sits in {other:?}"
             );
+        }
+    }
+}
+
+fn rects_meet(a: [f64; 4], b: [f64; 4]) -> bool {
+    a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3]
+}
+
+/// The boxes of the primary flight display never share pixels, whatever the screen mode: a class
+/// of layout bug that a per-feature test misses. (The pointers sit on their tapes and the turn-rate
+/// scale is drawn under the heading box by design, so they are left out.)
+#[test]
+fn the_main_pfd_boxes_never_intersect_in_the_full_or_split_layout() {
+    let boxes = [
+        E::AfcsBox,
+        E::AirspeedTape,
+        E::TrueAirspeedBox,
+        E::GroundSpeedBox,
+        E::AltitudeTape,
+        E::SelectedAltitudeBox,
+        E::BaroBox,
+        E::MinimumsBox,
+        E::VerticalSpeedScale,
+        E::SlipBox,
+        E::HeadingBox,
+        E::SelectedHeadingBox,
+        E::SelectedCourseBox,
+        E::WindBox,
+        E::CasWindow,
+        E::FlapIndicator,
+        E::TrimIndicator,
+        E::GMeter,
+    ];
+    for mode in [PfdMode::Full, PfdMode::Split] {
+        let g = MODEL.pfd_geometry(mode);
+        let area = g.panel;
+        for (i, a) in boxes.iter().enumerate() {
+            let ra = g.rect(*a);
+            // Inside the panel, and clear of every other box.
+            assert!(
+                ra[0] >= 0.
+                    && ra[1] >= 0.
+                    && ra[0] + ra[2] <= area[2] + 0.5
+                    && ra[1] + ra[3] <= area[3] + 0.5,
+                "{mode:?}: {a:?} {ra:?} leaves the panel"
+            );
+            for b in &boxes[i + 1..] {
+                assert!(
+                    !rects_meet(ra, g.rect(*b)),
+                    "{mode:?}: {a:?} {ra:?} overlaps {b:?} {:?}",
+                    g.rect(*b)
+                );
+            }
+            // The compass rose is a circle: no box may reach into it either.
+            let [cx, cy] = g.hsi_center;
+            let r = g.hsi_radius;
+            let nearest = [
+                cx.clamp(ra[0], ra[0] + ra[2]) - cx,
+                cy.clamp(ra[1], ra[1] + ra[3]) - cy,
+            ];
+            assert!(
+                nearest[0].hypot(nearest[1]) > r,
+                "{mode:?}: {a:?} {ra:?} reaches into the compass rose"
+            );
+        }
+    }
+}
+
+/// Text drawn in a box stays inside it (full and split), with the readouts all set.
+#[test]
+fn text_in_the_pfd_boxes_fits_the_box() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let mut g = flying(&s);
+    g.settings.minimums_m = Some(1000. * 0.3048);
+    g.air_data.altitude_msl_m = 1060. * 0.3048;
+    g.air_data.true_airspeed_mps = 199. / 1.943_844;
+    g.ground_speed_mps = 199. / 1.943_844;
+    for mode in [PfdMode::Full, PfdMode::Split] {
+        let geometry = MODEL.pfd_geometry(mode);
+        let d = touch_pfd::panel(&g, input, &geometry, options());
+        for e in [
+            E::TrueAirspeedBox,
+            E::GroundSpeedBox,
+            E::SelectedHeadingBox,
+            E::SelectedCourseBox,
+            E::BaroBox,
+            E::MinimumsBox,
+            E::HeadingBox,
+            E::WindBox,
+        ] {
+            let r = geometry.rect(e);
+            for (text, at, size, _) in labels(&d) {
+                if !inside(r, at) {
+                    continue;
+                }
+                let width = text.chars().count() as f32 * size * 0.55;
+                assert!(
+                    f64::from(at[0] - width * 0.5) >= r[0] - 2.
+                        && f64::from(at[0] + width * 0.5) <= r[0] + r[2] + 2.,
+                    "{mode:?} {e:?}: {text:?} (size {size}) does not fit {r:?}"
+                );
+            }
         }
     }
 }
