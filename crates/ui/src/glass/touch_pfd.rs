@@ -568,16 +568,13 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
     // pilot's speed or the aircraft pack's. A bug off the scale is not drawn.
     use flightcraft_control::VspeedBug;
     for bug in VspeedBug::ALL {
-        let pack = input.aircraft.map(|aircraft| {
-            let v = &aircraft.variant.v_speeds;
-            match bug {
-                VspeedBug::R => v.vr_mps,
-                VspeedBug::X => v.vx_mps,
-                VspeedBug::Y => v.vy_mps,
-                _ => 0.,
-            }
+        let pack = input.aircraft.and_then(|aircraft| {
+            let i = VspeedBug::ALL.iter().position(|b| *b == bug)?;
+            flightcraft_control::vspeed_pack_defaults_mps(aircraft)
+                .get(i)
+                .copied()
+                .flatten()
         });
-        let pack = pack.filter(|_| bug.has_pack_default());
         if let Some(kt) = s.settings.vspeeds.shown_kt(bug, pack) {
             let ry = at(kt);
             if ry > y + 6. && ry < y + h - 6. {

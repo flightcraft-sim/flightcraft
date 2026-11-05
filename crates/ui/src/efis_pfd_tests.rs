@@ -669,6 +669,39 @@ fn the_airspeed_tape_draws_the_enabled_vspeed_bugs_at_their_speeds() {
 }
 
 #[test]
+fn the_tape_draws_the_aircraft_packs_speeds_by_default() {
+    let s = session();
+    let mut input = InstrumentInput::new(s.sim().systems(), 0.);
+    input.aircraft = s.aircraft_configuration();
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let tape = geometry.rect(E::AirspeedTape);
+    let mid = (tape[1] + tape[3] * 0.5) as f32;
+    let pack = flightcraft_control::vspeed_pack_defaults_mps(s.aircraft_configuration().unwrap());
+    let kt = |m: f64| m * 1.943_844_492_440_6;
+    let mut g = flying(&s);
+    // Fly at Vy so Y sits at the middle and its neighbours are on the scale.
+    g.air_data.indicated_airspeed_mps = pack[2].unwrap();
+    let d = touch_pfd::panel(&g, input, &geometry, options());
+    let letters: Vec<_> = labels(&d)
+        .into_iter()
+        .filter(|(t, at, ..)| {
+            ["R", "X", "Y", "G", "A"].contains(&t.as_str()) && at[0] > (tape[0] + tape[2]) as f32
+        })
+        .collect();
+    let y_of = |l: &str| letters.iter().find(|(t, ..)| t == l).map(|(_, at, ..)| at[1]);
+    assert!(
+        (y_of("Y").expect("Vy from the pack") - mid).abs() < 1.,
+        "{letters:?}"
+    );
+    for (i, l) in ["R", "X", "Y", "G", "A"].into_iter().enumerate() {
+        if let (Some(y), Some(speed)) = (y_of(l), pack[i]) {
+            let want = mid - (kt(speed) - kt(pack[2].unwrap())) as f32 * 4.2;
+            assert!((y - want).abs() < 1., "{l}");
+        }
+    }
+}
+
+#[test]
 fn the_vspeed_page_toggles_each_bug_and_opens_its_keypad() {
     use flightcraft_control::{AvionicsSetting, GlassSetting, VspeedBug};
     let mut s = session();

@@ -430,10 +430,12 @@ never enters the state hash. Pure logic: `sim::avionics::glass_aids::GMeterTrack
 The airspeed tape draws a letter right of the tape at each enabled Vspeed: **R** (Vr), **X** (Vx), **Y** (Vy),
 **G** (Vg, best glide), and **A** (Vapp, approach). MENU on a full-screen PFD, then **Vspeed bugs**, opens the
 configuration page: one row per bug, touching the row turns it ON or OFF, and **Set** opens a speed keypad
-(20 to 400 kt; the keypads for Vr, Vx, and Vy also offer **Pack Default**). Vr, Vx, and Vy default to the
-aircraft pack's `v_speeds` (`vr_mps`, `vx_mps`, `vy_mps`) and are on, as the tape always showed them; the pack
-format has no best-glide or approach speed, so Vg and Vapp start off with no speed and show only once the pilot
-sets one. A bug off the scale is not drawn. The glass settings are `vspeed` (`bug`: `r`, `x`, `y`, `g`, `app`;
+(20 to 400 kt; each keypad also offers **Pack Default**). All five start on, at the aircraft pack's speed:
+Vr, Vx, and Vy from the variant's `v_speeds`; Vg from the best-glide speed (`best_glide_mps`) of the
+engine-failure emergency procedure in the pack's systems, else the first procedure that has one; Vapp from the
+approach speed the crew pilot already flies, 1.3 Vso (`vso_mps`). The pack format has no separate approach
+speed, so none was added. A bug whose speed the pack does not give is on but draws nothing until the pilot sets
+one. A bug off the scale is not drawn. The glass settings are `vspeed` (`bug`: `r`, `x`, `y`, `g`, `app`;
 `enabled`) and `vspeed_value` (`bug`, `speed_kt`, 20 to 400 or null for the pack's); both are in
 `glass_suite.settings.vspeeds`.
 

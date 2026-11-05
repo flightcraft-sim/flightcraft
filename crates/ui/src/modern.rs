@@ -353,10 +353,9 @@ impl PanelUi {
                                         ]
                                         .map(|b| b == flightcraft_sim::avionics::glass::BearingPointer::Gps),
                                         vspeeds: glass.settings.vspeeds,
-                                        pack_vspeeds_kt: input.aircraft.map_or([None; 3], |a| {
-                                            let v = &a.variant.v_speeds;
-                                            [v.vr_mps, v.vx_mps, v.vy_mps]
-                                                .map(|m| Some(m * 1.943_844_492_440_6))
+                                        pack_vspeeds_kt: input.aircraft.map_or([None; 5], |a| {
+                                            flightcraft_control::vspeed_pack_defaults_mps(a)
+                                                .map(|m| m.map(|m| m * 1.943_844_492_440_6))
                                         }),
                                         fpl: crate::efis::FplView {
                                             rows: glass

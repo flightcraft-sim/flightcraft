@@ -1262,13 +1262,19 @@ impl Session {
             (EntryTarget::Course, EntryShortcut::SetToCurrent) => self.sync_course(),
             (EntryTarget::Minimums, EntryShortcut::TurnOff) => self.set_glass(G::MinimumsOff {}),
             (
-                EntryTarget::VspeedR | EntryTarget::VspeedX | EntryTarget::VspeedY,
+                EntryTarget::VspeedR
+                | EntryTarget::VspeedX
+                | EntryTarget::VspeedY
+                | EntryTarget::VspeedG
+                | EntryTarget::VspeedApp,
                 EntryShortcut::UseDefault,
             ) => {
                 let bug = match target {
                     EntryTarget::VspeedR => crate::VspeedBug::R,
                     EntryTarget::VspeedX => crate::VspeedBug::X,
-                    _ => crate::VspeedBug::Y,
+                    EntryTarget::VspeedY => crate::VspeedBug::Y,
+                    EntryTarget::VspeedG => crate::VspeedBug::G,
+                    _ => crate::VspeedBug::App,
                 };
                 self.set_glass(G::VspeedValue { bug, speed_kt: None })
             }

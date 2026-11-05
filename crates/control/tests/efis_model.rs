@@ -847,7 +847,12 @@ fn a_reverted_display_is_a_split_screen_with_the_pfd_and_the_engine_page() {
 #[test]
 fn the_vspeed_keypads_set_and_clear_speeds_and_the_settings_validate() {
     let mut s = session(None);
-    assert!(glass_state(&s).settings.vspeeds.r.enabled && !glass_state(&s).settings.vspeeds.g.enabled);
+    let v = glass_state(&s).settings.vspeeds;
+    assert!(
+        [v.r, v.x, v.y, v.g, v.app]
+            .iter()
+            .all(|e| e.enabled && e.speed_kt.is_none())
+    );
     open(&mut s, "left_display", json!({"keypad":"vspeed_g"}));
     assert!(enter(&mut s, "left_display", "vspeed_g", "10").is_err());
     assert!(enter(&mut s, "left_display", "vspeed_g", "401").is_err());
@@ -862,15 +867,13 @@ fn the_vspeed_keypads_set_and_clear_speeds_and_the_settings_validate() {
         json!({"kind":"shortcut","target":"vspeed_r","shortcut":"use_default"}),
     );
     assert_eq!(glass_state(&s).settings.vspeeds.r.speed_kt, None);
-    // Pack Default is not offered where the pack has no speed.
-    assert!(
-        try_display(
-            &mut s,
-            "left_display",
-            json!({"kind":"shortcut","target":"vspeed_g","shortcut":"use_default"})
-        )
-        .is_err()
+    // Pack Default is offered for every bug, Vg included.
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"vspeed_g","shortcut":"use_default"}),
     );
+    assert_eq!(glass_state(&s).settings.vspeeds.g.speed_kt, None);
     // The glass settings.
     set_glass(&mut s, json!({"kind":"vspeed","bug":"g","enabled":true}));
     assert!(glass_state(&s).settings.vspeeds.g.enabled);

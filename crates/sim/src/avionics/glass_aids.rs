@@ -51,18 +51,13 @@ impl VspeedBug {
             Self::App => "Vapp",
         }
     }
-
-    /// Whether an aircraft pack can supply this speed.
-    pub fn has_pack_default(self) -> bool {
-        matches!(self, Self::R | Self::X | Self::Y)
-    }
 }
 
 /// One bug on the configuration page: shown or not, and the pilot's speed if they set one.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct VspeedEntry {
     pub enabled: bool,
-    /// Knots; none uses the aircraft pack's speed (Vr, Vx, and Vy) or shows nothing (Vg and Vapp).
+    /// Knots; none uses the aircraft pack's speed, or shows nothing if the pack has none.
     pub speed_kt: Option<f64>,
 }
 
@@ -77,22 +72,18 @@ pub struct VspeedConfig {
 }
 
 impl Default for VspeedConfig {
-    /// Vr, Vx, and Vy shown from the pack, as the tape always did; Vg and Vapp off.
+    /// Every bug on, at the aircraft pack's speed where the pack has one.
     fn default() -> Self {
         let on = VspeedEntry {
             enabled: true,
-            speed_kt: None,
-        };
-        let off = VspeedEntry {
-            enabled: false,
             speed_kt: None,
         };
         Self {
             r: on,
             x: on,
             y: on,
-            g: off,
-            app: off,
+            g: on,
+            app: on,
         }
     }
 }
@@ -383,17 +374,16 @@ mod tests {
     fn vspeed_bugs_default_to_the_pack_and_follow_the_pilot() {
         let mut c = VspeedConfig::default();
         let pack = Some(30.0);
-        // The pack's speeds show for Vr, Vx, and Vy; Vg and Vapp have none and are off.
+        // The pack's speed shows for any bug; a bug the pack has no speed for shows nothing.
         assert!((c.shown_kt(VspeedBug::R, pack).unwrap() - 58.3).abs() < 0.1);
-        assert_eq!(c.shown_kt(VspeedBug::G, None), None);
+        assert!((c.shown_kt(VspeedBug::G, pack).unwrap() - 58.3).abs() < 0.1);
+        assert_eq!(c.shown_kt(VspeedBug::App, None), None);
         // A pilot speed beats the pack; off hides it.
         c.entry_mut(VspeedBug::R).speed_kt = Some(55.0);
         assert_eq!(c.shown_kt(VspeedBug::R, pack), Some(55.0));
         c.entry_mut(VspeedBug::R).enabled = false;
         assert_eq!(c.shown_kt(VspeedBug::R, pack), None);
-        // Vg on with a speed shows; on without one shows nothing.
-        c.entry_mut(VspeedBug::G).enabled = true;
-        assert_eq!(c.shown_kt(VspeedBug::G, None), None);
+        // A pilot speed shows without any pack speed.
         c.entry_mut(VspeedBug::G).speed_kt = Some(68.0);
         assert_eq!(c.shown_kt(VspeedBug::G, None), Some(68.0));
         assert_eq!(VspeedBug::ALL.map(VspeedBug::letter), ["R", "X", "Y", "G", "A"]);

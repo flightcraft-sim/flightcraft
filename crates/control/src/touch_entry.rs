@@ -476,7 +476,11 @@ impl EntryShortcut {
             EntryTarget::Heading | EntryTarget::Altitude | EntryTarget::Course => &[Self::SetToCurrent],
             EntryTarget::Baro => &[Self::SetToStandard, Self::SetForField],
             EntryTarget::Minimums => &[Self::TurnOff],
-            EntryTarget::VspeedR | EntryTarget::VspeedX | EntryTarget::VspeedY => &[Self::UseDefault],
+            EntryTarget::VspeedR
+            | EntryTarget::VspeedX
+            | EntryTarget::VspeedY
+            | EntryTarget::VspeedG
+            | EntryTarget::VspeedApp => &[Self::UseDefault],
             _ => &[],
         }
     }

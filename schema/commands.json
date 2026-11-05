@@ -124137,11 +124137,11 @@
               "$ref": "#/$defs/VspeedConfig",
               "default": {
                 "app": {
-                  "enabled": false,
+                  "enabled": true,
                   "speed_kt": null
                 },
                 "g": {
-                  "enabled": false,
+                  "enabled": true,
                   "speed_kt": null
                 },
                 "r": {
@@ -126189,7 +126189,7 @@
               "type": "boolean"
             },
             "speed_kt": {
-              "description": "Knots; none uses the aircraft pack's speed (Vr, Vx, and Vy) or shows nothing (Vg and Vapp).",
+              "description": "Knots; none uses the aircraft pack's speed, or shows nothing if the pack has none.",
               "format": "double",
               "type": [
                 "number",
@@ -127944,11 +127944,11 @@
               "$ref": "#/$defs/VspeedConfig",
               "default": {
                 "app": {
-                  "enabled": false,
+                  "enabled": true,
                   "speed_kt": null
                 },
                 "g": {
-                  "enabled": false,
+                  "enabled": true,
                   "speed_kt": null
                 },
                 "r": {
@@ -129996,7 +129996,7 @@
               "type": "boolean"
             },
             "speed_kt": {
-              "description": "Knots; none uses the aircraft pack's speed (Vr, Vx, and Vy) or shows nothing (Vg and Vapp).",
+              "description": "Knots; none uses the aircraft pack's speed, or shows nothing if the pack has none.",
               "format": "double",
               "type": [
                 "number",

@@ -323,6 +323,44 @@ fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
     assert_eq!(spoken(&s), 1);
 }
 #[test]
+fn vspeed_defaults_come_from_the_packs_vspeeds_glide_speed_and_approach_speed() {
+    use flightcraft_aero::emergencies::EmergencyProcedure;
+    let s = glass_session();
+    let mut aircraft = s.aircraft_configuration().unwrap().clone();
+    let v = aircraft.variant.v_speeds.clone();
+    let defaults = |a: &flightcraft_aero::ResolvedAircraft| vspeed_pack_defaults_mps(a);
+    let d = defaults(&aircraft);
+    assert_eq!(
+        (d[0], d[1], d[2]),
+        (Some(v.vr_mps), Some(v.vx_mps), Some(v.vy_mps))
+    );
+    // Vapp is the approach speed the crew pilot flies: 1.3 Vso.
+    assert_eq!(d[4], Some(1.3 * v.vso_mps));
+    // Vg is the engine-failure procedure's best glide, else the first procedure's, else none.
+    let procedure = |id: &str, speed: f64| EmergencyProcedure {
+        id: id.into(),
+        title: id.into(),
+        best_glide_mps: speed,
+        glide_ratio: 9.0,
+        speed_tolerance_mps: 2.0,
+        items: Vec::new(),
+    };
+    aircraft.installed_systems.emergencies.clear();
+    assert_eq!(defaults(&aircraft)[3], None);
+    aircraft.installed_systems.emergencies = vec![procedure("fire", 40.0), procedure("other", 41.0)];
+    assert_eq!(defaults(&aircraft)[3], Some(40.0));
+    aircraft
+        .installed_systems
+        .emergencies
+        .push(procedure("engine_failure", 32.0));
+    assert_eq!(defaults(&aircraft)[3], Some(32.0));
+    // With no pack speed the bug is on but draws nothing; the pilot's speed still shows.
+    let mut config = flightcraft_sim::avionics::glass_aids::VspeedConfig::default();
+    assert_eq!(config.shown_kt(VspeedBug::G, None), None);
+    config.entry_mut(VspeedBug::G).speed_kt = Some(68.);
+    assert_eq!(config.shown_kt(VspeedBug::G, None), Some(68.));
+}
+#[test]
 fn the_second_bearing_pointer_is_a_gps_or_off_setting() {
     let mut s = glass_session();
     assert_eq!(s.glass_state().settings.bearing_pointer2, BearingPointer::Off);

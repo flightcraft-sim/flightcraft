@@ -473,7 +473,7 @@ pub(crate) struct Shared {
     pub user_field: flightcraft_control::DataBarField,
     /// The Vspeed bugs' configuration, and the aircraft pack's Vr, Vx, and Vy in knots.
     pub vspeeds: flightcraft_control::VspeedConfig,
-    pub pack_vspeeds_kt: [Option<f64>; 3],
+    pub pack_vspeeds_kt: [Option<f64>; 5],
     /// The G meter is shown.
     pub g_meter: bool,
     /// The two bearing pointers follow GPS.
@@ -881,9 +881,7 @@ fn overlay(
                     Vec2::new(panel.width() - 12., row_h),
                 );
                 let (toggle, set) = full.split_left_right_at_fraction(0.7);
-                let pack = (bug.has_pack_default())
-                    .then(|| shared.pack_vspeeds_kt.get(i).copied().flatten())
-                    .flatten();
+                let pack = shared.pack_vspeeds_kt.get(i).copied().flatten();
                 let entry = shared.vspeeds.entry(bug);
                 let speed = entry
                     .speed_kt
