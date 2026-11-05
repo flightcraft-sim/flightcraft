@@ -96,9 +96,63 @@ fn render_1n7_scenery_reference_shots() {
         scene.airspace_visible = false;
         let heading = 60.76659070034455_f64.to_radians();
         let (sn, ce) = (heading.cos(), heading.sin());
-        let reference = image::open("/home/ray/builds/codex-jobs/1n7-naip-sample.jpg")
-            .unwrap()
-            .to_rgba8();
+        // The right panel shows the painted-runway alignment overlay written by the build
+        // (FAA axis and expected thresholds against the measured centreline and bars) with its
+        // measured result; builds without one fall back to the supplied NAIP reference.
+        let Location::LocalPath(tileset) = provider().location else {
+            return;
+        };
+        let tileset_dir = tileset.parent().unwrap().to_path_buf();
+        let overlay = image::open(tileset_dir.join("alignment-overlay.png"))
+            .ok()
+            .map(|i| i.to_rgba8());
+        let audit: Option<serde_json::Value> = std::fs::read(tileset_dir.join("alignment-audit.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok());
+        let water: Option<serde_json::Value> = std::fs::read(tileset_dir.join("water-audit.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok());
+        let panel_title = if overlay.is_some() {
+            "Painted-runway alignment: FAA axis cyan, measured bars green"
+        } else {
+            "NAIP reference (overhead)"
+        };
+        let panel_note = {
+            let line = |v: &serde_json::Value| -> Option<String> {
+                let line = v.get("centreline")?;
+                Some(format!(
+                    "centreline {:+.2} m, heading {:+.4} deg, ends {:.2} / {:.2} m, gate {} m: {}",
+                    line.get("cross_track_m")?.as_f64()?,
+                    line.get("heading_error_deg")?.as_f64()?,
+                    v.pointer("/ends/0/horizontal_error_m")?.as_f64()?,
+                    v.pointer("/ends/1/horizontal_error_m")?.as_f64()?,
+                    v.get("gate_m")?.as_f64()?,
+                    if v.get("passed")?.as_bool()? {
+                        "PASS"
+                    } else {
+                        "FAIL"
+                    },
+                ))
+            };
+            let water_line = water.as_ref().map(|w| {
+                format!(
+                    "NHD water: {} polygons, {} triangles, {:.1}% of lidar water inside.",
+                    w["drawn"].as_array().map_or(0, Vec::len),
+                    w["triangles"],
+                    100. * w["lidar_water_inside_polygons"].as_f64().unwrap_or(0.)
+                )
+            });
+            format!(
+                "{} {}",
+                audit.as_ref().and_then(line).unwrap_or_default(),
+                water_line.unwrap_or_default()
+            )
+        };
+        let reference = overlay.unwrap_or_else(|| {
+            image::open("/home/ray/builds/codex-jobs/1n7-naip-sample.jpg")
+                .unwrap()
+                .to_rgba8()
+        });
         let texture = eframe::egui::ColorImage::from_rgba_unmultiplied(
             [reference.width() as usize, reference.height() as usize],
             reference.as_raw(),
@@ -107,24 +161,33 @@ fn render_1n7_scenery_reference_shots() {
         for (name, label, position, camera, eye) in [
             (
                 "runway-07",
-                "Runway 07 — imagery preview",
+                "Runway 07",
                 pose(25. * sn, 25. * ce, 113., heading),
                 CameraMode::Cockpit,
                 None,
             ),
             (
                 "short-final-25",
-                "Short final, Runway 25 — imagery preview",
+                "Short final, Runway 25",
                 pose(1050. * sn, 1050. * ce, 135., heading + std::f64::consts::PI),
                 CameraMode::Cockpit,
                 None,
             ),
             (
                 "hangars",
-                "Hangar flyby — imagery preview",
+                "Hangar flyby",
                 pose(180., 215., 114.1, heading),
                 CameraMode::Flyby,
                 Some([150., 500., -195.]),
+            ),
+            // The NHD pond south of the runway ("Lake Susquehanna"), centre about 116 m south and
+            // 347 m east of the Runway 07 origin, seen from above the runway's south edge.
+            (
+                "pond-south",
+                "Pond south of the runway (NHD water)",
+                pose(-116., 347., 108., heading),
+                CameraMode::Flyby,
+                Some([60., 300., -150.]),
             ),
         ] {
             scene.reset_camera();
@@ -144,18 +207,40 @@ fn render_1n7_scenery_reference_shots() {
                     break;
                 }
                 capture.draw(|ui| {
-                    let full=ui.max_rect();
-                    let left=eframe::egui::Rect::from_min_max(full.min,eframe::egui::pos2(full.left()+full.width()*0.68,full.bottom()));
-                    ui.scope_builder(eframe::egui::UiBuilder::new().max_rect(left),|ui| {
-                        scene.show(ui,&position,1./60.,theme::scene());
-                        ui.painter().text(left.left_top()+eframe::egui::vec2(12.,12.),eframe::egui::Align2::LEFT_TOP,label,eframe::egui::FontId::proportional(15.),theme::TEXT);
+                    let full = ui.max_rect();
+                    let left = eframe::egui::Rect::from_min_max(
+                        full.min,
+                        eframe::egui::pos2(full.left() + full.width() * 0.68, full.bottom()),
+                    );
+                    ui.scope_builder(eframe::egui::UiBuilder::new().max_rect(left), |ui| {
+                        scene.show(ui, &position, 1. / 60., theme::scene());
+                        ui.painter().text(
+                            left.left_top() + eframe::egui::vec2(12., 12.),
+                            eframe::egui::Align2::LEFT_TOP,
+                            label,
+                            eframe::egui::FontId::proportional(15.),
+                            theme::TEXT,
+                        );
                     });
-                    let right=eframe::egui::Rect::from_min_max(eframe::egui::pos2(left.right()+8.,full.top()),full.max);
-                    ui.scope_builder(eframe::egui::UiBuilder::new().max_rect(right),|ui| {
-                        ui.label("NAIP reference (overhead)");
-                        let texture=reference_texture.get_or_insert_with(||ui.ctx().load_texture("1N7 reference",texture.clone(),Default::default()));
-                        ui.image((texture.id(),eframe::egui::vec2(right.width(),right.width()*860./1600.)));
-                        ui.label("Measured lidar terrain, crowns, and roofs. Procedural facades. Water and painted-runway acceptance remain pending.");
+                    let right = eframe::egui::Rect::from_min_max(
+                        eframe::egui::pos2(left.right() + 8., full.top()),
+                        full.max,
+                    );
+                    ui.scope_builder(eframe::egui::UiBuilder::new().max_rect(right), |ui| {
+                        ui.label(panel_title);
+                        let texture = reference_texture.get_or_insert_with(|| {
+                            ui.ctx()
+                                .load_texture("1N7 reference", texture.clone(), Default::default())
+                        });
+                        ui.image((
+                            texture.id(),
+                            eframe::egui::vec2(
+                                right.width(),
+                                right.width() * reference.height() as f32 / reference.width() as f32,
+                            ),
+                        ));
+                        ui.label(&panel_note);
+                        ui.label("Measured lidar terrain, crowns and roofs; NHD water; procedural facades.");
                     });
                 });
                 if frame == 0 {
@@ -213,8 +298,13 @@ fn render_1n7_scenery_reference_shots() {
             // Store the comparison with the reference on the right, preserving scene pixels.
             let mut comparison = image::RgbaImage::new(1920, 720);
             image::imageops::replace(&mut comparison, &image, 0, 0);
-            let reference =
-                image::imageops::resize(&reference, 640, 344, image::imageops::FilterType::Triangle);
+            let panel_height = (640. * reference.height() as f32 / reference.width() as f32) as u32;
+            let reference = image::imageops::resize(
+                &reference,
+                640,
+                panel_height,
+                image::imageops::FilterType::Triangle,
+            );
             image::imageops::replace(&mut comparison, &reference, 1280, 0);
             comparison.save(out.join(format!("{name}-naip.png"))).unwrap();
         }

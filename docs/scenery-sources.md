@@ -58,7 +58,7 @@ Everything here is US public domain, free to download, and free to redistribute:
   measured height and every building its real roof shape. Footprint datasets are only a fallback;
   Microsoft and OpenStreetMap footprints are ODbL and would be kept in their own file with that
   notice.
-- **Water:** NHD lakes and rivers.
+- **Water:** NHD lakes, ponds, reservoirs and river areas (public domain), fetched from the TNM Access API as HU-8 shapefiles and built into the tiles with a reflective shader; implemented for the 1N7 test area (docs/scenery.md, "NHD water").
 
 We build the tiles with `cargo xtask scenery fetch|build`, check that the painted runway in the
 imagery lines up with FAA runway data within 2 m, and publish them as region data releases.

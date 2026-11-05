@@ -735,7 +735,7 @@ impl FlightCraftApp {
             }
             ui.checkbox(&mut preferences.enabled, "Show 3D scenery");
             if !cfg!(target_arch = "wasm32") {
-                ui.label("Tileset file");
+                ui.label("Tileset file (empty: use the scenery installed for this region)");
                 ui.text_edit_singleline(&mut preferences.local_tileset);
                 ui.separator();
                 ui.checkbox(&mut preferences.streaming_imagery, "Streaming imagery (your own key)");
@@ -1720,5 +1720,7 @@ mod walkaround_preview;
 /// Schema-only re-export for the repository schema generator.
 pub type SceneryProviderSchema = flightcraft_render::scenery::Provider;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod installed_scenery;
 #[cfg(test)]
 mod scenery_preview;

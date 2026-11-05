@@ -149,6 +149,11 @@ pub fn fetch(offline: bool, cache: &Path, base: Option<&str>) -> Result<(), Stri
     let lock: Lock = download::json(&root.join("data.lock"))?;
     fetch_with(&lock, &root.join("assets"), cache, base, offline, &mut Http)
 }
+/// Offline restore from a seeded cache, as `cargo xtask data fetch --offline` does.
+#[cfg(test)]
+pub(crate) fn fetch_offline_for_tests(lock: &Lock, assets: &Path, cache: &Path) -> Result<(), String> {
+    fetch_with(lock, assets, cache, None, true, &mut Http)
+}
 fn fetch_with(
     lock: &Lock,
     assets: &Path,
@@ -285,17 +290,31 @@ fn unpack(bytes: &[u8], expected: &[FileEntry]) -> Result<BTreeMap<String, Vec<u
 }
 
 pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
+    publish_only(tag, output, None)
+}
+/// With `only`, just that dataset's archives are rebuilt and merged into the existing lock;
+/// every other locked archive (and its release tag) is left exactly as pinned. This lets one
+/// dataset, such as 1N7 scenery, ship in its own release without the full region data tree.
+pub fn publish_only(tag: &str, output: &Path, only: Option<&str>) -> Result<(), String> {
+    publish_at(&super::root()?, tag, output, only)
+}
+/// `publish_only` against an explicit repository root (tests use a scratch tree).
+pub(crate) fn publish_at(root: &Path, tag: &str, output: &Path, only: Option<&str>) -> Result<(), String> {
     if !release_name(tag) {
         return Err("invalid release tag".into());
     }
-    let root = super::root()?;
+    if only.is_some_and(|d| !matches!(d, "terrain" | "charts" | "navigation" | "scenery")) {
+        return Err("unknown dataset for --only".into());
+    }
     let assets = root.join("assets");
+    let previous: Lock = download::json(&root.join("data.lock"))?;
     let mut lock = Lock {
         version: 1,
         base_url: "https://github.com/flightcraft-sim/flightcraft/releases/download".into(),
         assets: Vec::new(),
-        sources: download::json::<Lock>(&root.join("data.lock"))?.sources,
+        sources: previous.sources.clone(),
     };
+    let mut replaced = BTreeSet::new();
     std::fs::create_dir_all(output).map_err(|e| e.to_string())?;
     for region in std::fs::read_dir(assets.join("terrain")).map_err(|e| e.to_string())? {
         let region = region.map_err(|e| e.to_string())?;
@@ -308,6 +327,9 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
             .ok_or("region ID requires UTF-8")?
             .to_owned();
         for dataset in ["terrain", "charts", "navigation", "scenery"] {
+            if only.is_some_and(|d| d != dataset) {
+                continue;
+            }
             let paths: Vec<_> = files(&region.path())?
                 .into_iter()
                 .filter(|p| {
@@ -382,31 +404,60 @@ pub fn publish(tag: &str, output: &Path) -> Result<(), String> {
                 } else {
                     String::new()
                 };
+                replaced.insert((id.clone(), dataset.to_owned()));
                 lock.assets
                     .push(archive(&assets, &paths, output, &id, dataset, tag, &suffix)?);
                 first = last + 1;
             }
         }
     }
+    if only.is_some() {
+        // Keep every pinned archive this run did not regenerate.
+        lock.assets.extend(
+            previous
+                .assets
+                .into_iter()
+                .filter(|a| !replaced.contains(&(a.region.clone(), a.dataset.clone()))),
+        );
+    }
     lock.assets
-        .sort_by(|a, b| (&a.region, &a.dataset).cmp(&(&b.region, &b.dataset)));
+        .sort_by(|a, b| (&a.region, &a.dataset, &a.asset).cmp(&(&b.region, &b.dataset, &b.asset)));
     validate(&lock)?;
     write_json(&root.join("data.lock"), &lock)?;
     // Seed the offline cache so removal from the checkout never removes the maintainer's data.
     let cache = root.join(".cache/data");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
-    for asset in &lock.assets {
+    for asset in lock.assets.iter().filter(|a| output.join(&a.asset).exists()) {
         std::fs::copy(output.join(&asset.asset), cache.join(&asset.sha256)).map_err(|e| e.to_string())?;
     }
-    println!(
-        "gh release create {tag} --repo flightcraft-sim/flightcraft --title 'Region data {tag}' --notes 'Public-domain terrain and FAA data; see manifests and ATTRIBUTION.md.'"
-    );
-    println!(
-        "gh release upload {tag} {}/*.zip {}/*.manifest.json --repo flightcraft-sim/flightcraft",
-        output.display(),
-        output.display()
-    );
+    for line in release_commands(tag, output, only) {
+        println!("{line}");
+    }
     Ok(())
+}
+
+/// The exact commands that publish what `publish` wrote. Nothing here is run by xtask.
+pub(crate) fn release_commands(tag: &str, output: &Path, only: Option<&str>) -> Vec<String> {
+    let notes = if only == Some("scenery") {
+        "Public-domain scenery tiles built from USDA NAIP, USGS 3DEP lidar/DEM, USGS NHD and NOAA NGS GEOID18; see sources.json and ATTRIBUTION.txt in each scenery directory."
+    } else {
+        "Public-domain terrain and FAA data; see manifests and ATTRIBUTION.md."
+    };
+    let title = if only == Some("scenery") {
+        "Scenery data"
+    } else {
+        "Region data"
+    };
+    vec![
+        format!(
+            "gh release create {tag} --repo flightcraft-sim/flightcraft --title '{title} {tag}' --notes '{notes}'"
+        ),
+        format!(
+            "gh release upload {tag} {}/*.zip {}/*.manifest.json --repo flightcraft-sim/flightcraft",
+            output.display(),
+            output.display()
+        ),
+    ]
 }
 
 fn archive(
@@ -475,6 +526,7 @@ pub fn run() -> Result<(), String> {
     let mut output = super::root()?.join("out/data");
     let mut tag = "region-data-2611".to_string();
     let mut baseline = None;
+    let mut only = None;
     while let Some(key) = args.next() {
         if key == "--offline" {
             offline = true;
@@ -487,13 +539,14 @@ pub fn run() -> Result<(), String> {
             "--tag" => tag = value,
             "--base-url" => base = Some(value),
             "--baseline" => baseline = Some(PathBuf::from(value)),
+            "--only" => only = Some(value),
             _ => return Err(format!("unknown data option {key}")),
         }
     }
     let base = base.or_else(|| std::env::var("FLIGHTCRAFT_DATA_URL").ok());
     match action.as_str() {
         "fetch" => fetch(offline, &cache, base.as_deref()),
-        "publish" => publish(&tag, &output),
+        "publish" => publish_only(&tag, &output, only.as_deref()),
         "measure" => super::validation::measure(),
         "compact" => compact(),
         "compare" => compare_charts(&baseline.ok_or("compare needs --baseline DIR")?),

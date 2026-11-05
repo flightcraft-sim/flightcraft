@@ -54,7 +54,8 @@
         "all",
         "terrain",
         "lidar",
-        "geoid"
+        "geoid",
+        "water"
       ]
     },
     "LidarSource": {

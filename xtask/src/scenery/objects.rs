@@ -344,12 +344,24 @@ impl Document {
         )
     }
     pub fn finish(
+        self,
+        meshes: Vec<Value>,
+        nodes: Vec<Value>,
+        texture: &[u8],
+        mask: bool,
+        instanced: bool,
+    ) -> Result<Vec<u8>, String> {
+        self.finish_with_extras(meshes, nodes, texture, mask, instanced, None)
+    }
+    /// As `finish`, with glTF root `extras` (e.g. `{"flightcraft":{"water":true}}`).
+    pub fn finish_with_extras(
         mut self,
         meshes: Vec<Value>,
         nodes: Vec<Value>,
         texture: &[u8],
         mask: bool,
         instanced: bool,
+        extras: Option<Value>,
     ) -> Result<Vec<u8>, String> {
         let image = self.view(texture);
         let node_indices: Vec<usize> = (0..nodes.len()).collect();
@@ -358,17 +370,20 @@ impl Document {
         } else {
             vec!["EXT_texture_webp"]
         };
-        let doc = json!({"asset":{"version":"2.0","generator":"FlightCraft original reconstruction"},
+        let mut doc = json!({"asset":{"version":"2.0","generator":"FlightCraft original reconstruction"},
             "extensionsUsed":extensions,"extensionsRequired":extensions,
             "buffers":[{"byteLength":self.binary.len()}],"bufferViews":self.views,"accessors":self.accessors,
             "images":[{"bufferView":image,"mimeType":"image/webp"}],"samplers":[{"magFilter":9729,"minFilter":9987,"wrapS":33071,"wrapT":33071}],
             "textures":[{"sampler":0,"extensions":{"EXT_texture_webp":{"source":0}}}],
             "materials":[{"alphaMode":if mask {"MASK"}else{"OPAQUE"},"alphaCutoff":0.5,"doubleSided":true,"pbrMetallicRoughness":{"baseColorTexture":{"index":0},"metallicFactor":0,"roughnessFactor":0.95}}],
             "meshes":meshes,"nodes":nodes,"scenes":[{"nodes":node_indices}],"scene":0});
+        if let Some(extras) = extras {
+            doc["extras"] = extras;
+        }
         super::tiles::glb_bytes(&doc, &self.binary)
     }
 }
-const ORIGIN: [f64; 2] = [40.96905613156273, -75.00242278301268];
+pub(super) const ORIGIN: [f64; 2] = [40.96905613156273, -75.00242278301268];
 fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<u8>, String> {
     let mut doc = Document::default();
     let mut meshes = Vec::new();

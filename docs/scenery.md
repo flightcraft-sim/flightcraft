@@ -15,9 +15,12 @@ Existing simulation ground, synthetic
 vision, planning maps, charts, and clouds retain their paths. Imagery is presentation data and does
 not change replay identity or collision elevations.
 
-Not accepted yet: independent painted-runway alignment, real NYC reconstruction and full-area scaling,
-NHD water geometry, the Water Gap proof,
-automatic installed-region selection, or the 60 fps integrated-GPU acceptance run.
+1N7 passes all three release gates (vertical datum, painted-runway alignment, lidar; see
+[Release gates for 1N7](#release-gates-for-1n7)), includes NHD water, and ships as a desktop data
+release (see [Publishing 1N7 for desktop](#publishing-1n7-for-desktop)).
+
+Not accepted yet: real NYC reconstruction and full-area scaling, the Water Gap proof, or the
+60 fps integrated-GPU acceptance run.
 Static browser 3D Tiles fetching is implemented; real NYC package acceptance remains open. Publication rejects
 scenery without the explicit vertical-datum, runway-alignment, and lidar acceptance flags.
 Date-driven atmosphere, cascaded shadows, exposure, and mild bloom are implemented with 1N7
@@ -61,7 +64,7 @@ lidar now uses the USGS open-data Entwine/EPT copy of `NJ_NW6Co_2017` by default
 The initial importer reads geographic WGS84/NAD83 (including NAD83(2011)) or UTM zone 18 north, meter units, float32, north-up
 GeoTIFFs; unsupported CRS, sample types, compression, missing coverage, and nodata fail explicitly.
 NAD83 frame transformations still need the independent alignment gate. EPT hierarchy selection, bounded LAZ acquisition, and streaming LAS/LAZ decoding are implemented;
-CHM canopies and fitted roofs are implemented for bounded blocks. Inferred classification and horizontal registration still require acceptance. GEOID18 conversion passed the real-grid, NGS control, and FAA runway-height checks at 1N7. No footprint fallback is included.
+CHM canopies and fitted roofs are implemented for bounded blocks. Inferred classification and horizontal registration are accepted by the 1N7 gates below. GEOID18 conversion passed the real-grid, NGS control, and FAA runway-height checks at 1N7. No footprint fallback is included.
 
 ## Resume the test area with EPT lidar
 
@@ -481,9 +484,9 @@ this airport-only sample. Set `FLIGHTCRAFT_SCENERY_TILESET` to compare another b
 
 The registration test checks independently sourced FAA endpoints through Mercator pixels, ECEF, and
 local TM to millimeter tolerances. **It is a numerical registration test, not proof that painted runway
-pixels align within 2 m.** Independently pick both painted runway ends in the fetched full-resolution
-imagery and record the residuals before setting `runwayAlignmentVerified`. The sample's export aspect
-ratio and original image uncertainty prevent it from satisfying that acceptance gate.
+pixels align within 2 m.** That proof is the painted-runway alignment gate below, measured on the
+fetched full-resolution NAIP tiles. The reference sample's export aspect ratio and original image
+uncertainty prevent it from satisfying that gate.
 
 The ignored `scenery_1080p_frame_budget` test warms a Low scene, measures 120 synchronized GPU frames,
 writes adapter and p95 timing to `out/scenery/frame-budget.json`, and requires p95 ≤ 16.67 ms. Run it
@@ -733,12 +736,147 @@ Runway 07, short final 25, and the hangar director pose passed offscreen GPU val
 1080p Low frame test selected all 7,445 tree instances in 12 tiles with about 26 MB CPU-resident
 payloads and measured 3.68 ms p95 on a GTX 1660 Ti. This is a discrete-GPU baseline; the target
 integrated GPU, full-area scaling, and final visual appearance are not accepted by that result.
-The vertical gate is true; painted-runway alignment and overall release readiness remain false.
+At that stage the vertical gate was true and painted-runway alignment and overall release readiness were
+still false; both now pass (next section).
 
 GPU coverage regression checks include same-ID CPU payload replacement spread across the per-frame
 upload limit. Previously selected GPU payloads remain drawable until their replacement uploads
 complete; CPU readiness cannot expose coarse-ground holes between frames.
 
+
+## Release gates for 1N7
+
+`scenery build` evaluates all three gates and writes the evidence beside the tiles. The tileset
+flags (`verticalDatumVerified`, `runwayAlignmentVerified`, `lidarBuilt`) are derived from that
+evidence; `build-report.json` has `release_ready: true` only when all three pass.
+`cargo xtask scenery package` re-reads each audit file instead of trusting a flag.
+
+### Painted-runway alignment (`alignment-audit.json`, `alignment-overlay.png`)
+
+The gate is plain image processing on the cached full-resolution NAIP tiles; no learned model and
+no external service. The imagery is resampled into a runway-aligned raster (0.25 m, along-track
+`u` and cross-track `v`) about the FAA runway axis from the region data. Then:
+
+1. Paint is separated from pavement by a luminance threshold taken from the raster's own statistics
+   (midway between the strip median and its 99.7th percentile).
+2. Centreline dashes are connected components of paint (at least 8 m long, at most 1.6 m wide) near the
+   axis; a Theil-Sen line through their centroids gives the painted centreline's cross-track offset and
+   heading error.
+3. The full-width transverse threshold bar at each end is found from the along-track paint fraction
+   (at least 75% of the pavement width for 1 to 8 m); its edges are interpolated at the 50% crossing.
+4. Each bar is compared with the FAA displaced-threshold position: the region-data runway end plus
+   the NASR displaced-threshold length (1N7: 318 ft at 07, 235 ft at 25; FAA NASR 2026-10-29,
+   3rd-party survey 2014-08-11). The FAA ends are the physical pavement ends, which is why the painted
+   bars sit about 97 m and 72 m inboard of them. The FAA does not say which part of the bar its surveyed
+   point marks, so the bar's midline is the unbiased comparison; both edges are also reported.
+
+The gate passes when the painted centreline is within 2 m of the FAA axis and the horizontal
+offset (along-track and cross-track) at each end is within 2 m. A missing bar or too few centreline
+dashes fails closed.
+
+**Measured result for 1N7 (NAIP, 0.3 m), recorded in `assets/scenery/1n7-alignment-measurement.json`:**
+
+| Quantity | Runway 07 end | Runway 25 end |
+|---|---|---|
+| Painted bar width | 3.37 m | 3.33 m |
+| Bar midline minus FAA threshold, along-track | -0.86 m | -0.42 m |
+| Painted centreline minus FAA axis, cross-track | -0.12 m | -0.13 m |
+| Horizontal offset | **0.87 m** | **0.44 m** |
+
+The painted centreline (9 dashes, 36.25 m long, RMS 0.04 m about the fit) is 0.12 m from the FAA axis
+with a heading error of -0.0004 degrees, so rotation is nil. The mean offset of the painted markings
+from the FAA record is 0.21 m south and 0.62 m west (0.65 m total). That is below the 2 m gate and
+inside the stated horizontal accuracy of NAIP and of the FAA survey, and it is not applied as a
+correction: an unexplained sub-metre shift is noise, not a datum constant, and correcting it would be
+fitting the gate. Had a larger systematic shift appeared (a NAD83 to WGS84 frame offset is about 1 to 1.5 m in
+this region), the audit reports it as `systematic_offset_north_east_m` and the imagery registration
+would have to be corrected in the tile builder. A synthetic runway of known offset (0, 1.2, 2.5 m and
+combinations) is recovered to 0.35 m in the tests, and the gate fails for shifts beyond 2 m.
+`alignment-overlay.png` shows the FAA axis (cyan), the expected thresholds, the measured
+centreline (yellow) and the measured bars (green) at both ends and midfield.
+
+Regenerate the recorded measurement from the cache with
+`cargo test -p xtask real_1n7_measurement -- --ignored --nocapture` (set
+`FLIGHTCRAFT_ALIGNMENT_OUT` to write the overlay PNG).
+
+### Lidar acceptance (`lidar-acceptance.json`)
+
+`lidarBuilt` used to mean only that reconstruction ran. It is now true only when every criterion below
+passes for the build (the tileset also carries `lidarAcceptanceVerified`):
+
+1. **Complete EPT selection**: decoded node and point totals equal the receipted hierarchy selection
+   (214 nodes, 8,169,636 points).
+2. **Ground agreement**: classified ground agrees with the receipt-backed NAVD88 meter DEM at 128 or more
+   distributed cells, median at most 0.5 m, 95th percentile at most 1 m (5,555 cells; 0.016 m and 0.068 m).
+3. **Vertical datum** gate passed (GEOID18, NGS control, FAA field elevation).
+4. **Roof planes** fit their measured points: at least one building and every plane RMS at most 0.25 m
+   (85 buildings, 143 planes, worst 0.17 m).
+5. **Roof cells are measured**: interpolated cells at most 15% of all roof cells (0.5%).
+6. **Heights are plausible**: buildings 2.5 to 40 m, trees at most 45 m above the DEM (3.1 to 9.2 m; tallest tree 41.5 m).
+7. **Inferred classification is declared**: the NJ survey has no class 3 to 6 returns, so every building and
+   tree record must say its classification was inferred (7,445 trees and 85 buildings all do).
+8. **Runway corridor is clear**: no tree or building centre inside the FAA runway rectangle (0).
+9. **Footprints register with NAIP**: the lidar building footprints are shifted over the NAIP imagery in 1 m
+   steps; the inside/outside colour contrast must peak within 2 m of zero shift and clearly above the
+   window mean (14 large buildings; peak at 1 m east, 1 m north, 79.3 against a 44.1 mean).
+
+### NHD water (`water-audit.json`, `water/0.glb`)
+
+`scenery fetch --layer water` (part of `--layer all`) asks the TNM Access API for the USGS National
+Hydrography Dataset Best Resolution **HU-8 subbasin shapefiles** intersecting the area, then fetches each
+named product under the exact `https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/HU8/Shape/`
+prefix. It uses the shared transport: one request per second, SHA-256 receipts, ETag-validated resume,
+and the existing USGS host allowlist. For 1N7 that is `NHD_H_02040104` and `NHD_H_02040105` (24 MB and 26 MB).
+
+`scenery build` reads `NHDWaterbody` and `NHDArea` polygons with a bounded in-tree shapefile reader,
+keeps lakes, ponds, reservoirs, rivers and canals, clips them, simplifies (0.4 m), tessellates, and lifts
+them to the independent DEM. A pond or reservoir gets one level, the median DEM height along its rim; river
+areas follow the lowest nearby DEM sample at each vertex. All water is lifted 3 cm. The tile is one
+GLB with `extras.flightcraft.water`, added beside the trees and buildings. Ponds are drawn within 100 m of the
+imagery area and rivers within 1.5 km, because beyond the imagery the ground is coarse fallback terrain.
+NHD flowlines have no width, so narrow streams are not drawn as invented ribbons. The audit records
+every drawn and skipped polygon, nearby named features, and the share of the lidar water-classified
+cells that fall inside the drawn polygons.
+
+Result for 1N7: three ponds (the pond south of the runway is NHD "Lake Susquehanna", 113,433 square
+metres, level 107.6 m MSL; others of 2,462 and 4,444 square metres) and one river-area polygon
+(169,621 square metres, 1,087 vertices after simplification, 10,052 water triangles in all). **98.7% of the 43,145 lidar water cells
+are inside the NHD polygons**, an independent check of the polygons' registration. The Paulins Kill is
+an unnamed `NHDArea` StreamRiver polygon; its nearest vertex is 33 m outside the 1.2 km imagery area, so
+it enters only through the river margin, and the NHD names it on its `NHDFlowline` artificial path (the
+audit lists named features nearby). Raise the area or the margin for a wider river corridor.
+
+**Renderer.** Water content uses a second pipeline in `crates/render/src/scenery/gpu.rs` and
+`fragment_water` in `scenery.wgsl`: procedural, range-faded wave normals; Schlick Fresnel reflecting the
+same `physical_sky` that builds the sky probe (five taps stand in for the roughness-filtered lookup);
+a dark body colour from the measured mean NAIP colour of the water, lit by the scene lighting
+(`surface_light`); a sun glint; and the shared cloud, aerial-perspective (haze), and display transfer.
+Water is drawn after opaque content, does not cast shadows, and uses a stronger depth bias so it wins
+over the terrain it floats 3 cm above.
+
+## Publishing 1N7 for desktop
+
+Scenery is a `scenery` dataset in the existing region data release: `cargo xtask data fetch` installs
+`assets/terrain/<region>/scenery/<area>/` from the locked archives, the desktop app finds it
+automatically, and the website never carries it (the website ships scenery only for `new-york`, the Fly
+NYC showcase).
+
+1. Build the accepted area (fetch first for a new cache):
+   `cargo xtask scenery build --region eastern-pa --area 1n7-test --out <new-dir>`.
+2. Package it, which re-reads `build-report.json`, `datum-audit.json`, `alignment-audit.json` and
+   `lidar-acceptance.json`, checks every `tileset.json` with the release validator, installs the tiles
+   with `sources.json`, `lidar-sources.jsonl` and a generated `ATTRIBUTION.txt`, and pins them in `data.lock`:
+   `cargo xtask scenery package --region eastern-pa --built <dir> --name 1n7 --tag <tag> --out <new-dir>`.
+   This runs `data publish --only scenery`, which rebuilds only the scenery archive and keeps every other
+   locked archive and tag. Archives are at most 128 MiB raw (one for 1N7, about 49 MB).
+3. Review the archives and manifests, then run the generated `PUBLISH.sh` (plain `gh release create` and
+   `gh release upload`). The 1N7 release is tagged `region-data-2611-scenery-1n7-20261105`
+   (`eastern-pa-scenery.zip`, 49,890,837 bytes, 231 files plus its manifest) and `data.lock` already points at it. Nothing is uploaded by xtask. Merge the `data.lock` change after the release exists;
+   `cargo xtask data fetch` (CI included) downloads every locked archive.
+
+The desktop app uses `<regions-dir>/<region>/scenery/<area>/tileset.json` when the Preferences tileset
+field is empty and the tileset's own flags show it accepted (vertical datum, runway alignment, lidar,
+not preview, redistributable). "Show 3D scenery" now defaults on; a typed path overrides discovery.
 
 ## Date-driven atmosphere, cascades, and surface artwork
 
@@ -784,5 +922,5 @@ are retained across LOD changes, and unchanged aircraft poses reuse their upload
 
 The final 1N7 lighting proof recorded 3.80 ms p95 on the GTX 1660 Ti at 1080p Low,
 with all 7,445 tree instances selected. The 48,348,727-byte test package and capture manifest
-remain local build artifacts; painted-runway and release acceptance stay false. The debug-build
+remain local build artifacts (superseded by the accepted build below). The debug-build
 first Sling material preparation took about 21 seconds; warm timings exclude that initial work.

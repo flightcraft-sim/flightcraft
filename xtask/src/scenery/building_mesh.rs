@@ -617,7 +617,15 @@ pub(super) fn write(
         .and_then(|v| v.pointer("/flightcraft/runwayAlignmentVerified"))
         .and_then(|v| v.as_bool())
         == Some(true);
-    let mut flags = json!({"region":sources.region,"area":sources.area,"sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","usesExternalFootprints":false,"lidarBuilt":true,"buildingCount":buildings.len(),"previewOnly":preview,"verticalDatumVerified":accepted,"runwayAlignmentVerified":runway,"localOnly":false,"redistributionAllowed":true});
+    // The 1N7 pipeline records an explicit acceptance result; flows without one (the NYC handoff)
+    // keep the earlier meaning of lidarBuilt.
+    let lidar_built = set
+        .extras
+        .as_ref()
+        .and_then(|v| v.pointer("/flightcraft/lidarAcceptanceVerified"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let mut flags = json!({"region":sources.region,"area":sources.area,"sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","usesExternalFootprints":false,"lidarBuilt":lidar_built,"buildingCount":buildings.len(),"previewOnly":preview,"verticalDatumVerified":accepted,"runwayAlignmentVerified":runway,"localOnly":false,"redistributionAllowed":true});
     let receipts: Vec<_> = sources
         .inputs
         .iter()
@@ -799,7 +807,7 @@ pub(super) fn write(
     if let Some(flags) = set.extras.as_mut().and_then(|v| v.get_mut("flightcraft")) {
         flags["buildingsBuilt"] = json!(true);
         flags["buildingCount"] = json!(buildings.len());
-        flags["lidarBuilt"] = json!(true);
+        flags["lidarBuilt"] = json!(lidar_built);
     }
     Ok(())
 }

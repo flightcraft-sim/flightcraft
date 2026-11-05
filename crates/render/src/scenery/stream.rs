@@ -615,6 +615,7 @@ mod tests {
             mips: vec![image::RgbaImage::new(1, 1)],
             byte_size: 4,
             terrain_bounds: None,
+            water: false,
             expires_at_unix_ms: None,
             attribution: Vec::new(),
         })
@@ -662,6 +663,7 @@ mod tests {
                         mips: Vec::new(),
                         byte_size: Quality::Low.resident_bytes(),
                         terrain_bounds: None,
+                        water: false,
                         expires_at_unix_ms: None,
                         attribution: Vec::new(),
                     }),

@@ -47,7 +47,7 @@ pub struct PageUi {
     checklist: crate::checklist::ChecklistUi,
     inset_frame: Option<flightcraft_aero::exterior_framing::Framing>,
 }
-#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SceneryPreferences {
     pub quality: flightcraft_render::scenery::Quality,
@@ -60,6 +60,20 @@ pub struct SceneryPreferences {
     /// Serialized only by eframe's user-preference store. Never part of a command or recording.
     #[serde(default)]
     pub esri_key: String,
+}
+/// Installed, accepted scenery (for example the 1N7 data release) shows by default; the
+/// preference toggles it off and a typed tileset path overrides it.
+impl Default for SceneryPreferences {
+    fn default() -> Self {
+        Self {
+            quality: Default::default(),
+            lighting: None,
+            enabled: true,
+            local_tileset: String::new(),
+            streaming_imagery: false,
+            esri_key: String::new(),
+        }
+    }
 }
 #[derive(Default)]
 pub struct Canvas {
@@ -137,18 +151,28 @@ impl Canvas {
                 if self.scenery_preferences.enabled {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let provider = flightcraft_render::scenery::Provider {
-                            location: flightcraft_render::scenery::Location::LocalPath(
-                                self.scenery_preferences.local_tileset.clone().into(),
-                            ),
-                            token_config_key: None,
-                            enabled: true,
+                        // An empty path means "use what the data release installed for this
+                        // region"; with nothing installed there is simply no 3D scenery.
+                        let chosen = if self.scenery_preferences.local_tileset.trim().is_empty() {
+                            crate::installed_scenery::installed_tileset(
+                                std::path::Path::new(self.chart_root.as_deref().unwrap_or("assets/terrain")),
+                                &region.id,
+                            )
+                        } else {
+                            Some(self.scenery_preferences.local_tileset.clone().into())
                         };
-                        match flightcraft_render::scenery::LocalProvider::open(&provider, origin) {
-                            Ok(stream) => {
-                                self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream)))
+                        if let Some(path) = chosen {
+                            let provider = flightcraft_render::scenery::Provider {
+                                location: flightcraft_render::scenery::Location::LocalPath(path),
+                                token_config_key: None,
+                                enabled: true,
+                            };
+                            match flightcraft_render::scenery::LocalProvider::open(&provider, origin) {
+                                Ok(stream) => {
+                                    self.scenery = Some(std::sync::Arc::new(std::sync::Mutex::new(stream)))
+                                }
+                                Err(error) => self.error = Some(format!("Scenery: {error}")),
                             }
-                            Err(error) => self.error = Some(format!("Scenery: {error}")),
                         }
                     }
                     #[cfg(target_arch = "wasm32")]

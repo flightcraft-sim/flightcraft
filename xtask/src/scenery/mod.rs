@@ -9,6 +9,7 @@ pub use city::Review as CitySourceReview;
 pub use citygml::{CityReport as CityGmlReport, CitySources as CityGmlSources};
 pub use footprints::{FootprintReport, FootprintReview, FootprintSources};
 pub use nyc::LidarReport as NycLidarReport;
+mod alignment;
 mod building_mesh;
 mod buildings;
 mod datum;
@@ -17,12 +18,17 @@ mod ept;
 mod geoid;
 mod grid;
 mod lidar;
+mod lidar_acceptance;
 mod lidar_ground;
 mod objects;
+mod release;
+mod shapefile;
 mod surface;
 mod tiles;
 mod transport;
 mod trees;
+mod water;
+mod water_mesh;
 use crate::download::{self, Source};
 use flightcraft_world::scenery::{self, TileKey};
 use grid::{ImageryGrid, SceneryFile, SceneryTile};
@@ -67,6 +73,7 @@ pub enum FetchLayer {
     Terrain,
     Lidar,
     Geoid,
+    Water,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -110,6 +117,8 @@ pub enum InputKind {
     EptLidar,
     GeoidModel,
     GeoidControl,
+    NhdDiscovery,
+    Nhd,
     ReferenceImage,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, schemars::JsonSchema)]
@@ -176,7 +185,11 @@ pub fn run() -> Result<(), String> {
     run_args(std::env::args().skip(2))
 }
 pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), String> {
-    let operation=match args.next().as_deref() {Some("fetch")=>Operation::Fetch,Some("build")=>Operation::Build,_=>return Err("usage: cargo xtask scenery fetch|build --region <id> --area <name> [--cache <directory>] [--out <new-directory>] [--sample <jpg>] [--layer all|terrain|lidar|geoid] [--lidar-source ept|rockyweb] [--allow-http]".into())};
+    let first = args.next();
+    if first.as_deref() == Some("package") {
+        return release::run(args);
+    }
+    let operation=match first.as_deref() {Some("fetch")=>Operation::Fetch,Some("build")=>Operation::Build,_=>return Err("usage: cargo xtask scenery fetch|build|package --region <id> --area <name> [--cache <directory>] [--out <new-directory>] [--sample <jpg>] [--layer all|terrain|lidar|geoid|water] [--lidar-source ept|rockyweb] [--allow-http]".into())};
     let mut values = BTreeMap::new();
     while let Some(key) = args.next() {
         if key == "--allow-http" {
@@ -228,7 +241,8 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
         Some("terrain") => FetchLayer::Terrain,
         Some("lidar") => FetchLayer::Lidar,
         Some("geoid") => FetchLayer::Geoid,
-        _ => return Err("layer must be all, terrain, lidar, or geoid".into()),
+        Some("water") => FetchLayer::Water,
+        _ => return Err("layer must be all, terrain, lidar, geoid, or water".into()),
     };
     let lidar_source = match values.remove("--lidar-source").as_deref() {
         None | Some("ept") => LidarSource::Ept,
@@ -418,6 +432,9 @@ fn fetch(request: &Request, remote: &mut impl transport::Remote) -> Result<Sourc
     }
     if matches!(request.fetch_layer, FetchLayer::All | FetchLayer::Geoid) {
         geoid::fetch(request, &mut sources, remote)?;
+    }
+    if matches!(request.fetch_layer, FetchLayer::All | FetchLayer::Water) {
+        water::fetch(request, &mut sources, remote)?;
     }
     Ok(sources)
 }
@@ -640,6 +657,65 @@ fn input_bytes(request: &Request, input: &Input) -> Result<Vec<u8>, String> {
     }
     Ok(bytes)
 }
+/// Assembles the full-resolution NAIP tiles into one north-up EPSG:3857 mosaic.
+fn imagery_mosaic(request: &Request, sources: &Sources) -> Result<alignment::Mosaic, String> {
+    let tile = sources.tile_pixels as usize;
+    let side = tile << sources.max_level;
+    let mut mosaic = alignment::Mosaic::new(sources.bounds, side);
+    let mut count = 0;
+    for input in sources.inputs.iter().filter(|i| i.kind == InputKind::Imagery) {
+        let key = input.key.ok_or("imagery source missing key")?;
+        if !key.valid() || key.level != sources.max_level {
+            return Err("invalid imagery source key".into());
+        }
+        let image = decode_image(&input_bytes(request, input)?, Some(sources.tile_pixels))?;
+        mosaic.paste(key.x as usize * tile, key.y as usize * tile, &image);
+        count += 1;
+    }
+    if count != 1_usize << (2 * sources.max_level) {
+        return Err("imagery mosaic is incomplete".into());
+    }
+    Ok(mosaic)
+}
+fn airport_for_area(area: &str) -> Option<&'static str> {
+    matches!(area, "1n7-test" | "1n7").then_some("1N7")
+}
+/// Independent painted-runway measurement against the FAA ends in the repository's region data.
+fn alignment_audit(
+    request: &Request,
+    mosaic: &alignment::Mosaic,
+) -> Result<Option<(alignment::Audit, alignment::Strip, alignment::RunwayReference)>, String> {
+    let Some(airport) = airport_for_area(&request.area) else {
+        return Ok(None);
+    };
+    let path = super::root()?
+        .join("assets/terrain")
+        .join(&request.region)
+        .join("airports.json");
+    let airports: serde_json::Value = download::json(&path)?;
+    let reference = alignment::reference_from_region(&request.region, &airports, airport)?;
+    let (audit, strip) = alignment::measure(mosaic, &reference)?;
+    Ok(Some((audit, strip, reference)))
+}
+#[cfg(test)]
+fn alignment_for_cache(
+    cache: &Path,
+) -> Result<(alignment::Audit, alignment::Strip, alignment::RunwayReference), String> {
+    let sources: Sources = download::json(&cache.join("sources.json"))?;
+    let request = Request {
+        operation: Operation::Build,
+        fetch_layer: FetchLayer::All,
+        lidar_source: LidarSource::Ept,
+        region: sources.region.clone(),
+        area: sources.area.clone(),
+        cache: cache.into(),
+        out: PathBuf::new(),
+        sample: None,
+        allow_http: false,
+    };
+    alignment_audit(&request, &imagery_mosaic(&request, &sources)?)?
+        .ok_or_else(|| "no alignment reference for this area".into())
+}
 fn write_tile(out: &Path, key: TileKey, image: image::RgbaImage) -> Result<SceneryTile, String> {
     let path = format!("imagery/{}/m0.webp", key.name());
     let destination = out.join(&path);
@@ -726,6 +802,25 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
     };
     let vertical = datum::evaluate(request, sources, geoid.as_ref(), dem.as_mut())?;
     download::write_json(&out.join("datum-audit.json"), &vertical)?;
+    // Painted-runway registration is measured from the imagery itself against the FAA ends; a
+    // reference-image preview or an area without a registered airport can never pass.
+    let mut runway_alignment = false;
+    let mosaic = if preview {
+        None
+    } else {
+        Some(imagery_mosaic(request, sources)?)
+    };
+    let mut runway_reference = None;
+    if let Some(mosaic) = &mosaic
+        && let Some((audit, strip, reference)) = alignment_audit(request, mosaic)?
+    {
+        runway_alignment = audit.passed;
+        runway_reference = Some(reference.clone());
+        download::write_json(&out.join("alignment-audit.json"), &audit)?;
+        alignment::overlay(&strip, &audit, &reference)?
+            .save(out.join("alignment-overlay.png"))
+            .map_err(|e| e.to_string())?;
+    }
     let (lidar_points_decoded, mut surfaces) = if preview {
         (0, None)
     } else {
@@ -816,19 +911,13 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
         .and_then(|v| v.as_object_mut())
         .ok_or("missing tileset acceptance metadata")?;
     context.insert("verticalDatumVerified".into(), serde_json::json!(vertical.passed));
+    context.insert(
+        "runwayAlignmentVerified".into(),
+        serde_json::json!(runway_alignment),
+    );
+    let mut lidar_accepted = false;
     if let Some(grid) = surfaces.as_mut() {
         let buildings = buildings::detect(grid)?;
-        building_mesh::write(
-            out,
-            &mut tileset,
-            &buildings,
-            grid,
-            &layout,
-            dem.as_mut().ok_or("Building terrain")?,
-            geoid.as_ref().ok_or("Building geoid")?,
-            sources,
-        )?;
-        download::write_json(&out.join("buildings-audit.json"), &buildings)?;
         let mut trees = trees::detect(grid)?;
         // Roof footprints take precedence over unclassified canopy hypotheses.
         trees.retain(|t| {
@@ -840,6 +929,60 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
             let index = row * grid.width + col;
             !buildings.iter().any(|b| b.cells.contains_key(&index))
         });
+        let ground: serde_json::Value = download::json(&out.join("lidar-ground-audit.json"))?;
+        let lidar_audit: serde_json::Value = download::json(&out.join("lidar-audit.json"))?;
+        let classes: BTreeMap<u8, u64> = lidar_audit
+            .get("classifications")
+            .and_then(|v| v.as_object())
+            .map(|m| {
+                m.iter()
+                    .filter_map(|(k, v)| Some((k.parse().ok()?, v.as_u64()?)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let acceptance = lidar_acceptance::evaluate(&lidar_acceptance::Inputs {
+            complete_selection: lidar_audit
+                .get("complete_ept_selection")
+                .and_then(|v| v.as_bool())
+                == Some(true),
+            ground_samples: ground.get("samples").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+            ground_median_m: ground
+                .get("orthometric_median_absolute_error_m")
+                .and_then(|v| v.as_f64()),
+            ground_p95_m: ground
+                .get("orthometric_p95_absolute_error_m")
+                .and_then(|v| v.as_f64()),
+            vertical_datum_passed: vertical.passed,
+            classes: &classes,
+            buildings: &buildings,
+            trees: &trees,
+            grid,
+            mosaic: mosaic.as_ref(),
+            runway: runway_reference.as_ref(),
+        });
+        download::write_json(&out.join("lidar-acceptance.json"), &acceptance)?;
+        lidar_accepted = acceptance.passed;
+        tileset
+            .extras
+            .as_mut()
+            .and_then(|v| v.get_mut("flightcraft"))
+            .and_then(|v| v.as_object_mut())
+            .ok_or("missing tileset acceptance metadata")?
+            .insert(
+                "lidarAcceptanceVerified".into(),
+                serde_json::json!(acceptance.passed),
+            );
+        building_mesh::write(
+            out,
+            &mut tileset,
+            &buildings,
+            grid,
+            &layout,
+            dem.as_mut().ok_or("Building terrain")?,
+            geoid.as_ref().ok_or("Building geoid")?,
+            sources,
+        )?;
+        download::write_json(&out.join("buildings-audit.json"), &buildings)?;
         objects::write_trees(
             out,
             &mut tileset,
@@ -858,6 +1001,28 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
             }),
         )?;
     }
+    // NHD water polygons, when the cache holds NHD receipts. Lidar water-classified cells give
+    // an independent coverage check of the polygons.
+    if let (Some(dem), Some(geoid)) = (dem.as_mut(), geoid.as_ref()) {
+        let lidar_water: Option<Vec<[f64; 2]>> = surfaces.as_ref().map(|grid| {
+            grid.cells
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.flags & 16 != 0)
+                .filter_map(|(i, _)| grid.coordinate(i).ok())
+                .collect()
+        });
+        water_mesh::write(
+            out,
+            &mut tileset,
+            request,
+            sources,
+            dem,
+            geoid,
+            mosaic.as_ref(),
+            lidar_water.as_deref(),
+        )?;
+    }
     tileset.validate().map_err(|e| e.to_string())?;
     download::write_json(&out.join("tileset.json"), &tileset)?;
     std::fs::remove_dir_all(out.join("imagery")).map_err(|e| e.to_string())?;
@@ -874,7 +1039,7 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
         elevation_built: !preview,
         geoid_applied: geoid.is_some(),
         vertical_datum_verified: vertical.passed,
-        runway_alignment_verified: false,
+        runway_alignment_verified: runway_alignment,
         lidar_built: tileset
             .extras
             .as_ref()
@@ -882,7 +1047,7 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
             .and_then(|v| v.as_bool())
             == Some(true),
         lidar_points_decoded,
-        release_ready: false,
+        release_ready: !preview && vertical.passed && runway_alignment && lidar_accepted,
     };
     download::write_json(&out.join("build-report.json"), &report)?;
     Ok(report)
@@ -1027,6 +1192,15 @@ mod fetch_tests {
                 assert!(url.contains("bboxSR=3857&imageSR=3857&size=512,512"));
                 assert!(url.contains("adjustAspectRatio=false"));
                 self.jpeg.clone()
+            } else if url.starts_with(TNM) && url.contains("Hydrography") {
+                assert!(url.contains("prodFormats=Shapefile") && url.contains("HU-8"));
+                format!(
+                    r#"{{"total":1,"items":[{{"downloadURL":"{}NHD_H_original-fixture_HU8_Shape.zip","sizeInBytes":57}}]}}"#,
+                    water::NHD_PREFIX
+                )
+                .into_bytes()
+            } else if url.starts_with(water::NHD_PREFIX) {
+                b"original NHD acquisition fixture; not a real hydrography archive".to_vec()
             } else if url.starts_with(TNM) && url.contains("Lidar") {
                 br#"{"total":1,"items":[{"downloadURL":"https://prd-tnm.s3.amazonaws.com/original-fixture.laz"}]}"#.to_vec()
             } else if url.starts_with(TNM) {
@@ -1112,7 +1286,7 @@ mod fetch_tests {
             bad_control: false,
         };
         let first = fetch(&request, &mut remote).unwrap();
-        assert_eq!(remote.calls, 73);
+        assert_eq!(remote.calls, 75);
         assert_eq!(
             first
                 .inputs
@@ -1127,6 +1301,19 @@ mod fetch_tests {
         );
         assert_eq!(
             first.inputs.iter().filter(|i| i.kind == InputKind::Lidar).count(),
+            1
+        );
+        // NHD: one receipted TNM discovery, then exactly the HU-8 product it named.
+        assert_eq!(
+            first
+                .inputs
+                .iter()
+                .filter(|i| i.kind == InputKind::NhdDiscovery)
+                .count(),
+            1
+        );
+        assert_eq!(
+            first.inputs.iter().filter(|i| i.kind == InputKind::Nhd).count(),
             1
         );
         assert!(

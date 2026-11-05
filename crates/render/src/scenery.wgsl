@@ -55,3 +55,42 @@ fn cloud_optical_depth(ray:vec3<f32>,distance:f32)->f32 {
     let cloud=cloud_optical_depth(normalize(i.world-u.eye.xyz),distance);
     return vec4<f32>(display_color(aerial(color,i.world,cloud)),1.0);
 }
+
+// Reflective water: original procedural capillary-wave normals (range-faded so they never alias),
+// Schlick Fresnel reflecting the same physical sky that fills the sky probe, a dark scattering
+// body tinted by the measured imagery colour and lit by the scene lighting, a sun glint, and the
+// shared cloud, aerial-perspective and display transfer used by every other scenery surface.
+fn water_wave_slope(p:vec2<f32>,distance:f32)->vec2<f32> {
+    let d0=vec2<f32>(0.82,0.57);let d1=vec2<f32>(-0.45,0.89);let d2=vec2<f32>(0.20,-0.98);let d3=vec2<f32>(-0.93,-0.37);
+    var s=d0*cos(dot(d0,p)*0.62+1.3)*0.0105;
+    s+=d1*cos(dot(d1,p)*1.37+0.4)*0.0075;
+    s+=d2*cos(dot(d2,p)*3.1+2.2)*0.0048;
+    s+=d3*cos(dot(d3,p)*7.4+0.9)*0.0030;
+    return s*(1.0/(1.0+distance*distance*0.00002));
+}
+@fragment fn fragment_water(i:Surface)->@location(0) vec4<f32> {
+    if u.atmosphere.z>0.5 || u.atmosphere.w>0.5 {return u.fog_color;}
+    let to_eye=u.eye.xyz-i.world;let distance=length(to_eye);let view=to_eye/max(distance,0.001);
+    let slope=water_wave_slope(i.world.xz,distance);
+    let normal=normalize(vec3<f32>(-slope.x,1.0,-slope.y));
+    let cos_v=clamp(dot(normal,view),0.0,1.0);
+    let fresnel=0.02+0.98*pow(1.0-cos_v,5.0);
+    var reflected=reflect(-view,normal);reflected.y=abs(reflected.y);
+    // Five taps about the mirror direction approximate the roughness-filtered probe lookup.
+    let r=normalize(reflected);
+    let jitter=vec3<f32>(0.03,0.0,0.03);
+    let sky=(physical_sky(r)*2.0+physical_sky(normalize(r+jitter))+physical_sky(normalize(r-jitter))
+        +physical_sky(normalize(r+jitter.zyx))+physical_sky(normalize(r-jitter.zyx)))/6.0;
+    let tint=linear_color(textureSample(albedo,texture_sampler,i.uv).rgb);
+    let body=tint*0.55*surface_light(i.world,vec3<f32>(0.0,1.0,0.0));
+    var color=mix(body,sky,fresnel);
+    if light.sun.y>0.0 {
+        let half_v=normalize(light.sun.xyz+view);
+        let n_h=max(dot(normal,half_v),0.0);
+        let f_h=0.02+0.98*pow(1.0-clamp(dot(view,half_v),0.0,1.0),5.0);
+        let glint=pow(n_h,700.0)*88.0*f_h*max(dot(normal,light.sun.xyz),0.0);
+        color+=min(light.radiance.rgb*light.settings.z*glint,vec3<f32>(24.0));
+    }
+    let cloud=cloud_optical_depth(normalize(i.world-u.eye.xyz),distance);
+    return vec4<f32>(display_color(aerial(color,i.world,cloud)),1.0);
+}

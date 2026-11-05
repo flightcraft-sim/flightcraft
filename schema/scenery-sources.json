@@ -108,6 +108,8 @@
         "ept-lidar",
         "geoid-model",
         "geoid-control",
+        "nhd-discovery",
+        "nhd",
         "reference-image"
       ]
     },

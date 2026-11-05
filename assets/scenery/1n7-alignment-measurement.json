@@ -1,0 +1,68 @@
+{
+  "passed": true,
+  "gate_m": 2.0,
+  "airport": "1N7",
+  "runway": "07/25",
+  "runway_length_m": 948.4656044986532,
+  "centreline": {
+    "dashes": 9,
+    "dash_length_m": 36.25,
+    "cross_track_m": -0.12340493189253858,
+    "heading_error_deg": -0.00038715455871508376,
+    "residual_rms_m": 0.04021458778986854,
+    "cross_at_end_a_m": -0.12020048310335807,
+    "cross_at_end_b_m": -0.1266093806817191
+  },
+  "ends": [
+    {
+      "ident": "07",
+      "bar_found": true,
+      "bar_inboard_u_m": 97.75,
+      "bar_outboard_u_m": 94.37857142857143,
+      "bar_centre_u_m": 96.06428571428572,
+      "bar_width_m": 3.3714285714285666,
+      "bar_cross_centre_m": -0.125,
+      "bar_span_m": 21.25,
+      "expected_threshold_u_m": 96.9264,
+      "along_error_m": -0.8621142857142843,
+      "cross_error_m": -0.1208496011790807,
+      "horizontal_error_m": 0.8705433175539248,
+      "offset_north_east_m": [
+        -0.3155717000756005,
+        -0.8113323424153561
+      ],
+      "vs_surveyed_displaced_threshold_m": [
+        -0.4972774650936884,
+        -0.993459666487744
+      ]
+    },
+    {
+      "ident": "25",
+      "bar_found": true,
+      "bar_inboard_u_m": 874.75,
+      "bar_outboard_u_m": 878.0803571428571,
+      "bar_centre_u_m": 876.4151785714286,
+      "bar_width_m": 3.3303571428571104,
+      "bar_cross_centre_m": -0.25,
+      "bar_span_m": 21.5,
+      "expected_threshold_u_m": 876.8376044986531,
+      "along_error_m": -0.4224259272245945,
+      "cross_error_m": -0.12612252718059613,
+      "horizontal_error_m": 0.44085207933498355,
+      "offset_north_east_m": [
+        -0.09624034029045025,
+        -0.43021895908334506
+      ],
+      "vs_surveyed_displaced_threshold_m": [
+        -0.2888176721311311,
+        -1.024572923335311
+      ]
+    }
+  ],
+  "systematic_offset_north_east_m": [
+    -0.20590602018302537,
+    -0.6207756507493506
+  ],
+  "method": "runway-frame resample; luminance-threshold paint mask; connected-component centreline dashes with Theil-Sen fit; full-width transverse threshold bars from the along-track paint fraction",
+  "notes": []
+}

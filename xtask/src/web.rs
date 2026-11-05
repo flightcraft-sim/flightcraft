@@ -28,6 +28,13 @@ pub fn build() -> Result<(), String> {
             flightcraft_control::read_region(&source)?;
             validate_showcase_scenery(&source, id)?;
             copy_tree(&source, &stage.join("terrain").join(id))?;
+            if !web_scenery(id) {
+                // Desktop scenery (1N7) is installed from its own data release, never the site.
+                let desktop_only = stage.join("terrain").join(id).join("scenery");
+                if desktop_only.exists() {
+                    std::fs::remove_dir_all(desktop_only).map_err(|e| e.to_string())?;
+                }
+            }
             for kind in ["sectional", "tac"] {
                 let path = source.join("charts").join(kind).join("index.json");
                 if path.exists() {
@@ -138,7 +145,9 @@ pub fn build() -> Result<(), String> {
         if scenery_target.exists() {
             std::fs::remove_dir_all(&scenery_target).map_err(|e| e.to_string())?;
         }
-        copy_tree(&region_source.join("scenery"), &scenery_target)?;
+        if web_scenery(id) {
+            copy_tree(&region_source.join("scenery"), &scenery_target)?;
+        }
         copy_tree(&region_source.join("charts"), &region_target.join("charts"))?;
         for entry in std::fs::read_dir(region_source).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
@@ -153,7 +162,16 @@ pub fn build() -> Result<(), String> {
     Ok(())
 }
 
+/// The website ships scenery only for the Fly NYC showcase region (docs/scenery-sources.md).
+/// Other regions' scenery, such as the 1N7 tiles, is desktop-only data.
+fn web_scenery(id: &str) -> bool {
+    id == "new-york"
+}
+
 fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), String> {
+    if !web_scenery(id) {
+        return Ok(());
+    }
     let scenery = region.join("scenery");
     // Until accepted Fly NYC scenery exists, the site ships on the region's existing terrain.
     // Once any scenery is staged, the showcase must be complete (buildings and budget below).
@@ -373,6 +391,19 @@ mod scenery_package_tests {
     use super::*;
     fn area_path(root: &std::path::Path) -> std::path::PathBuf {
         root.join("scenery/nyc-lidar/tileset.json")
+    }
+    #[test]
+    fn desktop_only_scenery_never_reaches_the_website() {
+        assert!(web_scenery("new-york") && !web_scenery("eastern-pa"));
+        let root = std::env::temp_dir().join(format!("fc-web-desktop-scenery-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        // An installed 1N7 data release (even one the site validator would reject) is ignored:
+        // `web` neither validates nor copies another region's scenery.
+        std::fs::create_dir_all(root.join("scenery/1n7")).unwrap();
+        std::fs::write(root.join("scenery/1n7/tileset.json"), b"not a tileset").unwrap();
+        assert!(validate_showcase_scenery(&root, "eastern-pa").is_ok());
+        assert!(validate_showcase_scenery(&root, "new-york").is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn scenery_packaging_requires_lidar_counts_bytes_and_rejects_portal_and_tum() {

@@ -13,11 +13,16 @@ pub struct DecodedTile {
     pub(crate) expires_at_unix_ms: Option<u64>,
     pub(crate) attribution: Vec<String>,
     pub(crate) terrain_bounds: Option<[f32; 4]>,
+    /// Water-surface content (`extras.flightcraft.water`): drawn with the reflective water shader.
+    pub(crate) water: bool,
 }
 impl DecodedTile {
     pub(crate) fn expired(&self) -> bool {
         self.expires_at_unix_ms
             .is_some_and(|expiry| super::unix_ms() >= expiry)
+    }
+    pub fn is_water(&self) -> bool {
+        self.water
     }
     pub fn instance_count(&self) -> usize {
         self.instanced.iter().map(|b| b.instances.len()).sum()
@@ -393,6 +398,13 @@ pub fn decode_glb_with_geoid(
     if vertices.is_empty() && instanced.is_empty() {
         return Err("empty scenery content".into());
     }
+    let water = value
+        .pointer("/extras/flightcraft/water")
+        .and_then(|v| v.as_bool())
+        == Some(true);
+    if water && (vertices.is_empty() || !instanced.is_empty()) {
+        return Err("Water content must be plain triangle geometry".into());
+    }
     let terrain_bounds = if value
         .pointer("/extras/flightcraft/terrain")
         .and_then(|v| v.as_bool())
@@ -429,6 +441,7 @@ pub fn decode_glb_with_geoid(
         mips,
         byte_size,
         terrain_bounds,
+        water,
         expires_at_unix_ms: None,
         attribution: Vec::new(),
     }))
@@ -482,6 +495,19 @@ mod tests {
         bytes.extend(b"BIN\0");
         bytes.extend(binary);
         bytes
+    }
+    #[test]
+    fn water_extras_mark_plain_triangle_content_as_a_water_surface() {
+        let (mut value, binary) = fixture();
+        let transform = tiles3d::enu_transform(41., -75., 0.).unwrap();
+        let decode = |value: &serde_json::Value| decode_glb(&pack(value, &binary), transform, [41., -75.]);
+        assert!(!decode(&value).unwrap().is_water());
+        value["extras"] = serde_json::json!({"flightcraft":{"water":true}});
+        let water = decode(&value).unwrap();
+        assert!(water.is_water() && water.vertices.len() == 3);
+        // The flag is a boolean claim; anything else is ordinary content.
+        value["extras"] = serde_json::json!({"flightcraft":{"water":"yes"}});
+        assert!(!decode(&value).unwrap().is_water());
     }
     #[test]
     fn embedded_glb_rejects_external_resources_bad_ranges_indices_and_nonfinite_vertices() {

@@ -5,6 +5,7 @@ pub(crate) struct Pipeline {
     anisotropy: u16,
     empty: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
+    water: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
 }
 struct Draw {
@@ -84,58 +85,78 @@ impl Pipeline {
         let attributes = wgpu::vertex_attr_array![0=>Float32x3,1=>Float32x3,2=>Float32x2,3=>Float32x4];
         let instance_attributes =
             wgpu::vertex_attr_array![4=>Float32x4,5=>Float32x4,6=>Float32x4,7=>Float32x4];
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("3D Tiles opaque glTF"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vertex"),
-                compilation_options: Default::default(),
-                buffers: &[
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Vertex>() as u64,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &attributes,
-                    },
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<super::Instance>() as u64,
-                        step_mode: wgpu::VertexStepMode::Instance,
-                        attributes: &instance_attributes,
-                    },
-                ],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fragment"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth24Plus,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::LessEqual,
-                stencil: Default::default(),
-                bias: wgpu::DepthBiasState {
-                    constant: -2,
-                    slope_scale: -1.,
-                    clamp: 0.,
+        // Opaque glTF and the reflective water surface share layouts and vertex formats; water
+        // differs by fragment entry point and a stronger depth bias so it wins over the terrain
+        // it floats a few centimetres above.
+        let build = |label: &'static str, entry: &'static str, bias: wgpu::DepthBiasState| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vertex"),
+                    compilation_options: Default::default(),
+                    buffers: &[
+                        wgpu::VertexBufferLayout {
+                            array_stride: std::mem::size_of::<Vertex>() as u64,
+                            step_mode: wgpu::VertexStepMode::Vertex,
+                            attributes: &attributes,
+                        },
+                        wgpu::VertexBufferLayout {
+                            array_stride: std::mem::size_of::<super::Instance>() as u64,
+                            step_mode: wgpu::VertexStepMode::Instance,
+                            attributes: &instance_attributes,
+                        },
+                    ],
                 },
-            }),
-            multisample: Default::default(),
-            multiview: None,
-            cache: None,
-        });
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: None,
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth24Plus,
+                    depth_write_enabled: true,
+                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    stencil: Default::default(),
+                    bias,
+                }),
+                multisample: Default::default(),
+                multiview: None,
+                cache: None,
+            })
+        };
+        let pipeline = build(
+            "3D Tiles opaque glTF",
+            "fragment",
+            wgpu::DepthBiasState {
+                constant: -2,
+                slope_scale: -1.,
+                clamp: 0.,
+            },
+        );
+        let water = build(
+            "3D Tiles reflective water",
+            "fragment_water",
+            wgpu::DepthBiasState {
+                constant: -8,
+                slope_scale: -3.,
+                clamp: 0.,
+            },
+        );
         Self {
             anisotropy,
             pipeline,
+            water,
             layout,
             empty: device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("unused scenery slot"),
@@ -302,7 +323,11 @@ impl Pipeline {
     ) {
         pass.set_pipeline(pipeline);
         for id in &cache.selected {
-            if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {
+            if let Some(tile) = cache
+                .tiles
+                .get(id)
+                .filter(|tile| !tile.payload.expired() && !tile.payload.water)
+            {
                 pass.set_bind_group(1, &tile.bind, &[]);
                 for draw in &tile.draws {
                     pass.set_vertex_buffer(0, draw.vertices.slice(..));
@@ -314,14 +339,21 @@ impl Pipeline {
     }
     pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass<'_>, cache: &Cache) {
         pass.set_bind_group(2, &self.empty, &[]);
-        pass.set_pipeline(&self.pipeline);
-        for id in &cache.selected {
-            if let Some(tile) = cache.tiles.get(id).filter(|tile| !tile.payload.expired()) {
-                pass.set_bind_group(1, &tile.bind, &[]);
-                for draw in &tile.draws {
-                    pass.set_vertex_buffer(0, draw.vertices.slice(..));
-                    pass.set_vertex_buffer(1, draw.instances.slice(..));
-                    pass.draw(0..draw.vertices_count, 0..draw.instances_count);
+        // Opaque content first, then water, so the water pass's depth test sees all ground.
+        for (water, pipeline) in [(false, &self.pipeline), (true, &self.water)] {
+            pass.set_pipeline(pipeline);
+            for id in &cache.selected {
+                if let Some(tile) = cache
+                    .tiles
+                    .get(id)
+                    .filter(|tile| !tile.payload.expired() && tile.payload.water == water)
+                {
+                    pass.set_bind_group(1, &tile.bind, &[]);
+                    for draw in &tile.draws {
+                        pass.set_vertex_buffer(0, draw.vertices.slice(..));
+                        pass.set_vertex_buffer(1, draw.instances.slice(..));
+                        pass.draw(0..draw.vertices_count, 0..draw.instances_count);
+                    }
                 }
             }
         }
