@@ -4,7 +4,7 @@ use egui_wgpu::{CallbackResources, CallbackTrait, ScreenDescriptor};
 use wgpu::util::DeviceExt;
 
 const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 /// Samples per pixel of the scene targets. Mesh, glass and cowl edges, and the intersections of
 /// the aircraft's own shells, are otherwise drawn as hard stairsteps; 4x is guaranteed for both
 /// formats by WebGPU. WebGL2 keeps single-sample targets.
@@ -375,7 +375,7 @@ impl Gpu {
                     depth_compare: if sky {
                         wgpu::CompareFunction::Always
                     } else {
-                        wgpu::CompareFunction::LessEqual
+                        wgpu::CompareFunction::GreaterEqual
                     },
                     stencil: Default::default(),
                     bias: Default::default(),
@@ -887,7 +887,7 @@ impl CallbackTrait for SceneCallback {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &view.targets.depth,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    load: wgpu::LoadOp::Clear(0.),
                     store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,
@@ -1189,7 +1189,7 @@ impl CallbackTrait for VisionCallback {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &gpu.vision_targets.depth,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.),
+                    load: wgpu::LoadOp::Clear(0.),
                     store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,

@@ -551,7 +551,7 @@ impl Scene {
         let rect = ui.max_rect();
         let (eye, view, model, vertical_fov) = self.camera_frame(state, dt);
         let aspect = (rect.width() / rect.height().max(1.0)).max(0.01);
-        let projection = Mat4::perspective_rh(
+        let projection = camera::perspective_reversed(
             self.screen_view.map_or(vertical_fov, |s| {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),

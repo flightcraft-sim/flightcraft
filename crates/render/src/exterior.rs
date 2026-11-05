@@ -1073,9 +1073,9 @@ impl PbrRenderer {
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24Plus,
+                    format: wgpu::TextureFormat::Depth32Float,
                     depth_write_enabled: !transparent,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
@@ -1491,8 +1491,9 @@ fn prepare_pbr(
     }
     let [ex, ey, ez, _] = frame.eye;
     let eye = Vec3::new(ex, ey, ez);
-    // Clip z increases with forward depth for both standard perspective and orthographic
-    // projections. Clip w is constant for the orthographic profile/plan proof cameras.
+    // Every scene projection is reversed-depth (near maps to 1), so clip z decreases with forward
+    // depth for both the perspective and orthographic cameras; negate it to get distance along
+    // the view. Clip w is constant for the orthographic profile/plan proof cameras.
     let clip = Mat4::from_cols_array_2d(&frame.view_projection) * world;
     let mut opaque = Vec::new();
     let mut transparent = Vec::new();
@@ -1502,7 +1503,7 @@ fn prepare_pbr(
             let center =
                 (Vec3::from_array(a.position) + Vec3::from_array(b.position) + Vec3::from_array(c.position))
                     / 3.;
-            let depth = (clip * center.extend(1.)).z;
+            let depth = -(clip * center.extend(1.)).z;
             let distance = world.transform_point3(center).distance_squared(eye);
             let item = (primitive.material, [*a, *b, *c], depth, distance);
             if materials.get(primitive.material) == Some(&AlphaMode::Blend) {
@@ -1719,7 +1720,7 @@ mod pbr_tests {
     #[test]
     fn transparent_triangles_sort_along_view_after_all_opaque_triangles() {
         let frame = PbrFrame {
-            view_projection: (Mat4::perspective_rh(1., 1., 0.1, 100.)
+            view_projection: (crate::camera::perspective_reversed(1., 1., 0.1, 100.)
                 * Mat4::look_at_rh(Vec3::new(0., 0., 5.), Vec3::ZERO, Vec3::Y))
             .to_cols_array_2d(),
             ..Default::default()
@@ -1736,7 +1737,7 @@ mod pbr_tests {
         assert_eq!(draws.len(), 2);
         assert_eq!(draws[1].range, 3..9);
         let mut reversed = frame;
-        reversed.view_projection = (Mat4::perspective_rh(1., 1., 0.1, 100.)
+        reversed.view_projection = (crate::camera::perspective_reversed(1., 1., 0.1, 100.)
             * Mat4::look_at_rh(Vec3::new(0., 0., -5.), Vec3::ZERO, Vec3::Y))
         .to_cols_array_2d();
         let (vertices, _) = prepare_pbr(
@@ -1750,7 +1751,7 @@ mod pbr_tests {
     #[test]
     fn transparent_orthographic_triangles_sort_by_view_depth() {
         let frame = PbrFrame {
-            view_projection: (Mat4::orthographic_rh(-2., 2., -2., 2., 0.1, 100.)
+            view_projection: (Mat4::orthographic_rh(-2., 2., -2., 2., 100., 0.1)
                 * Mat4::look_at_rh(Vec3::new(0., 0., 5.), Vec3::ZERO, Vec3::Y))
             .to_cols_array_2d(),
             // Deliberately misleading radial distances: sorting must use view depth.
@@ -1860,7 +1861,7 @@ mod pbr_tests {
             );
             let color_view = color.create_view(&Default::default());
             let depth = texture(
-                wgpu::TextureFormat::Depth24Plus,
+                wgpu::TextureFormat::Depth32Float,
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
             );
             let depth_view = depth.create_view(&Default::default());
@@ -1872,7 +1873,7 @@ mod pbr_tests {
             });
             let frame = PbrFrame {
                 eye: [0., 0., 3., 1.],
-                view_projection: (Mat4::perspective_rh(1., 1., 0.1, 100.)
+                view_projection: (crate::camera::perspective_reversed(1., 1., 0.1, 100.)
                     * Mat4::look_at_rh(Vec3::new(0., 0., 3.), Vec3::ZERO, Vec3::Y))
                 .to_cols_array_2d(),
                 sun_direction: [0.4, 0.6, 0.8, 1.],
@@ -1901,7 +1902,7 @@ mod pbr_tests {
                         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                             view: &depth_view,
                             depth_ops: Some(wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(1.),
+                                load: wgpu::LoadOp::Clear(0.),
                                 store: wgpu::StoreOp::Discard,
                             }),
                             stencil_ops: None,

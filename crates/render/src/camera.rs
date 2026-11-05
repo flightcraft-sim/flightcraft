@@ -24,9 +24,52 @@ pub fn attitude_horizon(roll: f32, pitch: f32) -> [f32; 3] {
     ]
 }
 
+/// Perspective projection with reversed depth: the near plane maps to 1 and the far plane to 0.
+/// With a 0.015 m near plane a standard 24-bit depth buffer resolves only 4 m at 1 km and 36 m at
+/// 3 km, so ground and water a metre apart fight; reversed 32-bit float depth resolves about a
+/// millimetre at 6 km. Every scene pipeline therefore tests `GreaterEqual` and clears depth to 0.
+pub fn perspective_reversed(fov_y: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
+    Mat4::perspective_rh(fov_y, aspect, far, near)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ground and a water plane one metre apart, 6 km from a cockpit camera, must land on
+    /// different depth values (they merged into one 24-bit value and fought, painting
+    /// terrain-shaped patches through the water). Resolved against f32 depth spacing.
+    #[test]
+    fn reversed_depth_separates_a_metre_at_six_kilometres() {
+        let p = perspective_reversed(1., 1.5, 0.015, 16000.);
+        let depth = |z: f32| {
+            let c = p * glam::Vec4::new(0., 0., -z, 1.);
+            c.z / c.w
+        };
+        let (near, far) = (depth(6000.), depth(6001.));
+        assert!(near > far);
+        // At least ten times the spacing of adjacent f32 values at that depth.
+        assert!(near - far > 10. * f32::EPSILON * near);
+        // The standard (non-reversed) 24-bit mapping could not tell them apart.
+        let standard = Mat4::perspective_rh(1., 1.5, 0.015, 16000.);
+        let d = |z: f32| {
+            let c = standard * glam::Vec4::new(0., 0., -z, 1.);
+            c.z / c.w
+        };
+        assert!(d(6001.) - d(6000.) < 2. / 16_777_216.);
+    }
+
+    #[test]
+    fn reversed_projection_maps_near_to_one_and_far_to_zero() {
+        let p = perspective_reversed(1., 1.5, 0.015, 16000.);
+        let depth = |z: f32| {
+            let c = p * glam::Vec4::new(0., 0., -z, 1.);
+            c.z / c.w
+        };
+        assert!((depth(0.015) - 1.).abs() < 1e-4);
+        assert!(depth(16000.).abs() < 1e-4);
+        assert!(depth(100.) > depth(1000.));
+    }
 
     #[test]
     fn projected_world_horizon_matches_instrument_at_all_attitudes() {

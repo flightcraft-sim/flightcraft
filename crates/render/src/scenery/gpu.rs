@@ -129,9 +129,9 @@ impl Pipeline {
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth24Plus,
+                    format: wgpu::TextureFormat::Depth32Float,
                     depth_write_enabled: true,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     stencil: Default::default(),
                     bias,
                 }),
@@ -147,8 +147,8 @@ impl Pipeline {
             "3D Tiles opaque glTF",
             "fragment",
             wgpu::DepthBiasState {
-                constant: -2,
-                slope_scale: -1.,
+                constant: 2,
+                slope_scale: 1.,
                 clamp: 0.,
             },
         );
@@ -156,8 +156,8 @@ impl Pipeline {
             "3D Tiles reflective water",
             "fragment_water",
             wgpu::DepthBiasState {
-                constant: -8,
-                slope_scale: -3.,
+                constant: 4,
+                slope_scale: 2.,
                 clamp: 0.,
             },
         );

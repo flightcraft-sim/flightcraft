@@ -63,8 +63,8 @@ impl Quality {
     pub fn resident_bytes(self) -> usize {
         match self {
             Self::Low => 48 * 1024 * 1024,
-            Self::Medium => 96 * 1024 * 1024,
-            Self::High => 192 * 1024 * 1024,
+            Self::Medium => 160 * 1024 * 1024,
+            Self::High => 256 * 1024 * 1024,
         }
     }
     pub fn uploads_per_frame(self) -> usize {

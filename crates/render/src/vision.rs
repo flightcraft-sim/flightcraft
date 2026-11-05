@@ -204,7 +204,7 @@ impl SyntheticVision {
         let view = crate::camera::cockpit_view(position, self.attitude, 0., 0., CORVID_PILOT_EYE_M);
         let [x, y, w, h] = self.viewport;
         let fov = 2. * (h * 0.5 / PFD_FOCAL_LENGTH).atan();
-        let mut projection = Mat4::perspective_rh(fov, w / h, 0.5, 24000.);
+        let mut projection = crate::camera::perspective_reversed(fov, w / h, 0.5, 24000.);
         projection.z_axis.x = 1. - 2. * (250. - x) / w;
         projection.z_axis.y = 2. * (125. - y) / h - 1.;
         gpu::Uniform {

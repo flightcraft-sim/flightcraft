@@ -91,7 +91,7 @@ fn capture_frame(
     );
     let color_view = color.create_view(&Default::default());
     let depth = texture(
-        wgpu::TextureFormat::Depth24Plus,
+        wgpu::TextureFormat::Depth32Float,
         wgpu::TextureUsages::RENDER_ATTACHMENT,
     );
     let depth_view = depth.create_view(&Default::default());
@@ -123,7 +123,7 @@ fn capture_frame(
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &depth_view,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.),
+                    load: wgpu::LoadOp::Clear(0.),
                     store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,
@@ -395,9 +395,9 @@ fn matched_sling_exterior_cameras() {
             let projection = if camera["projection"] == "orthographic" {
                 let width = camera["ortho_width_m"].as_f64().unwrap() as f32;
                 let height = width * h as f32 / w as f32;
-                Mat4::orthographic_rh(-width / 2., width / 2., -height / 2., height / 2., 0.05, 10000.)
+                Mat4::orthographic_rh(-width / 2., width / 2., -height / 2., height / 2., 10000., 0.05)
             } else {
-                Mat4::perspective_rh(
+                crate::camera::perspective_reversed(
                     camera["vertical_fov_rad"].as_f64().unwrap() as f32,
                     w as f32 / h as f32,
                     0.05,
@@ -508,8 +508,12 @@ fn sling_exterior_motion_proof() {
         let size = [1280, 800];
         let fov = 50_f32.to_radians();
         let frame = PbrFrame {
-            view_projection: (Mat4::perspective_rh(fov, size[0] as f32 / size[1] as f32, 0.015, 1000.)
-                * Mat4::look_at_rh(eye, target, Vec3::Y))
+            view_projection: (crate::camera::perspective_reversed(
+                fov,
+                size[0] as f32 / size[1] as f32,
+                0.015,
+                1000.,
+            ) * Mat4::look_at_rh(eye, target, Vec3::Y))
             .to_cols_array_2d(),
             world_from_body: world.to_cols_array_2d(),
             eye: eye.extend(1.).to_array(),
