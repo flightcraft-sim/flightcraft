@@ -105,6 +105,12 @@ pub enum AnnunciationSource {
     DoorOpen,
     ParachuteArmed,
     EngineShutdown,
+    /// Oil pressure below the threshold (pascals) with the engine running.
+    LowOilPressure,
+    /// Oil temperature above the threshold (degrees Celsius).
+    HighOilTemperature,
+    /// A cowl fastener is loose and the engine is making power: airframe vibration.
+    CowlVibration,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -11,6 +11,32 @@ pub enum ControlSurface {
     Flaps,
 }
 
+/// Which landing-gear wheel a tyre fault is on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Wheel {
+    Left,
+    Right,
+    Nose,
+}
+
+impl Wheel {
+    /// Half-width, metres, within which a gear leg counts as on the centreline (the nose wheel).
+    pub const CENTRELINE_M: f64 = 0.4;
+
+    /// The wheel at body-frame lateral offset `y` metres (positive to the right).
+    #[must_use]
+    pub fn from_lateral_m(y: f64) -> Self {
+        if y.abs() <= Self::CENTRELINE_M {
+            Self::Nose
+        } else if y < 0.0 {
+            Self::Left
+        } else {
+            Self::Right
+        }
+    }
+}
+
 /// Actual deflections override pilot/autopilot demands until cleared. Zero power
 /// means a failed engine, including removal of idle shaft power.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -45,6 +71,21 @@ pub struct Failures {
     pub pitot_blocked: bool,
     #[serde(default)]
     pub static_blocked: bool,
+    /// A worn or cut tyre on this wheel: it rolls harder and drags that side.
+    #[serde(default)]
+    pub damaged_tyre: Option<Wheel>,
+    /// The damaged tyre has burst: very high rolling resistance on that wheel.
+    #[serde(default)]
+    pub tyre_flat: bool,
+    /// A cracked wheel fairing: a small parasite-drag increase.
+    #[serde(default)]
+    pub fairing_crack: bool,
+    /// An engine cowl fastener is loose: vibration, and the cowl can come off at speed.
+    #[serde(default)]
+    pub cowl_loose: bool,
+    /// The cowl has come off: a large drag increase and loss of engine cooling.
+    #[serde(default)]
+    pub cowl_separated: bool,
     #[schemars(range(min = 0, max = 1))]
     pub engine_power_fraction: f64,
     #[schemars(range(min = -1, max = 1))]
@@ -74,6 +115,11 @@ impl Default for Failures {
             alternator: false,
             pitot_blocked: false,
             static_blocked: false,
+            damaged_tyre: None,
+            tyre_flat: false,
+            fairing_crack: false,
+            cowl_loose: false,
+            cowl_separated: false,
             engine_power_fraction: 1.0,
             elevator: None,
             aileron: None,
@@ -102,13 +148,31 @@ impl Failures {
             self.trim_stuck,
             self.radio_failure,
         ];
-        if flags.iter().any(|v| *v) {
+        let mut words: Vec<u64> = if flags.iter().any(|v| *v) {
             std::iter::once(0x656d_6572_6765_6e63)
                 .chain(flags.map(u64::from))
                 .collect()
         } else {
             Vec::new()
+        };
+        // Ground-hazard faults hash only when present, so older replays keep their hashes.
+        let extra = [
+            self.tyre_flat,
+            self.fairing_crack,
+            self.cowl_loose,
+            self.cowl_separated,
+        ];
+        if self.damaged_tyre.is_some() || extra.iter().any(|v| *v) {
+            words.push(0x6877_6c66_6c74_0001);
+            words.push(match self.damaged_tyre {
+                None => 0,
+                Some(Wheel::Left) => 1,
+                Some(Wheel::Right) => 2,
+                Some(Wheel::Nose) => 3,
+            });
+            words.extend(extra.map(u64::from));
         }
+        words
     }
     pub fn validate(self) -> Result<(), FailureError> {
         for (value, lo) in [

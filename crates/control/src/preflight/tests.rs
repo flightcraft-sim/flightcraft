@@ -748,3 +748,60 @@ fn the_walkaround_animates_on_frame_time_while_the_flight_is_paused() {
     s.advance_walkaround_paused(0.2);
     assert_eq!(state(&s).figure.position_m, p);
 }
+
+fn seed(s: &mut Session, item: &str, kind: DefectKind) {
+    s.run(PreflightFault {
+        item: item.into(),
+        kind,
+    })
+    .unwrap();
+}
+
+/// Inspect the item so the finding is found, then rectify it.
+fn resolve(s: &mut Session, item: &str) {
+    do_item(s, item);
+    s.run(PreflightResolve { item: item.into() }).unwrap();
+}
+
+#[test]
+fn low_oil_finding_empties_the_tank_below_min_until_topped_up() {
+    let mut s = begun(BeginOptions::default());
+    assert!(s.sim().systems().oil.fill > 0.99);
+    seed(&mut s, "oil_coolant", DefectKind::LowOil);
+    assert!(s.sim().hazards().low_oil);
+    assert!(s.sim().systems().oil.fill < 0.85, "{:?}", s.sim().systems().oil);
+    resolve(&mut s, "oil_coolant");
+    assert!(!s.sim().hazards().low_oil);
+    assert!(s.sim().systems().oil.fill > 0.99);
+}
+
+#[test]
+fn tyre_finding_picks_the_wheel_from_the_item_and_clears_on_repair() {
+    for (item, wheel) in [
+        ("wheel_brakes_left", flightcraft_aero::Wheel::Left),
+        ("wheel_brakes_right", flightcraft_aero::Wheel::Right),
+        ("nose_tyre", flightcraft_aero::Wheel::Nose),
+    ] {
+        let mut s = begun(BeginOptions::default());
+        seed(&mut s, item, DefectKind::DamagedTyre);
+        assert_eq!(s.sim().hazards().damaged_tyre, Some(wheel), "{item}");
+        assert_eq!(s.sim().failures().damaged_tyre, Some(wheel));
+        resolve(&mut s, item);
+        assert_eq!(s.sim().hazards().damaged_tyre, None);
+    }
+}
+
+#[test]
+fn cowl_and_fairing_findings_reach_the_sim_and_clear_on_repair() {
+    let mut s = begun(BeginOptions::default());
+    seed(&mut s, "nose_cowling", DefectKind::LooseCowlFastener);
+    seed(&mut s, "wheel_fairing_left", DefectKind::WheelFairingCrack);
+    let h = s.sim().hazards();
+    assert!(h.loose_cowl && h.fairing_crack);
+    assert!(s.sim().failures().cowl_loose && s.sim().failures().fairing_crack);
+    resolve(&mut s, "nose_cowling");
+    resolve(&mut s, "wheel_fairing_left");
+    let h = s.sim().hazards();
+    assert!(!h.loose_cowl && !h.fairing_crack);
+    assert!(!s.sim().failures().cowl_loose && !s.sim().failures().fairing_crack);
+}

@@ -130,6 +130,52 @@ pub struct EngineOperationDefinition {
     pub cht_lag_s: f64,
     pub start_time_s: f64,
     pub starter_amps: f64,
+    /// Engine oil system. Optional in a pack: the defaults are the Rotax 912 iS figures.
+    #[serde(default)]
+    pub oil: Box<OilDefinition>,
+}
+
+/// Engine oil quantity, pressure limits, and how a shortage damages the engine.
+///
+/// Defaults follow the BRP-Rotax 912 iS operator's manual (OM-912 iS): see
+/// `docs/preflight.md` for the figures and where each comes from.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, default)]
+pub struct OilDefinition {
+    /// Oil in the tank at the dipstick MAX mark, litres.
+    pub full_l: f64,
+    /// Oil at the dipstick MIN mark, litres. Below this the engine is unfit to fly.
+    pub min_mark_l: f64,
+    /// Oil below which the pump draws air and pressure is lost, litres.
+    pub starve_l: f64,
+    /// Oil quantity a "low oil" pre-flight finding leaves in the tank, litres.
+    pub low_finding_l: f64,
+    /// Oil burned per hour at full power, litres. The manual's permitted maximum is 0.1.
+    pub consumption_l_h: f64,
+    /// Minimum permitted oil pressure, pascals.
+    pub min_pressure_pa: f64,
+    /// Maximum permitted oil temperature, degrees Celsius.
+    pub max_temperature_c: f64,
+    /// Oil temperature rise at the starvation point, degrees Celsius.
+    pub starved_temperature_rise_c: f64,
+    /// Seconds at full load for starvation to wear the engine out.
+    pub wear_out_s: f64,
+}
+
+impl Default for OilDefinition {
+    fn default() -> Self {
+        Self {
+            full_l: 3.0,
+            min_mark_l: 2.55,
+            starve_l: 1.6,
+            low_finding_l: 2.1,
+            consumption_l_h: 0.06,
+            min_pressure_pa: 80_000.0,
+            max_temperature_c: 130.0,
+            starved_temperature_rise_c: 45.0,
+            wear_out_s: 1_800.0,
+        }
+    }
 }
 
 impl SystemsDefinition {
@@ -284,6 +330,27 @@ impl SystemsDefinition {
         ] {
             positive(value, name)?;
         }
+        let oil = &op.oil;
+        for (name, value) in [
+            ("oil.full_l", oil.full_l),
+            ("oil.min_mark_l", oil.min_mark_l),
+            ("oil.starve_l", oil.starve_l),
+            ("oil.low_finding_l", oil.low_finding_l),
+            ("oil.min_pressure_pa", oil.min_pressure_pa),
+            ("oil.max_temperature_c", oil.max_temperature_c),
+            ("oil.wear_out_s", oil.wear_out_s),
+        ] {
+            positive(value, name)?;
+        }
+        positive(oil.starved_temperature_rise_c, "oil.starved_temperature_rise_c")?;
+        positive(oil.consumption_l_h, "oil.consumption_l_h")?;
+        require(
+            oil.starve_l < oil.min_mark_l
+                && oil.min_mark_l < oil.full_l
+                && oil.low_finding_l < oil.min_mark_l,
+            "oil",
+            "requires starve < min mark < full, and a low finding below the min mark",
+        )?;
         for table in [&op.carb_ice_rate, &op.carb_ice_humidity] {
             table.validate("carb_ice")?;
             require(

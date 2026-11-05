@@ -9,6 +9,7 @@ pub use lesson::*;
 
 use crate::{Command, CommandError, Session, invalid};
 use choreo::{Context, Effect, Frame, Plan, Stance0, V3, evaluate, plan_item, v3};
+use flightcraft_aero::Wheel;
 use flightcraft_aero::preflight::{Action, DefectKind, Preflight, PropKind, Severity};
 use flightcraft_aero::walkaround::{
     CameraFrame, CapState, Cue, DipstickView, FigureAction, FigureState, FuelView, PropState,
@@ -178,7 +179,23 @@ impl Walk {
             tie_downs: present(PropKind::TieDownRope),
             flap_hardware: defect(DefectKind::FlapHardwareMissing),
             aileron_hardware: defect(DefectKind::AileronHardwareMissing),
+            low_oil: defect(DefectKind::LowOil),
+            loose_cowl: defect(DefectKind::LooseCowlFastener),
+            damaged_tyre: self
+                .open_defect_cue(DefectKind::DamagedTyre)
+                .map(|cue| Wheel::from_lateral_m(cue[1])),
+            fairing_crack: defect(DefectKind::WheelFairingCrack),
         }
+    }
+
+    /// Body-frame cue position of the first unresolved seeded finding of this kind.
+    fn open_defect_cue(&self, kind: DefectKind) -> Option<[f64; 3]> {
+        self.def.items.iter().find_map(|item| {
+            let rt = self.items.get(&item.id)?;
+            (rt.seeded == Some(kind) && !rt.resolved)
+                .then(|| self.defect_option(&item.id, kind).map(|d| d.cue_m))
+                .flatten()
+        })
     }
 
     /// Findings that make the aircraft unfit to fly right now, found or not.

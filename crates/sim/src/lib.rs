@@ -247,6 +247,7 @@ pub struct Sim {
     parked_start: bool,
     glass: avionics::glass::GlassComputers,
     hazards: hazards::GroundHazards,
+    tyre: hazards::TyreWear,
 }
 
 impl Sim {
@@ -437,6 +438,7 @@ impl Sim {
             systems_changed: false,
             parked_start: matches!(start, Start::ParkedAt { .. }),
             hazards: hazards::GroundHazards::default(),
+            tyre: hazards::TyreWear::default(),
             state,
             controls,
             steps: 0,
@@ -495,6 +497,7 @@ impl Sim {
             systems_changed: false,
             parked_start: false,
             hazards: hazards::GroundHazards::default(),
+            tyre: hazards::TyreWear::default(),
             state,
             controls: controls.clamped(),
             steps,
@@ -964,10 +967,31 @@ impl Sim {
         self.hazards
     }
 
+    /// Wear of a damaged tyre: its remaining integrity, and whether it has burst.
+    #[must_use]
+    pub fn tyre_wear(&self) -> hazards::TyreWear {
+        self.tyre
+    }
+
+    /// Test hook: burst or restore the damaged tyre without waiting for it to wear out.
+    #[doc(hidden)]
+    pub fn force_tyre_flat(&mut self, flat: bool) {
+        self.tyre.flat = flat;
+    }
+
     pub fn set_hazards(&mut self, hazards: hazards::GroundHazards) {
+        let previous = self.hazards;
         self.hazards = hazards;
         if hazards != hazards::GroundHazards::default() {
             self.systems_changed = true;
+        }
+        if hazards.low_oil != previous.low_oil {
+            self.systems
+                .set_low_oil(self.systems_model.as_ref(), hazards.low_oil);
+        }
+        if hazards.damaged_tyre != previous.damaged_tyre {
+            // A new tyre finding starts fresh; a repaired tyre is a new one.
+            self.tyre = hazards::TyreWear::default();
         }
         self.systems.failures = self.failures();
     }
@@ -986,6 +1010,8 @@ impl Sim {
             let airborne = dynamics::height(&self.aircraft, &self.state, &self.world) > 0.;
             self.hazards.apply(&mut failures, airborne);
         }
+        failures.tyre_flat |= self.tyre.flat;
+        failures.cowl_separated |= self.systems.cowl.separated;
         failures
     }
 
@@ -1386,6 +1412,16 @@ impl Sim {
                     next.velocity_mps[2] = next.velocity_mps[2].max(0.);
                 }
             }
+            if self.hazards.damaged_tyre.is_some() && !self.tyre.flat {
+                let before = dynamics::height(&self.aircraft, &self.state, &self.world);
+                let after = dynamics::height(&self.aircraft, &next, &self.world);
+                if after <= hazards::TYRE_LOADED_HEIGHT_M {
+                    let touchdown =
+                        (before > hazards::TYRE_LOADED_HEIGHT_M).then_some(self.state.velocity_mps[2]);
+                    let [vn, ve, _] = next.velocity_mps;
+                    self.tyre.step(DT_S, libm::hypot(vn, ve), touchdown);
+                }
+            }
             self.state = next;
             self.magnetism.refresh(&self.world, self.state);
             if let Some(model) = &self.systems_model {
@@ -1614,6 +1650,10 @@ impl Sim {
             eat(0x6861_7a61_7264_0001);
             for word in self.hazards.hash_words() {
                 eat(word);
+            }
+            if self.hazards.damaged_tyre.is_some() {
+                eat(self.tyre.integrity.to_bits());
+                eat(u64::from(self.tyre.flat));
             }
         }
         if self.systems_changed

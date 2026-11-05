@@ -114,6 +114,18 @@ pub fn crash(aircraft: &aero::Aircraft, s: &State, world: &World) -> bool {
     })
 }
 
+/// Rolling-resistance multiplier of a damaged (cut, worn, or low) tyre.
+pub const DAMAGED_TYRE_ROLLING: f64 = 2.5;
+/// Rolling-resistance multiplier of a burst tyre running on the rim.
+pub const FLAT_TYRE_ROLLING: f64 = 10.0;
+/// Side-grip multiplier of a burst tyre.
+pub const FLAT_TYRE_LATERAL: f64 = 0.6;
+/// Whether a gear leg is the named wheel, by its lateral position.
+#[must_use]
+pub fn is_wheel(gear: &aero::Gear, wheel: aero::Wheel) -> bool {
+    aero::Wheel::from_lateral_m(gear.point_m[1]) == wheel
+}
+
 pub fn derivative(
     aircraft: &aero::Aircraft,
     s: &State,
@@ -159,11 +171,22 @@ pub fn derivative(
             (h, vz)
         };
         let normal = (-k * penetration + damper * closing).clamp(0.0, aircraft.systems.max_normal_force_n);
-        let rolling = if ground.surface == Surface::Pavement {
+        let mut rolling = if ground.surface == Surface::Pavement {
             aircraft.systems.rolling_pavement
         } else {
             aircraft.systems.rolling_other
         };
+        let mut lateral_friction = aircraft.systems.lateral_friction;
+        if failures.damaged_tyre.is_some_and(|wheel| is_wheel(gear, wheel)) {
+            // A cut or worn tyre rolls harder; a burst one drags and grips the side less.
+            // The one-sided drag is what pulls the aircraft off the centreline.
+            if failures.tyre_flat {
+                rolling *= FLAT_TYRE_ROLLING;
+                lateral_friction *= FLAT_TYRE_LATERAL;
+            } else {
+                rolling *= DAMAGED_TYRE_ROLLING;
+            }
+        }
         let [_, _, yaw] = euler(s.attitude);
         let steer = if gear.steering_rad == 0.0 {
             0.0
@@ -190,10 +213,7 @@ pub fn derivative(
             );
         let side = (-dot(planar, lateral) * aircraft.mass.mass_kg * share / DT_S
             - dot(free_force, lateral) * share)
-            .clamp(
-                -aircraft.systems.lateral_friction * normal,
-                aircraft.systems.lateral_friction * normal,
-            );
+            .clamp(-lateral_friction * normal, lateral_friction * normal);
         let contact = add(
             add(scale(forward, longitudinal), scale(lateral, side)),
             if sloped {

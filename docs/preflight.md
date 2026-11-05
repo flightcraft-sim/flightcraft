@@ -40,8 +40,9 @@ This is simulated practice. It does not replace the aircraft's handbook or a rea
   warning), rises as the tank fills, and the 30 L line is marked. A tank holding less than that
   only wets part of the bottom. Reading comes from `systems.tanks`, so `systems.set` /
   `TankQuantity`, a different load, and a low-fuel finding all show up truthfully.
-- **Oil level.** The Sling has no oil quantity model, so the dipstick level is runtime state of the
-  walkaround: normal, or below MIN when `low_oil` is seeded. The method (dipstick level between
+- **Oil level.** The dipstick level is runtime state of the walkaround: normal, or below MIN when
+  `low_oil` is seeded. A seeded finding also sets the engine's real oil quantity (see
+  [Consequences](#consequences)). The method (dipstick level between
   MIN and MAX) is the Rotax procedure the POH refers to as "engine checks as per the Rotax
   manual"; the POH text itself only says oil and coolant quantity check.
 - **Covers and tie-downs.** A parked-aircraft walkaround starts with the pitot cover, wheel chocks,
@@ -92,7 +93,8 @@ refused.
 
 ## Consequences
 
-Findings use the existing models; nothing here is a new failure model.
+Most findings use the existing failure models. Low oil, a damaged tyre, a loose cowl fastener, and a
+cracked wheel fairing act through physical models added for them.
 
 | Finding | Effect |
 |---|---|
@@ -101,11 +103,39 @@ Findings use the existing models; nothing here is a new failure model.
 | Low fuel | The seeded tank is set to 40% of the cover level via `TankQuantity`, so the gauge, the filler cap view, and the flight all agree. |
 | Flap hinge hardware missing | `failures.flap_asymmetry` (the existing flap-dependent rolling moment). |
 | Aileron hinge hardware missing | The existing aileron jam, at 35% deflection, once airborne. |
-| Low oil, loose cowl fastener, damaged tyre, wheel fairing crack | Graded findings with a visible cue. The simulation has no oil quantity, cowl, tyre, or fairing model, so flying with them changes nothing physical. |
+| Low oil | The tank is left below the dipstick MIN mark (2.1 L against 2.55 L at MIN and 3.0 L at MAX). The engine's oil system (below) loses pressure, runs hotter, and wears until it seizes. `preflight.resolve` tops the tank up to MAX; it does not undo wear. |
+| Damaged tyre | The wheel the item is on (left or right main, or the nose, from the finding's cue position) rolls 2.5 times harder and drags its side of the aircraft off the centreline. The tyre fatigues with rolling distance and touchdown energy and bursts, usually on the landing roll: a burst tyre rolls 10 times harder and grips the side less. Repairing it fits a fresh tyre. |
+| Loose cowl fastener | With the engine making power the airframe vibrates (`systems.cowl.vibration`, the `COWL VIBRATION` caution where the pack lists it). Flown above 40 m/s indicated, stress builds (one second per second at 60 m/s, capped at two) and at 30 s of it the cowl comes off: drag rises by 0.018 CD, cooling is lost (cylinder heads about 40 C and oil about 25 C hotter), and `failures.cowl_separated` is set. Tightening it refits the cowl. |
+| Wheel fairing crack | A note only, plus 0.0006 CD of drag (about 2% of a clean light-aircraft drag coefficient). |
 
+### The engine oil system
+
+`systems.oil` carries the tank `fill` (fraction of the MAX mark), `wear`, and `seized`. The model
+(`crates/sim/src/systems.rs`, parameters in `engine.oil` of the systems definition, with the
+Rotax 912 iS defaults) is:
+
+- Oil burns at the engine's consumption rate (0.06 L/h at full power, the manual's maximum) in
+  proportion to power.
+- A *sufficiency* factor runs from 1 at the MIN mark down to 0 at the point where the pump draws air
+  (1.6 L). At or above MIN every effect below is exactly one or zero, so a normal flight is unchanged.
+- Oil pressure is scaled by sufficiency squared and by `1 - wear/2`, so a short tank shows low and
+  falling pressure; oil temperature rises by up to 45 C at starvation.
+- Starvation wears the engine at `(1 - sufficiency) * (0.3 + 0.7 * power)` per `wear_out_s`
+  (1,800 s). From 40% wear the engine loses power, falling to half at 100%. At 100% it seizes: it
+  stops, cannot be restarted, and stays seized after the tank is refilled.
+- Annunciation sources `low_oil_pressure` (pascals), `high_oil_temperature` (C), and
+  `cowl_vibration` can be listed in a pack's `modern.annunciations`. The Sling lists them with the
+  Rotax limits: 0.8 bar minimum oil pressure and 130 C maximum oil temperature.
+
+The figures come from the BRP-Rotax operator's manual OM-912 i, Edition 2 Rev. 0 (1 Jan 2019): oil
+pressure minimum 0.8 bar below 3,500 rpm and 2.0 bar above, oil temperature 50 to 130 C in normal
+operation, the 0.45 L difference between the dipstick MIN and MAX marks, and a maximum consumption of
+0.06 L/h. The tank quantity (3.0 L) is the Sling POH supplement 9.8.1; the 1.6 L starvation point,
+the wear rates, the tyre and cowl numbers, and the drag increments are original simulator estimates
+and are not from any manual.
 Hazards ride on `Sim::hazards()` (`flightcraft_sim::hazards::GroundHazards`), recomputed from the
-walkaround state after every change and added to the state hash only when present, so healthy
-replays keep their golden hashes. Resetting the flight ends the walkaround.
+walkaround state after every change and added to the state hash only when present (the oil, tyre,
+and cowl state only once a finding has disturbed them), so healthy replays keep their golden hashes. Resetting the flight ends the walkaround.
 
 ## Grading
 

@@ -468,6 +468,7 @@ impl ModernState {
         d: Option<&ModernSystems>,
         voltage: f64,
         engine_running: bool,
+        engine: EngineSignals,
     ) {
         let Some(d) = d else {
             return;
@@ -479,6 +480,11 @@ impl ModernState {
                 AnnunciationSource::LaneFault => self.engine_control_warning,
                 AnnunciationSource::HighCoolantTemperature => self.coolant_temperature_c > def.threshold,
                 AnnunciationSource::DoorOpen => self.door_open,
+                AnnunciationSource::LowOilPressure => {
+                    engine_running && engine.oil_pressure_pa < def.threshold
+                }
+                AnnunciationSource::HighOilTemperature => engine.oil_temperature_c > def.threshold,
+                AnnunciationSource::CowlVibration => engine.cowl_vibration,
                 AnnunciationSource::ParachuteArmed => self.recovery.as_ref().is_some_and(|p| !p.pin_inserted),
                 AnnunciationSource::EngineShutdown => {
                     engine_running
@@ -497,4 +503,12 @@ impl ModernState {
             a.active = active;
         }
     }
+}
+
+/// Engine readings the annunciations watch besides the electronic engine control's own state.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct EngineSignals {
+    pub oil_pressure_pa: f64,
+    pub oil_temperature_c: f64,
+    pub cowl_vibration: bool,
 }

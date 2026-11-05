@@ -219,8 +219,47 @@ pub struct SensedInstruments {
     pub turn_coordinator_rate_rps: f64,
     pub lateral_acceleration_g: f64,
 }
+/// Engine oil quantity and the damage a shortage does.
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
+pub struct OilState {
+    /// Oil in the tank as a fraction of the dipstick MAX mark.
+    pub fill: f64,
+    /// Starvation wear, 0 (sound) to 1 (worn out and seized).
+    pub wear: f64,
+    /// The engine has seized for want of oil and cannot be restarted.
+    pub seized: bool,
+    /// A low-oil finding has been applied; gates the extra state hash words.
+    pub disturbed: bool,
+}
+
+impl Default for OilState {
+    fn default() -> Self {
+        Self {
+            fill: 1.0,
+            wear: 0.0,
+            seized: false,
+            disturbed: false,
+        }
+    }
+}
+
+/// A loose cowl fastener: vibration under power, and separation if flown fast.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
+pub struct CowlState {
+    /// Accumulated lift stress, in seconds at the reference excess speed.
+    pub stress_s: f64,
+    /// The airframe is vibrating from the loose cowl.
+    pub vibration: bool,
+    /// The cowl has come off.
+    pub separated: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, JsonSchema, serde::Deserialize)]
 pub struct SystemsState {
+    #[serde(default)]
+    pub oil: OilState,
+    #[serde(default)]
+    pub cowl: CowlState,
     #[serde(default)]
     pub canopy: crate::canopy::CanopyState,
     /// Normalized cockpit smoke obscuration; accumulates under a smoke source, clears after isolation.
@@ -276,6 +315,8 @@ pub(crate) struct SystemsModel {
 impl Default for SystemsState {
     fn default() -> Self {
         Self {
+            oil: OilState::default(),
+            cowl: CowlState::default(),
             modern: None,
             avionics: crate::avionics::AvionicsState::default(),
             canopy: Default::default(),
@@ -483,7 +524,35 @@ impl SystemsState {
         {
             words.extend(bytes.into_iter().map(u64::from));
         }
+        // Oil and cowl state only enter the hash once a finding has disturbed them.
+        if self.oil.disturbed {
+            words.extend([
+                0x6f69_6c00_0001,
+                self.oil.fill.to_bits(),
+                self.oil.wear.to_bits(),
+                u64::from(self.oil.seized),
+            ]);
+        }
+        if self.cowl.stress_s != 0.0 || self.cowl.separated {
+            words.extend([
+                0x636f_776c_0001,
+                self.cowl.stress_s.to_bits(),
+                u64::from(self.cowl.vibration),
+                u64::from(self.cowl.separated),
+            ]);
+        }
         words
+    }
+
+    /// Apply or clear a low-oil finding: the tank drops below the MIN mark, or is topped to MAX.
+    pub(crate) fn set_low_oil(&mut self, m: Option<&SystemsModel>, low: bool) {
+        let oil = m.map(|m| &m.definition.engine.oil);
+        if low {
+            self.oil.fill = oil.map_or(0.7, |o| o.low_finding_l / o.full_l);
+            self.oil.disturbed = true;
+        } else {
+            self.oil.fill = 1.0;
+        }
     }
 
     pub(crate) fn configure(
@@ -857,6 +926,10 @@ impl SystemsState {
             .map(|(t, _)| (t.quantity_kg - t.unusable_kg).max(0.0))
             .sum()
     }
+    /// Power left after starvation wear: untouched to 40% wear, then falling to half at seizure.
+    fn oil_wear_power(&self) -> f64 {
+        1.0 - 0.5 * ((self.oil.wear - 0.4) / 0.6).clamp(0.0, 1.0)
+    }
     fn power(&self, m: &SystemsModel) -> f64 {
         if !self.engine_running
             || !self.ignition_available()
@@ -907,7 +980,7 @@ impl SystemsState {
         } else {
             1.0
         };
-        (mags * mixture * heat * (1.0 - self.carb_ice * 0.9)).clamp(0.0, 1.0)
+        (mags * mixture * heat * (1.0 - self.carb_ice * 0.9) * self.oil_wear_power()).clamp(0.0, 1.0)
     }
 
     pub(crate) fn step(&mut self, m: &SystemsModel, r: Readout, failures: Failures) {
@@ -939,6 +1012,7 @@ impl SystemsState {
             || !self.ignition_available()
             || self.controls.mixture < 0.1
             || failures.engine_power_fraction == 0.0
+            || self.oil.seized
         {
             self.engine_running = false;
         }
@@ -953,6 +1027,7 @@ impl SystemsState {
             && self.controls.mixture >= 0.2
             && (self.primer_charge > 0.05 || self.cht_c > 60.0 || m.induction == Induction::Injection)
             && failures.engine_power_fraction > 0.0
+            && !self.oil.seized
         {
             self.cranking_s += DT_S;
             if self.cranking_s >= op.start_time_s {
@@ -1059,7 +1134,7 @@ impl SystemsState {
         lag(
             &mut self.cht_c,
             if self.engine_running {
-                ambient + 90.0 + 110.0 * shaft + 25.0 * peak
+                ambient + 90.0 + 110.0 * shaft + 25.0 * peak + if self.cowl.separated { 40.0 } else { 0.0 }
             } else {
                 ambient
             },
@@ -1067,10 +1142,39 @@ impl SystemsState {
         );
         // Original estimates: warm oil approaches 65–110 C; pressure follows the pump,
         // with a modest loss as viscosity falls. No type-specific measurements.
+        // The oil system: a shortage lowers pressure and heats the oil, starvation wears the engine,
+        // and wear lowers pressure further. A full tank leaves every factor at exactly one.
+        let oil = &op.oil;
+        let litres = self.oil.fill * oil.full_l;
+        let sufficiency = ((litres - oil.starve_l) / (oil.min_mark_l - oil.starve_l)).clamp(0.0, 1.0);
+        if self.engine_running {
+            let burn_l = oil.consumption_l_h / 3600.0 * shaft.clamp(0.0, 1.0) * DT_S;
+            self.oil.fill = (self.oil.fill - burn_l / oil.full_l).max(0.0);
+            if sufficiency < 1.0 {
+                let load = 0.3 + 0.7 * shaft.clamp(0.0, 1.0);
+                self.oil.wear = (self.oil.wear + (1.0 - sufficiency) * load * DT_S / oil.wear_out_s).min(1.0);
+                self.oil.disturbed = true;
+                if self.oil.wear >= 1.0 {
+                    self.oil.seized = true;
+                    self.engine_running = false;
+                    self.engine_power_fraction = 0.0;
+                    self.fuel_flow_kg_s = 0.0;
+                }
+            }
+        }
+        let oil_pressure_factor = if sufficiency < 1.0 || self.oil.wear > 0.0 {
+            sufficiency * sufficiency * (1.0 - 0.5 * self.oil.wear)
+        } else {
+            1.0
+        };
         lag(
             &mut self.oil_temperature_c,
             if self.engine_running {
-                ambient + 50.0 + 45.0 * shaft
+                ambient
+                    + 50.0
+                    + 45.0 * shaft
+                    + oil.starved_temperature_rise_c * (1.0 - sufficiency)
+                    + if self.cowl.separated { 25.0 } else { 0.0 }
             } else {
                 ambient
             },
@@ -1078,11 +1182,24 @@ impl SystemsState {
         );
         let viscosity = (1.15 - (self.oil_temperature_c - 40.0) * 0.003).clamp(0.5, 1.2);
         let oil_target = if self.engine_running {
-            (self.engine_rpm / 1800.0).clamp(0.0, 1.0) * 400000.0 * viscosity
+            (self.engine_rpm / 1800.0).clamp(0.0, 1.0) * 400000.0 * viscosity * oil_pressure_factor
         } else {
             0.0
         };
         lag(&mut self.oil_pressure_pa, oil_target, 2.0);
+        if failures.cowl_loose {
+            self.cowl.vibration = self.engine_running && shaft > 0.3 && !self.cowl.separated;
+            if !self.cowl.separated {
+                self.cowl.stress_s += crate::hazards::cowl_stress_rate(r.indicated_airspeed_mps) * DT_S;
+                if self.cowl.stress_s >= crate::hazards::COWL_FAIL_STRESS_S {
+                    self.cowl.separated = true;
+                    self.cowl.vibration = false;
+                }
+            }
+        } else if self.cowl != CowlState::default() {
+            // The fastener was tightened (or the cowl refitted): the aircraft is whole again.
+            self.cowl = CowlState::default();
+        }
         self.sensed.turn_rate_rps = if self
             .electrical
             .loads
@@ -1113,6 +1230,11 @@ impl SystemsState {
                 m.definition.modern.as_ref(),
                 self.electrical.main_bus_voltage,
                 self.engine_running,
+                crate::modern::EngineSignals {
+                    oil_pressure_pa: self.oil_pressure_pa,
+                    oil_temperature_c: self.oil_temperature_c,
+                    cowl_vibration: self.cowl.vibration,
+                },
             );
         }
     }

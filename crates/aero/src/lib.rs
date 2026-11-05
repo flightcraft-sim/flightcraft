@@ -200,6 +200,14 @@ pub fn forces_with_failures(
     if failures.door_open {
         c.drag += 0.025;
     }
+    // A cracked wheel fairing leaks flow around the wheel: about 2% of a clean light-aircraft CD.
+    if failures.fairing_crack {
+        c.drag += 0.0006;
+    }
+    // A cowl that has come off exposes the engine and baffles to the airstream.
+    if failures.cowl_separated {
+        c.drag += 0.018;
+    }
     let dynamic = 0.5 * finite(density, 0.0, 2.0) * speed * speed * aircraft.geometry.wing_area_m2;
     let rate = 0.5 / speed.max(10.0);
     let d = aircraft.aerodynamics.derivatives;
