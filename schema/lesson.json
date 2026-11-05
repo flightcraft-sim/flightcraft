@@ -412,6 +412,10 @@
             "code": {
               "type": "string"
             },
+            "ident": {
+              "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+              "type": "boolean"
+            },
             "kind": {
               "type": "string",
               "const": "squawk"
@@ -421,6 +425,20 @@
           "required": [
             "kind",
             "code"
+          ]
+        },
+        {
+          "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "ident"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
           ]
         },
         {

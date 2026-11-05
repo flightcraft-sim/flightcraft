@@ -301,7 +301,7 @@ fn bravo_requires_explicit_received_words_and_readback_cannot_invent_clearance()
     readback(&mut s);
     say(&mut s, "request flight following");
     let p = instruction(&s);
-    let AtcInstruction::Squawk { code } = p.instruction else {
+    let AtcInstruction::Squawk { code, .. } = p.instruction else {
         panic!("expected squawk")
     };
     readback(&mut s);
@@ -1194,4 +1194,275 @@ fn ifr_intercept_readback_requires_heading_restriction_and_approach() {
         Some(PilotRequest::Position)
     );
     assert!(!call.to_lowercase().contains("flight following"));
+}
+
+fn press_ident(s: &mut Session) {
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":{"kind":"ident"}}}),
+    )
+    .unwrap();
+}
+fn set_code(s: &mut Session, code: &str) {
+    s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":{"kind":"transponder","code":code,"mode":"alt"}}}),
+    )
+    .unwrap();
+}
+fn radar_contact_events(s: &Session) -> usize {
+    s.flight_record()
+        .events
+        .iter()
+        .filter(|e| matches!(e.meaning, Meaning::RadarContact { .. }) && e.reception == Reception::Heard)
+        .count()
+}
+fn ident_grade(s: &Session) -> Option<bool> {
+    s.comms
+        .atc
+        .compliance
+        .iter()
+        .rev()
+        .find(|g| g.item == "ident")
+        .map(|g| g.passed)
+}
+/// Hand the student a squawk-and-ident (or an ident alone) from the departure controller, with the
+/// readback done and the instruction active.
+fn ident_session(squawk: bool) -> (Session, PendingInstruction) {
+    let mut s = atc_session("KABE");
+    let st = tune(&mut s, "KABE", FacilityKind::Departure);
+    let instruction = if squawk {
+        AtcInstruction::Squawk {
+            code: "4321".into(),
+            ident: true,
+        }
+    } else {
+        AtcInstruction::Ident
+    };
+    s.issue(&st, instruction);
+    settle(&mut s);
+    readback(&mut s);
+    let p = s
+        .comms
+        .atc
+        .active
+        .last()
+        .cloned()
+        .expect("the readback activates the instruction");
+    (s, p)
+}
+
+#[test]
+fn the_controller_asks_for_ident_about_one_call_in_three_and_the_same_way_every_time() {
+    let mut s = atc_session("KABE");
+    let mut asked = 0;
+    for n in 0..300u64 {
+        s.comms.next_id = n;
+        let first = s.wants_ident();
+        assert_eq!(first, s.wants_ident(), "deterministic for counter {n}");
+        asked += usize::from(first);
+    }
+    assert!((50..=150).contains(&asked), "{asked}");
+}
+
+#[test]
+fn flight_following_sometimes_adds_ident_and_the_wording_and_readback_carry_it() {
+    let mut seen = [false; 2];
+    let mut s = atc_session("KABE");
+    tune(&mut s, "KABE", FacilityKind::Departure);
+    for start in 1..40u64 {
+        s.comms.atc.pending.clear();
+        s.comms.atc.active.clear();
+        s.comms.next_id = start * 7;
+        say(&mut s, "request flight following");
+        let p = instruction(&s);
+        let AtcInstruction::Squawk { ident, .. } = p.instruction else {
+            panic!("expected squawk, got {:?}", p.instruction)
+        };
+        assert_eq!(p.phrase.contains("and ident"), ident, "{}", p.phrase);
+        let text = s.atc_readback(&p.instruction);
+        assert_eq!(text.contains("and ident"), ident, "{text}");
+        seen[usize::from(ident)] = true;
+        if seen == [true, true] {
+            break;
+        }
+    }
+    assert_eq!(seen, [true, true], "both kinds of call occur");
+}
+
+#[test]
+fn ident_readbacks_accept_the_callsign_alone_and_squawk_ident_needs_the_code() {
+    let s = atc_session("KABE");
+    let me = s.pilot_callsign();
+    let say_back = |i: &AtcInstruction, text: &str| rules::readback_matches(i, &parse_pilot(text, &me));
+    let ident = AtcInstruction::Ident;
+    assert!(say_back(&ident, &me.current.to_string()));
+    assert!(say_back(&ident, &format!("ident, {}", me.current)));
+    assert!(!say_back(&ident, &format!("request taxi, {}", me.current)));
+    assert!(!say_back(&ident, &format!("unable, {}", me.current)));
+    let both = AtcInstruction::Squawk {
+        code: "4321".into(),
+        ident: true,
+    };
+    assert!(say_back(
+        &both,
+        &format!("squawk four three two one and ident, {}", me.current)
+    ));
+    assert!(say_back(
+        &both,
+        &format!("squawk four three two one, {}", me.current)
+    ));
+    assert!(!say_back(&both, &format!("ident, {}", me.current)));
+    assert!(!say_back(
+        &both,
+        &format!("squawk four three two two and ident, {}", me.current)
+    ));
+    assert_eq!(
+        s.instruction_phrase(&both),
+        "Squawk four three two one and ident."
+    );
+    assert_eq!(s.instruction_phrase(&ident), "Ident.");
+    assert_eq!(
+        s.atc_readback(&both),
+        format!("Squawk four three two one and ident, {}.", me.current)
+    );
+}
+
+#[test]
+fn pressing_ident_after_squawk_and_ident_passes_and_the_controller_answers_radar_contact() {
+    let (mut s, p) = ident_session(true);
+    set_code(&mut s, "4321");
+    let before = radar_contact_events(&s);
+    advance(&mut s, 3.);
+    press_ident(&mut s);
+    advance(&mut s, 1.);
+    settle(&mut s);
+    assert_eq!(ident_grade(&s), Some(true));
+    assert!(s.comms.atc.ident_answered.contains(&p.id));
+    assert_eq!(
+        radar_contact_events(&s),
+        before + 1,
+        "radar contact follows the ident"
+    );
+    assert!(s.comms.atc.radar_facility.is_some());
+    // It answers once, however long the flag stays up.
+    advance(&mut s, 20.);
+    settle(&mut s);
+    assert_eq!(radar_contact_events(&s), before + 1);
+}
+
+#[test]
+fn a_missed_ident_is_a_graded_fault_and_a_late_press_still_clears_it() {
+    let (mut s, _) = ident_session(true);
+    set_code(&mut s, "4321");
+    advance(&mut s, 20.);
+    assert_eq!(ident_grade(&s), None, "still inside the window");
+    advance(&mut s, 20.);
+    assert_eq!(ident_grade(&s), Some(false));
+    assert!(
+        s.comms
+            .atc
+            .compliance
+            .iter()
+            .any(|g| g.item == "ident" && !g.passed && g.observed.contains("IDENT"))
+    );
+    press_ident(&mut s);
+    advance(&mut s, 1.);
+    assert_eq!(ident_grade(&s), Some(true));
+}
+
+#[test]
+fn an_ident_pressed_before_the_call_does_not_count() {
+    let mut s = atc_session("KABE");
+    let st = tune(&mut s, "KABE", FacilityKind::Departure);
+    press_ident(&mut s);
+    advance(&mut s, 2.);
+    s.issue(&st, AtcInstruction::Ident);
+    settle(&mut s);
+    readback(&mut s);
+    advance(&mut s, 35.);
+    assert_eq!(ident_grade(&s), Some(false));
+}
+
+#[test]
+fn a_bare_ident_is_satisfied_by_the_press_and_answered_with_radar_contact() {
+    let (mut s, p) = ident_session(false);
+    assert_eq!(p.instruction, AtcInstruction::Ident);
+    let before = radar_contact_events(&s);
+    advance(&mut s, 4.);
+    press_ident(&mut s);
+    advance(&mut s, 1.);
+    settle(&mut s);
+    assert_eq!(ident_grade(&s), Some(true));
+    assert_eq!(radar_contact_events(&s), before + 1);
+}
+
+#[test]
+fn a_squawk_ident_answers_only_when_the_code_is_also_set() {
+    let (mut s, _) = ident_session(true);
+    press_ident(&mut s);
+    advance(&mut s, 2.);
+    settle(&mut s);
+    let before = radar_contact_events(&s);
+    set_code(&mut s, "4321");
+    advance(&mut s, 1.);
+    settle(&mut s);
+    assert_eq!(radar_contact_events(&s), before + 1);
+}
+
+#[test]
+fn the_position_report_path_asks_for_ident_before_radar_contact_when_the_counter_says_so() {
+    let mut s = atc_session("KABE");
+    tune(&mut s, "KABE", FacilityKind::Approach);
+    let mut asked = None;
+    for start in 1..60u64 {
+        s.comms.atc.pending.clear();
+        s.comms.atc.active.clear();
+        s.comms.atc.radar_facility = None;
+        s.comms.next_id = start * 5;
+        say(&mut s, "level two thousand four hundred");
+        let idents = s
+            .comms
+            .atc
+            .pending
+            .iter()
+            .any(|p| p.instruction == AtcInstruction::Ident);
+        if idents {
+            asked = Some(start);
+            break;
+        }
+    }
+    assert!(asked.is_some(), "some position reports hear an ident request");
+    assert!(
+        s.comms.atc.radar_facility.is_none(),
+        "radar contact waits for the ident"
+    );
+    readback(&mut s);
+    press_ident(&mut s);
+    advance(&mut s, 2.);
+    settle(&mut s);
+    assert!(s.comms.atc.radar_facility.is_some());
+}
+
+#[test]
+fn ident_instructions_round_trip_through_json_and_old_squawks_keep_their_shape() {
+    for instruction in [
+        AtcInstruction::Ident,
+        AtcInstruction::Squawk {
+            code: "4321".into(),
+            ident: true,
+        },
+    ] {
+        let json = serde_json::to_value(&instruction).unwrap();
+        assert_eq!(
+            serde_json::from_value::<AtcInstruction>(json).unwrap(),
+            instruction
+        );
+    }
+    let json = serde_json::to_value(AtcInstruction::Squawk {
+        code: "4321".into(),
+        ident: false,
+    })
+    .unwrap();
+    assert!(json.get("ident").is_none(), "old documents keep their shape");
 }

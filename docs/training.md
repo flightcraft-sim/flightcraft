@@ -61,14 +61,15 @@ decide clearances and grades.
   - ground: taxi instructions with a hold-short;
   - tower: takeoff and landing clearances, pattern entry instructions, "extend downwind",
     "number two following", and go-arounds;
-  - approach and departure: flight following, squawk codes, traffic advisories, and handoffs.
+  - approach and departure: flight following, squawk codes ("squawk ... and ident", "ident" and
+    the IDENT press), traffic advisories, and handoffs.
 - **Class B** (New York): "cleared into the Class Bravo" or "remain clear", with vectors and
   altitude assignments. Entering without the words is graded as a violation.
 - **Readbacks:**
   - every instruction that needs a readback waits for one;
   - a wrong readback gets "negative" or "readback incorrect";
   - silence gets "say again" after a delay.
-- **Compliance:** flying the instruction (heading, altitude, hold short, squawk, frequency change)
+- **Compliance:** flying the instruction (heading, altitude, hold short, squawk, ident, frequency change)
   is checked against the record and graded.
 - **Phraseology:** controller wording follows FAA Order JO 7110.65 and the AIM radio-technique
   chapter, so what you hear is what you will hear in the airplane.

@@ -93,6 +93,50 @@ impl Session {
             self.atc_grade(id, item, passed, observed);
         }
     }
+    /// Grade the student's IDENT press for a squawk-and-ident or an ident instruction, and let
+    /// the controller answer with radar contact once it has been pressed. The press must come
+    /// after the call and within `IDENT_COMPLIANCE_S` of it (about 20 s after a normal readback).
+    fn check_ident(&mut self, p: &PendingInstruction, elapsed: f64) {
+        let pressed = self.glass.last_ident_time_s.is_some_and(|t| t >= p.issued_s);
+        if pressed || elapsed >= IDENT_COMPLIANCE_S {
+            self.observation(
+                Some(p.id),
+                "ident",
+                pressed,
+                if pressed {
+                    "IDENT pressed.".into()
+                } else {
+                    "Press IDENT on the transponder when the controller asks for it.".into()
+                },
+            );
+        }
+        let code_ok = match &p.instruction {
+            AtcInstruction::Squawk { code, .. } => self.glass.transponder_code == *code,
+            _ => true,
+        };
+        if pressed
+            && code_ok
+            && !self.comms.atc.ident_answered.contains(&p.id)
+            && self.comms.atc.replies.is_empty()
+            && let Some(st) = self.stations().into_iter().find(|st| st.id == p.station_id)
+        {
+            if self.comms.atc.ident_answered.len() >= 1024 {
+                self.comms.atc.ident_answered.clear();
+            }
+            self.comms.atc.ident_answered.insert(p.id);
+            if self.comms.atc.radar_facility.as_deref() == Some(radar_facility(&st).as_str()) {
+                self.atc_reply(&st, "Radar contact.".into(), Meaning::Text);
+            } else {
+                self.atc_reply(
+                    &st,
+                    self.radar_position_report(&p.airport),
+                    Meaning::RadarContact {
+                        station_id: st.id.clone(),
+                    },
+                );
+            }
+        }
+    }
     pub(super) fn monitor_atc(&mut self) {
         let now = self.sim.state().time_s;
         let missing: Vec<_> = self
@@ -140,6 +184,14 @@ impl Session {
             .collect();
         for p in instructions {
             let elapsed = now - p.issued_s;
+            if p.readback
+                && matches!(
+                    p.instruction,
+                    AtcInstruction::Squawk { ident: true, .. } | AtcInstruction::Ident
+                )
+            {
+                self.check_ident(&p, elapsed);
+            }
             match &p.instruction {
                 AtcInstruction::Taxi {
                     runway,
@@ -186,7 +238,7 @@ impl Session {
                 AtcInstruction::Altitude { altitude_ft } if p.readback && elapsed >= 30. => {
                     self.check_atc_altitude(&p, *altitude_ft)
                 }
-                AtcInstruction::Squawk { code } | AtcInstruction::IfrClearance { code, .. }
+                AtcInstruction::Squawk { code, .. } | AtcInstruction::IfrClearance { code, .. }
                     if p.readback && elapsed >= 10. =>
                 {
                     self.observation(

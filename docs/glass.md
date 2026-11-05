@@ -534,8 +534,8 @@ airspace nearest pages, and reversion with the autopilot rule.
   bugs' "Set to Current" on the tapes themselves, PFD options beyond synthetic vision, and the pitch offset
   are not drawn.
 - Flight director altitude-hold reference stepping (needs a hold-altitude autopilot setting).
-- COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows. The
-  controller does not ask for IDENT (see the CAS and IDENT section). COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
+- COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows.
+  COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
   receiver (see the radio windows above).
 - Nearest pages for weather, user waypoints, cities, centres, flight service stations, and visual
   reporting points; the FPL page's Find tabs, map editing, saved plans, and import; weather, charts,
@@ -563,9 +563,10 @@ setting `ident` (no fields; also the unassigned keyboard action "Transponder IDE
 for 18 seconds of simulated time (`settings.ident_remaining_s` counts down), the status bar shows the code
 followed by IDENT, and the PFD's transponder box reads IDENT in place of the mode. Like a real transponder it
 works only in ON or ALT: in OFF or STBY the setting is rejected, and switching to STBY or OFF cancels a running
-ident. Pressing it again restarts the 18 seconds. The ATC vocabulary has no "ident" request or instruction
-(controllers assign squawk codes only), so no controller call asks for it; the flag is available to
-`glass_state()` for a future controller instruction.
+ident. Pressing it again restarts the 18 seconds. Approach and departure controllers ask for it with
+"squawk ... and ident" and a bare "Ident."; the press is graded as the `ident` compliance item and answered with
+radar contact (see [ATC](atc.md)). The press time is recorded when `ident` runs, so a press made through
+`avionics.set` counts the same as a touch.
 
 ## Commands and controls
 

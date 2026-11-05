@@ -1292,7 +1292,10 @@ impl Fleet {
                     i,
                     &format!("{} ", phraseology::radar_identified()),
                     vec![
-                        AtcInstruction::Squawk { code: squawk },
+                        AtcInstruction::Squawk {
+                            code: squawk,
+                            ident: false,
+                        },
                         AtcInstruction::Altitude { altitude_ft: target },
                     ],
                     Stage::HiDescent,
@@ -1461,7 +1464,10 @@ impl Fleet {
                     i,
                     &format!("{} ", phraseology::radar_identified()),
                     vec![
-                        AtcInstruction::Squawk { code: squawk },
+                        AtcInstruction::Squawk {
+                            code: squawk,
+                            ident: false,
+                        },
                         AtcInstruction::Vector {
                             heading_deg: heading,
                             altitude_ft: 4000,
@@ -1524,7 +1530,10 @@ impl Fleet {
                 self.say_ctrl(
                     i,
                     &format!("{} ", phraseology::radar_identified()),
-                    vec![AtcInstruction::Squawk { code: squawk }],
+                    vec![AtcInstruction::Squawk {
+                        code: squawk,
+                        ident: false,
+                    }],
                     Stage::Enroute,
                     None,
                     now,
@@ -1663,7 +1672,8 @@ impl Fleet {
                 a.alt_ft = Some(*altitude_ft);
                 a.body.nav = Nav::Heading(f.grid_from_mag(*heading_deg));
             }
-            AtcInstruction::Squawk { code } => a.squawk = code.clone(),
+            AtcInstruction::Squawk { code, .. } => a.squawk = code.clone(),
+            AtcInstruction::Ident => {}
             AtcInstruction::Handoff {
                 station_id,
                 channel_khz,
@@ -1737,13 +1747,14 @@ impl Fleet {
                 heading_deg: (heading_deg % 360) + 10,
                 altitude_ft: *altitude_ft,
             },
-            AtcInstruction::Squawk { code } => {
+            AtcInstruction::Squawk { code, ident } => {
                 let mut c: Vec<char> = code.chars().collect();
                 let last = c.pop()?;
                 let d = last.to_digit(8)?;
                 c.push(char::from_digit((d + 1 + rng.below(6)) % 8, 8)?);
                 AtcInstruction::Squawk {
                     code: c.into_iter().collect(),
+                    ident: *ident,
                 }
             }
             AtcInstruction::Handoff {

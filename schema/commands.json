@@ -7291,6 +7291,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -7299,6 +7303,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -9361,6 +9379,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -9369,6 +9391,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -28004,6 +28040,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -28012,6 +28052,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -33142,6 +33196,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -33150,6 +33208,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -34919,6 +34991,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -34927,6 +35003,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -36672,6 +36762,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -36680,6 +36774,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -38722,6 +38830,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -38730,6 +38842,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -40475,6 +40601,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -40483,6 +40613,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -42531,6 +42675,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -42539,6 +42687,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -44595,6 +44757,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -44603,6 +44769,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -46645,6 +46825,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -46653,6 +46837,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -47360,6 +47558,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -47368,6 +47570,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -50998,6 +51214,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -51006,6 +51226,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -53328,6 +53562,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -53336,6 +53574,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -55477,6 +55729,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -55485,6 +55741,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -56513,6 +56783,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -56521,6 +56795,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -57572,6 +57860,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -57580,6 +57872,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -58633,6 +58939,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -58641,6 +58951,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -60866,6 +61190,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -60874,6 +61202,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -64698,6 +65040,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -64706,6 +65052,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -68300,6 +68660,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -68308,6 +68672,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -73583,6 +73961,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -73591,6 +73973,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -78166,6 +78562,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -78174,6 +78574,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -82751,6 +83165,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -82759,6 +83177,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },
@@ -87356,6 +87788,10 @@
                 "code": {
                   "type": "string"
                 },
+                "ident": {
+                  "description": "\"Squawk ... and ident\": the controller also wants the IDENT button pressed.",
+                  "type": "boolean"
+                },
                 "kind": {
                   "const": "squawk",
                   "type": "string"
@@ -87364,6 +87800,20 @@
               "required": [
                 "kind",
                 "code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "\"Ident\": press IDENT on the transponder (radar identification).",
+              "properties": {
+                "kind": {
+                  "const": "ident",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
               ],
               "type": "object"
             },

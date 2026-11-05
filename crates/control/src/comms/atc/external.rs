@@ -75,7 +75,8 @@ impl Session {
                 altitude_ft,
             } => radar && *heading_deg <= 360 && altitude_ok(*altitude_ft),
             AtcInstruction::Altitude { altitude_ft } => radar && altitude_ok(*altitude_ft),
-            AtcInstruction::Squawk { code } => {
+            AtcInstruction::Ident => radar,
+            AtcInstruction::Squawk { code, .. } => {
                 (radar || role == FacilityKind::Clearance)
                     && code.len() == 4
                     && code.bytes().all(|b| (b'0'..=b'7').contains(&b))
@@ -240,7 +241,10 @@ mod tests {
                 tower.id.as_str(),
                 tower.channel_khz,
                 tower.kind,
-                AtcInstruction::Squawk { code: "8899".into() },
+                AtcInstruction::Squawk {
+                    code: "8899".into(),
+                    ident: false,
+                },
             ),
             (
                 tower.id.as_str(),
@@ -265,5 +269,29 @@ mod tests {
             )
             .is_empty()
         );
+        // Ident is a radar instruction: a tower may not ask for it, a departure controller may.
+        let departure = s
+            .comms_state()
+            .stations
+            .into_iter()
+            .find(|v| v.airport == "KABE" && v.kind == FacilityKind::Departure)
+            .unwrap();
+        for ident in [
+            AtcInstruction::Ident,
+            AtcInstruction::Squawk {
+                code: "4321".into(),
+                ident: true,
+            },
+        ] {
+            assert!(
+                !s.validate_controller(&tower.id, tower.channel_khz, tower.kind, &ident)
+                    .is_empty()
+            );
+            assert!(
+                s.validate_controller(&departure.id, departure.channel_khz, departure.kind, &ident)
+                    .is_empty(),
+                "{ident:?}"
+            );
+        }
     }
 }

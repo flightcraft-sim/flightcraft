@@ -56,7 +56,12 @@ pub enum AtcInstruction {
     },
     Squawk {
         code: String,
+        /// "Squawk ... and ident": the controller also wants the IDENT button pressed.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        ident: bool,
     },
+    /// "Ident": press IDENT on the transponder (radar identification).
+    Ident,
     Handoff {
         station_id: String,
         channel_khz: u32,
@@ -106,6 +111,9 @@ pub enum PatternEntry {
     LeftBase,
     RightBase,
 }
+/// Seconds after the controller's call by which the student must have pressed IDENT: a normal
+/// readback takes about 10 s, leaving about 20 s.
+pub const IDENT_COMPLIANCE_S: f64 = 30.0;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct PendingInstruction {
     pub id: u64,
@@ -228,6 +236,8 @@ pub(crate) struct Atc {
     pub next_feedback_s: f64,
     pub cue_queue: Vec<ComplianceGrade>,
     pub last_observed: std::collections::BTreeMap<String, bool>,
+    /// Ident instructions the controller has already answered with radar contact.
+    pub ident_answered: std::collections::BTreeSet<u64>,
     pub active: Vec<PendingInstruction>,
     pub takeoff: bool,
     pub landing: bool,

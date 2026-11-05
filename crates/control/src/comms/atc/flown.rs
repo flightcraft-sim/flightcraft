@@ -573,7 +573,7 @@ pub(super) fn other_previews() {
         "Request flight following, {}",
         f.s.pilot_callsign().current
     ));
-    let AtcInstruction::Squawk { code } = instruction(&f.s).instruction else {
+    let AtcInstruction::Squawk { code, .. } = instruction(&f.s).instruction else {
         panic!("squawk");
     };
     f.readback();

@@ -126,7 +126,7 @@ impl Crew {
         pending: &PendingInstruction,
     ) -> Result<(), CommandError> {
         match &pending.instruction {
-            AtcInstruction::Squawk { code } | AtcInstruction::IfrClearance { code, .. } => {
+            AtcInstruction::Squawk { code, .. } | AtcInstruction::IfrClearance { code, .. } => {
                 SetAvionics {
                     setting: AvionicsSetting::Glass {
                         setting: GlassSetting::Transponder {
@@ -865,8 +865,14 @@ mod instruction_tests {
             }),
         )
         .unwrap();
-        crew.apply_instruction(&mut s, &make(AtcInstruction::Squawk { code: "4321".into() }))
-            .unwrap();
+        crew.apply_instruction(
+            &mut s,
+            &make(AtcInstruction::Squawk {
+                code: "4321".into(),
+                ident: false,
+            }),
+        )
+        .unwrap();
         s.crew = crew;
         assert_eq!(*s.sim.state(), before);
         assert_eq!(s.glass.transponder_code, "4321");

@@ -143,7 +143,12 @@ pub(crate) fn render_instruction(
                 altitude(*altitude_ft)
             ),
             AtcInstruction::Altitude { altitude_ft } => format!("{}.", altitude(*altitude_ft)),
-            AtcInstruction::Squawk { code } => format!("Squawk {}.", p::digits(code.parse().unwrap_or(0), 4)),
+            AtcInstruction::Squawk { code, ident } => format!(
+                "Squawk {}{}.",
+                p::digits(code.parse().unwrap_or(0), 4),
+                if *ident { " and ident" } else { "" }
+            ),
+            AtcInstruction::Ident => "Ident.".into(),
             AtcInstruction::Handoff {
                 station_id,
                 channel_khz,

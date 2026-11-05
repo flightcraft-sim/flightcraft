@@ -206,7 +206,13 @@ impl Session {
             (FacilityKind::Clearance, Some(R::VfrDeparture)) => {
                 self.comms.atc.ifr_clearance = false;
                 let code = self.assign_squawk();
-                self.issue(&st, AtcInstruction::Squawk { code: code.clone() });
+                self.issue(
+                    &st,
+                    AtcInstruction::Squawk {
+                        code: code.clone(),
+                        ident: false,
+                    },
+                );
             }
             (FacilityKind::Ground, Some(R::Taxi | R::VfrDeparture)) => {
                 self.issue(
@@ -333,7 +339,7 @@ impl Session {
                 self.issue(&st, AtcInstruction::Parking);
             }
             (FacilityKind::Approach | FacilityKind::Departure, Some(R::Bravo)) => {
-                let code_ok=self.comms.atc.active.iter().any(|p|matches!(&p.instruction,AtcInstruction::Squawk {code} if *code==self.glass.transponder_code));
+                let code_ok=self.comms.atc.active.iter().any(|p|matches!(&p.instruction,AtcInstruction::Squawk {code, ..} if *code==self.glass.transponder_code));
                 let cleared =
                     code_ok && self.comms.atc.two_way.contains(&provider(&st)) && new_york_controller(&st);
                 let heading_deg = self
@@ -360,10 +366,36 @@ impl Session {
                 Some(R::FlightFollowing | R::VfrDeparture),
             ) => {
                 let code = self.assign_squawk();
-                self.issue(&st, AtcInstruction::Squawk { code: code.clone() });
+                let ident = self.wants_ident();
+                self.issue(
+                    &st,
+                    AtcInstruction::Squawk {
+                        code: code.clone(),
+                        ident,
+                    },
+                );
             }
             (FacilityKind::Approach | FacilityKind::Departure, Some(R::Position | R::Inbound)) => {
-                if self.comms.atc.radar_facility.as_deref() != Some(radar_facility(&st).as_str()) {
+                let identified =
+                    self.comms.atc.radar_facility.as_deref() == Some(radar_facility(&st).as_str());
+                let ident_pending = self
+                    .comms
+                    .atc
+                    .pending
+                    .iter()
+                    .chain(self.comms.atc.active.iter())
+                    .any(|p| p.station_id == st.id && p.instruction == AtcInstruction::Ident);
+                if !identified
+                    && !ident_pending
+                    && matches!(
+                        self.glass.transponder_mode,
+                        crate::TransponderMode::On | crate::TransponderMode::Alt
+                    )
+                    && self.wants_ident()
+                {
+                    // Radar identification by ident: "radar contact" follows the button press.
+                    self.issue(&st, AtcInstruction::Ident);
+                } else if !identified && !ident_pending {
                     self.atc_reply(
                         &st,
                         self.radar_position_report(&airport),
@@ -486,12 +518,14 @@ impl Session {
                     | (AtcInstruction::Taxi { .. }, AtcInstruction::Taxi { .. })
                     | (AtcInstruction::Vector { .. }, AtcInstruction::Vector { .. })
                     | (AtcInstruction::Squawk { .. }, AtcInstruction::Squawk { .. })
+                    | (AtcInstruction::Ident, AtcInstruction::Ident)
+                    | (AtcInstruction::Ident, AtcInstruction::Squawk { .. })
                     | (AtcInstruction::Squawk { .. }, AtcInstruction::IfrClearance { .. })
                     | (AtcInstruction::Handoff { .. }, AtcInstruction::Handoff { .. })
             )
         });
     }
-    fn radar_position_report(&self, airport: &str) -> String {
+    pub(super) fn radar_position_report(&self, airport: &str) -> String {
         let Some([an, ae]) = crate::regions::airport(self.sim.world(), airport)
             .ok()
             .and_then(|a| self.radio_project(a.latitude_deg, a.longitude_deg))
@@ -519,6 +553,12 @@ impl Session {
             direction,
             &self.airport_radio_name(airport),
         )
+    }
+    /// Whether the controller adds "and ident" to this squawk or asks for a radar-identification
+    /// ident: about one call in three, decided by the message counter, so the same flight always
+    /// hears the same calls.
+    pub(super) fn wants_ident(&self) -> bool {
+        (self.comms.next_id.wrapping_mul(0x9E37_79B1) >> 4) & 3 == 0
     }
     fn assign_squawk(&self) -> String {
         format!("{:04o}", 0o4000 + (self.comms.next_id % 0o3000) as u32)
@@ -902,7 +942,20 @@ pub(crate) fn readback_matches(i: &AtcInstruction, m: &PilotMessage) -> bool {
                 && m.altitude_ft == Some(*altitude_ft)
         }
         AtcInstruction::Altitude { altitude_ft } => m.altitude_ft == Some(*altitude_ft),
-        AtcInstruction::Squawk { code } => m.squawk.as_ref() == Some(code),
+        // The squawk must be read back; the "and ident" is optional in the readback, since the
+        // button press is what is graded.
+        AtcInstruction::Squawk { code, .. } => m.squawk.as_ref() == Some(code),
+        // "Ident" may be answered with the callsign alone, or "ident", "wilco", "roger".
+        AtcInstruction::Ident => {
+            t.split_whitespace()
+                .any(|w| matches!(w, "ident" | "wilco" | "roger"))
+                || (m.callsign_present
+                    && m.request.is_none()
+                    && m.squawk.is_none()
+                    && m.heading_deg.is_none()
+                    && m.altitude_ft.is_none()
+                    && t.split_whitespace().count() <= 9)
+        }
         AtcInstruction::Handoff { channel_khz, .. } => m.channel_khz == Some(*channel_khz),
         AtcInstruction::Bravo {
             cleared,

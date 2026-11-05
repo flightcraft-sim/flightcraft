@@ -81,7 +81,22 @@ For a busy approach with many aircraft talking on the frequency, see [busy-airsp
 Approach and departure accept `request flight following`, position reports such as
 `departure, leaving 400, heading 060`, and `request bravo transition`.
 Flight following assigns a deterministic four-digit octal code. Select it with the shared
-transponder control (`avionics.set`, glass transponder setting). Radar position reports produce
+transponder control (`avionics.set`, glass transponder setting).
+
+**Ident.** About one squawk assignment in three from approach or departure adds "and ident"
+(`Squawk {code, ident: true}`: "Squawk four three two one and ident."), and about one position report in
+three to a radar facility that has not yet identified you is answered with a bare "Ident." (`Ident`) before
+radar contact. Which calls ask is decided by the session's message counter, so the same flight hears the same
+calls. The readback is the squawk code with the callsign ("squawk four three two one and ident, {callsign}";
+the words "and ident" are optional because the press is what is graded); a bare "Ident." may be read back with
+the callsign alone, "ident", "wilco", or "roger". Press IDENT in the transponder window, with the keyboard
+action, or with `avionics.set` glass `ident`. The monitor then grades an `ident` item: it passes when the press
+comes after the call, and fails if none has come 30 seconds after the call (about 20 seconds after a normal
+readback); a late press still clears the fault. A press made before the call does not count, and the
+transponder must be on or altitude. When the press is made (and, for a squawk-and-ident, the code is set) the
+controller answers "radar contact" with the position report, or a plain "Radar contact." if that facility
+already identified you. External (MCP) controllers may issue `ident` and squawk-with-ident from a radar facility;
+they go through the same readback and compliance path. Radar position reports produce
 radar contact, traffic advisories (see below) from the simulated traffic,
 and heading/altitude assignments or controller-initiated sector handoffs. Once radar contact has
 been heard, a frequency change between sectors of the same NASR radar facility continues that
@@ -195,7 +210,7 @@ This is a bounded phrase grammar, not general natural-language understanding or 
 
 The monitor samples the same flight state recorded by the session. Heading tolerance is ±10°;
 altitude tolerance is ±100 ft. Vector checks begin after 30 seconds; squawk and frequency checks
-begin after ten seconds. Hold-short compliance uses an estimated protection rectangle 30 m outside
+begin after ten seconds; the ident check passes on the press and fails 30 seconds after the call. Hold-short compliance uses an estimated protection rectangle 30 m outside
 the runway pavement, since surveyed hold-short lines are absent. Takeoff clearance releases that
 hold-short instruction only after a correct readback. Altitude checks allow a normal climb/descent toward a newly assigned altitude; a newer assignment
 supersedes the older target. Frequency assignments retire after the assigned channel is selected.

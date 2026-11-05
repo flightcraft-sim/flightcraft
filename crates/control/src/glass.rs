@@ -23,6 +23,9 @@ pub struct GlassSettings {
     /// Simulation step at which the ident flag drops; internal.
     #[serde(skip)]
     pub ident_until_step: u64,
+    /// Simulation time of the last IDENT press, for the controller's compliance check.
+    #[serde(skip)]
+    pub last_ident_time_s: Option<f64>,
     pub range_nm: f64,
     pub orientation: MapOrientation,
     pub page: GlassPage,
@@ -59,6 +62,7 @@ impl Default for GlassSettings {
             transponder_mode: TransponderMode::Alt,
             ident_remaining_s: 0.0,
             ident_until_step: 0,
+            last_ident_time_s: None,
             range_nm: 40.0,
             orientation: MapOrientation::NorthUp,
             page: GlassPage::Map,
@@ -279,6 +283,7 @@ impl Session {
                 }
                 let steps = (IDENT_DURATION_S / flightcraft_sim::DT_S).round() as u64;
                 self.glass.ident_until_step = self.sim.steps() + steps;
+                self.glass.last_ident_time_s = Some(self.sim.state().time_s);
             }
             GlassSetting::CasAcknowledge { index } => {
                 let failures = self
