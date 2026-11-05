@@ -25,6 +25,11 @@ impl Cell {
     }
 }
 pub(super) struct Grid {
+    /// A survey-specific class whose returns are structure or canopy returns that were never
+    /// split into building and vegetation classes, counted as unclassified. NY_NewYorkCity puts
+    /// roofs and walls in both class 1 and class 17 (Midtown: 5.1 M and 2.1 M returns, with the
+    /// same height-above-ground spread); ignoring class 17 would lose a third of the roof points.
+    pub unclassified_alias: Option<u8>,
     pub bounds: [f64; 4],
     pub step: f64,
     pub width: usize,
@@ -46,6 +51,7 @@ impl Grid {
             .filter(|n| *n > 0 && *n <= 4_194_304)
             .ok_or("DSM block exceeds 4 million cells; build the area in bounded blocks")?;
         Ok(Self {
+            unclassified_alias: None,
             bounds,
             step,
             width,
@@ -63,6 +69,7 @@ impl Grid {
             9 => 16,
             3..=5 => 2,
             6 => 4,
+            c if Some(c) == self.unclassified_alias => 1,
             _ => return Ok(()),
         };
         let [x, y, z] = p.xyz;

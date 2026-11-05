@@ -30,6 +30,8 @@ const MARGIN_M: f64 = 96.;
 /// Plane clutter smaller than this (cells) is absorbed into its neighbours' plane.
 const MIN_PLANE_CELLS: usize = 6;
 const WALL_SINK_M: f64 = 1.2;
+/// NY_NewYorkCity class 17 carries roof and wall returns like class 1 (see `Grid`).
+const NYC_STRUCTURE_ALIAS_CLASS: u8 = 17;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Bounds {
@@ -668,17 +670,37 @@ pub(super) fn process_block(
     totals: &mut Totals,
 ) -> Result<(Vec<TileMeta>, Vec<Tree>), String> {
     let mut grid = Grid::new(spec.grid)?;
+    grid.unclassified_alias = Some(NYC_STRUCTURE_ALIAS_CLASS);
     let mut ground = lidar_ground::Check::default();
     let mut decoded = 0;
     // Developer probe: per-class point count and Z range within 40 m of the Empire State Building.
     let debug_probe =
         std::env::var_os("FLIGHTCRAFT_CORRIDOR_DEBUG").map(|_| corridor::merc(40.74844, -73.98566));
     let mut probe: BTreeMap<u8, (u64, f64, f64)> = BTreeMap::new();
+    let mut n17 = 0_u64;
+    let mut hist: BTreeMap<u8, Vec<u32>> = BTreeMap::new();
     for node in nodes.iter().filter(|n| intersects(n.rect, spec.grid)) {
         let file = std::fs::File::open(&node.path).map_err(|e| e.to_string())?;
         let mut points = 0_u64;
         let audit = lidar::scan(std::io::BufReader::new(file), |p| {
             points += 1;
+            if debug_probe.is_some() && (p.classification == 17 || p.classification == 1) {
+                n17 += 1;
+                if n17 % 997 == 0
+                    && let Ok([lat, lon]) = scenery::inverse_mercator(p.xyz[0], p.xyz[1])
+                    && let Ok(Some(g)) = dem.height_opt(lat, lon)
+                {
+                    let h = (p.xyz[2] - g).clamp(-5., 400.);
+                    let bin = ((h + 5.) / 10.) as usize;
+                    if p.classification == 17 && n17 % 99_700 == 0 {
+                        eprintln!("class 17 sample: {lat:.5}, {lon:.5}, {h:.1} m above ground");
+                    }
+                    let e = hist.entry(p.classification).or_insert_with(|| vec![0_u32; 42]);
+                    if let Some(c) = e.get_mut(bin) {
+                        *c += 1;
+                    }
+                }
+            }
             if debug_probe.is_some_and(|c| libm::hypot(p.xyz[0] - c[0], p.xyz[1] - c[1]) < 40.) {
                 let e = probe
                     .entry(p.classification)
@@ -701,6 +723,7 @@ pub(super) fn process_block(
     totals.ground.absorb(ground);
     if debug_probe.is_some() {
         eprintln!("class (count, max z, min z) within 40 m of the Empire State Building: {probe:?}");
+        eprintln!("height-above-ground histogram (10 m bins from -5 m) of sampled returns: {hist:?}");
     }
     if decoded == 0 {
         totals

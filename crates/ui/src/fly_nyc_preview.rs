@@ -25,8 +25,9 @@ fn pose(n: f64, e: f64, height: f64, heading: f64) -> State {
 
 /// (file name, latitude, longitude, feet MSL, direction of view in degrees true, pitch degrees)
 #[rustfmt::skip]
-const SHOTS: [(&str, f64, f64, f64, f64, f64); 11] = [
+const SHOTS: [(&str, f64, f64, f64, f64, f64); 12] = [
     // Close-ups for checking facades and roofs while building (development only).
+    ("dev-roofs", 40.7480, -73.9930, 700., 20., -35.),
     ("dev-close-a", 40.7430, -74.0000, 450., 50., -12.),
     ("dev-close-b", 40.7600, -73.9760, 600., 250., -22.),
     // Midtown from over the Hudson, northeast across the river.
