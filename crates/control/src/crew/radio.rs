@@ -120,12 +120,25 @@ impl Crew {
         }
         Ok(())
     }
+    /// Press IDENT the way a student does (the glass `ident` setting), so the controller's
+    /// radar-contact answer and the compliance check follow.
+    fn press_ident(s: &mut Session) -> Result<(), CommandError> {
+        SetAvionics {
+            setting: AvionicsSetting::Glass {
+                setting: GlassSetting::Ident {},
+            },
+        }
+        .run(s)?;
+        s.crew_say("Squawk ident.".to_owned());
+        Ok(())
+    }
     fn apply_instruction(
         &mut self,
         s: &mut Session,
         pending: &PendingInstruction,
     ) -> Result<(), CommandError> {
         match &pending.instruction {
+            AtcInstruction::Ident => Self::press_ident(s)?,
             AtcInstruction::Squawk { code, .. } | AtcInstruction::IfrClearance { code, .. } => {
                 SetAvionics {
                     setting: AvionicsSetting::Glass {
@@ -136,6 +149,9 @@ impl Crew {
                     },
                 }
                 .run(s)?;
+                if matches!(pending.instruction, AtcInstruction::Squawk { ident: true, .. }) {
+                    Self::press_ident(s)?;
+                }
                 // Continue an inbound radar check-in after flight following assigned the code.
                 self.radio.code_received = true;
                 if self.radio.stage == Stage::Radar {
