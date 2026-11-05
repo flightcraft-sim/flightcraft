@@ -106,6 +106,25 @@ pub(crate) fn active_emergency(s: &Session) -> Option<&EmergencyDebrief> {
         .filter(|d| d.outcome == "in_progress")
 }
 
+const PANEL_HIDDEN_KEY: &str = "emergency.panel.hidden";
+
+/// The running emergency's procedure is shown in the checklist panel beside the outside view: it
+/// opens by itself when the emergency starts and the Emergency menu hides or shows it again.
+pub(crate) fn emergency_panel_shown(ctx: &egui::Context, s: &Session) -> bool {
+    let id = egui::Id::new(PANEL_HIDDEN_KEY);
+    if active_emergency(s).is_none() {
+        // The next emergency opens the panel again.
+        ctx.data_mut(|d| d.remove::<bool>(id));
+        return false;
+    }
+    !ctx.data(|d| d.get_temp::<bool>(id)).unwrap_or(false)
+}
+
+/// Hides or shows the emergency procedure panel (the Emergency menu's button).
+pub(crate) fn set_emergency_panel(ctx: &egui::Context, shown: bool) {
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new(PANEL_HIDDEN_KEY), !shown));
+}
+
 /// One emergency item as shown: memory items carry a visible mark.
 pub(crate) fn emergency_item_text(item: &EmergencyItem) -> String {
     if item.memory {

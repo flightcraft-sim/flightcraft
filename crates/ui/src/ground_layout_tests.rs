@@ -479,3 +479,115 @@ fn render_ground_layout_preview() {
     std::fs::create_dir_all(&dir).unwrap();
     image.save(dir.join("ground-1920x1080.png")).unwrap();
 }
+
+fn airborne(session: &mut Session) {
+    session
+        .execute(
+            "sim.reset",
+            json!({"start":{"kind":"air","height_m":900.,"airspeed_mps":50.,"heading_rad":0.}}),
+        )
+        .unwrap();
+    session.execute("sim.step", json!({"steps": 120})).unwrap();
+}
+
+/// The checklist page in the main window's layout for this frame, if there is one.
+fn checklist_page(
+    ctx: &egui::Context,
+    s: &Session,
+    stored: &flightcraft_control::screens::Layout,
+    stacked: bool,
+) -> Option<[f32; 4]> {
+    let layout = crate::screens::main_layout(ctx, s, stored, stacked);
+    layout
+        .elements
+        .iter()
+        .find(|e| e.page.kind == flightcraft_control::screens::PageKind::Checklist)
+        .map(|e| [e.position[0], e.position[1], e.size[0], e.size[1]])
+}
+
+#[test]
+fn an_in_flight_emergency_puts_its_procedure_beside_the_outside_view() {
+    let mut s = Session::new().unwrap();
+    airborne(&mut s);
+    let stored = s.screens().windows[0].layout.clone();
+    let ctx = egui::Context::default();
+    for stacked in [false, true] {
+        assert!(
+            checklist_page(&ctx, &s, &stored, stacked).is_none(),
+            "no panel without an emergency"
+        );
+    }
+    s.execute("failure.set", json!({"failure":{"kind":"engine_fire"}}))
+        .unwrap();
+    for stacked in [false, true] {
+        let [x, y, w, h] = checklist_page(&ctx, &s, &stored, stacked).expect("the procedure panel is open");
+        assert!(w > 100. && h > 50., "{stacked}: {w}x{h}");
+        // It takes part of the outside view's band and leaves the dash alone.
+        let outside = stored
+            .elements
+            .iter()
+            .find(|e| e.page.kind == flightcraft_control::screens::PageKind::Outside)
+            .unwrap();
+        assert!(x >= outside.position[0] && y >= outside.position[1]);
+        assert!(x + w <= outside.position[0] + outside.size[0] + 0.5);
+        assert!(y + h <= outside.position[1] + outside.size[1] + 0.5);
+        let layout = crate::screens::main_layout(&ctx, &s, &stored, stacked);
+        for e in &stored.elements {
+            if e.page.kind != flightcraft_control::screens::PageKind::Outside {
+                assert!(layout.elements.iter().any(|l| l.id == e.id), "{} kept", e.id);
+            }
+        }
+    }
+}
+
+#[test]
+fn the_emergency_menu_can_hide_and_show_the_panel() {
+    let mut s = Session::new().unwrap();
+    airborne(&mut s);
+    let stored = s.screens().windows[0].layout.clone();
+    let ctx = egui::Context::default();
+    assert!(checklist_page(&ctx, &s, &stored, false).is_none());
+    s.execute("failure.set", json!({"failure":{"kind":"engine_fire"}}))
+        .unwrap();
+    assert!(checklist_page(&ctx, &s, &stored, false).is_some());
+    crate::checklist::set_emergency_panel(&ctx, false);
+    assert!(checklist_page(&ctx, &s, &stored, false).is_none());
+    crate::checklist::set_emergency_panel(&ctx, true);
+    assert!(checklist_page(&ctx, &s, &stored, false).is_some());
+}
+
+#[test]
+fn the_panel_opens_on_the_emergency_tab_with_the_procedure_when_an_emergency_starts() {
+    let mut s = Session::new().unwrap();
+    airborne(&mut s);
+    s.execute("failure.set", json!({"failure":{"kind":"engine_fire"}}))
+        .unwrap();
+    let mut view = crate::checklist::ChecklistUi::default();
+    let ctx = egui::Context::default();
+    crate::theme::install(&ctx);
+    let mut texts = Vec::new();
+    for _ in 0..2 {
+        let out = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(700., 900.),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| view.show(ui, &mut s));
+            },
+        );
+        texts = out
+            .shapes
+            .into_iter()
+            .filter_map(|c| match c.shape {
+                egui::Shape::Text(t) => Some(t.galley.job.text.clone()),
+                _ => None,
+            })
+            .collect();
+    }
+    assert!(texts.iter().any(|t| t.contains("Emergency")), "{texts:?}");
+    assert!(texts.iter().any(|t| t.starts_with("MEMORY")), "{texts:?}");
+}

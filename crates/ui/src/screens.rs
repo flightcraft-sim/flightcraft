@@ -1639,6 +1639,9 @@ pub(crate) fn main_layout(ctx: &egui::Context, s: &Session, stored: &Layout, sta
             state.exterior_inset.mode != flightcraft_control::InsetMode::Off,
             stacked,
         )
+    } else if crate::checklist::emergency_panel_shown(ctx, s) {
+        // A running emergency puts its procedure beside the outside view, in flight too.
+        stored.ground(true, stacked)
     } else if state.exterior_inset.visible {
         stored.with_inset(state.exterior_inset.placement)
     } else {

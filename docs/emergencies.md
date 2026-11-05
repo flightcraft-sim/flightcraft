@@ -62,6 +62,12 @@ pack's procedures directly (they are not copied into the normal checklists). Mem
 procedure once; its items can then be completed there with the same timing and ordering as the
 scenario window's **Complete** buttons.
 
+In flight (and on the ground without a checklist open) a running emergency also puts the checklist
+panel beside the outside view in the main window, on the Emergency tab at its procedure, so the
+student sees the memory items without opening anything. The top-bar **Emergency** menu lists the
+active faults and has **Hide emergency procedure** / **Show emergency procedure** to give the
+outside view the whole band back; the panel opens again by itself for the next emergency.
+
 Corvid procedures are original fictional guidance for carburettor, magneto, and vacuum systems.
 Larrow procedures are original fictional guidance for its injected engine and electrical gyros;
 it does not offer carb-ice or vacuum-pump procedures. No external aircraft pack is modified. The

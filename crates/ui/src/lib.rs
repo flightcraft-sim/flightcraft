@@ -1349,7 +1349,21 @@ impl FlightCraftApp {
                     }
                     if scenario::emergency_active(&self.session) {
                         ui.menu_button(egui::RichText::new("Emergency").color(theme::DANGER), |ui| {
-                            scenario::indications(ui, &self.session)
+                            scenario::indications(ui, &self.session);
+                            if checklist::active_emergency(&self.session).is_some() {
+                                let shown = checklist::emergency_panel_shown(ui.ctx(), &self.session);
+                                if ui
+                                    .button(if shown {
+                                        "Hide emergency procedure"
+                                    } else {
+                                        "Show emergency procedure"
+                                    })
+                                    .clicked()
+                                {
+                                    checklist::set_emergency_panel(ui.ctx(), !shown);
+                                    ui.close();
+                                }
+                            }
                         });
                     }
                     for setting in self.procedure_controls.show(ui, &self.session) {
