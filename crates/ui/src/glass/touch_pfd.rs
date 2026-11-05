@@ -736,16 +736,21 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         };
         (u as f32) * half * fpm.signum() as f32
     };
-    for (fpm, text) in [(2000., "2"), (1000., "1"), (500., ".5")] {
+    let fpm = a.vertical_speed_mps * FEET * 60.;
+    let py = vmid - scale(fpm.clamp(-2000., 2000.));
+    // A scale label is masked where the pointer (7 px either side of its tip) would cover it, so the
+    // pointer is never drawn over a number.
+    let label_size = 17. * t.tape;
+    for (scale_fpm, text) in [(2000., "2"), (1000., "1"), (500., ".5")] {
         for sign in [-1_f64, 1.] {
-            let ty = vmid - scale(fpm * sign);
+            let ty = vmid - scale(scale_fpm * sign);
             line(d, [vx + 2., ty], [vx + 8., ty], Ink::TapeText, 2.);
-            label(d, [vx + vw * 0.5, ty], text, 17. * t.tape, Ink::TapeText);
+            if (ty - py).abs() > 7. + label_size * 0.5 {
+                label(d, [vx + vw * 0.5, ty], text, label_size, Ink::TapeText);
+            }
         }
     }
     line(d, [vx + 2., vmid], [vx + 14., vmid], Ink::TapeText, 2.);
-    let fpm = a.vertical_speed_mps * FEET * 60.;
-    let py = vmid - scale(fpm.clamp(-2000., 2000.));
     polygon(
         d,
         vec![

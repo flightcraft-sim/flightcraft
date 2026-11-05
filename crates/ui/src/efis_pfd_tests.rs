@@ -2078,3 +2078,48 @@ fn airspeed_tape_numbers_stay_clear_of_the_bugs_the_pointer_and_the_window_edges
         );
     }
 }
+
+/// The vertical speed pointer never sits over a scale label (full and split), at any rate.
+#[test]
+fn the_vertical_speed_pointer_never_covers_a_scale_label() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    for mode in [PfdMode::Full, PfdMode::Split] {
+        let geometry = MODEL.pfd_geometry(mode);
+        let scale = geometry.rect(E::VerticalSpeedScale);
+        for fpm in [
+            -2500., -2000., -1000., -500., -450., 0., 480., 500., 520., 1000., 1500., 2000., 3000.,
+        ] {
+            let mut g = flying(&s);
+            g.air_data.vertical_speed_mps = fpm * 0.3048 / 60.;
+            let d = touch_pfd::panel(&g, input, &geometry, options());
+            let tips: Vec<f32> = d
+                .flat_items()
+                .into_iter()
+                .filter_map(|i| match i {
+                    DrawItem::Polygon {
+                        points,
+                        ink: Ink::White,
+                        ..
+                    } if points.len() == 3
+                        && inside(scale, points[0])
+                        && points[0][0] > (scale[0] + scale[2] - 3.) as f32 =>
+                    {
+                        Some(points[0][1])
+                    }
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(tips.len(), 1, "{mode:?} {fpm}: one pointer");
+            for (text, at, size, _) in labels(&d)
+                .into_iter()
+                .filter(|(t, at, ..)| inside(scale, *at) && ["2", "1", ".5"].contains(&t.as_str()))
+            {
+                assert!(
+                    (at[1] - tips[0]).abs() > 7. + size * 0.5 - 0.01,
+                    "{mode:?} {fpm}: the pointer covers {text}"
+                );
+            }
+        }
+    }
+}
