@@ -43,6 +43,9 @@ pub struct GlassSettings {
     /// The Vspeed bugs on the airspeed tape.
     #[serde(default)]
     pub vspeeds: VspeedConfig,
+    /// The second bearing pointer's source.
+    #[serde(default)]
+    pub bearing_pointer2: BearingPointer,
     /// The G meter is shown, and its record since the last reset.
     #[serde(default)]
     pub g_meter_shown: bool,
@@ -120,6 +123,7 @@ impl Default for GlassSettings {
             timer: FlightTimer::default(),
             data_bar_field: DataBarField::SafeAltitude,
             vspeeds: VspeedConfig::default(),
+            bearing_pointer2: BearingPointer::Off,
             g_meter_shown: false,
             g_track: GMeterTrack::default(),
             g_sampled_s: f64::NEG_INFINITY,
@@ -412,6 +416,7 @@ impl Session {
                     .map_err(|e| invalid(NAME, e))?;
             }
             GlassSetting::DataBarField { field } => self.glass.data_bar_field = field,
+            GlassSetting::BearingPointer2 { source } => self.glass.bearing_pointer2 = source,
             GlassSetting::GMeter { shown } => self.glass.g_meter_shown = shown,
             GlassSetting::GMeterReset {} => {
                 let g = self.sim.readout().load_factor_g;

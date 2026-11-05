@@ -714,6 +714,43 @@ fn the_vspeed_page_toggles_each_bug_and_opens_its_keypad() {
 }
 
 #[test]
+fn the_hsi_draws_bearing_pointers_one_and_two_only_for_gps_and_only_with_a_leg() {
+    use flightcraft_sim::avionics::glass::BearingPointer as B;
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let cyan_lines = |g: &GlassState| {
+        touch_pfd::panel(g, input, &geometry, options())
+            .flat_items()
+            .into_iter()
+            .filter(
+                |i| matches!(i, DrawItem::Line { ink: Ink::Cyan, width, .. } if (*width - 2.).abs() < 1e-3),
+            )
+            .count()
+    };
+    let has = |g: &GlassState, text: &str| {
+        let d = touch_pfd::panel(g, input, &geometry, options());
+        labels(&d).iter().any(|(t, ..)| t == text)
+    };
+    let mut g = flying(&s);
+    let none = cyan_lines(&g);
+    assert!(!has(&g, "BRG1 GPS") && !has(&g, "BRG2 GPS"));
+    // BRG1 adds one line pair; BRG2 two (a double line); each has its label.
+    g.settings.bearing_pointer = B::Gps;
+    assert_eq!(cyan_lines(&g), none + 2);
+    assert!(has(&g, "BRG1 GPS") && !has(&g, "BRG2 GPS"));
+    g.settings.bearing_pointer2 = B::Gps;
+    assert_eq!(cyan_lines(&g), none + 6);
+    assert!(has(&g, "BRG1 GPS") && has(&g, "BRG2 GPS"));
+    g.settings.bearing_pointer = B::Off;
+    assert_eq!(cyan_lines(&g), none + 4);
+    // With no valid leg there is nothing to point at.
+    g.gps.valid = false;
+    assert_eq!(cyan_lines(&g), none);
+    assert!(!has(&g, "BRG2 GPS"));
+}
+
+#[test]
 fn the_g_meter_shows_the_load_factor_with_its_extremes_only_when_enabled_and_resets_on_touch() {
     use flightcraft_control::{AvionicsSetting, GlassSetting};
     let s = session();

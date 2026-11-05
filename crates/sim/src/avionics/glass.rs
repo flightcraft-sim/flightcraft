@@ -160,6 +160,11 @@ pub enum GlassSetting {
     DataBarField {
         field: DataBarField,
     },
+    /// The second bearing pointer (BRG2) on the HSI: GPS, or off. No NAV2 is installed, so a
+    /// radio is not an option.
+    BearingPointer2 {
+        source: BearingPointer,
+    },
     /// Show or hide the G meter (current load factor, and the lowest and highest since reset).
     GMeter {
         shown: bool,

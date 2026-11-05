@@ -347,6 +347,11 @@ impl PanelUi {
                                         ident_remaining_s: glass.settings.ident_remaining_s,
                                         user_field: glass.settings.data_bar_field,
                                         g_meter: glass.settings.g_meter_shown,
+                                        bearing: [
+                                            glass.settings.bearing_pointer,
+                                            glass.settings.bearing_pointer2,
+                                        ]
+                                        .map(|b| b == flightcraft_sim::avionics::glass::BearingPointer::Gps),
                                         vspeeds: glass.settings.vspeeds,
                                         pack_vspeeds_kt: input.aircraft.map_or([None; 3], |a| {
                                             let v = &a.variant.v_speeds;

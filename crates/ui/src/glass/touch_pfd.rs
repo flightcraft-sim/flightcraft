@@ -1042,6 +1042,37 @@ fn hsi(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         let x = s.gps.cdi_deviation as f32 * r * 0.52;
         line(d, p(x, -r * 0.40), p(x, r * 0.40), ink, 6.);
     }
+    // Bearing pointers to the active waypoint: BRG1 a single line, BRG2 a double line, both cyan,
+    // with the head on the rim and a tail opposite. They need a valid GPS leg.
+    if s.gps.valid && s.gps.distance_valid {
+        let rotate = s.gps.bearing_rad - heading;
+        let q = |x: f32, y: f32| rotated([x, y], [cx, cy], rotate);
+        for (n, source, y_label) in [
+            (1, s.settings.bearing_pointer, cy + r * 0.62),
+            (2, s.settings.bearing_pointer2, cy + r * 0.80),
+        ] {
+            if source != flightcraft_sim::avionics::glass::BearingPointer::Gps {
+                continue;
+            }
+            let offsets: &[f32] = if n == 1 { &[0.] } else { &[-2.5, 2.5] };
+            for dx in offsets {
+                line(d, q(*dx, -r * 0.40), q(*dx, -r + 16.), Ink::Cyan, 2.);
+                line(d, q(*dx, r * 0.40), q(*dx, r - 16.), Ink::Cyan, 2.);
+            }
+            polygon(
+                d,
+                vec![q(0., -r + 14.), q(-7., -r + 30.), q(7., -r + 30.)],
+                Ink::Cyan,
+            );
+            label(
+                d,
+                [cx - r * 1.25, y_label],
+                format!("BRG{n} GPS"),
+                15. * t.boxes,
+                Ink::Cyan,
+            );
+        }
+    }
     // Source and scale annunciations.
     label(
         d,

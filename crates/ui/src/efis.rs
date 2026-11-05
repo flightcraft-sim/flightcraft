@@ -476,6 +476,8 @@ pub(crate) struct Shared {
     pub pack_vspeeds_kt: [Option<f64>; 3],
     /// The G meter is shown.
     pub g_meter: bool,
+    /// The two bearing pointers follow GPS.
+    pub bearing: [bool; 2],
     /// The active flight plan, for the FPL page.
     pub fpl: FplView,
 }
@@ -798,6 +800,21 @@ fn overlay(
                         enabled: !d.synthetic_vision,
                     },
                 );
+            }
+            for (n, on) in shared.bearing.into_iter().enumerate() {
+                use flightcraft_sim::avionics::glass::BearingPointer as B;
+                let source = if on { B::Off } else { B::Gps };
+                if entry(
+                    ui,
+                    &format!("Bearing {}: {}", n + 1, if on { "GPS" } else { "Off" }),
+                    on,
+                ) {
+                    out.glass.push(if n == 0 {
+                        GlassSetting::BearingPointer { source }
+                    } else {
+                        GlassSetting::BearingPointer2 { source }
+                    });
+                }
             }
             if entry(ui, "G meter", shared.g_meter) {
                 out.glass.push(GlassSetting::GMeter {

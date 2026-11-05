@@ -5693,6 +5693,11 @@
         "bearing_pointer": {
           "$ref": "#/$defs/BearingPointer"
         },
+        "bearing_pointer2": {
+          "description": "The second bearing pointer's source.",
+          "$ref": "#/$defs/BearingPointer",
+          "default": "off"
+        },
         "clock_format": {
           "description": "Which time the clock field shows.",
           "$ref": "#/$defs/ClockFormat",

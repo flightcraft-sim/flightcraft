@@ -323,6 +323,34 @@ fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
     assert_eq!(spoken(&s), 1);
 }
 #[test]
+fn the_second_bearing_pointer_is_a_gps_or_off_setting() {
+    let mut s = glass_session();
+    assert_eq!(s.glass_state().settings.bearing_pointer2, BearingPointer::Off);
+    s.set_glass(GlassSetting::BearingPointer2 {
+        source: BearingPointer::Gps,
+    })
+    .unwrap();
+    let g = s.glass_state().settings;
+    assert_eq!(
+        (g.bearing_pointer, g.bearing_pointer2),
+        (BearingPointer::Off, BearingPointer::Gps)
+    );
+    // A radio is not an option: no NAV2 is installed, and the setting only knows off and gps.
+    assert!(
+        s.execute(
+            "avionics.set",
+            serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"bearing_pointer2","source":"nav2"}}}),
+        )
+        .is_err()
+    );
+    s.execute(
+        "avionics.set",
+        serde_json::json!({"setting":{"kind":"glass","setting":{"kind":"bearing_pointer2","source":"off"}}}),
+    )
+    .unwrap();
+    assert_eq!(s.glass_state().settings.bearing_pointer2, BearingPointer::Off);
+}
+#[test]
 fn the_g_meter_samples_the_load_factor_keeps_extremes_and_resets() {
     let mut s = glass_session();
     s.sim.step(600);

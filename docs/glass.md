@@ -387,6 +387,15 @@ step that found it above. It sounds again only after a climb back above, never a
 set below the aircraft, and never while the altitude data is invalid. The warning tone (`audio::Audio`) is
 tied to the autopilot disconnect and has no named callouts, so the voice path is the hook the engine has.
 
+### Bearing pointers
+
+The compass rose carries two bearing pointers to the active GPS waypoint, set from the PFD options menu
+(**Bearing 1**, **Bearing 2**; glass settings `bearing_pointer` and `bearing_pointer2`, each `source`: `off` or
+`gps`). **BRG1** is a single cyan line and **BRG2** a double cyan line, each with its head on the rim and its tail
+opposite, labelled `BRG1 GPS` and `BRG2 GPS` beside the rose. They need a valid GPS leg with a distance, and they
+read the magnetic bearing the data bar's BRG field shows. A radio is not a source: the engine has one navigation
+receiver and no NAV2 (see the radio windows), so the setting knows only `off` and `gps`.
+
 ### G meter
 
 A PFD option (MENU on a full-screen PFD, **G meter**; glass setting `g_meter` with `shown`) draws a small box left
@@ -622,7 +631,7 @@ bar and status bar, the CAS window, the trim and flap position indicators, touch
 (select, insert before and after, remove, activate leg), the CAS message list page (opened from the
 window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry
 keypads (baro, heading, altitude, course, minimums, direct-to) with their shortcuts, baro minimums (bug,
-annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, vertical navigation (altitude
+annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, the two bearing pointers, vertical navigation (altitude
 constraints on flight-plan waypoints, the descent path computed back from them, the deviation indicator,
 vertical speed required, and path tracking by the autopilot), the COM1, NAV1, and transponder windows, the
 23-step range ladder with zoom buttons, the
@@ -634,7 +643,7 @@ airspace nearest pages, and reversion with the autopilot rule.
 - The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
   positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
 - The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
-- The minimum safe altitude (data bar) and the second bearing pointer are not modelled.
+- The minimum safe altitude (data bar) is not modelled.
 - **VNAV** is a descent-path model (below): no climb constraints or step-climb paths, no
   speed constraints, no wind-corrected top of descent, no VNAV direct-to, and no RNAV approach vertical
   guidance beyond the loaded approach's own glidepath. The autopilot's vertical-path mode is the GPS

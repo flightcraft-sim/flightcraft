@@ -92889,6 +92889,24 @@
             },
             {
               "additionalProperties": false,
+              "description": "The second bearing pointer (BRG2) on the HSI: GPS, or off. No NAV2 is installed, so a\nradio is not an option.",
+              "properties": {
+                "kind": {
+                  "const": "bearing_pointer2",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/BearingPointer"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "description": "Show or hide the G meter (current load factor, and the lowest and highest since reset).",
               "properties": {
                 "kind": {
@@ -121132,6 +121150,24 @@
             },
             {
               "additionalProperties": false,
+              "description": "The second bearing pointer (BRG2) on the HSI: GPS, or off. No NAV2 is installed, so a\nradio is not an option.",
+              "properties": {
+                "kind": {
+                  "const": "bearing_pointer2",
+                  "type": "string"
+                },
+                "source": {
+                  "$ref": "#/$defs/BearingPointer"
+                }
+              },
+              "required": [
+                "kind",
+                "source"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "description": "Show or hide the G meter (current load factor, and the lowest and highest since reset).",
               "properties": {
                 "kind": {
@@ -123917,6 +123953,11 @@
             },
             "bearing_pointer": {
               "$ref": "#/$defs/BearingPointer"
+            },
+            "bearing_pointer2": {
+              "$ref": "#/$defs/BearingPointer",
+              "default": "off",
+              "description": "The second bearing pointer's source."
             },
             "clock_format": {
               "$ref": "#/$defs/ClockFormat",
@@ -127719,6 +127760,11 @@
             },
             "bearing_pointer": {
               "$ref": "#/$defs/BearingPointer"
+            },
+            "bearing_pointer2": {
+              "$ref": "#/$defs/BearingPointer",
+              "default": "off",
+              "description": "The second bearing pointer's source."
             },
             "clock_format": {
               "$ref": "#/$defs/ClockFormat",
