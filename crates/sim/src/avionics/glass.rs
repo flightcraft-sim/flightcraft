@@ -1,6 +1,7 @@
 //! Integrated suite settings and installation wiring; sensors are shared with standby units.
 use super::glass_aids::{ClockFormat, DataBarField, TimerAction};
 use super::sensor::{AirDataComputer, ComputerInput};
+use super::vnav::AltitudeConstraint;
 use crate::{Readout, systems::SystemsState};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -91,6 +92,9 @@ pub struct GpsWaypoint {
     pub ident: String,
     pub kind: WaypointKind,
     pub position: flightcraft_world::GeoPoint,
+    /// The altitude restriction at this waypoint, for vertical navigation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub altitude_constraint: Option<AltitudeConstraint>,
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -151,6 +155,16 @@ pub enum GlassSetting {
     /// What the data bar's user field shows: the minimum safe altitude (dashes), the clock, or the timer.
     DataBarField {
         field: DataBarField,
+    },
+    /// The vertical navigation descent angle, degrees.
+    VnavAngle {
+        #[schemars(range(min = 1, max = 6))]
+        degrees: f64,
+    },
+    /// Set or clear the altitude constraint of one flight-plan waypoint.
+    WaypointAltitude {
+        index: usize,
+        constraint: Option<AltitudeConstraint>,
     },
     BearingPointer {
         source: BearingPointer,

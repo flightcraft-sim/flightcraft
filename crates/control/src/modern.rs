@@ -657,6 +657,7 @@ impl Session {
             ident,
             kind,
             position,
+            altitude_constraint: None,
         })
     }
     fn navigator_plan(&mut self, queries: Vec<String>) -> Result<(), CommandError> {
@@ -689,7 +690,7 @@ impl Session {
         Ok(())
     }
     /// The flight plan as resolved waypoints: the stored ones, or each airport identifier looked up.
-    fn flight_plan_waypoints(&mut self) -> Result<Vec<crate::GpsWaypoint>, CommandError> {
+    pub(crate) fn flight_plan_waypoints(&mut self) -> Result<Vec<crate::GpsWaypoint>, CommandError> {
         if self.glass.waypoints.len() == self.glass.flight_plan.len() {
             return Ok(self.glass.waypoints.clone());
         }
@@ -725,6 +726,15 @@ impl Session {
                 }
                 self.set_glass(GlassSetting::ActiveLeg { index: cursor })?;
             }
+            FplEdit::Altitude { constraint } => {
+                if cursor >= len {
+                    return Err(refuse(FplError::NothingSelected));
+                }
+                self.set_glass(GlassSetting::WaypointAltitude {
+                    index: cursor,
+                    constraint,
+                })?;
+            }
             FplEdit::Insert { after, ident } => {
                 let waypoint = self.resolve_waypoint(&ident)?;
                 let mut waypoints = self.flight_plan_waypoints()?;
@@ -739,6 +749,37 @@ impl Session {
             }
         }
         Ok(())
+    }
+    /// Set or clear the altitude constraint of one flight-plan waypoint, keeping the plan, its
+    /// active leg, and the selection as they are.
+    pub(crate) fn set_waypoint_constraint(
+        &mut self,
+        index: usize,
+        constraint: Option<crate::AltitudeConstraint>,
+    ) -> Result<(), CommandError> {
+        const NAME: &str = "avionics.set";
+        if !self.sim.procedure_receiver().loaded.is_empty() {
+            return Err(invalid(
+                NAME,
+                "an approach is loaded; the flight plan cannot be edited until it is cleared",
+            ));
+        }
+        if let Some(c) = &constraint {
+            c.validate().map_err(|e| invalid(NAME, e))?;
+        }
+        if index >= self.glass.flight_plan.len() {
+            return Err(invalid(NAME, "waypoint outside flight plan"));
+        }
+        let mut waypoints = self.flight_plan_waypoints()?;
+        let w = waypoints
+            .get_mut(index)
+            .ok_or_else(|| invalid(NAME, "waypoint outside flight plan"))?;
+        w.altitude_constraint = constraint;
+        let done = touch_fpl::Edited {
+            cursor: self.glass.fpl_cursor,
+            active: self.glass.active_leg,
+        };
+        self.apply_edited_plan(waypoints, done)
     }
     fn apply_edited_plan(
         &mut self,
@@ -1167,6 +1208,9 @@ impl Session {
             Entry::Altitude { m } => self.set_glass(G::SelectedAltitude { altitude_m: m }),
             Entry::Course { rad } => self.set_glass(G::Course { course_rad: rad }),
             Entry::Minimums { m } => self.set_glass(G::Minimums { altitude_m: m }),
+            Entry::FplAltitude { kind, m } => self.edit_flight_plan(touch_fpl::FplEdit::Altitude {
+                constraint: Some(crate::AltitudeConstraint { kind, altitude_m: m }),
+            }),
             Entry::DirectTo { ident } => self.navigator_plan(vec![ident]),
             Entry::FplInsert { ident, after } => {
                 self.edit_flight_plan(touch_fpl::FplEdit::Insert { after, ident })

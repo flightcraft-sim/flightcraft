@@ -627,6 +627,32 @@ fn altitude(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
         vec![[x + 17., by - 11.], [x + 28., by], [x + 17., by + 11.]],
         Ink::Cyan,
     );
+    // Vertical navigation indicator: a scale of dots (100 ft each) beside the tape's left edge and
+    // a magenta diamond that sits below the middle when the aircraft is above the path, so the
+    // pilot flies toward it. Green once the autopilot is tracking the path.
+    if let Some(v) = &s.vnav {
+        let vx = x - 14.;
+        let spacing = h * 0.5 / (flightcraft_sim::avionics::vnav::FULL_SCALE_DOTS as f32 + 0.5);
+        line(
+            d,
+            [vx, mid - spacing * 2.5],
+            [vx, mid + spacing * 2.5],
+            Ink::TapeText,
+            1.,
+        );
+        for dot in [-2_f32, -1., 1., 2.] {
+            circle(d, [vx, mid + dot * spacing], 3.5, Ink::White);
+        }
+        line(d, [vx - 8., mid], [vx + 8., mid], Ink::White, 2.);
+        let dy = mid + v.dots as f32 * spacing;
+        let ink = if v.tracking { Ink::Green } else { Ink::Magenta };
+        polygon(
+            d,
+            vec![[vx - 9., dy], [vx, dy - 11.], [vx + 9., dy], [vx, dy + 11.]],
+            ink,
+        );
+        label(d, [vx, y - 9.], "VNAV", 15. * t.tape, ink);
+    }
     // Barometric minimums bug: an amber marker on the tape's left edge, pinned when off the scale.
     if let Some(minimums) = s.settings.minimums_m {
         let my = at(minimums * FEET).clamp(y + 8., y + h - 8.);
@@ -1142,8 +1168,14 @@ pub(crate) fn bars(
                     flightcraft_sim::avionics::glass_aids::timer_text(s.clock.timer_s)
                 }
             },
-            // The engine models no vertical speed required until a path exists.
-            F::VerticalSpeedRequired => "-----".into(),
+            // Vertical speed required to meet the next altitude constraint, once the flight plan has one.
+            F::VerticalSpeedRequired => s
+                .vnav
+                .as_ref()
+                .and_then(|v| v.required_vs_fpm)
+                .map_or("-----".into(), |fpm| {
+                    format!("{:+.0}FPM", (fpm / 10.).round() * 10.)
+                }),
         };
         label(&mut d, [*fx as f32, y + 14.], label_text, small, Ink::White);
         label(&mut d, [*fx as f32, y + h * 0.68], value, size, ink);

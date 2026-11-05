@@ -481,6 +481,8 @@ pub(crate) struct FplRow {
     pub ident: String,
     pub bearing_deg: f32,
     pub distance_nm: f32,
+    /// The waypoint's altitude constraint, as written on the page.
+    pub constraint: Option<String>,
 }
 
 fn hit(ui: &mut egui::Ui, rect: Rect, salt: impl std::hash::Hash) -> bool {
@@ -1136,7 +1138,7 @@ pub(crate) fn flight_plan_page(
         style.font(title_h * 0.6),
         style.key_text,
     );
-    let buttons_h = area.height() * 0.11;
+    let buttons_h = area.height() * 0.11 * 2.;
     let list = Rect::from_min_max(
         Pos2::new(area.left(), area.top() + title_h),
         Pos2::new(area.right(), area.bottom() - buttons_h - 4.),
@@ -1206,6 +1208,17 @@ pub(crate) fn flight_plan_page(
             ink,
         );
         painter.text(
+            rect.left_center() + Vec2::new(rect.width() * 0.62, 0.),
+            Align2::LEFT_CENTER,
+            row.constraint.as_deref().unwrap_or("-----"),
+            font.clone(),
+            if row.constraint.is_some() {
+                ink
+            } else {
+                crate::theme::MUTED
+            },
+        );
+        painter.text(
             rect.right_center() - Vec2::new(8., 0.),
             Align2::RIGHT_CENTER,
             format!("{:.1} NM", row.distance_nm),
@@ -1223,12 +1236,27 @@ pub(crate) fn flight_plan_page(
         }
     }
     let bar = Rect::from_min_max(Pos2::new(area.left(), area.bottom() - buttons_h), area.max);
-    let labels = ["Activate Leg", "Insert Before", "Insert After", "Remove"];
-    let width = bar.width() / labels.len() as f32;
+    // Two rows: the list edits, then the selected waypoint's altitude constraint (VNAV).
+    let labels = [
+        "Activate Leg",
+        "Insert Before",
+        "Insert After",
+        "Remove",
+        "Alt At",
+        "Alt At/Above",
+        "Alt At/Below",
+        "Alt Clear",
+    ];
+    let columns = labels.len() / 2;
+    let width = bar.width() / columns as f32;
+    let height = bar.height() / 2.;
     for (i, label) in labels.iter().enumerate() {
         let rect = Rect::from_min_size(
-            Pos2::new(bar.left() + width * i as f32, bar.top()),
-            Vec2::new(width, bar.height()),
+            Pos2::new(
+                bar.left() + width * (i % columns) as f32,
+                bar.top() + height * (i / columns) as f32,
+            ),
+            Vec2::new(width, height),
         )
         .shrink2(Vec2::new(3., 2.));
         // Only Insert After works on an empty plan: the other three act on a selected waypoint.
@@ -1264,6 +1292,24 @@ pub(crate) fn flight_plan_page(
                     id,
                     DisplayAction::OpenOverlay {
                         overlay: Overlay::Keypad(EntryTarget::FplAfter),
+                    },
+                ),
+                4..=6 => act(
+                    out,
+                    id,
+                    DisplayAction::OpenOverlay {
+                        overlay: Overlay::Keypad(match i {
+                            4 => EntryTarget::FplAltitudeAt,
+                            5 => EntryTarget::FplAltitudeAbove,
+                            _ => EntryTarget::FplAltitudeBelow,
+                        }),
+                    },
+                ),
+                7 => act(
+                    out,
+                    id,
+                    DisplayAction::FlightPlan {
+                        edit: FplEdit::Altitude { constraint: None },
                     },
                 ),
                 _ => act(

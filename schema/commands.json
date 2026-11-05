@@ -90718,6 +90718,27 @@
             }
           ]
         },
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
         "AvionicsSetting": {
           "oneOf": [
             {
@@ -91311,6 +91332,25 @@
             }
           ]
         },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "DataArea": {
           "description": "What the MFD page's data column shows beside the map.",
           "enum": [
@@ -91896,6 +91936,21 @@
               "const": "fpl_after",
               "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
               "type": "string"
+            },
+            {
+              "const": "fpl_altitude_at",
+              "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_above",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or above, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_below",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or below, feet.",
+              "type": "string"
             }
           ]
         },
@@ -92053,6 +92108,30 @@
               "properties": {
                 "kind": {
                   "const": "activate",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Set (or, with none, clear) the altitude constraint of the selected waypoint, for vertical\nnavigation.",
+              "properties": {
+                "constraint": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/AltitudeConstraint"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "kind": {
+                  "const": "altitude",
                   "type": "string"
                 }
               },
@@ -92327,6 +92406,57 @@
               "required": [
                 "kind",
                 "field"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The vertical navigation descent angle, degrees.",
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 6,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "vnav_angle",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Set or clear the altitude constraint of one flight-plan waypoint.",
+              "properties": {
+                "constraint": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/AltitudeConstraint"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "waypoint_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
               ],
               "type": "object"
             },
@@ -92663,6 +92793,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -94155,6 +94296,21 @@
             {
               "const": "fpl_after",
               "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_at",
+              "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_above",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or above, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_below",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or below, feet.",
               "type": "string"
             }
           ]
@@ -96591,6 +96747,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -96639,6 +96835,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -96741,6 +96948,46 @@
     "description": "Append a resolved waypoint to the plan.",
     "input_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -96767,6 +97014,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -96831,6 +97089,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -96879,6 +97177,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -96981,6 +97290,46 @@
     "description": "Insert a waypoint at a zero-based position.",
     "input_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -97007,6 +97356,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -97077,6 +97437,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -97125,6 +97525,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -97285,6 +97696,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -97333,6 +97784,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -97451,6 +97913,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -97499,6 +98001,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -97622,6 +98135,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -97670,6 +98223,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -98130,6 +98694,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -98178,6 +98782,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -98294,6 +98909,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -98342,6 +98997,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -98472,6 +99138,46 @@
     },
     "output_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "CruisePerformance": {
           "additionalProperties": false,
           "properties": {
@@ -98520,6 +99226,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -118758,6 +119475,27 @@
     "description": "Set, step, or sync the shared heading bug, or control standby and glass equipment.",
     "input_schema": {
       "$defs": {
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
         "AvionicsSetting": {
           "oneOf": [
             {
@@ -119237,6 +119975,25 @@
             }
           ]
         },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "DataArea": {
           "description": "What the MFD page's data column shows beside the map.",
           "enum": [
@@ -119542,6 +120299,57 @@
               "required": [
                 "kind",
                 "field"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "The vertical navigation descent angle, degrees.",
+              "properties": {
+                "degrees": {
+                  "format": "double",
+                  "maximum": 6,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "vnav_angle",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "degrees"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Set or clear the altitude constraint of one flight-plan waypoint.",
+              "properties": {
+                "constraint": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/AltitudeConstraint"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "index": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "kind": {
+                  "const": "waypoint_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "index"
               ],
               "type": "object"
             },
@@ -119878,6 +120686,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -120727,6 +121546,27 @@
             }
           ]
         },
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
         "ApproachCapability": {
           "enum": [
             "LNAV",
@@ -121180,6 +122020,25 @@
           ],
           "type": "object"
         },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "DataArea": {
           "description": "What the MFD page's data column shows beside the map.",
           "enum": [
@@ -121538,6 +122397,21 @@
             {
               "const": "fpl_after",
               "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_at",
+              "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_above",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or above, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_below",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or below, feet.",
               "type": "string"
             }
           ]
@@ -122032,6 +122906,12 @@
             "transponder_mode": {
               "$ref": "#/$defs/TransponderMode"
             },
+            "vnav_angle_deg": {
+              "default": 3.0,
+              "description": "The vertical navigation descent angle, degrees.",
+              "format": "double",
+              "type": "number"
+            },
             "waypoints": {
               "items": {
                 "$ref": "#/$defs/GpsWaypoint"
@@ -122200,6 +123080,18 @@
               "description": "An ADS-B In (or TIS-B) receiver feeds this aircraft's glass displays.",
               "type": "boolean"
             },
+            "vnav": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VnavReadout"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The vertical navigation path, when the flight plan has an altitude constraint ahead."
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -122335,6 +123227,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -122696,6 +123599,14 @@
             "bearing_rad": {
               "format": "double",
               "type": "number"
+            },
+            "constraint": {
+              "default": null,
+              "description": "The waypoint's altitude constraint as the FPL page writes it, if it has one.",
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "distance_nm": {
               "format": "double",
@@ -123896,6 +124807,74 @@
             "gs"
           ],
           "type": "string"
+        },
+        "VnavReadout": {
+          "description": "The vertical path to the next altitude constraint, for the VNAV indicator and the data bar.",
+          "properties": {
+            "angle_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "deviation_m": {
+              "description": "Aircraft above (positive) or below the path, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "dots": {
+              "description": "The indicator's displacement in dots (100 ft each), positive above the path, at most 2.5.",
+              "format": "double",
+              "type": "number"
+            },
+            "path_altitude_m": {
+              "description": "The path's altitude at the aircraft, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "required_vs_fpm": {
+              "description": "The vertical speed that reaches the target altitude at the target, feet per minute\n(negative descends); none without ground speed.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "target_altitude_m": {
+              "description": "The path's altitude at that waypoint, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "target_distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "target_ident": {
+              "description": "The constrained waypoint the path leads to.",
+              "type": "string"
+            },
+            "top_of_descent_nm": {
+              "description": "Distance to the top of descent, nautical miles; zero or negative once past it.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tracking": {
+              "description": "The autopilot is flying the path (GP mode active).",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "target_ident",
+            "target_altitude_m",
+            "target_distance_nm",
+            "path_altitude_m",
+            "deviation_m",
+            "dots",
+            "angle_deg",
+            "tracking"
+          ],
+          "type": "object"
         },
         "WaypointKind": {
           "enum": [
@@ -124099,6 +125078,27 @@
             }
           ]
         },
+        "AltitudeConstraint": {
+          "additionalProperties": false,
+          "description": "An altitude restriction at a flight-plan waypoint.",
+          "properties": {
+            "altitude_m": {
+              "description": "Metres MSL.",
+              "format": "double",
+              "maximum": 15000,
+              "minimum": 0,
+              "type": "number"
+            },
+            "kind": {
+              "$ref": "#/$defs/ConstraintKind"
+            }
+          },
+          "required": [
+            "kind",
+            "altitude_m"
+          ],
+          "type": "object"
+        },
         "ApproachCapability": {
           "enum": [
             "LNAV",
@@ -124552,6 +125552,25 @@
           ],
           "type": "object"
         },
+        "ConstraintKind": {
+          "oneOf": [
+            {
+              "const": "at",
+              "description": "Cross at this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_above",
+              "description": "Cross at or above this altitude.",
+              "type": "string"
+            },
+            {
+              "const": "at_or_below",
+              "description": "Cross at or below this altitude.",
+              "type": "string"
+            }
+          ]
+        },
         "DataArea": {
           "description": "What the MFD page's data column shows beside the map.",
           "enum": [
@@ -124910,6 +125929,21 @@
             {
               "const": "fpl_after",
               "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_at",
+              "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_above",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or above, feet.",
+              "type": "string"
+            },
+            {
+              "const": "fpl_altitude_below",
+              "description": "Altitude the selected flight-plan waypoint is crossed at or below, feet.",
               "type": "string"
             }
           ]
@@ -125404,6 +126438,12 @@
             "transponder_mode": {
               "$ref": "#/$defs/TransponderMode"
             },
+            "vnav_angle_deg": {
+              "default": 3.0,
+              "description": "The vertical navigation descent angle, degrees.",
+              "format": "double",
+              "type": "number"
+            },
             "waypoints": {
               "items": {
                 "$ref": "#/$defs/GpsWaypoint"
@@ -125572,6 +126612,18 @@
               "description": "An ADS-B In (or TIS-B) receiver feeds this aircraft's glass displays.",
               "type": "boolean"
             },
+            "vnav": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VnavReadout"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The vertical navigation path, when the flight plan has an altitude constraint ahead."
+            },
             "wind_from_rad": {
               "format": "double",
               "type": "number"
@@ -125707,6 +126759,17 @@
           "additionalProperties": false,
           "description": "A resolved GPS waypoint; independent of a region's airport catalogue.",
           "properties": {
+            "altitude_constraint": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/AltitudeConstraint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The altitude restriction at this waypoint, for vertical navigation."
+            },
             "ident": {
               "maxLength": 64,
               "minLength": 1,
@@ -126068,6 +127131,14 @@
             "bearing_rad": {
               "format": "double",
               "type": "number"
+            },
+            "constraint": {
+              "default": null,
+              "description": "The waypoint's altitude constraint as the FPL page writes it, if it has one.",
+              "type": [
+                "string",
+                "null"
+              ]
             },
             "distance_nm": {
               "format": "double",
@@ -127268,6 +128339,74 @@
             "gs"
           ],
           "type": "string"
+        },
+        "VnavReadout": {
+          "description": "The vertical path to the next altitude constraint, for the VNAV indicator and the data bar.",
+          "properties": {
+            "angle_deg": {
+              "format": "double",
+              "type": "number"
+            },
+            "deviation_m": {
+              "description": "Aircraft above (positive) or below the path, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "dots": {
+              "description": "The indicator's displacement in dots (100 ft each), positive above the path, at most 2.5.",
+              "format": "double",
+              "type": "number"
+            },
+            "path_altitude_m": {
+              "description": "The path's altitude at the aircraft, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "required_vs_fpm": {
+              "description": "The vertical speed that reaches the target altitude at the target, feet per minute\n(negative descends); none without ground speed.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "target_altitude_m": {
+              "description": "The path's altitude at that waypoint, metres.",
+              "format": "double",
+              "type": "number"
+            },
+            "target_distance_nm": {
+              "format": "double",
+              "type": "number"
+            },
+            "target_ident": {
+              "description": "The constrained waypoint the path leads to.",
+              "type": "string"
+            },
+            "top_of_descent_nm": {
+              "description": "Distance to the top of descent, nautical miles; zero or negative once past it.",
+              "format": "double",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tracking": {
+              "description": "The autopilot is flying the path (GP mode active).",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "target_ident",
+            "target_altitude_m",
+            "target_distance_nm",
+            "path_altitude_m",
+            "deviation_m",
+            "dots",
+            "angle_deg",
+            "tracking"
+          ],
+          "type": "object"
         },
         "WaypointKind": {
           "enum": [

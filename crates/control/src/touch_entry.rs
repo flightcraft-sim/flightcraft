@@ -35,10 +35,16 @@ pub enum EntryTarget {
     FplBefore,
     /// Identifier of a waypoint to insert after the selected flight-plan waypoint.
     FplAfter,
+    /// Altitude the selected flight-plan waypoint is crossed at, feet.
+    FplAltitudeAt,
+    /// Altitude the selected flight-plan waypoint is crossed at or above, feet.
+    FplAltitudeAbove,
+    /// Altitude the selected flight-plan waypoint is crossed at or below, feet.
+    FplAltitudeBelow,
 }
 
 impl EntryTarget {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 14] = [
         Self::Baro,
         Self::Heading,
         Self::Altitude,
@@ -50,6 +56,9 @@ impl EntryTarget {
         Self::Transponder,
         Self::FplBefore,
         Self::FplAfter,
+        Self::FplAltitudeAt,
+        Self::FplAltitudeAbove,
+        Self::FplAltitudeBelow,
     ];
 
     pub fn title(self) -> &'static str {
@@ -65,6 +74,9 @@ impl EntryTarget {
             Self::Transponder => "XPDR CODE",
             Self::FplBefore => "INSERT BEFORE",
             Self::FplAfter => "INSERT AFTER",
+            Self::FplAltitudeAt => "WPT ALTITUDE",
+            Self::FplAltitudeAbove => "WPT AT OR ABOVE",
+            Self::FplAltitudeBelow => "WPT AT OR BELOW",
         }
     }
 
@@ -74,6 +86,7 @@ impl EntryTarget {
             Self::Baro => 5,
             Self::Heading | Self::Course => 3,
             Self::Altitude | Self::Minimums => 5,
+            Self::FplAltitudeAt | Self::FplAltitudeAbove | Self::FplAltitudeBelow => 5,
             Self::DirectTo | Self::FplBefore | Self::FplAfter => 6,
             Self::ComStandby | Self::NavStandby => 7,
             Self::Transponder => 4,
@@ -176,6 +189,11 @@ pub enum Entry {
     },
     DirectTo {
         ident: String,
+    },
+    /// An altitude constraint for the selected flight-plan waypoint.
+    FplAltitude {
+        kind: flightcraft_sim::avionics::vnav::ConstraintKind,
+        m: f64,
     },
     /// Insert a waypoint into the flight plan next to the selected one.
     FplInsert {
@@ -302,6 +320,22 @@ pub fn parse(target: EntryTarget, hpa: bool, text: &str) -> Result<Entry, EntryE
                 return Err(EntryError::Invalid("altitude must be 100 to 30,000 ft"));
             }
             Ok(Entry::Altitude {
+                m: f64::from(v) * M_PER_FT,
+            })
+        }
+        EntryTarget::FplAltitudeAt | EntryTarget::FplAltitudeAbove | EntryTarget::FplAltitudeBelow => {
+            use flightcraft_sim::avionics::vnav::ConstraintKind as K;
+            let v = whole(text, 99_999, "enter an altitude in feet")?;
+            if v > 45_000 {
+                return Err(EntryError::Invalid("altitude must be 0 to 45,000 ft"));
+            }
+            let kind = match target {
+                EntryTarget::FplAltitudeAt => K::At,
+                EntryTarget::FplAltitudeAbove => K::AtOrAbove,
+                _ => K::AtOrBelow,
+            };
+            Ok(Entry::FplAltitude {
+                kind,
                 m: f64::from(v) * M_PER_FT,
             })
         }

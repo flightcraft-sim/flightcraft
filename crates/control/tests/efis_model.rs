@@ -843,3 +843,63 @@ fn a_reverted_display_is_a_split_screen_with_the_pfd_and_the_engine_page() {
     knob(&mut s, "right_display", "left", "outer", 1);
     assert!(glass_state(&s).settings.selected_altitude_m > alt);
 }
+
+#[test]
+fn the_minimums_keypad_sets_and_clears_the_minimums_and_a_bad_entry_leaves_it_open() {
+    let mut s = session(None);
+    open(&mut s, "left_display", json!({"keypad":"minimums"}));
+    assert_eq!(
+        state(&s, "left_display").overlay,
+        Overlay::Keypad(touch_entry::EntryTarget::Minimums)
+    );
+    assert!(enter(&mut s, "left_display", "minimums", "15001").is_err());
+    assert_eq!(
+        state(&s, "left_display").overlay,
+        Overlay::Keypad(touch_entry::EntryTarget::Minimums),
+        "a refused entry leaves the keypad open"
+    );
+    assert_eq!(glass_state(&s).settings.minimums_m, None);
+    enter(&mut s, "left_display", "minimums", "250").unwrap();
+    assert!((glass_state(&s).settings.minimums_m.unwrap() - 250. * 0.3048).abs() < 1e-9);
+    assert_eq!(state(&s, "left_display").overlay, Overlay::None);
+    // Minimums Off.
+    open(&mut s, "left_display", json!({"keypad":"minimums"}));
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"minimums","shortcut":"turn_off"}),
+    );
+    assert_eq!(glass_state(&s).settings.minimums_m, None);
+}
+
+#[test]
+fn the_fpl_altitude_keypads_set_a_constraint_on_the_selected_waypoint() {
+    require_region_data!();
+    let mut s = session(None);
+    in_new_york(&mut s);
+    key(&mut s, "left_display", "direct", false);
+    enter(&mut s, "left_display", "direct_to", "kmmu").unwrap();
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"flight_plan","edit":{"kind":"select","index":0}}),
+    );
+    for (target, text, want) in [
+        ("fpl_altitude_at", "3000", "3000FT"),
+        ("fpl_altitude_above", "2500", "2500FT A"),
+        ("fpl_altitude_below", "4000", "4000FT B"),
+    ] {
+        open(&mut s, "left_display", json!({"keypad":target}));
+        enter(&mut s, "left_display", target, text).unwrap();
+        let g = glass_state(&s);
+        assert_eq!(g.gps.legs[0].constraint.as_deref(), Some(want), "{target}");
+        assert_eq!(state(&s, "left_display").overlay, Overlay::None);
+    }
+    assert!(enter(&mut s, "left_display", "fpl_altitude_at", "99999").is_err());
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"flight_plan","edit":{"kind":"altitude","constraint":null}}),
+    );
+    assert_eq!(glass_state(&s).gps.legs[0].constraint, None);
+}

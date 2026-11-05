@@ -153,6 +153,7 @@ pub(super) fn validate_path(s: &mut Session, plan: &mut CrewPlan) -> Result<(), 
                     ident: l.name.clone(),
                     position,
                     kind: WaypointKind::Coordinate,
+                    altitude_constraint: None,
                 },
                 altitude_m: -l.position_m.get(2).copied().unwrap_or(0.),
             })

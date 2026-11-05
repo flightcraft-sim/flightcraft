@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub const MAX_WAYPOINTS: usize = 64;
 
 /// One touch on the FPL page.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum FplEdit {
     /// Touch a waypoint in the list: it becomes the selected one.
@@ -26,6 +26,11 @@ pub enum FplEdit {
     Remove {},
     /// Activate Leg: the selected waypoint becomes the one flown to.
     Activate {},
+    /// Set (or, with none, clear) the altitude constraint of the selected waypoint, for vertical
+    /// navigation.
+    Altitude {
+        constraint: Option<flightcraft_sim::avionics::vnav::AltitudeConstraint>,
+    },
 }
 
 /// Why an edit was refused.

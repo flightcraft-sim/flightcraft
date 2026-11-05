@@ -357,6 +357,7 @@ impl PanelUi {
                                                     ident: leg.airport.clone(),
                                                     bearing_deg: leg.bearing_rad.to_degrees() as f32,
                                                     distance_nm: leg.distance_nm as f32,
+                                                    constraint: leg.constraint.clone(),
                                                 })
                                                 .collect(),
                                             cursor: glass.settings.fpl_cursor,

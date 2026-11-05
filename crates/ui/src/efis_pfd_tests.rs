@@ -611,6 +611,102 @@ fn set(s: &mut Session, id: &str, action: serde_json::Value) {
     .unwrap();
 }
 
+fn vnav(dots: f64, tracking: bool, vs: Option<f64>) -> flightcraft_control::VnavReadout {
+    flightcraft_control::VnavReadout {
+        target_ident: "ALPHA".into(),
+        target_altitude_m: 600.,
+        target_distance_nm: 6.,
+        path_altitude_m: 800.,
+        deviation_m: dots * 30.48,
+        dots,
+        required_vs_fpm: vs,
+        top_of_descent_nm: Some(1.5),
+        angle_deg: 3.,
+        tracking,
+    }
+}
+
+#[test]
+fn the_vnav_indicator_sits_beside_the_tape_and_its_diamond_moves_away_from_the_deviation() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let tape = geometry.rect(E::AltitudeTape);
+    let mid = (tape[1] + tape[3] * 0.5) as f32;
+    let diamond_y = |g: &GlassState, ink: Ink| {
+        let d = touch_pfd::panel(g, input, &geometry, options());
+        let centres: Vec<f32> = d
+            .flat_items()
+            .into_iter()
+            .filter_map(|i| match i {
+                DrawItem::Polygon { points, ink: got, .. } if *got == ink && points.len() == 4 => {
+                    let (x, y) = points
+                        .iter()
+                        .fold((0., 0.), |(x, y), p| (x + p[0] / 4., y + p[1] / 4.));
+                    ((x - (tape[0] as f32 - 14.)).abs() < 1.).then_some(y)
+                }
+                _ => None,
+            })
+            .collect();
+        (d, centres)
+    };
+    let mut g = flying(&s);
+    // No constraint ahead, nothing drawn.
+    let (d, centres) = diamond_y(&g, Ink::Magenta);
+    assert!(centres.is_empty() && !labels(&d).iter().any(|(t, ..)| t == "VNAV"));
+    // Above the path by 1.5 dots: the diamond is below the middle, so fly down; labelled VNAV.
+    g.vnav = Some(vnav(1.5, false, Some(-600.)));
+    let (d, centres) = diamond_y(&g, Ink::Magenta);
+    assert_eq!(centres.len(), 1);
+    assert!(centres[0] > mid + 20., "{} vs {mid}", centres[0]);
+    assert!(
+        labels(&d)
+            .iter()
+            .any(|(t, at, ..)| t == "VNAV" && at[0] < tape[0] as f32)
+    );
+    // Below the path: above the middle. On it: at the middle.
+    g.vnav = Some(vnav(-1.5, false, Some(300.)));
+    assert!(diamond_y(&g, Ink::Magenta).1[0] < mid - 20.);
+    g.vnav = Some(vnav(0., false, None));
+    assert!((diamond_y(&g, Ink::Magenta).1[0] - mid).abs() < 1.);
+    // Full scale is 2.5 dots whatever the deviation.
+    g.vnav = Some(vnav(2.5, false, None));
+    let far = diamond_y(&g, Ink::Magenta).1[0];
+    assert!(far < (tape[1] + tape[3]) as f32);
+    // The autopilot flying the path turns it green.
+    g.vnav = Some(vnav(0.2, true, None));
+    assert_eq!(diamond_y(&g, Ink::Green).1.len(), 1);
+    assert!(diamond_y(&g, Ink::Magenta).1.is_empty());
+}
+
+#[test]
+fn the_data_bar_shows_vertical_speed_required_once_a_path_exists() {
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let slot_x = geometry
+        .data_fields
+        .iter()
+        .find(|(f, _)| *f == DataField::VerticalSpeedRequired)
+        .unwrap()
+        .1 as f32;
+    let in_slot = |g: &GlassState, text: &str| {
+        let d = touch_pfd::bars(g, input, &geometry, Typography::default(), [("", ""), ("", "")]);
+        labels(&d)
+            .into_iter()
+            .any(|(t, at, ..)| t == text && (at[0] - slot_x).abs() < 1.)
+    };
+    let mut g = flying(&s);
+    assert!(in_slot(&g, "-----") && in_slot(&g, "VSR"));
+    g.vnav = Some(vnav(0., false, Some(-604.)));
+    assert!(in_slot(&g, "-600FPM"));
+    g.vnav = Some(vnav(0., false, Some(236.)));
+    assert!(in_slot(&g, "+240FPM"));
+    // A path with no ground speed to divide by gives dashes, never a guess.
+    g.vnav = Some(vnav(0., false, None));
+    assert!(in_slot(&g, "-----"));
+}
+
 #[test]
 fn the_data_bar_user_field_shows_dashes_the_clock_or_the_flight_timer() {
     use flightcraft_control::{ClockReadout, DataBarField};
