@@ -387,6 +387,18 @@ step that found it above. It sounds again only after a climb back above, never a
 set below the aircraft, and never while the altitude data is invalid. The warning tone (`audio::Audio`) is
 tied to the autopilot disconnect and has no named callouts, so the voice path is the hook the engine has.
 
+### Vspeed bugs
+
+The airspeed tape draws a letter right of the tape at each enabled Vspeed: **R** (Vr), **X** (Vx), **Y** (Vy),
+**G** (Vg, best glide), and **A** (Vapp, approach). MENU on a full-screen PFD, then **Vspeed bugs**, opens the
+configuration page: one row per bug, touching the row turns it ON or OFF, and **Set** opens a speed keypad
+(20 to 400 kt; the keypads for Vr, Vx, and Vy also offer **Pack Default**). Vr, Vx, and Vy default to the
+aircraft pack's `v_speeds` (`vr_mps`, `vx_mps`, `vy_mps`) and are on, as the tape always showed them; the pack
+format has no best-glide or approach speed, so Vg and Vapp start off with no speed and show only once the pilot
+sets one. A bug off the scale is not drawn. The glass settings are `vspeed` (`bug`: `r`, `x`, `y`, `g`, `app`;
+`enabled`) and `vspeed_value` (`bug`, `speed_kt`, 20 to 400 or null for the pack's); both are in
+`glass_suite.settings.vspeeds`.
+
 ### Clock and flight timer
 
 The data bar's minimum safe altitude slot (the engine models no minimum safe altitude, so it read dashes) is
@@ -599,7 +611,7 @@ bar and status bar, the CAS window, the trim and flap position indicators, touch
 (select, insert before and after, remove, activate leg), the CAS message list page (opened from the
 window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry
 keypads (baro, heading, altitude, course, minimums, direct-to) with their shortcuts, baro minimums (bug,
-annunciation, and callout), the data bar's clock and flight timer, vertical navigation (altitude
+annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, vertical navigation (altitude
 constraints on flight-plan waypoints, the descent path computed back from them, the deviation indicator,
 vertical speed required, and path tracking by the autopilot), the COM1, NAV1, and transponder windows, the
 23-step range ladder with zoom buttons, the
@@ -611,8 +623,7 @@ airspace nearest pages, and reversion with the autopilot rule.
 - The placement numbers are measured from figures to a few percent; outer bezel dimensions and control
   positions are estimates; pixel type sizes, line weights, and the pitch scale are the engine's.
 - The map range ladder's steps other than 2 to 120 NM are extrapolated, not printed in the guide.
-- The minimum safe altitude (data bar), the second bearing pointer, the G meter, and the Vspeed bugs'
-  configuration page are not modelled; the airspeed Vspeed letters show only R, X, and Y.
+- The minimum safe altitude (data bar), the second bearing pointer, and the G meter are not modelled.
 - **VNAV** is a descent-path model (below): no climb constraints or step-climb paths, no
   speed constraints, no wind-corrected top of descent, no VNAV direct-to, and no RNAV approach vertical
   guidance beyond the loaded approach's own glidepath. The autopilot's vertical-path mode is the GPS

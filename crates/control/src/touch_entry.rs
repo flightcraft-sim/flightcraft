@@ -35,6 +35,12 @@ pub enum EntryTarget {
     FplBefore,
     /// Identifier of a waypoint to insert after the selected flight-plan waypoint.
     FplAfter,
+    /// A Vspeed bug's speed, knots.
+    VspeedR,
+    VspeedX,
+    VspeedY,
+    VspeedG,
+    VspeedApp,
     /// Altitude the selected flight-plan waypoint is crossed at, feet.
     FplAltitudeAt,
     /// Altitude the selected flight-plan waypoint is crossed at or above, feet.
@@ -44,7 +50,7 @@ pub enum EntryTarget {
 }
 
 impl EntryTarget {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 19] = [
         Self::Baro,
         Self::Heading,
         Self::Altitude,
@@ -59,6 +65,11 @@ impl EntryTarget {
         Self::FplAltitudeAt,
         Self::FplAltitudeAbove,
         Self::FplAltitudeBelow,
+        Self::VspeedR,
+        Self::VspeedX,
+        Self::VspeedY,
+        Self::VspeedG,
+        Self::VspeedApp,
     ];
 
     pub fn title(self) -> &'static str {
@@ -74,6 +85,11 @@ impl EntryTarget {
             Self::Transponder => "XPDR CODE",
             Self::FplBefore => "INSERT BEFORE",
             Self::FplAfter => "INSERT AFTER",
+            Self::VspeedR => "VR SPEED",
+            Self::VspeedX => "VX SPEED",
+            Self::VspeedY => "VY SPEED",
+            Self::VspeedG => "VG SPEED",
+            Self::VspeedApp => "VAPP SPEED",
             Self::FplAltitudeAt => "WPT ALTITUDE",
             Self::FplAltitudeAbove => "WPT AT OR ABOVE",
             Self::FplAltitudeBelow => "WPT AT OR BELOW",
@@ -87,6 +103,7 @@ impl EntryTarget {
             Self::Heading | Self::Course => 3,
             Self::Altitude | Self::Minimums => 5,
             Self::FplAltitudeAt | Self::FplAltitudeAbove | Self::FplAltitudeBelow => 5,
+            Self::VspeedR | Self::VspeedX | Self::VspeedY | Self::VspeedG | Self::VspeedApp => 3,
             Self::DirectTo | Self::FplBefore | Self::FplAfter => 6,
             Self::ComStandby | Self::NavStandby => 7,
             Self::Transponder => 4,
@@ -189,6 +206,11 @@ pub enum Entry {
     },
     DirectTo {
         ident: String,
+    },
+    /// A Vspeed in knots.
+    Vspeed {
+        bug: flightcraft_sim::avionics::glass_aids::VspeedBug,
+        kt: f64,
     },
     /// An altitude constraint for the selected flight-plan waypoint.
     FplAltitude {
@@ -323,6 +345,28 @@ pub fn parse(target: EntryTarget, hpa: bool, text: &str) -> Result<Entry, EntryE
                 m: f64::from(v) * M_PER_FT,
             })
         }
+        EntryTarget::VspeedR
+        | EntryTarget::VspeedX
+        | EntryTarget::VspeedY
+        | EntryTarget::VspeedG
+        | EntryTarget::VspeedApp => {
+            use flightcraft_sim::avionics::glass_aids::{VSPEED_MAX_KT, VSPEED_MIN_KT, VspeedBug as B};
+            let v = whole(text, 999, "enter a speed in knots")?;
+            if !(VSPEED_MIN_KT..=VSPEED_MAX_KT).contains(&f64::from(v)) {
+                return Err(EntryError::Invalid("speed must be 20 to 400 kt"));
+            }
+            let bug = match target {
+                EntryTarget::VspeedR => B::R,
+                EntryTarget::VspeedX => B::X,
+                EntryTarget::VspeedY => B::Y,
+                EntryTarget::VspeedG => B::G,
+                _ => B::App,
+            };
+            Ok(Entry::Vspeed {
+                bug,
+                kt: f64::from(v),
+            })
+        }
         EntryTarget::FplAltitudeAt | EntryTarget::FplAltitudeAbove | EntryTarget::FplAltitudeBelow => {
             use flightcraft_sim::avionics::vnav::ConstraintKind as K;
             let v = whole(text, 99_999, "enter an altitude in feet")?;
@@ -411,6 +455,8 @@ pub enum EntryShortcut {
     SetForField,
     /// Minimums: remove the minimums bug.
     TurnOff,
+    /// A Vspeed: use the aircraft pack's speed.
+    UseDefault,
 }
 
 impl EntryShortcut {
@@ -420,6 +466,7 @@ impl EntryShortcut {
             Self::SetToStandard => "Set To Standard",
             Self::SetForField => "Set For Field",
             Self::TurnOff => "Minimums Off",
+            Self::UseDefault => "Pack Default",
         }
     }
 
@@ -429,6 +476,7 @@ impl EntryShortcut {
             EntryTarget::Heading | EntryTarget::Altitude | EntryTarget::Course => &[Self::SetToCurrent],
             EntryTarget::Baro => &[Self::SetToStandard, Self::SetForField],
             EntryTarget::Minimums => &[Self::TurnOff],
+            EntryTarget::VspeedR | EntryTarget::VspeedX | EntryTarget::VspeedY => &[Self::UseDefault],
             _ => &[],
         }
     }

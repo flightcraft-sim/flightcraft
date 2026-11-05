@@ -7,7 +7,7 @@ const NM: f64 = 1852.0;
 
 pub use flightcraft_sim::avionics::glass::*;
 pub use flightcraft_sim::avionics::glass_aids::{
-    ClockFormat, DataBarField, FlightTimer, TimerAction, TimerDirection,
+    ClockFormat, DataBarField, FlightTimer, TimerAction, TimerDirection, VspeedBug, VspeedConfig, VspeedEntry,
 };
 use flightcraft_sim::avionics::glass_aids::{DEFAULT_START_UTC_S, clock_seconds, utc_seconds};
 use flightcraft_sim::avionics::vnav::{self, LegPath, RoutePoint};
@@ -39,6 +39,9 @@ pub struct GlassSettings {
     /// What the data bar's user field shows.
     #[serde(default)]
     pub data_bar_field: DataBarField,
+    /// The Vspeed bugs on the airspeed tape.
+    #[serde(default)]
+    pub vspeeds: VspeedConfig,
     /// The vertical navigation descent angle, degrees.
     #[serde(default = "default_vnav_angle")]
     pub vnav_angle_deg: f64,
@@ -106,6 +109,7 @@ impl Default for GlassSettings {
             clock_start_utc_s: DEFAULT_START_UTC_S,
             timer: FlightTimer::default(),
             data_bar_field: DataBarField::SafeAltitude,
+            vspeeds: VspeedConfig::default(),
             vnav_angle_deg: vnav::DEFAULT_ANGLE_DEG,
             vnav_hold_m: None,
             vnav_active: false,
@@ -384,6 +388,19 @@ impl Session {
                     .map_err(|e| invalid(NAME, e))?;
             }
             GlassSetting::DataBarField { field } => self.glass.data_bar_field = field,
+            GlassSetting::Vspeed { bug, enabled } => self.glass.vspeeds.entry_mut(bug).enabled = enabled,
+            GlassSetting::VspeedValue { bug, speed_kt } => {
+                if let Some(kt) = speed_kt {
+                    range(
+                        NAME,
+                        "speed_kt",
+                        kt,
+                        flightcraft_sim::avionics::glass_aids::VSPEED_MIN_KT,
+                        flightcraft_sim::avionics::glass_aids::VSPEED_MAX_KT,
+                    )?;
+                }
+                self.glass.vspeeds.entry_mut(bug).speed_kt = speed_kt;
+            }
             GlassSetting::VnavAngle { degrees } => {
                 range(NAME, "degrees", degrees, vnav::MIN_ANGLE_DEG, vnav::MAX_ANGLE_DEG)?;
                 self.glass.vnav_angle_deg = degrees;

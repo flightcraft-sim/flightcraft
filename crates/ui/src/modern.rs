@@ -346,6 +346,12 @@ impl PanelUi {
                                         cas: glass.cas.clone(),
                                         ident_remaining_s: glass.settings.ident_remaining_s,
                                         user_field: glass.settings.data_bar_field,
+                                        vspeeds: glass.settings.vspeeds,
+                                        pack_vspeeds_kt: input.aircraft.map_or([None; 3], |a| {
+                                            let v = &a.variant.v_speeds;
+                                            [v.vr_mps, v.vx_mps, v.vy_mps]
+                                                .map(|m| Some(m * 1.943_844_492_440_6))
+                                        }),
                                         fpl: crate::efis::FplView {
                                             rows: glass
                                                 .gps

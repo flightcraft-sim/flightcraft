@@ -530,15 +530,25 @@ fn airspeed(d: &mut DrawList, s: &GlassState, input: InstrumentInput<'_>, g: &Pf
         band(v.vs_mps.max(v.vfe_mps), v.vno_mps, Ink::Green, d);
         band(v.vno_mps, v.vne_mps, Ink::Yellow, d);
         band(v.vne_mps, v.vne_mps + 30., Ink::Red, d);
-        // Speed references right of the tape: R, X, Y, and the never-exceed mark.
-        for (value, text, ink) in [
-            (v.vr_mps, "R", Ink::Cyan),
-            (v.vx_mps, "X", Ink::Cyan),
-            (v.vy_mps, "Y", Ink::Cyan),
-        ] {
-            let ry = at(value * KNOTS);
+    }
+    // Speed reference bugs right of the tape: the enabled ones of Vr, Vx, Vy, Vg, and Vapp, at the
+    // pilot's speed or the aircraft pack's. A bug off the scale is not drawn.
+    use flightcraft_control::VspeedBug;
+    for bug in VspeedBug::ALL {
+        let pack = input.aircraft.map(|aircraft| {
+            let v = &aircraft.variant.v_speeds;
+            match bug {
+                VspeedBug::R => v.vr_mps,
+                VspeedBug::X => v.vx_mps,
+                VspeedBug::Y => v.vy_mps,
+                _ => 0.,
+            }
+        });
+        let pack = pack.filter(|_| bug.has_pack_default());
+        if let Some(kt) = s.settings.vspeeds.shown_kt(bug, pack) {
+            let ry = at(kt);
             if ry > y + 6. && ry < y + h - 6. {
-                label(d, [x + w + 14., ry], text, 22. * t.tape, ink);
+                label(d, [x + w + 14., ry], bug.letter(), 22. * t.tape, Ink::Cyan);
             }
         }
     }

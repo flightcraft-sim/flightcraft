@@ -845,6 +845,52 @@ fn a_reverted_display_is_a_split_screen_with_the_pfd_and_the_engine_page() {
 }
 
 #[test]
+fn the_vspeed_keypads_set_and_clear_speeds_and_the_settings_validate() {
+    let mut s = session(None);
+    assert!(glass_state(&s).settings.vspeeds.r.enabled && !glass_state(&s).settings.vspeeds.g.enabled);
+    open(&mut s, "left_display", json!({"keypad":"vspeed_g"}));
+    assert!(enter(&mut s, "left_display", "vspeed_g", "10").is_err());
+    assert!(enter(&mut s, "left_display", "vspeed_g", "401").is_err());
+    enter(&mut s, "left_display", "vspeed_g", "68").unwrap();
+    assert_eq!(glass_state(&s).settings.vspeeds.g.speed_kt, Some(68.));
+    // Vr set by the pilot, then back to the pack's with Pack Default.
+    enter(&mut s, "left_display", "vspeed_r", "55").unwrap();
+    assert_eq!(glass_state(&s).settings.vspeeds.r.speed_kt, Some(55.));
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"shortcut","target":"vspeed_r","shortcut":"use_default"}),
+    );
+    assert_eq!(glass_state(&s).settings.vspeeds.r.speed_kt, None);
+    // Pack Default is not offered where the pack has no speed.
+    assert!(
+        try_display(
+            &mut s,
+            "left_display",
+            json!({"kind":"shortcut","target":"vspeed_g","shortcut":"use_default"})
+        )
+        .is_err()
+    );
+    // The glass settings.
+    set_glass(&mut s, json!({"kind":"vspeed","bug":"g","enabled":true}));
+    assert!(glass_state(&s).settings.vspeeds.g.enabled);
+    set_glass(&mut s, json!({"kind":"vspeed_value","bug":"app","speed_kt":72.0}));
+    assert_eq!(glass_state(&s).settings.vspeeds.app.speed_kt, Some(72.));
+    let bad = s.execute(
+        "avionics.set",
+        json!({"setting":{"kind":"glass","setting":{"kind":"vspeed_value","bug":"app","speed_kt":900.0}}}),
+    );
+    assert!(bad.is_err());
+    // The configuration page opens by touch.
+    display(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"vspeeds"}),
+    );
+    assert_eq!(state(&s, "left_display").overlay, Overlay::Vspeeds);
+}
+
+#[test]
 fn the_minimums_keypad_sets_and_clears_the_minimums_and_a_bad_entry_leaves_it_open() {
     let mut s = session(None);
     open(&mut s, "left_display", json!({"keypad":"minimums"}));

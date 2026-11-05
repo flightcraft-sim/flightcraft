@@ -1,5 +1,5 @@
 //! Integrated suite settings and installation wiring; sensors are shared with standby units.
-use super::glass_aids::{ClockFormat, DataBarField, TimerAction};
+use super::glass_aids::{ClockFormat, DataBarField, TimerAction, VspeedBug};
 use super::sensor::{AirDataComputer, ComputerInput};
 use super::vnav::AltitudeConstraint;
 use crate::{Readout, systems::SystemsState};
@@ -159,6 +159,17 @@ pub enum GlassSetting {
     /// What the data bar's user field shows: the minimum safe altitude (dashes), the clock, or the timer.
     DataBarField {
         field: DataBarField,
+    },
+    /// Show or hide one Vspeed bug on the airspeed tape.
+    Vspeed {
+        bug: VspeedBug,
+        enabled: bool,
+    },
+    /// Set a Vspeed in knots, or clear it (none) to use the aircraft pack's speed.
+    VspeedValue {
+        bug: VspeedBug,
+        #[schemars(range(min = 20, max = 400))]
+        speed_kt: Option<f64>,
     },
     /// The vertical navigation descent angle, degrees.
     VnavAngle {

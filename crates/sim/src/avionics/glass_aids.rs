@@ -11,6 +11,130 @@ const DAY_S: f64 = 86_400.0;
 /// The longest a timer may be set to count down from.
 pub const MAX_PRESET_S: f64 = 99.0 * 3600.0 + 59.0 * 60.0 + 59.0;
 
+/// A Vspeed reference bug on the airspeed tape.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VspeedBug {
+    /// Rotation speed.
+    R,
+    /// Best angle of climb.
+    X,
+    /// Best rate of climb.
+    Y,
+    /// Best glide.
+    G,
+    /// Approach speed.
+    App,
+}
+
+impl VspeedBug {
+    pub const ALL: [Self; 5] = [Self::R, Self::X, Self::Y, Self::G, Self::App];
+
+    /// The letter drawn beside the tape.
+    pub fn letter(self) -> &'static str {
+        match self {
+            Self::R => "R",
+            Self::X => "X",
+            Self::Y => "Y",
+            Self::G => "G",
+            Self::App => "A",
+        }
+    }
+
+    /// The name on the configuration page.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::R => "Vr",
+            Self::X => "Vx",
+            Self::Y => "Vy",
+            Self::G => "Vg",
+            Self::App => "Vapp",
+        }
+    }
+
+    /// Whether an aircraft pack can supply this speed.
+    pub fn has_pack_default(self) -> bool {
+        matches!(self, Self::R | Self::X | Self::Y)
+    }
+}
+
+/// One bug on the configuration page: shown or not, and the pilot's speed if they set one.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct VspeedEntry {
+    pub enabled: bool,
+    /// Knots; none uses the aircraft pack's speed (Vr, Vx, and Vy) or shows nothing (Vg and Vapp).
+    pub speed_kt: Option<f64>,
+}
+
+/// The Vspeed bugs' configuration.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct VspeedConfig {
+    pub r: VspeedEntry,
+    pub x: VspeedEntry,
+    pub y: VspeedEntry,
+    pub g: VspeedEntry,
+    pub app: VspeedEntry,
+}
+
+impl Default for VspeedConfig {
+    /// Vr, Vx, and Vy shown from the pack, as the tape always did; Vg and Vapp off.
+    fn default() -> Self {
+        let on = VspeedEntry {
+            enabled: true,
+            speed_kt: None,
+        };
+        let off = VspeedEntry {
+            enabled: false,
+            speed_kt: None,
+        };
+        Self {
+            r: on,
+            x: on,
+            y: on,
+            g: off,
+            app: off,
+        }
+    }
+}
+
+/// Knots a Vspeed may be set to.
+pub const VSPEED_MIN_KT: f64 = 20.0;
+pub const VSPEED_MAX_KT: f64 = 400.0;
+
+impl VspeedConfig {
+    pub fn entry(&self, bug: VspeedBug) -> &VspeedEntry {
+        match bug {
+            VspeedBug::R => &self.r,
+            VspeedBug::X => &self.x,
+            VspeedBug::Y => &self.y,
+            VspeedBug::G => &self.g,
+            VspeedBug::App => &self.app,
+        }
+    }
+
+    pub fn entry_mut(&mut self, bug: VspeedBug) -> &mut VspeedEntry {
+        match bug {
+            VspeedBug::R => &mut self.r,
+            VspeedBug::X => &mut self.x,
+            VspeedBug::Y => &mut self.y,
+            VspeedBug::G => &mut self.g,
+            VspeedBug::App => &mut self.app,
+        }
+    }
+
+    /// The speed in knots a bug is drawn at: the pilot's, else the pack's (`pack_mps`, metres per
+    /// second), else none. Nothing is drawn for a bug that is off.
+    pub fn shown_kt(&self, bug: VspeedBug, pack_mps: Option<f64>) -> Option<f64> {
+        let e = self.entry(bug);
+        if !e.enabled {
+            return None;
+        }
+        e.speed_kt
+            .or_else(|| pack_mps.map(|v| v * 1.943_844_492_440_6))
+            .filter(|kt| kt.is_finite() && *kt > 0.0)
+    }
+}
+
 /// Which time the clock field shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -220,6 +344,26 @@ pub fn timer_text(seconds: f64) -> String {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vspeed_bugs_default_to_the_pack_and_follow_the_pilot() {
+        let mut c = VspeedConfig::default();
+        let pack = Some(30.0);
+        // The pack's speeds show for Vr, Vx, and Vy; Vg and Vapp have none and are off.
+        assert!((c.shown_kt(VspeedBug::R, pack).unwrap() - 58.3).abs() < 0.1);
+        assert_eq!(c.shown_kt(VspeedBug::G, None), None);
+        // A pilot speed beats the pack; off hides it.
+        c.entry_mut(VspeedBug::R).speed_kt = Some(55.0);
+        assert_eq!(c.shown_kt(VspeedBug::R, pack), Some(55.0));
+        c.entry_mut(VspeedBug::R).enabled = false;
+        assert_eq!(c.shown_kt(VspeedBug::R, pack), None);
+        // Vg on with a speed shows; on without one shows nothing.
+        c.entry_mut(VspeedBug::G).enabled = true;
+        assert_eq!(c.shown_kt(VspeedBug::G, None), None);
+        c.entry_mut(VspeedBug::G).speed_kt = Some(68.0);
+        assert_eq!(c.shown_kt(VspeedBug::G, None), Some(68.0));
+        assert_eq!(VspeedBug::ALL.map(VspeedBug::letter), ["R", "X", "Y", "G", "A"]);
+    }
 
     #[test]
     fn counting_up_runs_stops_resumes_and_resets() {

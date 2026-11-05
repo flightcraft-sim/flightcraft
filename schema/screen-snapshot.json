@@ -4202,6 +4202,15 @@
       "description": "What a keypad is entering a value for.",
       "oneOf": [
         {
+          "type": "string",
+          "enum": [
+            "vspeed_x",
+            "vspeed_y",
+            "vspeed_g",
+            "vspeed_app"
+          ]
+        },
+        {
           "description": "Altimeter barometric setting, inHg or hPa as the display's units.",
           "type": "string",
           "const": "baro"
@@ -4255,6 +4264,11 @@
           "description": "Identifier of a waypoint to insert after the selected flight-plan waypoint.",
           "type": "string",
           "const": "fpl_after"
+        },
+        {
+          "description": "A Vspeed bug's speed, knots.",
+          "type": "string",
+          "const": "vspeed_r"
         },
         {
           "description": "Altitude the selected flight-plan waypoint is crossed at, feet.",
@@ -5752,6 +5766,32 @@
           "type": "number",
           "format": "double",
           "default": 3.0
+        },
+        "vspeeds": {
+          "description": "The Vspeed bugs on the airspeed tape.",
+          "$ref": "#/$defs/VspeedConfig",
+          "default": {
+            "app": {
+              "enabled": false,
+              "speed_kt": null
+            },
+            "g": {
+              "enabled": false,
+              "speed_kt": null
+            },
+            "r": {
+              "enabled": true,
+              "speed_kt": null
+            },
+            "x": {
+              "enabled": true,
+              "speed_kt": null
+            },
+            "y": {
+              "enabled": true,
+              "speed_kt": null
+            }
+          }
         },
         "waypoints": {
           "type": "array",
@@ -8939,6 +8979,11 @@
           "description": "The Select Page menu, opened from the page bar.",
           "type": "string",
           "const": "select_page"
+        },
+        {
+          "description": "The Vspeed bugs' configuration page, opened from the PFD options.",
+          "type": "string",
+          "const": "vspeeds"
         }
       ]
     },
@@ -14873,6 +14918,54 @@
         "dots",
         "angle_deg",
         "tracking"
+      ]
+    },
+    "VspeedConfig": {
+      "description": "The Vspeed bugs' configuration.",
+      "type": "object",
+      "properties": {
+        "app": {
+          "$ref": "#/$defs/VspeedEntry"
+        },
+        "g": {
+          "$ref": "#/$defs/VspeedEntry"
+        },
+        "r": {
+          "$ref": "#/$defs/VspeedEntry"
+        },
+        "x": {
+          "$ref": "#/$defs/VspeedEntry"
+        },
+        "y": {
+          "$ref": "#/$defs/VspeedEntry"
+        }
+      },
+      "required": [
+        "r",
+        "x",
+        "y",
+        "g",
+        "app"
+      ]
+    },
+    "VspeedEntry": {
+      "description": "One bug on the configuration page: shown or not, and the pilot's speed if they set one.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "speed_kt": {
+          "description": "Knots; none uses the aircraft pack's speed (Vr, Vx, and Vy) or shows nothing (Vg and Vapp).",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        }
+      },
+      "required": [
+        "enabled"
       ]
     },
     "WaypointKind": {

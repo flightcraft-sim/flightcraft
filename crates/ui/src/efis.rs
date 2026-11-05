@@ -471,6 +471,9 @@ pub(crate) struct Shared {
     pub ident_remaining_s: f64,
     /// What the data bar's user field shows.
     pub user_field: flightcraft_control::DataBarField,
+    /// The Vspeed bugs' configuration, and the aircraft pack's Vr, Vx, and Vy in knots.
+    pub vspeeds: flightcraft_control::VspeedConfig,
+    pub pack_vspeeds_kt: [Option<f64>; 3],
     /// The active flight plan, for the FPL page.
     pub fpl: FplView,
 }
@@ -756,6 +759,7 @@ fn overlay(
         Overlay::PageMenu => format!("{} MENU", page.label().to_uppercase()),
         Overlay::MainMenu => "MAIN MENU".to_owned(),
         Overlay::SelectPage => "SELECT PAGE".to_owned(),
+        Overlay::Vspeeds => "VSPEED BUGS".to_owned(),
         _ => return,
     };
     let title_rect = Rect::from_min_size(panel.min, Vec2::new(panel.width(), panel.height() * 0.11));
@@ -788,6 +792,15 @@ fn overlay(
                     },
                 );
             }
+            if entry(ui, "Vspeed bugs", false) {
+                act(
+                    out,
+                    id,
+                    DisplayAction::OpenOverlay {
+                        overlay: Overlay::Vspeeds,
+                    },
+                );
+            }
             if entry(ui, "Select page", false) {
                 act(
                     out,
@@ -797,6 +810,66 @@ fn overlay(
                         hold: false,
                     },
                 );
+            }
+        }
+        Overlay::Vspeeds => {
+            use flightcraft_control::VspeedBug;
+            for (i, bug) in VspeedBug::ALL.into_iter().enumerate() {
+                let top = rows_top + i as f32 * (row_h + 2.);
+                let full = Rect::from_min_size(
+                    Pos2::new(panel.left() + 6., top),
+                    Vec2::new(panel.width() - 12., row_h),
+                );
+                let (toggle, set) = full.split_left_right_at_fraction(0.7);
+                let pack = (bug.has_pack_default())
+                    .then(|| shared.pack_vspeeds_kt.get(i).copied().flatten())
+                    .flatten();
+                let entry = shared.vspeeds.entry(bug);
+                let speed = entry
+                    .speed_kt
+                    .or(pack)
+                    .map_or("---".to_owned(), |kt| format!("{kt:.0} kt"));
+                let text = format!(
+                    "{:<5}{:>8}   {}",
+                    bug.name(),
+                    speed,
+                    if entry.enabled { "ON" } else { "OFF" }
+                );
+                if chip(
+                    ui,
+                    toggle.shrink2(Vec2::new(2., 0.)),
+                    &text,
+                    entry.enabled,
+                    style,
+                    ("vspeed", i),
+                ) {
+                    out.glass.push(GlassSetting::Vspeed {
+                        bug,
+                        enabled: !entry.enabled,
+                    });
+                }
+                if chip(
+                    ui,
+                    set.shrink2(Vec2::new(2., 0.)),
+                    "Set",
+                    false,
+                    style,
+                    ("vspeed-set", i),
+                ) {
+                    act(
+                        out,
+                        id,
+                        DisplayAction::OpenOverlay {
+                            overlay: Overlay::Keypad(match bug {
+                                VspeedBug::R => EntryTarget::VspeedR,
+                                VspeedBug::X => EntryTarget::VspeedX,
+                                VspeedBug::Y => EntryTarget::VspeedY,
+                                VspeedBug::G => EntryTarget::VspeedG,
+                                VspeedBug::App => EntryTarget::VspeedApp,
+                            }),
+                        },
+                    );
+                }
             }
         }
         Overlay::PageMenu => {

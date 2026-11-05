@@ -320,6 +320,8 @@ pub enum Overlay {
     TransponderWindow,
     /// The Select Page menu, opened from the page bar.
     SelectPage,
+    /// The Vspeed bugs' configuration page, opened from the PFD options.
+    Vspeeds,
 }
 
 impl Overlay {

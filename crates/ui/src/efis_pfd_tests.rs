@@ -627,6 +627,93 @@ fn vnav(dots: f64, tracking: bool, vs: Option<f64>) -> flightcraft_control::Vnav
 }
 
 #[test]
+fn the_airspeed_tape_draws_the_enabled_vspeed_bugs_at_their_speeds() {
+    use flightcraft_control::VspeedEntry;
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let tape = geometry.rect(E::AirspeedTape);
+    let mid = (tape[1] + tape[3] * 0.5) as f32;
+    let mut g = flying(&s);
+    let pilot = |kt| VspeedEntry {
+        enabled: true,
+        speed_kt: Some(kt),
+    };
+    let letters = |g: &GlassState| {
+        let d = touch_pfd::panel(g, input, &geometry, options());
+        labels(&d)
+            .into_iter()
+            .filter(|(t, at, ..)| {
+                ["R", "X", "Y", "G", "A"].contains(&t.as_str()) && at[0] > (tape[0] + tape[2]) as f32
+            })
+            .map(|(t, at, ..)| (t, at[1]))
+            .collect::<Vec<_>>()
+    };
+    // Flying at 150 kt, 4.2 px per kt. With no aircraft pack, the defaults have no speeds to show.
+    assert!(letters(&g).is_empty());
+    g.settings.vspeeds.r = pilot(155.);
+    g.settings.vspeeds.g = pilot(140.);
+    g.settings.vspeeds.app = pilot(145.);
+    g.settings.vspeeds.x.enabled = false;
+    let shown = letters(&g);
+    let y_of = |l: &str| shown.iter().find(|(t, _)| t == l).map(|(_, y)| *y);
+    assert!((y_of("R").unwrap() - (mid - 5. * 4.2)).abs() < 1., "{shown:?}");
+    assert!((y_of("G").unwrap() - (mid + 10. * 4.2)).abs() < 1.);
+    assert!((y_of("A").unwrap() - (mid + 5. * 4.2)).abs() < 1.);
+    assert!(y_of("X").is_none() && y_of("Y").is_none());
+    // A bug that is off is hidden whatever its speed; one far off the scale is not drawn.
+    g.settings.vspeeds.g.enabled = false;
+    g.settings.vspeeds.app = pilot(60.);
+    let shown = letters(&g);
+    assert!(!shown.iter().any(|(t, _)| t == "G" || t == "A"), "{shown:?}");
+}
+
+#[test]
+fn the_vspeed_page_toggles_each_bug_and_opens_its_keypad() {
+    use flightcraft_control::{AvionicsSetting, GlassSetting, VspeedBug};
+    let mut s = session();
+    let panel = isolated(&s, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    set(
+        &mut s,
+        "left_display",
+        json!({"kind":"open_overlay","overlay":"vspeeds"}),
+    );
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), 0.0);
+    // The page: centred, 46% x 72% of the screen; rows start under an 11% title.
+    let w = screen.width() * 0.46;
+    let h = screen.height() * 0.72;
+    let left = screen.center().x - w / 2.;
+    let top = screen.center().y - h / 2.;
+    let row_h = h * 0.085;
+    let row_y = |i: usize| top + h * 0.11 + 2. + i as f32 * (row_h + 2.) + row_h / 2.;
+    let mut t = 1.;
+    for (i, bug) in VspeedBug::ALL.into_iter().enumerate() {
+        let at = egui::pos2(left + 6. + 0.35 * (w - 12.), row_y(i));
+        tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+        let sent = std::mem::take(&mut view.avionics);
+        let on = !flightcraft_control::VspeedConfig::default().entry(bug).enabled;
+        assert!(
+            sent.iter().any(|a| matches!(a, AvionicsSetting::Glass {
+                setting: GlassSetting::Vspeed { bug: b, enabled }
+            } if *b == bug && *enabled == on)),
+            "{bug:?}: {sent:?}"
+        );
+    }
+    // Set opens the speed keypad of that bug.
+    let at = egui::pos2(left + 6. + 0.85 * (w - 12.), row_y(3));
+    tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+    assert!(actions(&mut view).iter().any(|a| matches!(
+        a,
+        DisplayAction::OpenOverlay { overlay } if *overlay == Overlay::Keypad(EntryTarget::VspeedG)
+    )));
+}
+
+#[test]
 fn the_vnav_indicator_sits_beside_the_tape_and_its_diamond_moves_away_from_the_deviation() {
     let s = session();
     let input = InstrumentInput::new(s.sim().systems(), 0.);

@@ -952,7 +952,10 @@ impl Session {
                     }
                     DisplayAction::OpenOverlay { overlay } => {
                         let allowed = overlay.entry_target().is_some()
-                            || matches!(overlay, Overlay::SelectPage | Overlay::PfdOptions);
+                            || matches!(
+                                overlay,
+                                Overlay::SelectPage | Overlay::PfdOptions | Overlay::Vspeeds
+                            );
                         if !allowed {
                             return Err(invalid(NAME, "that overlay opens with a key, not by touch"));
                         }
@@ -1210,6 +1213,10 @@ impl Session {
             Entry::Altitude { m } => self.set_glass(G::SelectedAltitude { altitude_m: m }),
             Entry::Course { rad } => self.set_glass(G::Course { course_rad: rad }),
             Entry::Minimums { m } => self.set_glass(G::Minimums { altitude_m: m }),
+            Entry::Vspeed { bug, kt } => self.set_glass(G::VspeedValue {
+                bug,
+                speed_kt: Some(kt),
+            }),
             Entry::FplAltitude { kind, m } => self.edit_flight_plan(touch_fpl::FplEdit::Altitude {
                 constraint: Some(crate::AltitudeConstraint { kind, altitude_m: m }),
             }),
@@ -1254,6 +1261,17 @@ impl Session {
             }
             (EntryTarget::Course, EntryShortcut::SetToCurrent) => self.sync_course(),
             (EntryTarget::Minimums, EntryShortcut::TurnOff) => self.set_glass(G::MinimumsOff {}),
+            (
+                EntryTarget::VspeedR | EntryTarget::VspeedX | EntryTarget::VspeedY,
+                EntryShortcut::UseDefault,
+            ) => {
+                let bug = match target {
+                    EntryTarget::VspeedR => crate::VspeedBug::R,
+                    EntryTarget::VspeedX => crate::VspeedBug::X,
+                    _ => crate::VspeedBug::Y,
+                };
+                self.set_glass(G::VspeedValue { bug, speed_kt: None })
+            }
             (EntryTarget::Baro, EntryShortcut::SetToStandard) => self.set_glass(G::Baro {
                 pressure_pa: touch_entry::STANDARD_PRESSURE_PA,
             }),
