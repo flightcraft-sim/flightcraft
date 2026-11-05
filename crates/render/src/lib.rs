@@ -18,7 +18,7 @@ pub use gpu::{SyntheticVisionStats, initialize_synthetic_vision, synthetic_visio
 pub use vision::{PFD_FOCAL_LENGTH, SyntheticVision, pfd_pitch_y};
 
 pub use camera::{CORVID_PILOT_EYE_M, VERTICAL_FOV_RAD, attitude_horizon};
-pub use gpu::initialize;
+pub use gpu::{device_lost, initialize};
 
 use eframe::egui;
 use flightcraft_sim::State;

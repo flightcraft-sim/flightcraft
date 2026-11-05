@@ -211,6 +211,10 @@ pub struct ScreenApp {
     previous: f64,
     radio_ptt: [bool; 2],
     glance: Option<[f64; 2]>,
+    /// `?lose_device=<seconds>`: destroy the GPU device at that time, the way a browser's GPU reset
+    /// would, so tests cover the app staying up (and building 3D views) on a lost device.
+    lose_device: Option<(f64, eframe::wgpu::Device)>,
+    late_view_announced: bool,
 }
 impl ScreenApp {
     pub fn new(
@@ -300,8 +304,12 @@ impl ScreenApp {
             main.screens.main.scenery_preferences.local_tileset =
                 "terrain/new-york/scenery/nyc-lidar/tileset.json".into();
         }
+        // `?late_view=<seconds>` adds a new 3D view to the layout after that long (see `Canvas`).
+        let late_view = query.get("late_view").and_then(|s| s.parse().ok());
+        main.screens.main.late_view = late_view;
         let canvas = Canvas {
             scenery_preferences: main.screens.main.scenery_preferences.clone(),
+            late_view,
             ..Default::default()
         };
         Ok(Self {
@@ -329,15 +337,67 @@ impl ScreenApp {
             previous: 0.,
             radio_ptt: [false; 2],
             glance: None,
+            late_view_announced: false,
+            lose_device: query
+                .get("lose_device")
+                .and_then(|s| s.parse().ok())
+                .map(|at| (at, render.device.clone())),
         })
     }
     pub fn renderer(&self) -> &'static str {
         self.renderer
     }
 }
+/// The browser took the graphics device away (a GPU reset, or a canvas it could not present to).
+/// The 3D views stop, so say why and offer a reload, on WebGL 2 when WebGPU was the one that failed.
+fn gpu_lost_banner(ctx: &egui::Context, reason: &str, renderer: &str) {
+    egui::TopBottomPanel::top("gpu-lost")
+        .frame(egui::Frame::new().fill(theme::PANEL).inner_margin(6.))
+        .show(ctx, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.colored_label(
+                    theme::DANGER,
+                    format!("The browser lost the graphics device ({reason}); 3D views are stopped."),
+                );
+                let reload = |gpu: Option<&str>| {
+                    let Some(window) = web_sys::window() else {
+                        return;
+                    };
+                    let Ok(url) = web_sys::Url::new(&window.location().href().unwrap_or_default()) else {
+                        return;
+                    };
+                    if let Some(gpu) = gpu {
+                        url.search_params().set("gpu", gpu);
+                    }
+                    let _ = window.location().set_href(&url.href());
+                };
+                if renderer == "WebGPU" && ui.button("Reload with WebGL 2").clicked() {
+                    reload(Some("webgl2"));
+                }
+                if ui.button("Reload").clicked() {
+                    reload(None);
+                }
+            });
+        });
+}
 impl eframe::App for ScreenApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let now = ctx.input(|i| i.time);
+        if self.lose_device.as_ref().is_some_and(|(at, _)| now >= *at)
+            && let Some((_, device)) = self.lose_device.take()
+        {
+            device.destroy();
+            web_sys::console::info_1(&"FlightCraft lose device: destroyed".into());
+        }
+        if !self.late_view_announced
+            && (self.main.screens.main.late_view_shown || self.canvas.late_view_shown)
+        {
+            self.late_view_announced = true;
+            web_sys::console::info_1(&"FlightCraft late view: built".into());
+        }
+        if let Some(reason) = flightcraft_render::device_lost() {
+            gpu_lost_banner(ctx, reason, self.renderer);
+        }
         if let Some(link) = &self.link {
             if let Some(socket) = &link.socket
                 && socket.ready_state() == web_sys::WebSocket::OPEN

@@ -17,6 +17,9 @@ use std::collections::BTreeMap;
 /// Seconds for the inset camera to ease to a new framing.
 const INSET_EASE_S: f32 = 0.45;
 
+/// The id of the extra 3D view `Canvas::late_view` adds.
+const LATE_VIEW_ID: &str = "late-view";
+
 /// The elements that are the small exterior view rather than the main outside view.
 fn is_inset(id: &str) -> bool {
     id == flightcraft_control::screens::GROUND_EXTERIOR_ID || id == flightcraft_control::screens::INSET_ID
@@ -90,6 +93,10 @@ pub struct Canvas {
     chart_root: Option<String>,
     pub edit: bool,
     pub error: Option<String>,
+    /// Seconds of egui time after which a new small 3D view joins the layout, once. Tests use it to
+    /// build a scene (shadow atlas, render targets, buffers) in the middle of a session.
+    pub late_view: Option<f64>,
+    pub(crate) late_view_shown: bool,
 }
 fn execute(s: &mut Session, name: &str, input: serde_json::Value, error: &mut Option<String>) {
     if let Err(e) = s.execute(name, input) {
@@ -288,6 +295,20 @@ impl Canvas {
             &mut self.error,
         );
         let mut elements = screen.layout.elements.clone();
+        if !self.late_view_shown && self.late_view.is_some_and(|at| ui.input(|i| i.time) >= at) {
+            // The page stays in the layout from now on, so its scene is built exactly once.
+            self.late_view_shown = true;
+        }
+        if self.late_view_shown {
+            let mut view = Element::page(
+                LATE_VIEW_ID,
+                Page::new(PageKind::Outside),
+                [cw * 0.62, ch * 0.04],
+                [cw * 0.34, ch * 0.3],
+            );
+            view.z = i32::MAX / 2;
+            elements.push(view);
+        }
         elements.sort_by_key(|e| e.z);
         retain_pages(&mut self.pages, &elements);
         for element in elements {

@@ -174,7 +174,20 @@ fn install_diagnostics(device: &wgpu::Device, adapter: &wgpu::Adapter) {
     }));
     device.set_device_lost_callback(|reason, message| {
         log::error!("GPU device lost ({reason:?}): {message}");
+        let _ = DEVICE_LOST.set(format!("{reason:?}: {message}"));
     });
+}
+
+/// Why the GPU device was lost, once it has been. Browsers lose the WebGPU device when the GPU
+/// process resets or cannot present to the canvas; from then on every call on the device is a
+/// no-op, except that creating a buffer mapped at creation throws, which wgpu turns into a panic
+/// the next time something builds GPU resources (a new 3D view, a new tile). The scene callbacks
+/// therefore stop touching the device, and the app offers a reload.
+static DEVICE_LOST: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// The reason the GPU device was lost, or `None` while it works.
+pub fn device_lost() -> Option<&'static str> {
+    DEVICE_LOST.get().map(String::as_str)
 }
 
 /// Register the shared terrain target as an egui image, avoiding a separate composite pipeline
@@ -557,6 +570,9 @@ impl CallbackTrait for SceneCallback {
         encoder: &mut wgpu::CommandEncoder,
         resources: &mut CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
+        if device_lost().is_some() {
+            return Vec::new();
+        }
         let Some(gpu) = resources.get_mut::<Gpu>() else {
             return Vec::new();
         };
@@ -1114,6 +1130,9 @@ impl CallbackTrait for VisionCallback {
         encoder: &mut wgpu::CommandEncoder,
         resources: &mut CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
+        if device_lost().is_some() {
+            return Vec::new();
+        }
         let Some(gpu) = resources.get_mut::<Gpu>() else {
             return Vec::new();
         };
