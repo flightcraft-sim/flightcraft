@@ -459,7 +459,7 @@ positions. Provider selection does not alter simulation state.
 
 Preferences → Scenery selects Low, Medium, or High and a local `tileset.json`; choose Apply scenery
 after editing the path. Settings stay in the user's normal eframe preferences. CPU residency budgets
-are 48/96/192 MiB per provider; at most two decode requests are pending, and one/two/two GPU tiles upload per frame.
+are 48/160/256 MiB per provider; at most two decode requests are pending, and one/two/two GPU tiles upload per frame.
 Replacement parents stay visible until children are decoded **and** uploaded. The browser clamps
 High to Medium and fetches the reduced, same-origin NYC showcase tileset. Quality
 budgets are resource limits, not measured guarantees of 60 fps. Local attribution is drawn over the
@@ -736,16 +736,20 @@ while the air start puts the measured skyline in the first frame. `?start=kteb` 
 06; `?start=runway` keeps the 1N7 runway start.
 
 Offscreen proof renders (`cargo test -p flightcraft-ui render_fly_nyc_proof_shots -- --ignored`,
-`FLIGHTCRAFT_FLYNYC_QUALITY=high` for the 192 MiB cache; Medium is the default and shows fewer
-tiles at once) are written to `out/scenery/fly-nyc/`: southbound abeam midtown, the Statue of Liberty
+`FLIGHTCRAFT_FLYNYC_QUALITY=high` for the 256 MiB cache; Medium, the default and the web cap, uses 160 MiB) are written to `out/scenery/fly-nyc/`: southbound abeam midtown, the Statue of Liberty
 and the Battery, the George Washington Bridge from both sides, a KTEB runway 06 departure and the
 climb-out toward Manhattan.
 
-Known limits. (1) The selector's cache holds about 90 to 150 tiles of decoded memory, so
-mid-distance buildings drop to the coarse LOD. (2) Water over the harbor and the river shows
-polygonal dark patches and long streaks in the proof shots; the water mesh is complete (the audit
-rasterises to the full NHD extent) and sits above the DEM, so this is the water pass receiving the
-scene's cascaded sun shadows (a property of `lighting.wgsl`/shadow cascades, not of the data).
+Quality and depth. The scene uses reversed-depth projection with a 32-bit float depth buffer
+(`camera::perspective_reversed`; every pipeline tests `GreaterEqual` and clears depth to 0). With a
+0.015 m cockpit near plane a standard 24-bit buffer resolves only 4 m at 1 km and 36 m at 3 km, so
+the Hudson's water plane (about a metre above the hydro-flattened DEM) fought the terrain and
+painted terrain-shaped dark and green patches and long streaks through the water, and building
+walls fought their roofs (the pole-like mid-distance buildings). `camera.rs` has a unit test that a
+metre at 6 km resolves. Scenery cache budgets are 48, 160 and 256 MiB (Low, Medium, High); the web
+build caps at Medium, which holds about 120 to 150 tiles at once. On the WebGL2 fallback wgpu
+cannot use the full reversed-depth precision (no clip control), which is why the tidal water
+plane is kept at least 0.4 m above the DEM instead of exactly at it.
 
 ### Web showcase scope
 

@@ -513,8 +513,11 @@ pub(super) fn tessellate(
                         lows.push(lowest);
                     }
                     lows.sort_by(f64::total_cmp);
-                    // The upper quartile: the plane must sit above the hydro-flattened river bed
-                    // samples (0 m where the DEM has no water return), or terrain pokes through it in streaks.
+                    // The upper quartile of the shoreline lows, at least 0.4 m: the hydro-flattened
+                    // river surface plus a margin. The renderer's reversed float depth separates
+                    // the terrain beneath it on WebGPU and desktop; the margin keeps the plane
+                    // above the terrain on the WebGL2 fallback, where wgpu cannot use the full
+                    // reversed-depth precision.
                     let upper = lows.get(lows.len() * 3 / 4).copied().unwrap_or(0.);
                     level = Some(upper.clamp(0.4, 1.5));
                 }
@@ -861,6 +864,25 @@ pub(super) fn write(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn refine_keeps_the_area_and_limits_edge_length() {
+        use glam::DVec3;
+        let t = [
+            DVec3::new(0., 0., 0.),
+            DVec3::new(9_000., 0., 0.),
+            DVec3::new(0., 20., 0.),
+        ];
+        let area = |t: &[DVec3; 3]| ((t[1] - t[0]).cross(t[2] - t[0]).length()) / 2.;
+        let out = super::refine(vec![t], 1_500.);
+        assert!(out.len() > 4);
+        for piece in &out {
+            for (a, b) in [(0, 1), (1, 2), (2, 0)] {
+                assert!(piece[a].distance(piece[b]) <= 1_500.0 + 1e-6);
+            }
+        }
+        let total: f64 = out.iter().map(area).sum();
+        assert!((total - area(&t)).abs() < 1e-6 * area(&t));
+    }
     use super::*;
     use crate::scenery::shapefile::{Polygon, fixtures};
 
