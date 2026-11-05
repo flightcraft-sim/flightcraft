@@ -1654,22 +1654,33 @@ fn sweep(airports: &[&str], seeds: std::ops::RangeInclusive<u64>) {
     assert!(failures.is_empty(), "{airports:?}\n{}", failures.join("\n"));
 }
 
+/// Two seeds that tripped the guard before the sequencing fix, kept in the default suite.
 #[test]
+fn busy_kabe_seeds_that_once_needed_the_guard_no_longer_do() {
+    sweep(&[], 1..=1);
+    sweep(&[], 4..=4);
+}
+
+#[test]
+#[ignore = "full seed sweep: run with --ignored (about 3.5 min each in release)"]
 fn busy_kabe_never_need_the_physics_guard_across_seeds_0_to_10() {
     sweep(&[], 0..=10);
 }
 
 #[test]
+#[ignore = "full seed sweep: run with --ignored (about 3.5 min each in release)"]
 fn busy_kabe_never_need_the_physics_guard_across_seeds_11_to_20() {
     sweep(&[], 11..=20);
 }
 
 #[test]
+#[ignore = "full seed sweep: run with --ignored (about 3.5 min each in release)"]
 fn busy_kabe_and_kmmu_never_need_the_physics_guard_across_seeds_0_to_10() {
     sweep(&["KMMU"], 0..=10);
 }
 
 #[test]
+#[ignore = "full seed sweep: run with --ignored (about 3.5 min each in release)"]
 fn busy_kabe_and_kmmu_never_need_the_physics_guard_across_seeds_11_to_20() {
     sweep(&["KMMU"], 11..=20);
 }
