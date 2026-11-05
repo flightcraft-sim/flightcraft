@@ -111,14 +111,38 @@ speed) and `touch_and_go`.
 
 ### Sequencing and separation
 
-All landing traffic (arrivals and cleared circuit aircraft) share one landing order sorted by estimated
-time to the threshold. A new arrival is only spawned if its slot is at least 125 s clear of the others.
-An aircraft closer than 100 s behind its leader gets a speed reduction; when the gap opens past 170 s the
-controller cancels it. Circuit aircraft are told to extend downwind until their base turn fits a gap,
-and the departure release needs a free runway, 75 s since the last release, and no landing within 110 s.
+The controller keeps the aircraft apart itself, the way a real tower and approach would; the physics
+guard is not part of the plan.
+
+- **One landing sequence.** Arrivals and cleared circuit aircraft share one landing order. An arrival
+  takes its place at the end when it appears, and a circuit aircraft is slotted in by its predicted
+  landing time when it is cleared. The place is then fixed: predicted times move as speeds are
+  assigned, but nobody overtakes on the common final.
+- **Arrival spacing.** A new arrival appears only when it would land at least 130 to 190 s (random,
+  seeded) after the last one, nobody flies within 8 NM of its entry point at the arrival altitudes,
+  and, being at the back, it never has to pass a slower aircraft. Predicted landing times use each
+  aircraft's own approach speed profile and any assigned speed, so a fast type behind a slow one is
+  spaced for its real closing speed.
+- **Speed control.** A follower whose gap (by predicted time, or by distance along the path at the
+  leader's speed, whichever is smaller) drops under 115 s is told `reduce speed to N`: the fastest N
+  (steps of five knots) that opens the gap to 135 s, tightened if still too close. The restriction
+  ends (`resume normal speed`) once the unrestricted gap passes 150 s.
+- **Circuit aircraft** all fly the same circuit speed (90 knots, or the type's approach speed plus
+  eight when that is lower), so a faster type never closes on a slower one. They are cleared in the order
+  they fly, never ahead of one still waiting. A clearance needs 150 s to the lander ahead and, behind, 150 s counting half of what the aircraft behind can
+  still gain by slowing; otherwise the controller says `extend downwind` and looks again.
+  The circuit is 3,400 m wide so its two sides stay well apart.
+- **Departures** are released with a free runway, 75 s since the last release, no landing within 110 s,
+  and the previous departure airborne and more than 3.5 NM out. Each departure gets a heading
+  at least fifteen degrees from the departures still in the area, so a faster aircraft cannot run up the
+  track of a slower one.
+- **Flight following** has one aircraft per altitude.
+- **Go-around.** A follower already at its slowest speed and still under 70 s behind its leader, within
+  3.5 NM of the runway on the tower frequency, is told `go around`.
+
 `sequence` in the call data names the aircraft followed. A last-resort physics guard
 (`stats.safety_slowdowns`) slows an aircraft that gets within 1.3 NM and 140 m of another; tests require
-it to stay at zero.
+it to stay at zero for weather seeds 0 to 20 at KABE alone and with KMMU.
 
 For the user, circuit and final-approach traffic is merged into `traffic_state()`, so the existing
 tower rules say `Number two, follow the Cherokee on left base` against real positions, and hold the user

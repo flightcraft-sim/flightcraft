@@ -101,6 +101,9 @@ pub(crate) struct Ac {
     /// other flight-following traffic shares its altitude, since the two tracks would be long
     /// and the faster aircraft would overtake the slower in the same lane.
     pub corridor: bool,
+    /// Place in the landing sequence, ascending. Fixed once given: ETAs shift as speeds are assigned, but
+    /// nobody overtakes on the common final.
+    pub order: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -172,6 +175,8 @@ pub(crate) struct Fleet {
     next_spawn: f64,
     last_release: f64,
     pub guard_note: String,
+    /// Every kind of pair the physics guard had to act on: label -> (steps, first time).
+    pub guard_pairs: BTreeMap<String, (u64, f64)>,
     /// Other busy airports in the region: their index in the session and field centre.
     pub neighbours: Vec<(usize, [f64; 2])>,
     /// Callsigns in use at the other airports, so no two aircraft in the region share one.
@@ -186,16 +191,49 @@ fn capital(text: &str) -> String {
     c.next()
         .map_or_else(String::new, |f| f.to_uppercase().collect::<String>() + c.as_str())
 }
+/// Landing gaps in seconds: a spawn needs `SPAWN_GAP_S`; a follower closer than `SPEED_TRIGGER_S` is
+/// slowed so the gap opens to `SPEED_TARGET_S`; the restriction ends once the unrestricted gap passes
+/// `SPEED_CANCEL_S`.
+/// Gap in seconds a circuit clearance leaves behind the landing aircraft ahead of it, and ahead of the
+/// one behind it (which the speed control then opens further).
+const CIRCUIT_AHEAD_S: f64 = 150.0;
+const CIRCUIT_BEHIND_S: f64 = 150.0;
+/// The least gap left before the landing aircraft behind, whatever slowing it has in hand.
+const CIRCUIT_BEHIND_MIN_S: f64 = 60.0;
+/// Below this gap to the aircraft ahead, with no speed left to give, the follower goes around.
+const GO_AROUND_S: f64 = 70.0;
+const SPAWN_GAP_S: f64 = 130.0;
+const SPEED_TRIGGER_S: f64 = 115.0;
+const SPEED_TARGET_S: f64 = 135.0;
+const SPEED_CANCEL_S: f64 = 150.0;
+/// Distance of the downwind leg from the runway, metres: wide enough that opposite sides of the
+/// circuit stay well over a mile and a half apart even where the turns cut the corners.
+const PATTERN_Y: f64 = 3400.0;
+/// Every circuit aircraft flies the same circuit speed, so a faster type never closes on a slower one
+/// in the pattern; a cleared aircraft slows to its own approach speed if that is lower.
+const CIRCUIT_KT: f64 = 90.0;
+fn circuit_kt(spec: &TypeSpec, cleared: bool) -> f64 {
+    if cleared {
+        (spec.approach_kt + 8.0).min(CIRCUIT_KT)
+    } else {
+        CIRCUIT_KT
+    }
+}
 fn profile_kt(spec: &TypeSpec, rem: f64) -> f64 {
     (spec.approach_kt + (rem - 4.0 * NM) / (14.0 * NM) * (spec.cruise_kt - spec.approach_kt))
         .clamp(spec.approach_kt, spec.cruise_kt)
 }
-fn eta_profile(spec: &TypeSpec, rem: f64) -> f64 {
+/// Time to fly `rem` metres of the approach profile, with an optional assigned speed cap in knots.
+fn eta_profile(spec: &TypeSpec, rem: f64, cap_kt: Option<f64>) -> f64 {
     let mut t = 0.0;
     let mut r = rem.max(0.0);
     while r > 1.0 {
         let step = r.min(NM);
-        t += step / (profile_kt(spec, r - step / 2.0) * KT);
+        let mut kt = profile_kt(spec, r - step / 2.0);
+        if let Some(k) = cap_kt {
+            kt = kt.min(k).max(spec.min_kt);
+        }
+        t += step / (kt * KT);
         r -= step;
     }
     t
@@ -239,6 +277,7 @@ impl Fleet {
             contacted: false,
             transit: None,
             corridor: false,
+            order: 0.0,
         };
         scratch.gone = true;
         let mut fleet = Self {
@@ -259,6 +298,7 @@ impl Fleet {
             next_spawn: now - WARMUP_S,
             last_release: f64::MIN,
             guard_note: String::new(),
+            guard_pairs: BTreeMap::new(),
             neighbours,
             foreign: Vec::new(),
             handoffs: Vec::new(),
@@ -272,6 +312,7 @@ impl Fleet {
         }
         fleet.stats = FleetStats::default();
         fleet.guard_note.clear();
+        fleet.guard_pairs.clear();
         fleet.info_at = now;
         fleet
     }
@@ -366,21 +407,90 @@ impl Fleet {
         }
     }
     fn eta(&self, a: &Ac) -> f64 {
+        self.eta_with(a, a.speed_kt.map(f64::from))
+    }
+    /// Time to the threshold if the aircraft flew with `cap_kt` assigned (`None`: its normal profile).
+    fn eta_with(&self, a: &Ac, cap_kt: Option<f64>) -> f64 {
         let rem = a.body.path_remaining();
+        let spec = a.ident.spec();
         match a.kind {
-            FleetFlight::Arrival => eta_profile(a.ident.spec(), rem),
-            _ => rem / ((a.ident.spec().approach_kt + 10.0) * KT),
+            FleetFlight::Arrival => eta_profile(spec, rem, cap_kt),
+            _ => {
+                // Before clearance, estimate with the speed it will fly once cleared, and a little extra
+                // distance for the turns.
+                let waiting = matches!(a.stage, Stage::PatCall | Stage::AwaitPat);
+                let kt = circuit_kt(spec, a.cleared || waiting);
+                let kt = cap_kt.map_or(kt, |k| kt.min(k).max(spec.min_kt));
+                self.circuit_distance(a) * if waiting { 1.08 } else { 1.0 } / (kt * KT)
+            }
         }
     }
+    /// Metres a circuit aircraft still has to fly to touch down: along its cleared path, or, before it
+    /// is cleared, around the rest of the circuit with the base turn made as soon as it can be.
+    fn circuit_distance(&self, a: &Ac) -> f64 {
+        let f = &self.field;
+        match a.stage {
+            Stage::PatCall | Stage::AwaitPat => {
+                let x_f = f.along(a.body.pos).min(-2200.0) - 300.0;
+                dist(a.body.pos, f.rw(x_f, 0.0)) + x_f.abs()
+            }
+            Stage::PatClimb => a.body.path_remaining() + PATTERN_Y + 2200.0,
+            _ => a.body.path_remaining(),
+        }
+    }
+    /// Whether the lander `id` can still be slowed enough to leave a circuit aircraft that lands
+    /// `gap` seconds ahead of it the full spacing: the speed control opens the gap further out, where
+    /// slowing to the lowest speed buys minutes, not seconds.
+    fn can_open_behind(&self, id: u32, gap: f64) -> bool {
+        let Some(l) = self.idx(id).and_then(|k| self.craft.get(k)) else {
+            return false;
+        };
+        let slowest = (l.ident.spec().min_kt / 5.0).ceil() * 5.0;
+        let capacity = (self.eta_with(l, Some(slowest)) - self.eta(l)).max(0.0);
+        gap >= CIRCUIT_BEHIND_MIN_S && gap + 0.5 * capacity >= CIRCUIT_BEHIND_S
+    }
+    /// The landing sequence: (id, ETA to the threshold), in landing order.
     fn landers(&self) -> Vec<(u32, f64)> {
-        let mut v: Vec<(u32, f64)> = self
+        let mut v: Vec<(f64, u32, f64)> = self
             .craft
             .iter()
             .filter(|a| !a.gone && Self::is_lander(a))
-            .map(|a| (a.id, self.eta(a)))
+            .map(|a| (a.order, a.id, self.eta(a)))
             .collect();
-        v.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
-        v
+        v.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        v.into_iter().map(|(_, id, eta)| (id, eta)).collect()
+    }
+    /// The latest predicted landing time of anyone in the sequence.
+    fn last_eta(&self) -> Option<f64> {
+        self.landers()
+            .iter()
+            .map(|l| l.1)
+            .fold(None, |m, e| Some(m.map_or(e, |m: f64| m.max(e))))
+    }
+    /// An order value that puts an aircraft landing at `eta` into the sequence between its neighbours.
+    fn order_for(&self, id: u32, eta: f64) -> f64 {
+        let others: Vec<(f64, f64)> = self
+            .craft
+            .iter()
+            .filter(|a| !a.gone && a.id != id && Self::is_lander(a))
+            .map(|a| (a.order, self.eta(a)))
+            .collect();
+        let before = others
+            .iter()
+            .filter(|o| o.1 < eta)
+            .map(|o| o.0)
+            .fold(f64::MIN, f64::max);
+        let after = others
+            .iter()
+            .map(|o| o.0)
+            .filter(|k| *k > before)
+            .fold(f64::MAX, f64::min);
+        match (before > f64::MIN, after < f64::MAX) {
+            (true, true) => (before + after) / 2.0,
+            (true, false) => before + 1.0,
+            (false, true) => after - 1.0,
+            (false, false) => 0.0,
+        }
     }
     /// The lander sequenced immediately ahead, and this aircraft's landing number.
     fn leader_of(&self, id: u32) -> (Option<u32>, u8) {
@@ -411,6 +521,14 @@ impl Fleet {
     fn can_release(&self, now: f64) -> bool {
         !self.runway_occupied()
             && now - self.last_release >= 75.0
+            // The departure ahead is airborne, turned, and well clear of the field (radar separation).
+            && !self.craft.iter().any(|a| {
+                !a.gone
+                    && a.kind == FleetFlight::Departure
+                    && a.stage >= Stage::Rolling
+                    && a.stage <= Stage::Out
+                    && (a.body.on_ground || dist(a.body.pos, self.field.thr) < 3.5 * NM)
+            })
             && self.landers().iter().all(|l| l.1 > 110.0)
             && !self.craft.iter().any(|a| {
                 a.stage == Stage::PatClimb && self.field.along(a.body.pos) < self.field.length_m + 2000.0
@@ -443,16 +561,21 @@ impl Fleet {
             (FleetFlight::Departure, departures),
             (FleetFlight::Pattern, pattern),
         ];
-        let kind = wanted
+        // The most under-represented kind first; when its slot is not clear, the next kind.
+        let mut order: Vec<(i64, usize, FleetFlight)> = wanted
             .iter()
-            .max_by_key(|(k, n)| {
-                (
-                    *n as i64 - self.count(*k) as i64,
-                    -(wanted.iter().position(|w| w.0 == *k).unwrap_or(0) as i64),
-                )
-            })
-            .map_or(FleetFlight::Arrival, |w| w.0);
-        let ok = self.spawn(kind, now);
+            .enumerate()
+            .map(|(rank, (k, n))| (*n as i64 - self.count(*k) as i64, rank, *k))
+            .filter(|(deficit, ..)| *deficit > 0)
+            .collect();
+        order.sort_by_key(|(deficit, rank, _)| (-*deficit, *rank));
+        let mut ok = false;
+        for (.., kind) in order {
+            if self.spawn(kind, now) {
+                ok = true;
+                break;
+            }
+        }
         self.next_spawn = now + if ok { self.rng.range(8.0, 18.0) } else { 12.0 };
     }
 
@@ -552,6 +675,7 @@ impl Fleet {
             contacted: false,
             transit: None,
             corridor: false,
+            order: 0.0,
         }
     }
 
@@ -587,11 +711,26 @@ impl Fleet {
                     let first = path.first().copied().unwrap_or(f.thr);
                     let mut body = Body::new(start, 0.0, bearing(start, first), spec.cruise_kt);
                     body.path = path;
-                    let eta = eta_profile(&spec, body.path_remaining());
-                    if self.landers().iter().any(|l| (l.1 - eta).abs() < 125.0) {
+                    let eta = eta_profile(&spec, body.path_remaining(), None);
+                    // A new arrival joins the end of the landing sequence. A faster aircraft that
+                    // would land ahead of a slower one already on the route would have to overtake
+                    // it, which controllers never allow on a common path.
+                    let gap = SPAWN_GAP_S + self.rng.range(0.0, 60.0);
+                    if self.last_eta().is_some_and(|last| eta < last + gap) {
                         continue;
                     }
+                    // Nobody else flies within 8 NM of the entry point at the arrival altitudes.
+                    if self.craft.iter().any(|o| {
+                        !o.gone
+                            && !o.body.on_ground
+                            && dist(o.body.pos, start) < 8.0 * NM
+                            && (2800.0 * FT..=6200.0 * FT).contains(&o.body.alt_m)
+                    }) {
+                        continue;
+                    }
+                    let order = self.craft.iter().map(|o| o.order).fold(0.0, f64::max) + 1.0;
                     let mut ac = self.new_ac(kind, now, f.hi, Stage::Inbound, body, ident.clone());
+                    ac.order = order;
                     ac.body.alt_m = f64::from(ac.cruise_ft) * FT;
                     ac.body.tgt_alt_m = ac.body.alt_m;
                     ac.call_at = now + ac.rng.range(2.0, 25.0);
@@ -666,11 +805,12 @@ impl Fleet {
                         level + 1
                     };
                     let alt = level * 1000 + 500;
-                    if self.craft.iter().any(|o| {
-                        o.kind == kind
-                            && o.cruise_ft == alt
-                            && (dist(o.body.pos, a) < 12.0 * NM || o.corridor || transit.is_some())
-                    }) {
+                    // One flight following per altitude: tracks across the area are random and cross.
+                    if self
+                        .craft
+                        .iter()
+                        .any(|o| !o.gone && o.kind == kind && o.cruise_ft == alt)
+                    {
                         continue;
                     }
                     let mut body = Body::new(a, f64::from(alt) * FT, bearing(a, z), spec.cruise_kt);
@@ -687,13 +827,23 @@ impl Fleet {
                 false
             }
             FleetFlight::Pattern => {
-                let d1 = f.rw(f.length_m + 900.0, 2800.0);
-                let d2 = f.rw(-2200.0, 2800.0);
+                let d1 = f.rw(f.length_m + 900.0, PATTERN_Y);
+                let d2 = f.rw(-2200.0, PATTERN_Y);
+                // Joins the downwind only with the circuit clear around the entry point.
+                let entry = offset(d1, bearing(d1, d2), 600.0);
+                if self.craft.iter().any(|o| {
+                    !o.gone
+                        && !o.body.on_ground
+                        && dist(o.body.pos, entry) < 3.0 * NM
+                        && (o.body.alt_m - (f.elev_m + 305.0)).abs() < 400.0
+                }) {
+                    return false;
+                }
                 let mut body = Body::new(
                     offset(d1, bearing(d1, d2), 600.0),
                     f.elev_m + 305.0,
                     bearing(d1, d2),
-                    spec.approach_kt + 15.0,
+                    circuit_kt(&spec, false),
                 );
                 body.path = vec![d2];
                 let mut ac = self.new_ac(kind, now, f.tower, Stage::PatCall, body, ident);
@@ -748,7 +898,7 @@ impl Fleet {
             }
             FleetFlight::Pattern => {
                 if a.stage < Stage::Rollout || a.stage >= Stage::PatCall {
-                    a.body.tgt_spd = (spec.approach_kt + if a.cleared { 8.0 } else { 15.0 }) * KT;
+                    a.body.tgt_spd = circuit_kt(&spec, a.cleared) * KT;
                     a.body.tgt_alt_m = if a.cleared {
                         (f.elev_m + 8.0 + rem * 0.07).min(f.elev_m + 305.0)
                     } else {
@@ -782,8 +932,8 @@ impl Fleet {
                 a.body.nav = Nav::Path;
                 a.body.path = vec![
                     f.rw(f.length_m + 900.0, 0.0),
-                    f.rw(f.length_m + 900.0, 2800.0),
-                    f.rw(-2200.0, 2800.0),
+                    f.rw(f.length_m + 900.0, PATTERN_Y),
+                    f.rw(-2200.0, PATTERN_Y),
                 ];
                 a.laps_left = a.laps_left.saturating_sub(1);
                 a.stage = Stage::PatClimb;
@@ -828,6 +978,13 @@ impl Fleet {
                         wrap_pi(to - b.body.hdg).abs() > core::f64::consts::FRAC_PI_2
                     };
                     let slow = if a_behind { i } else { j };
+                    let label = format!(
+                        "{:?}/{} x {:?}/{}",
+                        a.kind,
+                        a.stage.label(),
+                        b.kind,
+                        b.stage.label()
+                    );
                     let note = format!(
                         "t={:.0} {:?}/{} and {:?}/{} at {:.2} NM, {:.0} m apart vertically",
                         self.clock,
@@ -837,11 +994,29 @@ impl Fleet {
                         b.stage.label(),
                         dist(a.body.pos, b.body.pos) / NM,
                         (a.body.alt_m - b.body.alt_m).abs()
+                    ) + &format!(
+                        " | A id{} {} {:.0}kt rem {:.1}NM eta {:.0} lim {:?} alt {:.0}ft | B id{} {} {:.0}kt rem {:.1}NM eta {:.0} lim {:?} alt {:.0}ft",
+                        a.id,
+                        a.ident.spec().spoken,
+                        a.body.spd / KT,
+                        a.body.path_remaining() / NM,
+                        self.eta(a),
+                        a.speed_kt,
+                        a.body.alt_m / FT,
+                        b.id,
+                        b.ident.spec().spoken,
+                        b.body.spd / KT,
+                        b.body.path_remaining() / NM,
+                        self.eta(b),
+                        b.speed_kt,
+                        b.body.alt_m / FT
                     );
                     if let Some(s) = self.craft.get_mut(slow) {
                         s.body.spd = (s.body.spd - 2.0 * dt).max(20.0);
                     }
                     self.stats.safety_slowdowns += 1;
+                    let clock = self.clock;
+                    self.guard_pairs.entry(label).or_insert((0, clock)).0 += 1;
                     if self.guard_note.is_empty() {
                         self.guard_note = note;
                     }
@@ -1028,24 +1203,60 @@ impl Fleet {
         {
             let (leader, _) = self.leader_of(id);
             if let Some(l) = leader.and_then(|l| self.idx(l)).and_then(|l| self.craft.get(l)) {
-                let gap = self.eta(self.ar(i)) - self.eta(l);
-                let restricted = self.ar(i).speed_kt;
-                let since = now - self.ar(i).speed_cmd_at;
-                if gap < 100.0 && since > 45.0 && restricted.is_none() {
-                    let leader_kt = (l.body.spd / KT / 5.0).floor() * 5.0;
-                    let knots = leader_kt.max(spec.min_kt.ceil()).min(spec.cruise_kt) as u16;
-                    self.a(i).speed_cmd_at = now;
+                let me = self.ar(i);
+                let leader_eta = self.eta(l);
+                // The time gap by predicted arrival, and by distance along the common path at the
+                // leader's present speed: the closer of the two governs, since a slower aircraft's
+                // predicted arrival hides how near it is now.
+                let mut gap = self.eta(me) - leader_eta;
+                if l.body.path_remaining() > 0.0 && rem > 0.0 {
+                    gap = gap.min((rem - l.body.path_remaining()) / l.body.spd.max(20.0));
+                }
+                let free_gap = self.eta_with(me, None) - leader_eta;
+                let restricted = me.speed_kt;
+                let since = now - me.speed_cmd_at;
+                if gap < SPEED_TRIGGER_S && since > 30.0 {
+                    // The fastest assigned speed (steps of five knots) that opens the gap to the target.
+                    let top = (profile_kt(&spec, rem) / 5.0).floor() * 5.0;
+                    let bottom = (spec.min_kt / 5.0).ceil() * 5.0;
+                    let mut knots = top;
+                    while knots > bottom && self.eta_with(me, Some(knots)) - leader_eta < SPEED_TARGET_S {
+                        knots -= 5.0;
+                    }
+                    let knots = knots.max(bottom) as u16;
+                    if restricted.is_none_or(|r| knots + 5 <= r) {
+                        self.a(i).speed_cmd_at = now;
+                        self.say_ctrl(
+                            i,
+                            "",
+                            vec![AtcInstruction::Speed { knots: Some(knots) }],
+                            stage,
+                            None,
+                            now,
+                        );
+                        return;
+                    }
+                }
+                // Already as slow as the aircraft can fly and still too close, on the tower frequency:
+                // send the follower around rather than let the runway conflict develop.
+                let bottom = (spec.min_kt / 5.0).ceil() * 5.0;
+                if gap < GO_AROUND_S
+                    && stage >= Stage::AwaitTower
+                    && restricted.is_some_and(|r| f64::from(r) <= bottom)
+                    && rem > 1.5 * NM
+                    && rem < 3.5 * NM
+                {
                     self.say_ctrl(
                         i,
                         "",
-                        vec![AtcInstruction::Speed { knots: Some(knots) }],
-                        stage,
+                        vec![AtcInstruction::GoAround { runway: rwy }],
+                        Stage::PatClimb,
                         None,
                         now,
                     );
                     return;
                 }
-                if gap > 170.0 && since > 45.0 && restricted.is_some() {
+                if free_gap > SPEED_CANCEL_S && since > 45.0 && restricted.is_some() {
                     self.a(i).speed_cmd_at = now;
                     self.say_ctrl(
                         i,
@@ -1190,6 +1401,30 @@ impl Fleet {
             }
             Stage::AwaitTakeoff if self.can_release(now) => {
                 self.last_release = now;
+                // Departures that are still close behind each other fly diverging headings (at least
+                // fifteen degrees apart), so a faster aircraft cannot run up the track of a slower one.
+                let away = if f.left_pattern { 1.0 } else { -1.0 };
+                let others: Vec<f64> = self
+                    .craft
+                    .iter()
+                    .filter(|o| {
+                        !o.gone && o.id != id && o.kind == FleetFlight::Departure && o.stage >= Stage::Rolling
+                    })
+                    .map(|o| o.dep_hdg)
+                    .collect();
+                let mut best = (f64::MIN, 0.12);
+                for offset in [0.12, 0.30, 0.48, 0.66, 0.84] {
+                    let hdg = f.rh + away * offset;
+                    let spread = others
+                        .iter()
+                        .map(|h| wrap_pi(hdg - h).abs())
+                        .fold(f64::MAX, f64::min)
+                        .min(0.5);
+                    if spread > best.0 + 1e-9 {
+                        best = (spread, offset);
+                    }
+                }
+                self.a(i).dep_hdg = f.rh + away * best.1;
                 self.say_ctrl(
                     i,
                     "",
@@ -1330,12 +1565,26 @@ impl Fleet {
             Stage::AwaitPat if now >= self.ar(i).call_at => {
                 let (x_now, y_now) = (f.along(pos), f.cross(pos));
                 let _ = y_now;
-                let x_f = x_now.min(-2200.0) - 300.0;
-                let hyp = (dist(pos, f.rw(x_f, 0.0)) + x_f.abs()) / ((spec.approach_kt + 10.0) * KT);
+                let hyp = self.eta(self.ar(i));
                 let conflict = self
                     .landers()
                     .iter()
-                    .any(|l| l.0 != id && (l.1 - hyp).abs() < 120.0)
+                    .any(|l| {
+                        l.0 != id
+                            && if l.1 < hyp {
+                                hyp - l.1 < CIRCUIT_AHEAD_S
+                            } else {
+                                !self.can_open_behind(l.0, l.1 - hyp)
+                            }
+                    })
+                    // Circuit aircraft are cleared in the order they fly: never ahead of one still waiting.
+                    || self.craft.iter().any(|o| {
+                        o.id != id
+                            && !o.gone
+                            && o.kind == FleetFlight::Pattern
+                            && matches!(o.stage, Stage::PatCall | Stage::AwaitPat)
+                            && self.eta(o) < hyp
+                    })
                     || self.runway_occupied()
                     || self.craft.iter().any(|o| o.id != id && o.stage == Stage::Rolling);
                 if conflict {
@@ -1397,6 +1646,12 @@ impl Fleet {
     fn apply(&mut self, i: usize, ins: &AtcInstruction, now: f64) {
         let f = self.field.clone();
         let station_index = |id: &str| f.stations.iter().position(|s| s.id == id);
+        // A circuit aircraft cleared to land takes its place in the landing sequence, and keeps it.
+        let sequenced = (matches!(
+            ins,
+            AtcInstruction::Land { .. } | AtcInstruction::TouchAndGo { .. }
+        ) && self.ar(i).kind == FleetFlight::Pattern)
+            .then(|| self.order_for(self.ar(i).id, self.eta(self.ar(i))));
         let Some(a) = self.craft.get_mut(i) else { return };
         match ins {
             AtcInstruction::Altitude { altitude_ft } => a.alt_ft = Some(*altitude_ft),
@@ -1427,11 +1682,14 @@ impl Fleet {
             AtcInstruction::Land { .. } | AtcInstruction::TouchAndGo { .. } => {
                 a.cleared = true;
                 a.touch_go = matches!(ins, AtcInstruction::TouchAndGo { .. });
+                if let Some(order) = sequenced {
+                    a.order = order;
+                }
                 if a.kind == FleetFlight::Pattern {
                     let x = f.along(a.body.pos);
                     a.body.nav = Nav::Path;
                     a.body.path = if x > -2000.0 {
-                        vec![f.rw(-2200.0, 2800.0), f.rw(-2200.0, 0.0), f.thr]
+                        vec![f.rw(-2200.0, PATTERN_Y), f.rw(-2200.0, 0.0), f.thr]
                     } else {
                         vec![f.rw(x - 300.0, 0.0), f.thr]
                     };
@@ -1447,8 +1705,8 @@ impl Fleet {
                 a.body.nav = Nav::Path;
                 a.body.path = vec![
                     f.rw(f.length_m + 900.0, 0.0),
-                    f.rw(f.length_m + 900.0, 2800.0),
-                    f.rw(-2200.0, 2800.0),
+                    f.rw(f.length_m + 900.0, PATTERN_Y),
+                    f.rw(-2200.0, PATTERN_Y),
                 ];
             }
             AtcInstruction::Speed { knots } => a.speed_kt = *knots,

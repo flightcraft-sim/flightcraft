@@ -407,7 +407,17 @@ fn a_call_the_user_keys_over_is_blocked_and_sent_again() {
             && e.text.starts_with("Blocked, ")
             && e.text.ends_with(&target.text)
     });
-    assert!(again.is_some(), "no repeat of {:?}", target.text);
+    assert!(
+        again.is_some(),
+        "no repeat of {:?}: {:#?}",
+        target.text,
+        record
+            .events
+            .iter()
+            .filter(|e| e.id >= target.id)
+            .take(6)
+            .collect::<Vec<_>>()
+    );
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1562,4 +1572,104 @@ fn the_user_hears_only_the_airport_in_range_but_both_keep_talking() {
         "{} vs {heard}",
         state.stats.transmissions
     );
+}
+
+fn seeded_session(seed: u64, airports: &[&str]) -> Session {
+    let mut s = atc_session("KABE");
+    listen_to_approach(&mut s);
+    s.execute(
+        "weather.set",
+        json!({"wind_from_deg":0.,"wind_speed_mps":0.,"shear":false,"turbulence":"off","seed":seed}),
+    )
+    .unwrap();
+    s.execute(
+        "traffic.density",
+        json!({"density":"busy","airport":"KABE","airports":airports}),
+    )
+    .unwrap();
+    s
+}
+
+/// Half an hour of Busy traffic under one seed. Returns the closest approach (NM lateral between
+/// aircraft with under 500 ft of vertical separation, with who and when) and the physics-guard
+/// report ("" when the guard was never used).
+fn separation_run(seed: u64, airports: &[&str]) -> (f64, String, String) {
+    let mut s = seeded_session(seed, airports);
+    let mut closest = (f64::MAX, String::new());
+    for _ in 0..(1800 / 2) {
+        advance(&mut s, 2.);
+        let ac: Vec<_> = s
+            .fleet_state()
+            .aircraft
+            .into_iter()
+            .filter(|a| !a.on_ground)
+            .collect();
+        for (i, a) in ac.iter().enumerate() {
+            for b in &ac[i + 1..] {
+                let vertical = (a.altitude_msl_ft - b.altitude_msl_ft).abs();
+                let lateral = libm::hypot(
+                    a.position_m[0] - b.position_m[0],
+                    a.position_m[1] - b.position_m[1],
+                ) / 1852.;
+                if vertical < 500. && lateral < closest.0 {
+                    closest = (
+                        lateral,
+                        format!(
+                            "{} ({}) / {} ({}) at {:.0}s, {vertical:.0} ft",
+                            a.callsign,
+                            a.intent.phase,
+                            b.callsign,
+                            b.intent.phase,
+                            s.sim().state().time_s
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    let report: Vec<String> = s
+        .fleets()
+        .filter(|f| !f.guard_pairs.is_empty())
+        .map(|f| format!("{}: {:?} first: {}", f.field.airport, f.guard_pairs, f.guard_note))
+        .collect();
+    (closest.0, closest.1, report.join(" | "))
+}
+
+/// Sequencing keeps the aircraft apart on its own: for every weather seed the physics guard never
+/// acts, and no two aircraft come within 1 NM with under 500 ft of vertical separation.
+fn sweep(airports: &[&str], seeds: std::ops::RangeInclusive<u64>) {
+    let mut failures = Vec::new();
+    let mut closest = f64::MAX;
+    for seed in seeds {
+        let (c, who, report) = separation_run(seed, airports);
+        closest = closest.min(c);
+        if !report.is_empty() {
+            failures.push(format!("seed {seed}: physics guard used: {report}"));
+        }
+        if c < 1.0 {
+            failures.push(format!("seed {seed}: {c:.2} NM: {who}"));
+        }
+    }
+    println!("{airports:?}: closest approach {closest:.2} NM");
+    assert!(failures.is_empty(), "{airports:?}\n{}", failures.join("\n"));
+}
+
+#[test]
+fn busy_kabe_never_need_the_physics_guard_across_seeds_0_to_10() {
+    sweep(&[], 0..=10);
+}
+
+#[test]
+fn busy_kabe_never_need_the_physics_guard_across_seeds_11_to_20() {
+    sweep(&[], 11..=20);
+}
+
+#[test]
+fn busy_kabe_and_kmmu_never_need_the_physics_guard_across_seeds_0_to_10() {
+    sweep(&["KMMU"], 0..=10);
+}
+
+#[test]
+fn busy_kabe_and_kmmu_never_need_the_physics_guard_across_seeds_11_to_20() {
+    sweep(&["KMMU"], 11..=20);
 }
