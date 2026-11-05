@@ -148,6 +148,9 @@ jobs:
           mcp=flightcraft-mcp; [ "${{ runner.os }}" = Windows ] && mcp=flightcraft-mcp.exe
           cp "target/release/$mcp" "$out/"
           cp -R assets/terrain "$out/assets/"
+          # The Fly NYC showcase tiles (new-york/scenery, hundreds of MB) ship on the website; a
+          # desktop user gets them with `cargo xtask data fetch`, not in every nightly tarball.
+          rm -rf "$out/assets/terrain/new-york/scenery"
           cp LICENSE NOTICE ATTRIBUTION.md README.md "$out/"
           # Aircraft packs from their own repositories, pinned in bundled-packs.json.
           python3 scripts/bundle-packs.py bundled-packs.json "$out/packs"

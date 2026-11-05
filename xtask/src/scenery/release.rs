@@ -48,6 +48,11 @@ fn passed(built: &Path, file: &str) -> Result<(), String> {
 pub(crate) fn attribution(built: &Path, region: &str, name: &str) -> Result<String, String> {
     let sources: super::Sources = download::json(&built.join("sources.json"))?;
     let count = |kind: super::InputKind| sources.inputs.iter().filter(|i| i.kind == kind).count();
+    let registration = if name == super::corridor::AREA {
+        "lidar building footprints compared with the NAIP orthophoto (no runway lies in the\n           Fly NYC envelope) and Teterboro's FAA field elevation compared with the DEM; see\n           alignment-audit.json and datum-audit.json."
+    } else {
+        "FAA runway data (NASR) compared with the painted runway markings measured in the NAIP\n           imagery; see alignment-audit.json."
+    };
     let mut text = format!(
         "FlightCraft scenery: {name} ({region})\n\
          \n\
@@ -64,8 +69,7 @@ pub(crate) fn attribution(built: &Path, region: &str, name: &str) -> Result<Stri
            Public domain.\n\
          - Water: USGS National Hydrography Dataset Best Resolution, HU-8 shapefiles ({} files).\n\
            Public domain.\n\
-         - Registration checks: FAA runway data (NASR) compared with the painted runway markings\n\
-           measured in the NAIP imagery; see alignment-audit.json.\n\
+         - Registration checks: {}\n\
          \n\
          Trees, buildings and water surfaces are original reconstructions measured from the data\n\
          above (see lidar-acceptance.json and water-audit.json). Credit: USDA FSA NAIP, USGS,\n\
@@ -74,6 +78,7 @@ pub(crate) fn attribution(built: &Path, region: &str, name: &str) -> Result<Stri
         count(super::InputKind::Dem),
         count(super::InputKind::EptLidar),
         count(super::InputKind::Nhd),
+        registration,
     );
     if count(super::InputKind::Nhd) == 0 {
         text = text.replace("- Water: USGS National Hydrography Dataset Best Resolution, HU-8 shapefiles (0 files). Public domain.\n", "");

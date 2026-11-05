@@ -384,6 +384,16 @@ impl Document {
     }
 }
 pub(super) const ORIGIN: [f64; 2] = [40.96905613156273, -75.00242278301268];
+static AREA_ORIGIN: std::sync::Mutex<Option<[f64; 2]>> = std::sync::Mutex::new(None);
+/// The tileset's local-frame origin: 1N7's unless an area (the Hudson corridor) sets its own.
+pub(super) fn origin() -> [f64; 2] {
+    AREA_ORIGIN.lock().ok().and_then(|o| *o).unwrap_or(ORIGIN)
+}
+pub(super) fn set_origin(origin: [f64; 2]) {
+    if let Ok(mut o) = AREA_ORIGIN.lock() {
+        *o = Some(origin);
+    }
+}
 fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<u8>, String> {
     let mut doc = Document::default();
     let mut meshes = Vec::new();
@@ -408,7 +418,7 @@ fn tree_content(trees: &[&Tree], coarse: bool, geoid: &GeoidGrid) -> Result<Vec<
         }
         let translations = selected
             .iter()
-            .map(|t| local(t.lat, t.lon, t.ground_msl_m, ORIGIN, geoid))
+            .map(|t| local(t.lat, t.lon, t.ground_msl_m, origin(), geoid))
             .collect::<Result<Vec<_>, _>>()?;
         let scales: Vec<[f32; 3]> = selected
             .iter()
@@ -447,6 +457,30 @@ pub(super) fn write_trees(
     trees: &[Tree],
     geoid: &GeoidGrid,
 ) -> Result<(), String> {
+    write_trees_split(
+        out,
+        set,
+        trees,
+        geoid,
+        TreeSplit {
+            max_level: 2,
+            leaf: 64,
+        },
+    )
+}
+/// Quadtree splitting for tree tiles: subdivide while a tile holds more than `leaf` trees.
+#[derive(Clone, Copy)]
+pub(super) struct TreeSplit {
+    pub max_level: u8,
+    pub leaf: usize,
+}
+pub(super) fn write_trees_split(
+    out: &Path,
+    set: &mut Tileset,
+    trees: &[Tree],
+    geoid: &GeoidGrid,
+    split: TreeSplit,
+) -> Result<(), String> {
     if trees.is_empty() {
         return Ok(());
     }
@@ -455,6 +489,7 @@ pub(super) fn write_trees(
         out: &Path,
         trees: &[&Tree],
         geoid: &GeoidGrid,
+        split: TreeSplit,
         level: u8,
         x: u32,
         y: u32,
@@ -485,7 +520,7 @@ pub(super) fn write_trees(
             bounds[5] = bounds[5].max(h + t.height_m + 0.5);
         }
         let mut children = Vec::new();
-        if level < 2 && trees.len() > 64 {
+        if level < split.max_level && trees.len() > split.leaf {
             let mx = coordinates.iter().map(|p| p[0]).fold(f64::INFINITY, f64::min)
                 + coordinates.iter().map(|p| p[0]).fold(f64::NEG_INFINITY, f64::max);
             let my = coordinates.iter().map(|p| p[1]).fold(f64::INFINITY, f64::min)
@@ -499,7 +534,15 @@ pub(super) fn write_trees(
                         .map(|(t, _)| *t)
                         .collect();
                     if !group.is_empty() {
-                        children.push(node(out, &group, geoid, level + 1, x * 2 + cx, y * 2 + cy)?);
+                        children.push(node(
+                            out,
+                            &group,
+                            geoid,
+                            split,
+                            level + 1,
+                            x * 2 + cx,
+                            y * 2 + cy,
+                        )?);
                     }
                 }
             }
@@ -524,7 +567,7 @@ pub(super) fn write_trees(
             children,
         })
     }
-    let tree = node(out, &trees.iter().collect::<Vec<_>>(), geoid, 0, 0, 0)?;
+    let tree = node(out, &trees.iter().collect::<Vec<_>>(), geoid, split, 0, 0, 0)?;
     include_bounds(&mut set.root, &tree)?;
     set.root.children.push(tree);
     let flags = set

@@ -162,6 +162,9 @@ pub fn build() -> Result<(), String> {
     Ok(())
 }
 
+/// The one scenery area the website carries: the Fly NYC Hudson corridor.
+const FLY_NYC_AREA: &str = "hudson-corridor";
+
 /// The website ships scenery only for the Fly NYC showcase region (docs/scenery-sources.md).
 /// Other regions' scenery, such as the 1N7 tiles, is desktop-only data.
 fn web_scenery(id: &str) -> bool {
@@ -192,7 +195,7 @@ fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), S
                     .ok_or("Scenery manifest has no directory")?
                     .to_path_buf(),
             );
-            if *path == scenery.join("nyc-lidar/tileset.json") {
+            if *path == scenery.join(format!("{FLY_NYC_AREA}/tileset.json")) {
                 flightcraft_render::scenery::nyc_lidar_source(
                     set.pointer("/extras/flightcraft")
                         .ok_or("Fly NYC provenance missing")?,
@@ -209,9 +212,13 @@ fn validate_showcase_scenery(region: &std::path::Path, id: &str) -> Result<(), S
     }
     if id == "new-york" {
         if !nyc {
-            return Err("Fly NYC needs accepted NYC buildings at new-york/scenery/nyc-lidar; consume fc-scenery reconstruction with scenery build --area nyc-lidar first (docs/scenery.md)".into());
+            return Err(format!(
+                "Fly NYC needs the accepted Hudson corridor at new-york/scenery/{FLY_NYC_AREA}; build it with `scenery build --area hudson-corridor`, package it, and `cargo xtask data fetch` (docs/scenery.md, \"Hudson corridor\")"
+            ));
         }
-        let bytes = super::data::files(&scenery.join("nyc-lidar"))?
+        // The 250 MB building allocation covers the lidar building tiles; imagery, terrain, trees
+        // and water share the rest of the 900 MB site budget checked below.
+        let bytes = super::data::files(&scenery.join(FLY_NYC_AREA).join("buildings"))?
             .iter()
             .try_fold(0_u64, |total, p| {
                 std::fs::metadata(p)
@@ -390,7 +397,7 @@ mod tests {
 mod scenery_package_tests {
     use super::*;
     fn area_path(root: &std::path::Path) -> std::path::PathBuf {
-        root.join("scenery/nyc-lidar/tileset.json")
+        root.join(format!("scenery/{FLY_NYC_AREA}/tileset.json"))
     }
     #[test]
     fn desktop_only_scenery_never_reaches_the_website() {
@@ -413,22 +420,23 @@ mod scenery_package_tests {
         assert!(validate_showcase_scenery(&root, "new-york").is_ok());
         std::fs::create_dir_all(root.join("scenery")).unwrap();
         assert!(validate_showcase_scenery(&root, "new-york").is_ok());
-        let area = root.join("scenery/nyc-lidar");
+        let area = root.join(format!("scenery/{FLY_NYC_AREA}"));
         std::fs::create_dir_all(area.join("tiles")).unwrap();
+        std::fs::create_dir_all(area.join("buildings")).unwrap();
         let mut set = serde_json::json!({"asset":{"version":"1.1","copyright":"Original fixture"},"geometricError":0,"root":{"boundingVolume":{"region":[-1.3,0.7,-1.2,0.8,0,100]},"geometricError":0,"content":{"uri":"tiles/test.glb"}},"extras":{"flightcraft":crate::scenery::nyc_test_flags()}});
         super::super::download::write_json(&area.join("tileset.json"), &set).unwrap();
         std::fs::write(
-            area.join("tiles/test.glb"),
+            area.join("buildings/test.glb"),
             b"package accounting fixture, not render proof",
         )
         .unwrap();
         assert!(validate_showcase_scenery(&root, "new-york").is_ok());
         let target = root.join("staged");
         copy_tree(&root.join("scenery"), &target).unwrap();
-        assert!(target.join("nyc-lidar/tiles/test.glb").exists());
+        assert!(target.join(FLY_NYC_AREA).join("buildings/test.glb").exists());
         let file = std::fs::OpenOptions::new()
             .write(true)
-            .open(area.join("tiles/test.glb"))
+            .open(area.join("buildings/test.glb"))
             .unwrap();
         file.set_len(250_000_001).unwrap();
         assert!(

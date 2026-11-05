@@ -16,6 +16,11 @@ async fn load_all(options: &mut RegionOptions) -> Result<(), JsValue> {
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("Browser window unavailable"))?;
     let query = web_sys::UrlSearchParams::new_with_str(&window.location().search()?)?;
     let urls = query.get_all("region");
+    if urls.length() == 0 {
+        // The website's default is the Fly NYC showcase (docs/scenery-sources.md); `?region=none`
+        // opens the original flat world instead.
+        urls.push(&JsValue::from_str("terrain/new-york/region.json"));
+    }
     if urls.length() as usize > MAX_REGIONS {
         return Err(JsValue::from_str("At most 64 region URLs"));
     }
@@ -24,6 +29,9 @@ async fn load_all(options: &mut RegionOptions) -> Result<(), JsValue> {
         let Some(url) = value.as_string() else {
             continue;
         };
+        if url == "none" {
+            continue;
+        }
         match load_one(&window, &url, remaining).await {
             Ok(world) => {
                 if let Some(region) = world.region() {

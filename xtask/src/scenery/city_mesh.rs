@@ -37,7 +37,7 @@ pub(super) fn local(inverse: DMat4, lat: f64, lon: f64, height: f64) -> Result<D
 pub(super) fn triangulate(rings: &[Vec<DVec3>]) -> Result<Vec<Triangle>, String> {
     let outer = rings.first().ok_or("Polygon has no exterior")?;
     let vertices: usize = rings.iter().map(Vec::len).sum();
-    if vertices > 4096 || rings.len() > 256 {
+    if vertices > 30_000 || rings.len() > 4096 {
         return Err("Polygon exceeds tessellation budget".into());
     }
     for ring in rings {

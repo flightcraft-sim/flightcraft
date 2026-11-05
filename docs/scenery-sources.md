@@ -139,11 +139,33 @@ for wasm. Tests use an in-process local fake HTTP server without sockets or DNS,
 ## Web showcase: "Fly NYC"
 
 The website is one polished showcase, not the whole world: the Hudson River corridor and the
-Manhattan skyline, departing from Teterboro or Linden. It uses public-data scenery (imagery of
-about 0.6 m near the river and coarser outward, lidar terrain, and New York City's own open
-building data) sized to fit GitHub Pages' roughly 1 GB site limit with no new account. The desktop
-app carries everything else (1N7 in full detail, the Water Gap, eastern Pennsylvania, and later the
-whole US) through GitHub Releases.
+Manhattan skyline. It uses public-data scenery (NAIP imagery at 0.6 m near the river and coarser
+outward, the USGS 1 m DEM, NHD water, and USGS 3DEP lidar buildings) sized to fit GitHub Pages'
+roughly 1 GB site limit with no new account. The desktop app carries everything else (1N7 in full
+detail, the Water Gap, eastern Pennsylvania, and later the whole US) through GitHub Releases.
+
+**Built and shipped as `new-york/hudson-corridor`** (how it is fetched, built, gated and
+published: [scenery.md](scenery.md#hudson-corridor-fly-nyc)). The website opens it with **no
+query**: southbound at about 1,000 ft over the Hudson at the George Washington Bridge, skyline
+ahead. Why that and not a Teterboro (KTEB) departure: KTEB is about 9 km west of the river and
+outside the fly-nyc.json lidar envelope, so a departure spends its first minutes over New Jersey
+with flat NAIP and no buildings, while the bridge start puts the measured skyline in the first
+frame. `?start=kteb` still departs Teterboro runway 06 (imagery and terrain cover the field and
+the departure path; there are no hangars or terminal there), `?start=runway` keeps the Blairstown
+runway start, and `?region=none` keeps the original flat world.
+
+**Two facts about the source that the area definition did not anticipate**, both measured on the
+real data:
+
+* NY_NewYorkCity's building returns are **unclassified**. The 10.3 million Midtown points
+  (181 EPT nodes) carry only classes 1, 2, 7, 9, 10, 17 and 18 and no class 6 at all: the Empire
+  State Building's 8,652 returns within 40 m are all class 1, up to 455 m. Buildings are therefore
+  inferred from planar, elevated unclassified returns exactly as for the NJ survey (every building
+  record says `inferred_classification: true`), still from the lidar alone. The `classification: 6`
+  in `assets/scenery/fly-nyc.json` is kept as the fixed area record but is not a property of the data.
+* The envelope's north edge (40.84 N) stops 1.4 km short of the bridge (about 40.850 N), so the
+  first two kilometres of a bridge start have no buildings (imagery, terrain and water cover it).
+  Widening the envelope to 40.87 N is a one-line change to `fly-nyc.json` and `NYC_BOUNDS`.
 
 If the showcase outgrows 1 GB, only the scenery tiles move to a free host without that cap
 (Cloudflare Pages: up to 20,000 files of 25 MB each with no bandwidth cap; or a Hugging Face

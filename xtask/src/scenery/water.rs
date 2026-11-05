@@ -14,7 +14,7 @@ pub(super) const NHD_PREFIX: &str =
 const DATASET: &str = "National%20Hydrography%20Dataset%20%28NHD%29%20Best%20Resolution";
 /// Subbasin archives are about 25 MB; the cap stops an unexpectedly large state or national file.
 const MAX_ARCHIVE: u64 = 300 * 1024 * 1024;
-const MAX_PRODUCTS: usize = 6;
+const MAX_PRODUCTS: usize = 10;
 
 pub(super) fn discovery_url(bounds: [f64; 4]) -> String {
     let [w, s, e, n] = bounds;

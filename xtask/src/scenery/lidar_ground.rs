@@ -21,6 +21,11 @@ pub(super) struct Audit {
     pub control: &'static str,
 }
 impl Check {
+    /// Folds another block's samples in (each block de-duplicates its own 16 m cells).
+    pub fn absorb(&mut self, other: Check) {
+        self.clipped_points += other.clipped_points;
+        self.residuals.extend(other.residuals);
+    }
     pub fn sample(
         &mut self,
         p: Point,

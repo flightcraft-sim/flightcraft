@@ -268,13 +268,14 @@ impl ScreenApp {
         {
             let _ = session.restore_screens(set);
         }
-        if let Some(world) = session.worker_seed().regions.first() {
-            let choice = world.region.id.clone();
-            session.execute("sim.reset", json!({"world":choice,"start":{"kind":"runway"}}))?;
-        }
         let window = web_sys::window().ok_or_else(|| std::io::Error::other("browser unavailable"))?;
         let query = web_sys::UrlSearchParams::new_with_str(&window.location().search().unwrap_or_default())
             .map_err(|_| std::io::Error::other("invalid query"))?;
+        if let Some(world) = session.worker_seed().regions.first() {
+            let choice = world.region.id.clone();
+            let start = crate::fly_nyc::start(&choice, query.get("start").as_deref());
+            session.execute("sim.reset", json!({"world":choice,"start":start}))?;
+        }
         let remote = query.get("panel").as_deref() == Some("remote");
         let screen = query.get("screen").and_then(|s| s.parse().ok()).unwrap_or(0);
         let page = query
@@ -301,8 +302,7 @@ impl ScreenApp {
             .map_err(std::io::Error::other)?;
         if query.get("scenery").as_deref() == Some("nyc") {
             main.screens.main.scenery_preferences.enabled = true;
-            main.screens.main.scenery_preferences.local_tileset =
-                "terrain/new-york/scenery/nyc-lidar/tileset.json".into();
+            main.screens.main.scenery_preferences.local_tileset = crate::FLY_NYC_TILESET.into();
         }
         // `?late_view=<seconds>` adds a new 3D view to the layout after that long (see `Canvas`).
         let late_view = query.get("late_view").and_then(|s| s.parse().ok());

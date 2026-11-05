@@ -159,6 +159,18 @@ pub(super) fn evaluate(
             audit.faa_residual_m = Some((height - 371. * 0.3048).abs());
             audit.notes.push("FAA reference: 1N7 field elevation 371 ft, supplied by flight lead; airport elevation is the highest landing surface, not the ARP".into());
         }
+    } else if request.area == super::corridor::AREA {
+        if let Some(dem) = dem {
+            let control = super::corridor_gates::vertical_control(dem)?;
+            audit.faa_field_elevation_ft = control.field_elevation_m / 0.3048;
+            audit.runway_max_msl_m = Some(control.dem_max_m);
+            audit.runway_max_lat_lon = Some(control.at);
+            audit.faa_residual_m = Some((control.dem_max_m - control.field_elevation_m).abs());
+            audit.notes.push(format!(
+                "FAA reference: {} field elevation {:.2} m from the region airport catalogue (highest point of the landing area); DEM sampled on both paved runways",
+                control.airport, control.field_elevation_m
+            ));
+        }
     } else {
         audit
             .notes

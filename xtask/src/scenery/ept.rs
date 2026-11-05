@@ -248,7 +248,27 @@ impl Metadata {
             && minz <= ch
             && minz + width >= cz
     }
+    #[cfg(test)]
     pub fn select_page(&self, bytes: &[u8], root: Key, query: [f64; 4], depth: u8) -> Result<Page, String> {
+        self.select_page_zone(bytes, root, query, depth, &|_| true)
+    }
+    /// Mercator rectangle of a node's cube footprint.
+    pub fn node_rect(&self, key: Key) -> [f64; 4] {
+        let [w, s, _, e, _, _] = self.bounds;
+        let width = (e - w) / f64::from(1_u32 << key.depth);
+        let x = w + f64::from(key.x) * width;
+        let y = s + f64::from(key.y) * width;
+        [x, y, x + width, y + width]
+    }
+    /// Like `select_page`, additionally requiring the node's footprint to satisfy `zone`.
+    pub fn select_page_zone(
+        &self,
+        bytes: &[u8],
+        root: Key,
+        query: [f64; 4],
+        depth: u8,
+        zone: &dyn Fn([f64; 4]) -> bool,
+    ) -> Result<Page, String> {
         if bytes.len() > MAX_PAGE_BYTES || depth > 24 {
             return Err("EPT hierarchy exceeds limit".into());
         }
@@ -266,7 +286,7 @@ impl Metadata {
             {
                 return Err("invalid EPT hierarchy descendant or count".into());
             }
-            if key.depth > depth || !self.intersects(key, query) {
+            if key.depth > depth || !self.intersects(key, query) || !zone(self.node_rect(key)) {
                 continue;
             }
             match count {
@@ -405,6 +425,33 @@ pub fn fetch(
     spacing_m: f64,
     remote: &mut impl Acquisition,
 ) -> Result<SelectionSummary, String> {
+    fetch_zone(
+        root,
+        query,
+        &|_| true,
+        spacing_m,
+        ZoneBudget {
+            points: 100_000_000,
+            nodes: 100_000,
+        },
+        remote,
+    )
+}
+/// Point and node ceilings for a selection. A corridor needs more than a one-airport test.
+#[derive(Clone, Copy, Debug)]
+pub struct ZoneBudget {
+    pub points: u64,
+    pub nodes: usize,
+}
+/// Selection restricted to an arbitrary footprint (`zone` receives node Mercator rectangles).
+pub fn fetch_zone(
+    root: &str,
+    query: [f64; 4],
+    zone: &dyn Fn([f64; 4]) -> bool,
+    spacing_m: f64,
+    budget: ZoneBudget,
+    remote: &mut impl Acquisition,
+) -> Result<SelectionSummary, String> {
     if !matches!(root, ROOT | NYC_ROOT) {
         return Err("EPT acquisition needs a reviewed USGS public survey root".into());
     }
@@ -419,12 +466,12 @@ pub fn fetch(
         if !visited.insert(key) {
             return Err("repeated EPT hierarchy page".into());
         }
-        if visited.len() > 4096 {
+        if visited.len() > 8192 {
             return Err("EPT hierarchy request budget exceeded; narrow the area".into());
         }
         let url = format!("{root}/ept-hierarchy/{}.json", key.name());
         let bytes = remote.metadata(MetadataKind::Hierarchy, &url, MAX_PAGE_BYTES)?;
-        let page = metadata.select_page(&bytes, key, query, depth)?;
+        let page = metadata.select_page_zone(&bytes, key, query, depth, zone)?;
         for (key, count) in page.data {
             if let Some(previous) = nodes.insert(key, count) {
                 if previous != count {
@@ -433,7 +480,7 @@ pub fn fetch(
             } else {
                 points = points.checked_add(count).ok_or("EPT point count overflow")?;
             }
-            if nodes.len() > 100_000 || points > 100_000_000 {
+            if nodes.len() > budget.nodes || points > budget.points {
                 return Err("EPT point selection budget exceeded; narrow the area".into());
             }
         }

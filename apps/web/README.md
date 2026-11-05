@@ -92,4 +92,17 @@ Open [New York area](https://flightcraft-sim.github.io/flightcraft/?region=terra
 to start on Blairstown runway 07, then use **Start** to search airports and choose another runway.
 Also fly [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json), with the same Blairstown origin.
 The static build includes both region directories, with public-domain elevation and FAA airports.
-The same query works on a local static host. Without `?region=`, the flat world stays the default.
+The same query works on a local static host.
+
+### Fly NYC (the default)
+
+With no `?region=`, the site opens **Fly NYC**: the New York region, southbound at about 1,000 ft
+over the Hudson River at the George Washington Bridge, with the Manhattan skyline built from public
+USGS 3DEP lidar, NAIP imagery and NHD water (`terrain/new-york/scenery/hudson-corridor/`, see
+[docs/scenery.md](../../docs/scenery.md#hudson-corridor-fly-nyc)). Query options:
+
+- `?start=kteb` departs Teterboro runway 06 instead (about 9 km west of the river, outside the
+  lidar building envelope, so the skyline appears only after the climb-out).
+- `?start=runway` starts on the region's Blairstown runway like the other regions.
+- `?region=none` opens the original flat Training Valley world.
+- `?region=terrain/eastern-pa/region.json` (repeatable) selects any other region, as before.

@@ -13,6 +13,8 @@ pub mod crew;
 mod crew_preview;
 mod display_preferences;
 mod efis;
+pub mod fly_nyc;
+pub use fly_nyc::FLY_NYC_TILESET;
 pub mod glass;
 mod ifr;
 #[cfg(test)]
@@ -1646,6 +1648,8 @@ mod walkaround_preview;
 /// Schema-only re-export for the repository schema generator.
 pub type SceneryProviderSchema = flightcraft_render::scenery::Provider;
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod fly_nyc_preview;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod installed_scenery;
 #[cfg(test)]

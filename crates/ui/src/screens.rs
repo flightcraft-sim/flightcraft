@@ -186,7 +186,7 @@ impl Canvas {
                     {
                         let path =
                             if self.scenery_preferences.local_tileset.is_empty() && region.id == "new-york" {
-                                "terrain/new-york/scenery/nyc-lidar/tileset.json".to_owned()
+                                crate::FLY_NYC_TILESET.to_owned()
                             } else {
                                 self.scenery_preferences.local_tileset.clone()
                             };

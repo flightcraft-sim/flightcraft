@@ -24,6 +24,9 @@ use std::path::Path;
 /// flowline-only streams are not reflective open water and are recorded but not drawn.
 const WATERBODY_FTYPES: [&str; 2] = ["390", "436"]; // LakePond, Reservoir
 const AREA_FTYPES: [&str; 2] = ["460", "336"]; // StreamRiver, CanalDitch
+/// Tidal water (the Hudson, the East River and the harbor are NHD estuary and bay polygons):
+/// Estuary 493 (NHDWaterbody), Bay/Inlet 312 and SeaOcean 445 (NHDArea).
+const TIDAL_TYPES: [&str; 3] = ["493", "312", "445"];
 const WATER_LIFT_M: f64 = 0.03;
 const NEARBY_NAMED_M: f64 = 5_000.;
 /// Rivers are drawn this far beyond the imagery area so the stream corridor continues past its
@@ -32,7 +35,9 @@ const NEARBY_NAMED_M: f64 = 5_000.;
 /// to the 1 m DEM could float above or hide below it.
 pub(super) const RIVER_MARGIN_M: f64 = 1_500.;
 pub(super) const POND_MARGIN_M: f64 = 100.;
-const MAX_TESSELLATION_VERTICES: usize = 3_500;
+const MAX_TESSELLATION_VERTICES: usize = 20_000;
+/// 3 vertices per triangle, 200,000 vertices per content.
+const MAX_TILE_TRIANGLES: usize = 60_000;
 
 #[derive(Clone, Debug, Serialize)]
 pub(super) struct PolygonAudit {
@@ -196,6 +201,9 @@ pub(super) struct Areas {
     /// Clip rectangles (west, south, east, north degrees) for standing water and for rivers.
     pub ponds: [f64; 4],
     pub rivers: [f64; 4],
+    /// Also draw tidal estuary, bay and ocean polygons, with per-vertex water levels from the
+    /// hydro-flattened DEM (a coastline has no single rim level) and a coarser tolerance.
+    pub tidal: bool,
 }
 impl Areas {
     #[cfg(test)]
@@ -203,7 +211,12 @@ impl Areas {
         Self {
             ponds: area,
             rivers: area,
+            tidal: false,
         }
+    }
+    pub(super) fn tidal(mut self) -> Self {
+        self.tidal = true;
+        self
     }
     pub(super) fn around(imagery: [f64; 4]) -> Self {
         let mid = (imagery[1] + imagery[3]) / 2.;
@@ -219,6 +232,7 @@ impl Areas {
         Self {
             ponds: grow(POND_MARGIN_M),
             rivers: grow(RIVER_MARGIN_M),
+            tidal: false,
         }
     }
 }
@@ -243,6 +257,7 @@ pub(super) fn tessellate(
         Ok([a[1].min(b[1]), a[0].min(b[0]), a[1].max(b[1]), a[0].max(b[0])])
     };
     let (pond_rect, river_rect) = (local(areas.ponds)?, local(areas.rivers)?);
+    let tidal = areas.tidal;
     let mut out = Tessellated {
         mesh: objects::Mesh::default(),
         audit: Audit {
@@ -256,15 +271,11 @@ pub(super) fn tessellate(
     };
     let mut seen = std::collections::BTreeSet::new();
     for (layer, polygons) in layers {
-        let local_rect = if *layer == "NHDWaterbody" {
-            pond_rect
-        } else {
-            river_rect
-        };
-        let drawn_types: &[&str] = if *layer == "NHDWaterbody" {
-            &WATERBODY_FTYPES
-        } else {
-            &AREA_FTYPES
+        let drawn_types: &[&str] = match (*layer == "NHDWaterbody", tidal) {
+            (true, false) => &WATERBODY_FTYPES,
+            (true, true) => &["390", "436", "493", "312", "445"],
+            (false, false) => &AREA_FTYPES,
+            (false, true) => &["460", "336", "312", "445"],
         };
         for polygon in polygons {
             let (name, ftype, fcode) = (
@@ -273,6 +284,11 @@ pub(super) fn tessellate(
                 attribute(polygon, "FCODE"),
             );
             let id = attribute(polygon, "PERMANENT_");
+            // Standing water has one level and a short margin; rivers and tidal water follow the
+            // DEM at each vertex and continue past the imagery edge.
+            let is_tidal = tidal && TIDAL_TYPES.contains(&ftype.as_str());
+            let standing = *layer == "NHDWaterbody" && !is_tidal;
+            let local_rect = if standing { pond_rect } else { river_rect };
             let local_rings: Vec<Vec<[f64; 2]>> = polygon
                 .rings
                 .iter()
@@ -338,7 +354,9 @@ pub(super) fn tessellate(
                     simple.push(first);
                 }
                 // The exterior must survive; a hole reduced below a triangle simply vanishes.
-                if simple.len() >= 4 && ring_area(&simple).abs() > 1. {
+                // Tidal holes are piers and tiny islands: below this the water simply runs under them.
+                let minimum = if tidal && index > 0 { 1_500. } else { 1. };
+                if simple.len() >= 4 && ring_area(&simple).abs() > minimum {
                     rings.push(simple);
                 } else if index == 0 {
                     rings.clear();
@@ -355,7 +373,7 @@ pub(super) fn tessellate(
                 continue;
             }
             // Very detailed river banks are simplified further until they fit the tessellator.
-            for epsilon in [1.5, 3.0, 6.0] {
+            for epsilon in [1.5, 3.0, 6.0, 12.0, 24.0] {
                 if rings.iter().map(Vec::len).sum::<usize>() <= MAX_TESSELLATION_VERTICES {
                     break;
                 }
@@ -370,11 +388,20 @@ pub(super) fn tessellate(
                 }
             }
             let vertices: usize = rings.iter().map(Vec::len).sum();
-            let rings3: Vec<Vec<DVec3>> = rings
+            let mut rings3: Vec<Vec<DVec3>> = rings
                 .iter()
                 .map(|r| r.iter().map(|p| DVec3::new(p[0], p[1], 0.)).collect())
                 .collect();
-            let triangles = match city_mesh::triangulate(&rings3) {
+            let mut triangulated = city_mesh::triangulate(&rings3);
+            // Simplifying a coastline and its islands independently can make them touch. The
+            // water then runs under the islands (the DEM there is above the water surface, so
+            // the terrain hides it), and the polygon is still drawn.
+            if tidal && rings3.len() > 1 && triangulated.as_ref().is_err_and(|e| e.contains("intersecting")) {
+                rings3.truncate(1);
+                rings.truncate(1);
+                triangulated = city_mesh::triangulate(&rings3);
+            }
+            let triangles = match triangulated {
                 Ok(t) => t,
                 Err(reason) => {
                     out.audit.skipped.push(Skipped {
@@ -393,7 +420,7 @@ pub(super) fn tessellate(
                 // A standing pond or reservoir has one level: the median of the DEM along its rim,
                 // where terrain meets the water. Rivers follow the DEM at each vertex.
                 let mut level = None;
-                if *layer == "NHDWaterbody" {
+                if standing {
                     let mut rim = Vec::new();
                     for p in rings3.iter().flatten().step_by(3) {
                         let [lat, lon] = to_geodetic(*p)?;
@@ -529,12 +556,14 @@ pub(super) fn write(
     geoid: &GeoidGrid,
     mosaic: Option<&alignment::Mosaic>,
     lidar_water_cells: Option<&[[f64; 2]]>,
+    tidal: bool,
 ) -> Result<Option<Audit>, String> {
     let inputs: Vec<_> = archives(sources).collect();
     if inputs.is_empty() {
         return Ok(None);
     }
     let areas = Areas::around(geographic_bounds(sources.bounds)?);
+    let areas = if tidal { areas.tidal() } else { areas };
     // Search a wider margin so named neighbours (a river just outside) are reported.
     let search = [
         areas.rivers[0] - 0.06,
@@ -564,8 +593,15 @@ pub(super) fn write(
         }
         receipts.push(input.source.clone());
     }
-    let origin = objects::ORIGIN;
-    let mut height = |lat: f64, lon: f64| dem.height(lat, lon);
+    let origin = objects::origin();
+    let mut height = |lat: f64, lon: f64| {
+        if tidal {
+            // Open water beyond a DEM project edge is at sea level.
+            Ok(dem.height_opt(lat, lon)?.unwrap_or(0.))
+        } else {
+            dem.height(lat, lon)
+        }
+    };
     let local = |lat: f64, lon: f64, msl: f64| objects::local(lat, lon, msl, origin, geoid);
     let mut world = World {
         origin,
@@ -639,18 +675,6 @@ pub(super) fn write(
     image::codecs::webp::WebPEncoder::new_lossless(&mut texture)
         .encode(&[r, g, b, 255], 1, 1, image::ExtendedColorType::Rgba8)
         .map_err(|e| e.to_string())?;
-    let mut doc = objects::Document::default();
-    let mesh = doc.mesh(&result.mesh)?;
-    let bytes = doc.finish_with_extras(
-        vec![mesh],
-        vec![serde_json::json!({"mesh":0})],
-        &texture,
-        false,
-        false,
-        Some(serde_json::json!({"flightcraft":{"water":true}})),
-    )?;
-    std::fs::create_dir_all(out.join("water")).map_err(|e| e.to_string())?;
-    std::fs::write(out.join("water/0.glb"), bytes).map_err(|e| e.to_string())?;
     let (lo, hi) = (
         geoid
             .ellipsoidal_m(extent[1], extent[0], msl[0])
@@ -659,25 +683,77 @@ pub(super) fn write(
             .ellipsoidal_m(extent[3], extent[2], msl[1])
             .map_err(|e| e.to_string())?,
     );
-    let tile = Tile {
-        bounding_volume: BoundingVolume::region([
-            extent[0].to_radians(),
-            extent[1].to_radians(),
-            extent[2].to_radians(),
-            extent[3].to_radians(),
-            lo.min(hi) - 1.,
-            lo.max(hi) + 1.,
-        ]),
-        geometric_error: 0.,
-        refine: Some(Refine::Replace),
-        transform: None,
-        content: Some(Content {
-            uri: "water/0.glb".into(),
-        }),
-        children: Vec::new(),
-    };
-    objects::include_bounds(&mut set.root, &tile)?;
-    set.root.children.push(tile);
+    std::fs::create_dir_all(out.join("water")).map_err(|e| e.to_string())?;
+    // A tile may hold at most 200,000 vertices. Large tidal polygons are cut into west-to-east
+    // runs of triangles, each its own content with its own bounds.
+    let projection = LocalProjection::new(origin[0], origin[1]).map_err(|e| e.to_string())?;
+    let triangles = result.mesh.indices.len() / 3;
+    let mut order: Vec<usize> = (0..triangles).collect();
+    if triangles > MAX_TILE_TRIANGLES {
+        let east = |t: usize| -> f32 {
+            (0..3)
+                .filter_map(|k| result.mesh.indices.get(t * 3 + k))
+                .filter_map(|i| result.mesh.positions.get(*i as usize))
+                .map(|p| p[0])
+                .sum()
+        };
+        order.sort_by(|a, b| east(*a).total_cmp(&east(*b)));
+    }
+    for (n, chunk) in order.chunks(MAX_TILE_TRIANGLES).enumerate() {
+        let mut mesh = objects::Mesh::default();
+        let (mut west_m, mut south_m) = (f64::INFINITY, f64::INFINITY);
+        let (mut east_m, mut north_m) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+        for &t in chunk {
+            let corners: Vec<usize> = (0..3)
+                .filter_map(|k| result.mesh.indices.get(t * 3 + k).map(|i| *i as usize))
+                .collect();
+            let [a, b, c] = corners.as_slice() else {
+                return Err("Water triangle".into());
+            };
+            let p = |i: &usize| result.mesh.positions.get(*i).copied().ok_or("Water vertex");
+            let (pa, pb, pc) = (p(a)?, p(b)?, p(c)?);
+            for q in [pa, pb, pc] {
+                west_m = west_m.min(f64::from(q[0]));
+                east_m = east_m.max(f64::from(q[0]));
+                // glTF z is minus north.
+                south_m = south_m.min(f64::from(-q[2]));
+                north_m = north_m.max(f64::from(-q[2]));
+            }
+            mesh.triangle([pa, pb, pc], [[0.5, 0.5]; 3])?;
+        }
+        let mut doc = objects::Document::default();
+        let mesh = doc.mesh(&mesh)?;
+        let bytes = doc.finish_with_extras(
+            vec![mesh],
+            vec![serde_json::json!({"mesh":0})],
+            &texture,
+            false,
+            false,
+            Some(serde_json::json!({"flightcraft":{"water":true}})),
+        )?;
+        let uri = format!("water/{n}.glb");
+        std::fs::write(out.join(&uri), bytes).map_err(|e| e.to_string())?;
+        let [lat0, lon0] = projection.unproject(south_m, west_m).map_err(|e| e.to_string())?;
+        let [lat1, lon1] = projection.unproject(north_m, east_m).map_err(|e| e.to_string())?;
+        let pad = 5. / 111_000.;
+        let tile = Tile {
+            bounding_volume: BoundingVolume::region([
+                (lon0.min(lon1) - pad).to_radians(),
+                (lat0.min(lat1) - pad).to_radians(),
+                (lon0.max(lon1) + pad).to_radians(),
+                (lat0.max(lat1) + pad).to_radians(),
+                lo.min(hi) - 1.,
+                lo.max(hi) + 1.,
+            ]),
+            geometric_error: 0.,
+            refine: Some(Refine::Replace),
+            transform: None,
+            content: Some(Content { uri }),
+            children: Vec::new(),
+        };
+        objects::include_bounds(&mut set.root, &tile)?;
+        set.root.children.push(tile);
+    }
     let flags = set
         .extras
         .as_mut()

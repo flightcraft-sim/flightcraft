@@ -4,6 +4,11 @@ use flightcraft_world::tiles3d::Tileset;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Scenery areas that carry the Fly NYC lidar provenance: the original handoff area and the
+/// Hudson corridor build that ships on the website.
+fn is_lidar_area(area: Option<&str>) -> bool {
+    matches!(area, Some("nyc-lidar" | "hudson-corridor"))
+}
 pub const NYC_BOUNDS: [f64; 4] = [-74.04, 40.66, -73.90, 40.84];
 pub const NYC_BUILDING_BUDGET: u64 = 250_000_000;
 pub const WEB_BUDGET: u64 = 1_000_000_000;
@@ -132,14 +137,14 @@ pub fn validate_redistribution(flags: &Value) -> Result<(), String> {
                 .into(),
         );
     }
-    if flags.get("area").and_then(Value::as_str) == Some("nyc-lidar") {
+    if is_lidar_area(flags.get("area").and_then(Value::as_str)) {
         nyc_lidar_source(flags)?;
     }
     Ok(())
 }
 pub fn nyc_lidar_source(flags: &Value) -> Result<NycLidarSource, String> {
     if flags.get("region").and_then(Value::as_str) != Some("new-york")
-        || flags.get("area").and_then(Value::as_str) != Some("nyc-lidar")
+        || !is_lidar_area(flags.get("area").and_then(Value::as_str))
         || flags.get("sourceKind").and_then(Value::as_str) != Some("usgs-3dep-lidar")
         || flags.get("roofPolicy").and_then(Value::as_str) != Some("lidar-only")
         || flags.get("lidarBuilt").and_then(Value::as_bool) != Some(true)

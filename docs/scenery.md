@@ -571,36 +571,135 @@ finish showcase packaging without the locked chart and terrain archives. If they
 flight lead must first run `cargo xtask data fetch` online using the same target, jobs, shim,
 and memory scope as above. Do not substitute fixture data or change `data.lock` to pass packaging.
 
-## Web showcase scope
+## Hudson corridor (Fly NYC)
 
-Desktop scenery remains 1N7, the Delaware Water Gap, and the surrounding region. After the 1N7
-acceptance stages, add `new-york/hudson-corridor` for the single **Fly NYC** website: departures at
-Teterboro (KTEB) or Linden (KLDJ), the Hudson River corridor, and Manhattan. Target about 0.6 m
-imagery within roughly 2 km of the river, with coarser imagery outward, lidar terrain, and our classified-lidar building reconstruction from
-`https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept.json`.
-The fc-cities lane consumes that output through the same documented provider schema. NYC Open Data
-footprints are excluded because their redistribution terms have not been established. This area is not fetched
-by the current 1N7 preset; its source selection and browser installation remain follow-up work.
+`new-york/hudson-corridor` is the single scenery area the website carries (see
+[the showcase](scenery-sources.md#web-showcase-fly-nyc)). It is built by `xtask/src/scenery/corridor*.rs`
+from public-domain data only: NAIP imagery, the USGS 1 m DEM, NHD water, and the USGS 3DEP
+`NY_NewYorkCity` classified lidar. NYC Open Data footprints and TUM CityGML are never read.
 
-`cargo xtask web --check` checks the staged data against a **900,000,000-byte** budget. Full
-`cargo xtask web` applies that limit to the complete installed site, including Wasm, support files,
-all terrain and city tiles, imagery, mip levels, and charts. Splitting release assets does not exempt
-any installed file from the website limit. The present package still includes both legacy regions
-until the Hudson browser showcase replaces that selection; it must already meet the tighter budget.
+### Plan
 
-The EPT selector accepts either reviewed survey root (New Jersey or NYC) through the same bounded
-acquisition interface; the small `new-york/nyc-test` preset selects the NYC survey. NYC uses
-its own root, hierarchy, point counts, and receipts, with no silent New Jersey fallback. The future
-Hudson preset must select the NYC root explicitly and start with a small urban test window.
+The tile tree is a *sparse, variable-resolution* quadtree, unlike the square single-resolution
+1N7 pyramid. The root is a 103.8 km Web Mercator square of 512-pixel tiles, 2^8 tiles across at
+0.6 m (level 8); a tile is refined only where a zone asks for finer imagery, and a refined tile
+always has all four children, so replacement refinement never leaves a hole. Levels 0 to 2 are
+content-less grouping nodes (the browser's selector always descends them).
 
-Urban reconstruction acceptance requires tall buildings, flat and stepped roofs, and open
-courtyards, in addition to the airport's long, low gable and flat hangars. Use building-class return
-occupancy and roof planes; preserve footprint interior rings and roof height discontinuities.
-A convex hull or a single roof plane over a connected block cannot satisfy these cases. Keep
-separate roof levels, texture each roof from registered NAIP, and extend exterior and courtyard
-walls to the DEM. Return density, source units/datum, reconstruction uncertainty, and unsupported
-roof regions must stay explicit in the output audit. The bounded builder implements these cases with synthetic geometry tests; real NYC source
-validation and full-area scaling remain open.
+| Level | Ground sample | Where (ground distance) |
+|---|---|---|
+| 8 | 0.6 m | within 2.2 km of the Hudson centreline (Upper Bay to the George Washington Bridge), 1.4 km of KTEB, 0.7 km of the KTEB-to-bridge spur |
+| 7 | 1.2 m | 5 km of the river, 2.5 km of KTEB, 1.8 km of the spur, and the fly-nyc.json envelope |
+| 6 | 2.4 m | 8 km of the river, 3 km around the envelope |
+| 5 | 4.8 m | 12 km of the river, 7 km around the envelope |
+| 4 | 9.6 m | 18 km of the river (coarsest content) |
+
+`{{LEAVES}}` leaf tiles in all (`corridor::plan`, unit-tested for completeness). Buildings and
+trees are reconstructed only inside the fly-nyc.json envelope (40.66-40.84 N, 74.04-73.90 W) and
+within 4.2 km of the river, in 2 km Mercator blocks with a 96 m margin (`corridor_buildings.rs`),
+so no block exceeds the 4.19 million cell DSM limit.
+
+Terrain is the 1 m DEM sampled on a 33 x 33 mesh per tile; the tile's NAIP JPEG is embedded as
+delivered (parents are composed from their four children and re-encoded at JPEG quality 86). A
+vertex without a valid DEM sample (open water beyond a project edge) takes 0 m NAVD88 and is
+counted (`dem_fallback_vertices` in `build-report.json`).
+
+### Fetch
+
+Same transport as 1N7: allowlisted public hosts only, one request per second, SHA-256 receipts,
+ETag-validated resume. The cache is `~/builds/codex-jobs/scenery/new-york/hudson-corridor/cache`.
+Run each layer once, one command at a time (`--layer` keeps the existing catalog):
+
+```sh
+cargo xtask scenery fetch --region new-york --area hudson-corridor --layer geoid
+cargo xtask scenery fetch --region new-york --area hudson-corridor --layer terrain   # 1 m DEMs, then NAIP
+cargo xtask scenery fetch --region new-york --area hudson-corridor --layer water     # NHD HU-8 subbasins
+cargo xtask scenery fetch --region new-york --area hudson-corridor --layer lidar     # NY_NewYorkCity EPT
+```
+
+* **DEM**: only TNM 1 m products whose footprint touches a tile of 4.8 m or finer (the 2014 NJ
+  Sandy product is skipped in favour of the 2017 and 2023 NJ lidar DEMs). `{{DEMS}}` products,
+  `{{DEM_GB}}` GB.
+* **NAIP**: one 512 x 512 JPEG per leaf tile at its own level (`{{IMAGERY_N}}` requests, `{{IMAGERY_MB}}` MB).
+* **Lidar**: `ept::fetch_zone` walks only the hierarchy pages that intersect the lidar zone and
+  keeps every ancestor (EPT is additive). Depth 8 (0.73 m ground voxels, about 2 returns per square
+  metre of roof) is the density the 1 m DSM needs: `{{NODES}}` nodes, `{{POINTS}}` points, `{{LAZ_GB}}` GB.
+* `FLIGHTCRAFT_HUDSON_ZONE=midtown` restricts the lidar layer to a Midtown test window, which is
+  how reconstruction was checked before committing to the full corridor.
+
+### Build
+
+```sh
+cargo xtask scenery build --region new-york --area hudson-corridor --out <new-directory>
+```
+
+(`FLIGHTCRAFT_CORRIDOR_BLOCKS=n` builds only the first n blocks, which can never pass the gates.)
+
+Output: `tileset.json`, `tiles/<level>/<x>/<y>.glb` (terrain and imagery), `buildings/{0,1}/*.glb`,
+`trees/`, `water/0.glb`, `sources.json`, `build-report.json`, `datum-audit.json`,
+`alignment-audit.json`, `lidar-acceptance.json`, `lidar-ground-audit.json`, `water-audit.json`.
+
+**Buildings.** The 1N7 builder gives every building its own texture; a city cannot afford that.
+Each 256 m cell is one GLB. Its only texture is a small atlas (`corridor_atlas.rs`): 32-pixel
+facade strips, one 8 m bay wide, for five original procedural styles (brick, tan brick, limestone,
+precast, glass curtain wall) and five height classes up to 120 floors, plus a 256-colour roof
+palette. Roof colours are the mean NAIP colour over each measured roof plane; facade artwork is
+plausible detail, not a survey of real windows. Roofs are the measured planes (rectangles of equal
+plane, courtyards preserved) and walls run from each roof edge to the DEM, or from the higher roof
+to the lower one at a step, merged along runs and split into 8 m bays. NY_NewYorkCity labels no building class (see below), so roofs are inferred from planar
+unclassified returns more than 2.5 m above the DEM, exactly as for the NJ survey; every building
+record says `inferred_classification: true`. A coarse parent tile per 1 km (4 m cells, the highest roof
+in each, so towers on podiums survive) is replaced by the 16 fine cells as the camera approaches.
+Both LODs are reconstructed from the same lidar; there is no footprint, height or extrusion
+fallback.
+
+**Trees** are the canopy-height-model detections of 1N7 (`trees.rs`) as GPU-instanced crowns in a
+quadtree of at most 1,200 trees per tile.
+
+### Release gates
+
+`runwayAlignmentVerified` cannot be a painted-runway measurement here: no runway lies inside the
+envelope (KTEB, KLGA, KEWR and KJFK are all outside it; the heliports in it have no surveyed
+runway). The gate is therefore the lidar-footprint registration the 1N7 lidar criteria already use:
+low-rise lidar footprints are shifted over the NAIP orthophoto in one-metre steps and the
+inside/outside colour contrast must peak within 2 m of zero shift, clearly above the window mean
+(`alignment-audit.json`, method `lidar-building-footprints-vs-naip`; summed over every block).
+
+* **Vertical datum** (`datum-audit.json`): receipt-backed NAVD88 meter DEM provenance, the NGS
+  GEOID18 control at the area centre against the grid, and the highest paved-runway DEM sample at
+  Teterboro against the FAA field elevation in the region catalogue (within 1 m).
+* **Lidar acceptance** (`lidar-acceptance.json`): the 1N7 criteria with NYC limits: complete EPT
+  selection decoded, ground agreement, vertical gate, roof planes, interpolated cells at most 15%,
+  plausible heights (buildings up to 560 m), class 6 buildings, tall and stepped Manhattan present,
+  and footprint registration.
+
+`{{GATES}}`
+
+### Budgets
+
+`{{BUDGETS}}`
+
+### Publishing for the website
+
+The website is built by CI (`.github/workflows/ci.yml`, job `wasm`: `cargo xtask data fetch`, then
+`cargo xtask web`, then the Pages artifact). Tiles are **not committed to git**; they are a
+`scenery` dataset in the region data release, pinned in `data.lock` exactly like 1N7, and the CI
+job's `data fetch` installs them under `assets/terrain/new-york/scenery/hudson-corridor/` before
+`web` copies and budget-checks them.
+
+{{PUBLISH}}
+
+### Defaults and proof
+
+`{{DEFAULTS}}`
+
+### Web showcase scope
+
+The website ships scenery for `new-york` only, and only this area. `cargo xtask web --check` checks
+the staged data against a **900,000,000-byte** budget; full `cargo xtask web` applies that limit to
+the complete installed site (Wasm, support files, every terrain, building and tree tile, imagery,
+mip levels, charts). The 250 MB building allocation is the size of `hudson-corridor/buildings/`.
+Splitting release assets does not exempt any installed file from the website limit.
 
 ## LAS/LAZ decoding and source classification audits
 

@@ -161,6 +161,8 @@ fn neighbors(grid: &Grid, index: usize) -> impl Iterator<Item = usize> + '_ {
         .into_iter()
         .filter_map(move |(dx, dy)| grid.at(x + dx, y + dy).map(|(i, _)| i))
 }
+/// A roof cluster larger than this (square metres of roof) is skipped rather than meshed.
+const MAX_COMPONENT_CELLS: usize = 250_000;
 pub(super) fn detect(grid: &mut Grid) -> Result<Vec<Building>, String> {
     let mut mask = vec![false; grid.cells.len()];
     let mut local = vec![None; grid.cells.len()];
@@ -256,6 +258,7 @@ pub(super) fn detect(grid: &mut Grid) -> Result<Vec<Building>, String> {
     }
     let mut visited = vec![false; mask.len()];
     let mut buildings = Vec::new();
+    let mut oversized = false;
     for seed in 0..mask.len() {
         if mask.get(seed) != Some(&true) || visited.get(seed) == Some(&true) {
             continue;
@@ -265,8 +268,10 @@ pub(super) fn detect(grid: &mut Grid) -> Result<Vec<Building>, String> {
         let mut component = BTreeSet::new();
         while let Some(i) = queue.pop_front() {
             component.insert(i);
-            if component.len() > 250_000 {
-                return Err("A roof cluster exceeds the bounded building budget".into());
+            if component.len() > MAX_COMPONENT_CELLS {
+                // Keep consuming the cluster so its cells never seed new ones, but skip it below:
+                // one pathological connected roof must not abort a whole block.
+                oversized = true;
             }
             for j in neighbors(grid, i) {
                 if mask.get(j) == Some(&true) && visited.get(j) == Some(&false) {
@@ -275,7 +280,7 @@ pub(super) fn detect(grid: &mut Grid) -> Result<Vec<Building>, String> {
                 }
             }
         }
-        if component.len() < 20 {
+        if component.len() < 20 || std::mem::take(&mut oversized) {
             continue;
         }
         let mut cells = BTreeMap::new();
@@ -317,7 +322,8 @@ pub(super) fn detect(grid: &mut Grid) -> Result<Vec<Building>, String> {
                 continue;
             };
             if planes.len() >= 128 {
-                return Err("Roof plane count exceeds the building budget".into());
+                // Cluttered roofs: the remaining unplaced cells are snapped to measured planes below.
+                break;
             }
             let id = planes.len();
             planes.push(plane);

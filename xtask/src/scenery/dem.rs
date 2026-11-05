@@ -45,6 +45,14 @@ impl Dems {
         }
         Ok(Self { dems })
     }
+    /// As `height`, but `Ok(None)` where no DEM has a valid sample (outside coverage or nodata).
+    pub fn height_opt(&mut self, lat: f64, lon: f64) -> Result<Option<f64>, String> {
+        match self.height(lat, lon) {
+            Ok(h) => Ok(Some(h)),
+            Err(e) if e.starts_with("1 m DEM coverage or valid samples missing") => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
     pub fn height(&mut self, lat: f64, lon: f64) -> Result<f64, String> {
         let cached: usize = self
             .dems

@@ -3,6 +3,12 @@ mod city;
 mod city_crs;
 mod city_mesh;
 mod citygml;
+mod corridor;
+mod corridor_atlas;
+mod corridor_build;
+mod corridor_buildings;
+mod corridor_gates;
+mod corridor_glb;
 mod footprints;
 mod nyc;
 pub use city::Review as CitySourceReview;
@@ -222,7 +228,7 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
         .ok_or("missing --area (start with 1n7-test)")?;
     if !matches!(
         area.as_str(),
-        "nyc-lod2" | "nyc-footprints" | "nyc-reviewed-glb" | "nyc-lidar"
+        "nyc-lod2" | "nyc-footprints" | "nyc-reviewed-glb" | "nyc-lidar" | corridor::AREA
     ) {
         plan(&region, &area)?;
     } else if region != "new-york" {
@@ -273,6 +279,7 @@ pub(super) fn run_args(mut args: impl Iterator<Item = String>) -> Result<(), Str
         "nyc-lod2" => return citygml::run(&request),
         "nyc-footprints" => return footprints::run(&request),
         "nyc-lidar" => return nyc::run(&request),
+        corridor::AREA => return corridor::run(&request),
         "nyc-reviewed-glb" => return city::run(&request),
         _ => (),
     }
@@ -495,6 +502,16 @@ fn fetch_terrain(
     let [w, s, e, n] = sources.bounds;
     let [south, west] = scenery::inverse_mercator(w, s).map_err(|e| e.to_string())?;
     let [north, east] = scenery::inverse_mercator(e, n).map_err(|e| e.to_string())?;
+    fetch_dem_products(request, sources, remote, [west, south, east, north], None)
+}
+/// Discovers and fetches the 1 m DEM products intersecting a geographic box (west, south, east, north).
+fn fetch_dem_products(
+    request: &Request,
+    sources: &mut Sources,
+    remote: &mut impl transport::Remote,
+    [west, south, east, north]: [f64; 4],
+    keep: Option<&dyn Fn(&serde_json::Value) -> bool>,
+) -> Result<(), String> {
     let mut offset = 0_u64;
     let mut products = BTreeMap::new();
     loop {
@@ -533,6 +550,9 @@ fn fetch_terrain(
             if !transport::allowed_url(url) || !url.to_ascii_lowercase().ends_with(".tif") {
                 return Err("3DEP product needs a USGS GeoTIFF URL".into());
             }
+            if keep.is_some_and(|keep| !keep(item)) {
+                continue;
+            }
             products.insert(url.to_owned(), ());
         }
         offset += items.len() as u64;
@@ -558,6 +578,35 @@ fn fetch_terrain(
         )?;
     }
     Ok(())
+}
+/// Download URLs of the discovered 1 m DEM products that `keep` accepts.
+fn dem_products_kept(
+    request: &Request,
+    sources: &Sources,
+    keep: &dyn Fn(&serde_json::Value) -> bool,
+) -> Result<std::collections::BTreeSet<String>, String> {
+    let mut urls = std::collections::BTreeSet::new();
+    for input in sources
+        .inputs
+        .iter()
+        .filter(|i| i.kind == InputKind::DemDiscovery)
+    {
+        let value: serde_json::Value =
+            serde_json::from_slice(&input_bytes(request, input)?).map_err(|e| e.to_string())?;
+        for item in value
+            .get("items")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
+            if keep(item)
+                && let Some(url) = item.get("downloadURL").and_then(|v| v.as_str())
+            {
+                urls.insert(url.to_owned());
+            }
+        }
+    }
+    Ok(urls)
 }
 fn fetch_legacy_lidar(
     request: &Request,
@@ -1021,6 +1070,7 @@ fn build_inner(request: &Request, sources: &Sources, out: &Path) -> Result<Repor
             geoid,
             mosaic.as_ref(),
             lidar_water.as_deref(),
+            false,
         )?;
     }
     tileset.validate().map_err(|e| e.to_string())?;
@@ -1349,7 +1399,7 @@ pub(crate) fn nyc_test_flags() -> serde_json::Value {
         flightcraft_render::scenery::NYC_EPT.to_owned(),
         "https://s3-us-west-2.amazonaws.com/usgs-lidar-public/NY_NewYorkCity/ept-data/0-0-0-0.laz".into(),
     ].into_iter().map(|url|serde_json::json!({"url":url,"edition":"Original synthetic fixture, not a real source acquisition","downloaded_at":"2026-11-03T00:00:00Z","bytes":1,"sha256":"0".repeat(64)})).collect();
-    serde_json::json!({"region":"new-york","area":"nyc-lidar","sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","localOnly":false,"redistributionAllowed":true,"previewOnly":false,"verticalDatumVerified":true,"runwayAlignmentVerified":true,"lidarBuilt":true,"nycLidar":{"selection":flightcraft_render::scenery::fly_nyc_area(),"reconstructionBuildings":1,"reconstructionLeavesAreBuildings":true,"usesExternalFootprints":false,"receipts":receipts}})
+    serde_json::json!({"region":"new-york","area":"hudson-corridor","sourceKind":"usgs-3dep-lidar","roofPolicy":"lidar-only","localOnly":false,"redistributionAllowed":true,"previewOnly":false,"verticalDatumVerified":true,"runwayAlignmentVerified":true,"lidarBuilt":true,"nycLidar":{"selection":flightcraft_render::scenery::fly_nyc_area(),"reconstructionBuildings":1,"reconstructionLeavesAreBuildings":true,"usesExternalFootprints":false,"receipts":receipts}})
 }
 
 #[cfg(test)]

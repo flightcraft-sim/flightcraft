@@ -34,6 +34,8 @@ to watch a scripted takeoff).
 - Two aircraft, the Corvid trainer and the Larrow aerobatic taildragger, picked in the header.
 - Terrain from height tiles: the original Training Valley world, with ground contact on slopes.
 
+- **Fly NYC**, the website's default flight: the Hudson River corridor and Manhattan skyline from
+  public lidar and aerial imagery ([how it is built](docs/scenery.md#hudson-corridor-fly-nyc)).
 - Real public-domain elevation, FAA airports, and selectable runway starts in the
   [New York area](https://flightcraft-sim.github.io/flightcraft/?region=terrain/new-york/region.json) and
   [Eastern Pennsylvania and New Jersey](https://flightcraft-sim.github.io/flightcraft/?region=terrain/eastern-pa/region.json).
