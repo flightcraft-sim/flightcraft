@@ -104,7 +104,7 @@ command. A separately scripted starter command remains under the script's contro
 actively takes ownership or the pilot selects another key position.
 
 The fuel selector shows LEFT / BOTH / RIGHT / OFF. Mixture displays a percentage of full rich
-and is adjustable by slider or 5% shortcut steps. Primer adds 20% charge per stroke. Master,
+and is adjustable by slider or 5% shortcut steps. The PRIME button adds one primer stroke (20% charge) per push and shows the primed fuel left, in strokes. Master,
 avionics, alternator, fuel pump, lights, pitot heat, alternate static, and installed carb heat
 use the same command path. The heading knob uses the shared heading selection described below. Systems shortcuts
 are bindable in the persisted keymap and start unassigned, preserving existing custom keys.

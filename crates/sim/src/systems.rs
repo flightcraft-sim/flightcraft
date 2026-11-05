@@ -1,5 +1,14 @@
 //! Deterministic sensors and lumped aircraft systems. Stepped once, outside RK4 substages.
 use crate::{DT_S, Failures, Readout, SimError};
+
+/// Primer charge one stroke of the plunger adds (five strokes fill it).
+pub const PRIMER_STROKE: f64 = 0.2;
+/// Charge above which a carburetted engine is flooded (more than three strokes).
+const PRIMER_FLOODED: f64 = 0.7;
+const PRIMER_CRANK_PER_S: f64 = 0.1;
+const PRIMER_CLEAR_PER_S: f64 = 0.25;
+const PRIMER_RUNNING_PER_S: f64 = 0.5;
+const PRIMER_EVAPORATION_S: f64 = 180.0;
 use flightcraft_aero::{
     Bus, Induction, LoadSwitch, ResolvedAircraft, SystemsDefinition, Table, Wing, interpolate,
 };
@@ -983,6 +992,11 @@ impl SystemsState {
         (mags * mixture * heat * (1.0 - self.carb_ice * 0.9) * self.oil_wear_power()).clamp(0.0, 1.0)
     }
 
+    /// More than three primer strokes in a carburetted engine floods it: it will not fire until
+    /// cranking (or the clearing procedure) has drawn the excess fuel through.
+    pub(crate) fn flooded(&self, m: &SystemsModel) -> bool {
+        m.induction == Induction::Carburettor && self.primer_charge > PRIMER_FLOODED
+    }
     pub(crate) fn step(&mut self, m: &SystemsModel, r: Readout, failures: Failures) {
         self.failures = failures;
         if self.canopy.sliding
@@ -1026,6 +1040,7 @@ impl SystemsState {
             && self.ignition_available()
             && self.controls.mixture >= 0.2
             && (self.primer_charge > 0.05 || self.cht_c > 60.0 || m.induction == Induction::Injection)
+            && !self.flooded(m)
             && failures.engine_power_fraction > 0.0
             && !self.oil.seized
         {
@@ -1037,8 +1052,25 @@ impl SystemsState {
         } else {
             self.cranking_s = 0.0;
         }
-        if cranking {
-            self.primer_charge = (self.primer_charge - DT_S * 0.02).max(0.0);
+        self.primer_charge = if cranking {
+            // Cranking draws the primed fuel through in a few seconds; mixture idle cut-off with the
+            // throttle wide open is the flooded-engine clearing procedure and purges it faster.
+            let clearing = self.controls.mixture < 0.2 && r.controls.throttle >= 0.8;
+            self.primer_charge
+                - DT_S
+                    * if clearing {
+                        PRIMER_CLEAR_PER_S
+                    } else {
+                        PRIMER_CRANK_PER_S
+                    }
+        } else if self.engine_running {
+            self.primer_charge - DT_S * PRIMER_RUNNING_PER_S
+        } else {
+            // Primed fuel left in the intake drains and evaporates over a few minutes.
+            self.primer_charge * (1.0 - DT_S / PRIMER_EVAPORATION_S)
+        };
+        if self.primer_charge < 1e-3 {
+            self.primer_charge = 0.0;
         }
         if m.induction == Induction::Carburettor {
             if self.controls.carb_heat && self.engine_running {

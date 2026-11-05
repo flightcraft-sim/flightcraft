@@ -390,7 +390,7 @@ fn cold_carburetted_start_requires_fuel_mags_master_primer_and_cranking_time() {
     );
     seconds(&mut s, &m, r, Failures::default(), 3);
     assert!(!s.engine_running);
-    set(&mut s, &m, SystemSetting::Primer { charge: 1.0 });
+    set(&mut s, &m, SystemSetting::Primer { charge: 0.6 });
     set(
         &mut s,
         &m,
@@ -413,7 +413,88 @@ fn cold_carburetted_start_requires_fuel_mags_master_primer_and_cranking_time() {
     assert!(!s.engine_running);
     seconds(&mut s, &m, r, Failures::default(), 2);
     assert!(s.engine_running);
-    assert!(s.primer_charge < 1.0);
+    assert!(s.primer_charge < 0.6);
+}
+
+/// A cold carburetted engine, magnetos and master on, mixture rich, starter off.
+fn cold_ready(aircraft: &str) -> (SystemsState, SystemsModel, Readout) {
+    let (mut s, m, r) = bench(aircraft);
+    set(
+        &mut s,
+        &m,
+        SystemSetting::Magnetos {
+            position: Magnetos::Off,
+        },
+    );
+    seconds(&mut s, &m, r, Failures::default(), 600);
+    assert!(s.cht_c < 60.0 && !s.engine_running);
+    set(
+        &mut s,
+        &m,
+        SystemSetting::Magnetos {
+            position: Magnetos::Both,
+        },
+    );
+    (s, m, r)
+}
+
+fn starter(s: &mut SystemsState, m: &SystemsModel, on: bool) {
+    set(
+        s,
+        m,
+        SystemSetting::Switch {
+            switch: SystemSwitch::Starter,
+            on,
+        },
+    );
+}
+
+#[test]
+fn primed_fuel_evaporates_when_the_engine_is_not_cranked() {
+    let (mut s, m, r) = cold_ready("corvid");
+    set(&mut s, &m, SystemSetting::Primer { charge: 0.6 });
+    seconds(&mut s, &m, r, Failures::default(), 180);
+    assert!(
+        s.primer_charge < 0.25 && s.primer_charge > 0.15,
+        "{}",
+        s.primer_charge
+    );
+    seconds(&mut s, &m, r, Failures::default(), 1200);
+    assert_eq!(s.primer_charge, 0.0);
+}
+
+#[test]
+fn over_priming_floods_the_engine_until_cranking_clears_it() {
+    let (mut s, m, r) = cold_ready("corvid");
+    set(&mut s, &m, SystemSetting::Primer { charge: 1.0 });
+    assert!(s.flooded(&m));
+    starter(&mut s, &m, true);
+    seconds(&mut s, &m, r, Failures::default(), 2);
+    assert!(!s.engine_running, "a flooded engine does not fire");
+    seconds(&mut s, &m, r, Failures::default(), 6);
+    assert!(!s.flooded(&m));
+    assert!(
+        s.engine_running,
+        "cranking drew the excess through and it started"
+    );
+}
+
+#[test]
+fn clearing_procedure_purges_a_flooded_engine_faster() {
+    let (mut normal, m, r) = cold_ready("corvid");
+    let mut clearing = normal.clone();
+    for s in [&mut normal, &mut clearing] {
+        set(s, &m, SystemSetting::Primer { charge: 1.0 });
+    }
+    set(&mut clearing, &m, SystemSetting::Mixture { value: 0.0 });
+    let mut wide_open = r;
+    wide_open.controls.throttle = 1.0;
+    starter(&mut normal, &m, true);
+    starter(&mut clearing, &m, true);
+    seconds(&mut normal, &m, wide_open, Failures::default(), 2);
+    seconds(&mut clearing, &m, wide_open, Failures::default(), 2);
+    assert!(!clearing.engine_running, "idle cut-off never fires");
+    assert!(clearing.primer_charge < normal.primer_charge - 0.2);
 }
 
 #[test]

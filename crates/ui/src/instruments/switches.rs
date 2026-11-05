@@ -1,7 +1,9 @@
 //! Panel and keyboard share one typed command mapping.
 use crate::keymap::Action;
 use eframe::egui;
-use flightcraft_sim::systems::{FuelSelector, Magnetos, SystemSetting, SystemSwitch, SystemsState};
+use flightcraft_sim::systems::{
+    FuelSelector, Magnetos, PRIMER_STROKE, SystemSetting, SystemSwitch, SystemsState,
+};
 
 pub fn shortcut(action: Action, s: &SystemsState) -> Option<SystemSetting> {
     shortcut_with_options(action, s, super::DisplayOptions::default())
@@ -49,7 +51,7 @@ pub fn shortcut_with_options(
             value: (c.mixture + if action == MixtureRich { 0.05 } else { -0.05 }).clamp(0., 1.),
         },
         Primer => SystemSetting::Primer {
-            charge: (s.primer_charge + 0.2).min(1.),
+            charge: (s.primer_charge + PRIMER_STROKE).min(1.),
         },
         AltimeterUp | AltimeterDown => SystemSetting::Altimeter {
             pressure_pa: options.adjust_pressure(
@@ -143,12 +145,24 @@ pub(super) fn show(ui: &mut egui::Ui, s: &SystemsState) -> (Vec<SystemSetting>, 
                     value: percent / 100.,
                 });
             }
+            let primed = (s.primer_charge / PRIMER_STROKE).round();
+            let label = if primed > 0. {
+                format!("PRIME ({primed:.0})")
+            } else {
+                "PRIME".to_owned()
+            };
             if ui
-                .small_button(egui::RichText::new(format!("PRIMER {:.0}%", s.primer_charge * 100.)).size(11.))
+                .small_button(egui::RichText::new(label).size(11.))
+                .on_hover_text(
+                    "One push is one primer stroke; the number is the primed fuel left, in strokes. \
+                     Cranking uses it up and it evaporates over a few minutes. More than three \
+                     strokes floods the engine: to clear it, mixture idle cut-off, throttle full \
+                     open, and crank.",
+                )
                 .clicked()
             {
                 settings.push(SystemSetting::Primer {
-                    charge: (s.primer_charge + 0.2).min(1.),
+                    charge: (s.primer_charge + PRIMER_STROKE).min(1.),
                 });
             }
         });

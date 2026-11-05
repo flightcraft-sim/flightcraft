@@ -35,7 +35,7 @@ Every action uses `systems.set` with a tagged `setting`:
 | `mixture` | `value`: 0–1; zero is idle cutoff |
 | `altimeter` | `pressure_pa`: 80000–110000; Kollsman setting |
 | `heading_bug` | `heading_rad`: 0–2π; displayed heading reference |
-| `primer` | `charge`: 0–1; cranking consumes primer charge |
+| `primer` | `charge`: 0–1 (one stroke is 0.2); cranking consumes it, a running engine burns it off, and it evaporates when left |
 | `breaker` | `load`: installed load id; `closed`: boolean; closing resets the trip memory |
 | `load_multiplier` | `load`: installed load id; `value`: 0–10; scenario fault, 1 restores rated demand |
 | `tank_quantity` | `tank`: installed tank id; `mass_kg`: 0 through tank capacity; scenario servicing |
@@ -55,7 +55,11 @@ master and avionics on, a charged battery, spun-up gyros, and other switches off
 from the selected station load; tanks sharing a station divide it by capacity. Selecting an empty
 tank or off, cutting mixture, or turning magnetos off stops combustion. Restoring fuel, mixture,
 and magnetos requires the starter and sufficient electrical power; a cold carburetted engine
-also needs primer charge. Single-mag operation reduces shaft power; leaning produces an EGT
+also needs primer charge. Primed fuel drains away over a few minutes (time constant 180 s), so priming
+long before cranking does not help. More than three strokes (charge above 0.7) floods a carburetted engine:
+it will not fire until cranking draws the excess through (0.1 per second), and the clearing procedure,
+mixture idle cut-off with the throttle wide open while cranking, purges it faster (0.25 per second).
+Single-mag operation reduces shaft power; leaning produces an EGT
 peak, followed by lean power loss, and first-order EGT/CHT changes. Humid, moderate-temperature
 air forms carb ice according to the two declared tables; carb heat clears it with a power penalty.
 Injected engines neither form carb ice nor accept carb heat.

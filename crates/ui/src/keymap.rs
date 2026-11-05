@@ -270,7 +270,7 @@ impl Action {
             Self::FuelSelector => "Cycle fuel selector",
             Self::MixtureRich => "Mixture richer",
             Self::MixtureLean => "Mixture leaner",
-            Self::Primer => "Add primer charge",
+            Self::Primer => "Prime (one stroke)",
             Self::AltimeterUp => "Altimeter setting up",
             Self::AltimeterDown => "Altimeter setting down",
             Self::HeadingBugLeft => "Heading bug left",
