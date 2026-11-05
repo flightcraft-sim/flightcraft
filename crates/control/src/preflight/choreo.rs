@@ -490,27 +490,29 @@ const TOUCH_GAP_M: f32 = 0.03;
 /// the part. A target outside every rectangle is returned unchanged. Without this the torso
 /// leans into the fuselage, wing or wheel fairing to bring the hand to its centre.
 fn skin_target(def: &Preflight, from: [f32; 2], target: V3) -> V3 {
-    let mut out = target;
+    let [fx, fy] = from;
+    let [mut tx, mut ty, tz] = target;
     for k in &def.keepouts {
-        let min = [k.min_m[0] as f32, k.min_m[1] as f32];
-        let max = [k.max_m[0] as f32, k.max_m[1] as f32];
-        let p = [out[0], out[1]];
-        if !(0..2).all(|i| p[i] > min[i] && p[i] < max[i]) {
+        let ([x0, y0], [x1, y1]) = (k.min_m.map(|v| v as f32), k.max_m.map(|v| v as f32));
+        if !(tx > x0 && tx < x1 && ty > y0 && ty < y1) {
             continue;
         }
-        let d = [from[0] - p[0], from[1] - p[1]];
+        let (dx, dy) = (fx - tx, fy - ty);
         // Distance along the way to the figure at which the ray leaves the rectangle.
-        let exit = (0..2)
-            .filter(|&i| d[i].abs() > 1e-6)
-            .map(|i| ((if d[i] > 0. { max[i] } else { min[i] }) - p[i]) / d[i])
-            .fold(f32::INFINITY, f32::min);
+        let leave = |d: f32, lo: f32, hi: f32, p: f32| {
+            if d.abs() > 1e-6 {
+                ((if d > 0. { hi } else { lo }) - p) / d
+            } else {
+                f32::INFINITY
+            }
+        };
+        let exit = leave(dx, x0, x1, tx).min(leave(dy, y0, y1, ty));
         if exit.is_finite() {
-            let len = d[0].hypot(d[1]);
-            let t = exit + TOUCH_GAP_M / len;
-            out = [p[0] + d[0] * t, p[1] + d[1] * t, out[2]];
+            let t = exit + TOUCH_GAP_M / dx.hypot(dy);
+            (tx, ty) = (tx + dx * t, ty + dy * t);
         }
     }
-    out
+    [tx, ty, tz]
 }
 
 /// Forward reach of the torso, head and cap brim beyond the spine line, plus a hand's width of
@@ -525,24 +527,25 @@ const CROUCH_LEAN_RAD: f32 = 0.45;
 
 /// Distance from `from` along `heading` to the first keep-out rectangle, if any within a metre.
 fn clear_ahead(def: &Preflight, from: [f32; 2], heading: f32) -> f32 {
-    let d = [heading.cos(), heading.sin()];
+    let [fx, fy] = from;
+    let (dx, dy) = (heading.cos(), heading.sin());
+    // Parameter range of the ray inside the slab [lo, hi] along one axis.
+    let slab = |p: f32, d: f32, lo: f32, hi: f32| -> Option<(f32, f32)> {
+        if d.abs() < 1e-6 {
+            (p > lo && p < hi).then_some((f32::NEG_INFINITY, f32::INFINITY))
+        } else {
+            let (a, b) = ((lo - p) / d, (hi - p) / d);
+            Some((a.min(b), a.max(b)))
+        }
+    };
     let mut best = 1.0_f32;
     for k in &def.keepouts {
-        let min = [k.min_m[0] as f32, k.min_m[1] as f32];
-        let max = [k.max_m[0] as f32, k.max_m[1] as f32];
-        let (mut t0, mut t1) = (0.0_f32, best);
-        let mut hit = true;
-        for i in 0..2 {
-            if d[i].abs() < 1e-6 {
-                hit &= from[i] > min[i] && from[i] < max[i];
-            } else {
-                let (a, b) = ((min[i] - from[i]) / d[i], (max[i] - from[i]) / d[i]);
-                t0 = t0.max(a.min(b));
-                t1 = t1.min(a.max(b));
+        let ([x0, y0], [x1, y1]) = (k.min_m.map(|v| v as f32), k.max_m.map(|v| v as f32));
+        if let (Some((xa, xb)), Some((ya, yb))) = (slab(fx, dx, x0, x1), slab(fy, dy, y0, y1)) {
+            let (enter, exit) = (xa.max(ya).max(0.), xb.min(yb));
+            if enter <= exit {
+                best = best.min(enter);
             }
-        }
-        if hit && t0 <= t1 {
-            best = best.min(t0);
         }
     }
     best
@@ -716,7 +719,11 @@ fn act(
             f.lean_rad = 0.35 * reach * (1. - lift);
             let rest = rest_hand(pos, h, 1., gz);
             let at_hand = skin_target(ctx.def, pos2, *at);
-            let hand = if carried { lerp(at_hand, rest, lift) } else { at_hand };
+            let hand = if carried {
+                lerp(at_hand, rest, lift)
+            } else {
+                at_hand
+            };
             f.right_hand_m = hand_to(h, 1., hand, reach);
             f.gaze_m = Some(*at);
             if u >= 0.4 {

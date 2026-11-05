@@ -86,7 +86,11 @@ fn depth(v: &Volume, p: [f32; 3]) -> f32 {
         .max(0.)
 }
 
-fn worst(def: &Preflight, volumes: &[Volume], scene: &flightcraft_aero::walkaround::WalkaroundScene) -> (f32, String) {
+fn worst(
+    def: &Preflight,
+    volumes: &[Volume],
+    scene: &flightcraft_aero::walkaround::WalkaroundScene,
+) -> (f32, String) {
     let mut only_figure = scene.clone();
     only_figure.props.clear();
     only_figure.caps.clear();
@@ -107,7 +111,13 @@ fn worst(def: &Preflight, volumes: &[Volume], scene: &flightcraft_aero::walkarou
             for v in volumes {
                 let d = depth(v, vertex.position) - slack;
                 if d > worst.0 {
-                    worst = (d, format!("{} (material {} at {:.2?})", v.id, primitive.material, vertex.position));
+                    worst = (
+                        d,
+                        format!(
+                            "{} (material {} at {:.2?})",
+                            v.id, primitive.material, vertex.position
+                        ),
+                    );
                 }
             }
         }
@@ -140,7 +150,11 @@ fn no_figure_vertex_enters_a_keep_out_volume_at_any_station_pose() {
     let mut items: Vec<_> = def.items.iter().collect();
     items.sort_by_key(|i| i.id != "ignition_off");
     for item in items {
-        session.run(PreflightPerform { item: item.id.clone() }).unwrap();
+        session
+            .run(PreflightPerform {
+                item: item.id.clone(),
+            })
+            .unwrap();
         let mut guard = 0;
         let mut clipped = false;
         loop {
@@ -168,6 +182,9 @@ fn no_figure_vertex_enters_a_keep_out_volume_at_any_station_pose() {
             assert!(guard < 4000, "{} never finished", item.id);
         }
     }
-    assert!(crouched > 20, "the sweep must include crouched poses ({crouched})");
+    assert!(
+        crouched > 20,
+        "the sweep must include crouched poses ({crouched})"
+    );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
