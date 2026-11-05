@@ -7,7 +7,8 @@ const NM: f64 = 1852.0;
 
 pub use flightcraft_sim::avionics::glass::*;
 pub use flightcraft_sim::avionics::glass_aids::{
-    ClockFormat, DataBarField, FlightTimer, TimerAction, TimerDirection, VspeedBug, VspeedConfig, VspeedEntry,
+    ClockFormat, DataBarField, FlightTimer, GMeterTrack, TimerAction, TimerDirection, VspeedBug,
+    VspeedConfig, VspeedEntry,
 };
 use flightcraft_sim::avionics::glass_aids::{DEFAULT_START_UTC_S, clock_seconds, utc_seconds};
 use flightcraft_sim::avionics::vnav::{self, LegPath, RoutePoint};
@@ -42,6 +43,15 @@ pub struct GlassSettings {
     /// The Vspeed bugs on the airspeed tape.
     #[serde(default)]
     pub vspeeds: VspeedConfig,
+    /// The G meter is shown, and its record since the last reset.
+    #[serde(default)]
+    pub g_meter_shown: bool,
+    #[serde(default)]
+    pub g_track: GMeterTrack,
+    /// Simulation time of the last load-factor sample.
+    #[serde(skip)]
+    pub g_sampled_s: f64,
+
     /// The vertical navigation descent angle, degrees.
     #[serde(default = "default_vnav_angle")]
     pub vnav_angle_deg: f64,
@@ -110,6 +120,9 @@ impl Default for GlassSettings {
             timer: FlightTimer::default(),
             data_bar_field: DataBarField::SafeAltitude,
             vspeeds: VspeedConfig::default(),
+            g_meter_shown: false,
+            g_track: GMeterTrack::default(),
+            g_sampled_s: f64::NEG_INFINITY,
             vnav_angle_deg: vnav::DEFAULT_ANGLE_DEG,
             vnav_hold_m: None,
             vnav_active: false,
@@ -243,6 +256,15 @@ pub struct MapTraffic {
     #[serde(default)]
     pub highlighted: bool,
 }
+/// The G meter as the PFD shows it.
+#[derive(Clone, Debug, Default, Serialize, JsonSchema, serde::Deserialize)]
+pub struct GMeterReadout {
+    pub shown: bool,
+    /// The load factor now, in g.
+    pub current_g: f64,
+    pub min_g: f64,
+    pub max_g: f64,
+}
 /// The vertical path to the next altitude constraint, for the VNAV indicator and the data bar.
 #[derive(Clone, Debug, Serialize, JsonSchema, serde::Deserialize)]
 pub struct VnavReadout {
@@ -331,6 +353,8 @@ pub struct GlassState {
     /// The vertical navigation path, when the flight plan has an altitude constraint ahead.
     #[serde(default)]
     pub vnav: Option<VnavReadout>,
+    #[serde(default)]
+    pub g_meter: GMeterReadout,
 }
 impl Session {
     pub fn set_glass(&mut self, setting: GlassSetting) -> Result<(), CommandError> {
@@ -388,6 +412,11 @@ impl Session {
                     .map_err(|e| invalid(NAME, e))?;
             }
             GlassSetting::DataBarField { field } => self.glass.data_bar_field = field,
+            GlassSetting::GMeter { shown } => self.glass.g_meter_shown = shown,
+            GlassSetting::GMeterReset {} => {
+                let g = self.sim.readout().load_factor_g;
+                self.glass.g_track.reset(g);
+            }
             GlassSetting::Vspeed { bug, enabled } => self.glass.vspeeds.entry_mut(bug).enabled = enabled,
             GlassSetting::VspeedValue { bug, speed_kt } => {
                 if let Some(kt) = speed_kt {
@@ -599,6 +628,18 @@ impl Session {
                 beyond_m: -1.0e9,
                 angle_rad: self.glass.vnav_angle_deg.to_radians(),
             }),
+        }
+    }
+
+    /// The G meter's record: the load factor sampled at 10 Hz of simulation time. A load factor
+    /// is not part of the physics state, so this never touches the hash.
+    pub(crate) fn sequence_gmeter(&mut self) {
+        self.reset_glass_generation();
+        let now = self.sim.state().time_s;
+        if now - self.glass.g_sampled_s >= 0.1 || now < self.glass.g_sampled_s {
+            self.glass.g_sampled_s = now;
+            let g = self.sim.readout().load_factor_g;
+            self.glass.g_track.observe(g);
         }
     }
 
@@ -997,6 +1038,12 @@ impl Session {
                         }),
                     })
                 });
+        let g_meter_readout = GMeterReadout {
+            shown: settings.g_meter_shown,
+            current_g: r.load_factor_g,
+            min_g: settings.g_track.min_g.min(r.load_factor_g),
+            max_g: settings.g_track.max_g.max(r.load_factor_g),
+        };
         let clock_readout = {
             let now = sim.state().time_s;
             let utc = utc_seconds(settings.clock_start_utc_s, now);
@@ -1115,6 +1162,7 @@ impl Session {
             ),
             clock: clock_readout,
             vnav: vnav_readout,
+            g_meter: g_meter_readout,
         }
     }
 }

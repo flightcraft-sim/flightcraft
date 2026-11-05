@@ -474,6 +474,8 @@ pub(crate) struct Shared {
     /// The Vspeed bugs' configuration, and the aircraft pack's Vr, Vx, and Vy in knots.
     pub vspeeds: flightcraft_control::VspeedConfig,
     pub pack_vspeeds_kt: [Option<f64>; 3],
+    /// The G meter is shown.
+    pub g_meter: bool,
     /// The active flight plan, for the FPL page.
     pub fpl: FplView,
 }
@@ -604,6 +606,11 @@ pub(crate) fn chrome(
                 if rect.width() > 0. && hit(ui, rect, element) {
                     act(out, id, DisplayAction::OpenOverlay { overlay });
                 }
+            }
+            // Touching the G meter starts its record over.
+            let meter = native_rect(screen, g.screen_rect(PfdElement::GMeter));
+            if shared.g_meter && meter.width() > 0. && hit(ui, meter, "g-meter") {
+                out.glass.push(GlassSetting::GMeterReset {});
             }
             // Touching the CAS window acknowledges the active alerts (pilot's guide 3.7).
             let cas = native_rect(screen, g.screen_rect(PfdElement::CasWindow));
@@ -791,6 +798,14 @@ fn overlay(
                         enabled: !d.synthetic_vision,
                     },
                 );
+            }
+            if entry(ui, "G meter", shared.g_meter) {
+                out.glass.push(GlassSetting::GMeter {
+                    shown: !shared.g_meter,
+                });
+            }
+            if shared.g_meter && entry(ui, "Reset G meter", false) {
+                out.glass.push(GlassSetting::GMeterReset {});
             }
             if entry(ui, "Vspeed bugs", false) {
                 act(

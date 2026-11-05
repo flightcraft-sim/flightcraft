@@ -135,6 +135,40 @@ impl VspeedConfig {
     }
 }
 
+/// The G meter's record: the lowest and highest load factor seen since the last reset.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct GMeterTrack {
+    pub min_g: f64,
+    pub max_g: f64,
+}
+
+impl Default for GMeterTrack {
+    /// One g, as the aircraft sits at rest.
+    fn default() -> Self {
+        Self {
+            min_g: 1.0,
+            max_g: 1.0,
+        }
+    }
+}
+
+impl GMeterTrack {
+    /// Fold in a load factor; a non-finite sample is ignored.
+    pub fn observe(&mut self, g: f64) {
+        if g.is_finite() {
+            self.min_g = self.min_g.min(g);
+            self.max_g = self.max_g.max(g);
+        }
+    }
+
+    /// Start the record over from the current load factor.
+    pub fn reset(&mut self, current_g: f64) {
+        let g = if current_g.is_finite() { current_g } else { 1.0 };
+        self.min_g = g;
+        self.max_g = g;
+    }
+}
+
 /// Which time the clock field shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -363,6 +397,21 @@ mod tests {
         c.entry_mut(VspeedBug::G).speed_kt = Some(68.0);
         assert_eq!(c.shown_kt(VspeedBug::G, None), Some(68.0));
         assert_eq!(VspeedBug::ALL.map(VspeedBug::letter), ["R", "X", "Y", "G", "A"]);
+    }
+
+    #[test]
+    fn the_g_meter_keeps_the_extremes_since_reset() {
+        let mut m = GMeterTrack::default();
+        for g in [1.0, 1.8, 0.4, f64::NAN, 1.2, 2.6, -0.3, 1.0] {
+            m.observe(g);
+        }
+        assert_eq!((m.min_g, m.max_g), (-0.3, 2.6));
+        m.reset(1.1);
+        assert_eq!((m.min_g, m.max_g), (1.1, 1.1));
+        m.observe(0.9);
+        assert_eq!((m.min_g, m.max_g), (0.9, 1.1));
+        m.reset(f64::NAN);
+        assert_eq!((m.min_g, m.max_g), (1.0, 1.0));
     }
 
     #[test]

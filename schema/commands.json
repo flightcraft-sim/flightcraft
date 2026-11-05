@@ -92889,6 +92889,38 @@
             },
             {
               "additionalProperties": false,
+              "description": "Show or hide the G meter (current load factor, and the lowest and highest since reset).",
+              "properties": {
+                "kind": {
+                  "const": "g_meter",
+                  "type": "string"
+                },
+                "shown": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "shown"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Start the G meter's record over.",
+              "properties": {
+                "kind": {
+                  "const": "g_meter_reset",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "description": "Show or hide one Vspeed bug on the airspeed tape.",
               "properties": {
                 "bug": {
@@ -121100,6 +121132,38 @@
             },
             {
               "additionalProperties": false,
+              "description": "Show or hide the G meter (current load factor, and the lowest and highest since reset).",
+              "properties": {
+                "kind": {
+                  "const": "g_meter",
+                  "type": "string"
+                },
+                "shown": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "shown"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Start the G meter's record over.",
+              "properties": {
+                "kind": {
+                  "const": "g_meter_reset",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "description": "Show or hide one Vspeed bug on the airspeed tape.",
               "properties": {
                 "bug": {
@@ -123759,6 +123823,52 @@
           ],
           "type": "object"
         },
+        "GMeterReadout": {
+          "description": "The G meter as the PFD shows it.",
+          "properties": {
+            "current_g": {
+              "description": "The load factor now, in g.",
+              "format": "double",
+              "type": "number"
+            },
+            "max_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "min_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "shown": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "shown",
+            "current_g",
+            "min_g",
+            "max_g"
+          ],
+          "type": "object"
+        },
+        "GMeterTrack": {
+          "description": "The G meter's record: the lowest and highest load factor seen since the last reset.",
+          "properties": {
+            "max_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "min_g": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min_g",
+            "max_g"
+          ],
+          "type": "object"
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -123843,6 +123953,18 @@
               "format": "uint",
               "minimum": 0,
               "type": "integer"
+            },
+            "g_meter_shown": {
+              "default": false,
+              "description": "The G meter is shown, and its record since the last reset.",
+              "type": "boolean"
+            },
+            "g_track": {
+              "$ref": "#/$defs/GMeterTrack",
+              "default": {
+                "max_g": 1.0,
+                "min_g": 1.0
+              }
             },
             "heading_bug_rad": {
               "format": "double",
@@ -124026,6 +124148,15 @@
                 "$ref": "#/$defs/EngineValue"
               },
               "type": "array"
+            },
+            "g_meter": {
+              "$ref": "#/$defs/GMeterReadout",
+              "default": {
+                "current_g": 0.0,
+                "max_g": 0.0,
+                "min_g": 0.0,
+                "shown": false
+              }
             },
             "gps": {
               "$ref": "#/$defs/GpsState"
@@ -127494,6 +127625,52 @@
           ],
           "type": "object"
         },
+        "GMeterReadout": {
+          "description": "The G meter as the PFD shows it.",
+          "properties": {
+            "current_g": {
+              "description": "The load factor now, in g.",
+              "format": "double",
+              "type": "number"
+            },
+            "max_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "min_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "shown": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "shown",
+            "current_g",
+            "min_g",
+            "max_g"
+          ],
+          "type": "object"
+        },
+        "GMeterTrack": {
+          "description": "The G meter's record: the lowest and highest load factor seen since the last reset.",
+          "properties": {
+            "max_g": {
+              "format": "double",
+              "type": "number"
+            },
+            "min_g": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "min_g",
+            "max_g"
+          ],
+          "type": "object"
+        },
         "GeoPoint": {
           "additionalProperties": false,
           "properties": {
@@ -127578,6 +127755,18 @@
               "format": "uint",
               "minimum": 0,
               "type": "integer"
+            },
+            "g_meter_shown": {
+              "default": false,
+              "description": "The G meter is shown, and its record since the last reset.",
+              "type": "boolean"
+            },
+            "g_track": {
+              "$ref": "#/$defs/GMeterTrack",
+              "default": {
+                "max_g": 1.0,
+                "min_g": 1.0
+              }
             },
             "heading_bug_rad": {
               "format": "double",
@@ -127761,6 +127950,15 @@
                 "$ref": "#/$defs/EngineValue"
               },
               "type": "array"
+            },
+            "g_meter": {
+              "$ref": "#/$defs/GMeterReadout",
+              "default": {
+                "current_g": 0.0,
+                "max_g": 0.0,
+                "min_g": 0.0,
+                "shown": false
+              }
             },
             "gps": {
               "$ref": "#/$defs/GpsState"

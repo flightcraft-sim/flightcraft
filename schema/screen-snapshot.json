@@ -5502,6 +5502,52 @@
         "both"
       ]
     },
+    "GMeterReadout": {
+      "description": "The G meter as the PFD shows it.",
+      "type": "object",
+      "properties": {
+        "current_g": {
+          "description": "The load factor now, in g.",
+          "type": "number",
+          "format": "double"
+        },
+        "max_g": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_g": {
+          "type": "number",
+          "format": "double"
+        },
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "shown",
+        "current_g",
+        "min_g",
+        "max_g"
+      ]
+    },
+    "GMeterTrack": {
+      "description": "The G meter's record: the lowest and highest load factor seen since the last reset.",
+      "type": "object",
+      "properties": {
+        "max_g": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_g": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "min_g",
+        "max_g"
+      ]
+    },
     "Gear": {
       "type": "object",
       "properties": {
@@ -5682,6 +5728,18 @@
           "format": "uint",
           "default": 0,
           "minimum": 0
+        },
+        "g_meter_shown": {
+          "description": "The G meter is shown, and its record since the last reset.",
+          "type": "boolean",
+          "default": false
+        },
+        "g_track": {
+          "$ref": "#/$defs/GMeterTrack",
+          "default": {
+            "max_g": 1.0,
+            "min_g": 1.0
+          }
         },
         "heading_bug_rad": {
           "type": "number",
@@ -5864,6 +5922,15 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/EngineValue"
+          }
+        },
+        "g_meter": {
+          "$ref": "#/$defs/GMeterReadout",
+          "default": {
+            "current_g": 0.0,
+            "max_g": 0.0,
+            "min_g": 0.0,
+            "shown": false
           }
         },
         "gps": {

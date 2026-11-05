@@ -714,6 +714,57 @@ fn the_vspeed_page_toggles_each_bug_and_opens_its_keypad() {
 }
 
 #[test]
+fn the_g_meter_shows_the_load_factor_with_its_extremes_only_when_enabled_and_resets_on_touch() {
+    use flightcraft_control::{AvionicsSetting, GlassSetting};
+    let s = session();
+    let input = InstrumentInput::new(s.sim().systems(), 0.);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let rect = geometry.rect(E::GMeter);
+    let mut g = flying(&s);
+    g.g_meter = flightcraft_control::GMeterReadout {
+        shown: false,
+        current_g: 1.04,
+        min_g: -0.3,
+        max_g: 2.55,
+    };
+    let d = touch_pfd::panel(&g, input, &geometry, options());
+    assert!(!drawn_in(&d, rect, "MAX"), "hidden until the pilot turns it on");
+    g.g_meter.shown = true;
+    let d = touch_pfd::panel(&g, input, &geometry, options());
+    assert!(drawn_in(&d, rect, "1.0"));
+    assert!(drawn_in(&d, rect, "MAX 2.5") || drawn_in(&d, rect, "MAX 2.6"));
+    assert!(drawn_in(&d, rect, "MIN -0.3"));
+    // The meter clears the CAS window and the flap indicator above and below it.
+    for other in [E::CasWindow, E::FlapIndicator, E::TrimIndicator] {
+        let o = geometry.rect(other);
+        let apart = rect[1] + rect[3] <= o[1]
+            || o[1] + o[3] <= rect[1]
+            || rect[0] + rect[2] <= o[0]
+            || o[0] + o[2] <= rect[0];
+        assert!(apart, "{other:?}");
+    }
+    // Touching it, once shown, starts the record over (and the menu entry shows it).
+    let mut sess = session();
+    sess.set_glass(GlassSetting::GMeter { shown: true }).unwrap();
+    let panel = isolated(&sess, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &sess, size, Vec::new(), 0.0);
+    let mut t = 1.;
+    let at = efis::native_rect(screen, geometry.screen_rect(E::GMeter)).center();
+    tap(&ctx, &mut view, &panel, &sess, size, at, &mut t);
+    assert!(view.avionics.iter().any(|a| matches!(
+        a,
+        AvionicsSetting::Glass {
+            setting: GlassSetting::GMeterReset {}
+        }
+    )));
+}
+
+#[test]
 fn the_vnav_indicator_sits_beside_the_tape_and_its_diamond_moves_away_from_the_deviation() {
     let s = session();
     let input = InstrumentInput::new(s.sim().systems(), 0.);

@@ -222,6 +222,8 @@ pub enum PfdElement {
     FlapIndicator,
     /// Elevator trim indicator, beside the flap indicator.
     TrimIndicator,
+    /// The G meter (a PFD option): load factor now, and the lowest and highest since reset.
+    GMeter,
     /// Knob function hints and messages along the bottom edge.
     StatusBar,
 }
@@ -359,6 +361,7 @@ impl DisplayModel {
                     (E::CasWindow, [436., 102., 108., 54.]),
                     (E::FlapIndicator, [440., 282., 26., 104.]),
                     (E::TrimIndicator, [472., 282., 26., 104.]),
+                    (E::GMeter, [436., 166., 108., 76.]),
                     status,
                 ],
                 aircraft_symbol: [640., 261.],
@@ -408,6 +411,7 @@ impl DisplayModel {
                         (E::CasWindow, [108., 122., 100., 52.]),
                         (E::FlapIndicator, [110., 284., 24., 100.]),
                         (E::TrimIndicator, [140., 284., 24., 100.]),
+                        (E::GMeter, [108., 182., 100., 72.]),
                         status,
                     ],
                     aircraft_symbol: [283., 274.],

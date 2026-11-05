@@ -160,6 +160,12 @@ pub enum GlassSetting {
     DataBarField {
         field: DataBarField,
     },
+    /// Show or hide the G meter (current load factor, and the lowest and highest since reset).
+    GMeter {
+        shown: bool,
+    },
+    /// Start the G meter's record over.
+    GMeterReset {},
     /// Show or hide one Vspeed bug on the airspeed tape.
     Vspeed {
         bug: VspeedBug,

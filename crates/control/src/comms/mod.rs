@@ -649,6 +649,7 @@ impl Session {
             self.apply_display_loss_rules();
             self.sequence_minimums();
             self.sequence_vnav();
+            self.sequence_gmeter();
             let now = self.sim.state().time_s;
             self.finish_transmissions();
             self.sequence_scenario();

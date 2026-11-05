@@ -131,7 +131,40 @@ pub(crate) fn panel(s: &GlassState, input: InstrumentInput<'_>, g: &PfdGeometry,
     boxes(&mut d, s, input, g, t);
     trim_and_flaps(&mut d, input, g);
     cas_window(&mut d, input, g, t);
+    g_meter(&mut d, s, g, t);
     d
+}
+
+/// The G meter (a PFD option): the load factor now, large, over the highest and lowest since the
+/// last reset. Touching it starts the record over.
+fn g_meter(d: &mut DrawList, s: &GlassState, g: &PfdGeometry, t: Typography) {
+    if !s.g_meter.shown {
+        return;
+    }
+    let [x, y, w, h] = r4(g.rect(E::GMeter));
+    bordered(d, [x, y, w, h], Ink::BoxFill, Ink::BoxBorder);
+    left_text(d, x + 5., y + 12., "G", 15. * t.boxes, Ink::White);
+    label(
+        d,
+        [x + w * 0.58, y + h * 0.36],
+        format!("{:.1}", s.g_meter.current_g),
+        30. * t.boxes,
+        Ink::White,
+    );
+    label(
+        d,
+        [x + w * 0.5, y + h * 0.66],
+        format!("MAX {:.1}", s.g_meter.max_g),
+        15. * t.boxes,
+        Ink::Cyan,
+    );
+    label(
+        d,
+        [x + w * 0.5, y + h * 0.86],
+        format!("MIN {:.1}", s.g_meter.min_g),
+        15. * t.boxes,
+        Ink::Cyan,
+    );
 }
 
 /// The elevator trim and flap position indicators (pilot's guide page 81): vertical scales left

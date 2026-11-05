@@ -323,6 +323,32 @@ fn the_minimums_callout_is_spoken_once_when_the_altitude_is_crossed() {
     assert_eq!(spoken(&s), 1);
 }
 #[test]
+fn the_g_meter_samples_the_load_factor_keeps_extremes_and_resets() {
+    let mut s = glass_session();
+    s.sim.step(600);
+    let g = s.glass_state().g_meter;
+    assert!(!g.shown, "off until the pilot turns it on");
+    assert!(
+        g.current_g.is_finite() && g.min_g <= g.current_g && g.current_g <= g.max_g,
+        "{g:?}"
+    );
+    s.set_glass(GlassSetting::GMeter { shown: true }).unwrap();
+    assert!(s.glass_state().g_meter.shown);
+    // Sampling folds the load factor in at 10 Hz of simulation time; an excursion stays in the record.
+    s.set_glass(GlassSetting::GMeterReset {}).unwrap();
+    s.glass.g_track.observe(2.7);
+    s.glass.g_track.observe(-0.4);
+    s.sim.step(300);
+    s.sequence_gmeter();
+    let m = s.glass_state().g_meter;
+    assert!(m.max_g >= 2.7 && m.min_g <= -0.4);
+    // Reset starts over from the current load factor.
+    s.set_glass(GlassSetting::GMeterReset {}).unwrap();
+    let m = s.glass_state().g_meter;
+    assert!(m.max_g < 2. && m.min_g > -0.5, "{m:?}");
+    assert!((m.max_g - m.min_g).abs() < 0.2);
+}
+#[test]
 fn the_clock_runs_on_simulation_time_and_can_be_set_and_changed_to_local() {
     let mut s = glass_session();
     let t0 = s.sim.state().time_s;
