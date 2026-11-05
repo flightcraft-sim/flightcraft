@@ -288,6 +288,7 @@ mod tests {
             tie_downs: true,
             flap_hardware: true,
             aileron_hardware: true,
+            ..Default::default()
         });
         assert!(s.sim().readout().on_ground);
         assert!(
