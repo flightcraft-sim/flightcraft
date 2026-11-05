@@ -714,6 +714,59 @@ fn the_vspeed_page_toggles_each_bug_and_opens_its_keypad() {
 }
 
 #[test]
+fn touching_the_altitude_tape_or_the_compass_sends_set_to_current() {
+    use flightcraft_control::touch_entry::EntryShortcut;
+    let s = session();
+    let panel = isolated(&s, "left_display");
+    let size = egui::vec2(1088., 780.);
+    let screen = screen_of(&panel, size);
+    let geometry = MODEL.pfd_geometry(PfdMode::Full);
+    let ctx = egui::Context::default();
+    theme::install(&ctx);
+    let mut view = PanelUi::default();
+    frame(&ctx, &mut view, &panel, &s, size, Vec::new(), 0.0);
+    let mut t = 1.;
+    let want = |got: &[DisplayAction], target| {
+        got.iter().any(|a| {
+            matches!(a, DisplayAction::Shortcut { target: tg, shortcut }
+                if *tg == target && *shortcut == EntryShortcut::SetToCurrent)
+        })
+    };
+    // The altitude tape.
+    let tape = efis::native_rect(screen, geometry.screen_rect(E::AltitudeTape));
+    tap(&ctx, &mut view, &panel, &s, size, tape.center(), &mut t);
+    let got = actions(&mut view);
+    assert!(
+        want(&got, EntryTarget::Altitude) && !want(&got, EntryTarget::Heading),
+        "{got:?}"
+    );
+    // The compass rose.
+    let [cx, cy] = geometry.hsi_center;
+    let rose = efis::native_rect(screen, [cx, cy, 0., 0.]).min;
+    tap(&ctx, &mut view, &panel, &s, size, rose, &mut t);
+    let got = actions(&mut view);
+    assert!(
+        want(&got, EntryTarget::Heading) && !want(&got, EntryTarget::Altitude),
+        "{got:?}"
+    );
+    // The boxes keep their keypads: the selected altitude and heading boxes are outside both.
+    for (element, keypad) in [
+        (E::SelectedAltitudeBox, EntryTarget::Altitude),
+        (E::SelectedHeadingBox, EntryTarget::Heading),
+    ] {
+        let at = efis::native_rect(screen, geometry.screen_rect(element)).center();
+        tap(&ctx, &mut view, &panel, &s, size, at, &mut t);
+        let got = actions(&mut view);
+        assert!(
+            got.iter().any(
+                |a| matches!(a, DisplayAction::OpenOverlay { overlay } if *overlay == Overlay::Keypad(keypad))
+            ) && !want(&got, keypad),
+            "{element:?}: {got:?}"
+        );
+    }
+}
+
+#[test]
 fn the_hsi_draws_bearing_pointers_one_and_two_only_for_gps_and_only_with_a_leg() {
     use flightcraft_sim::avionics::glass::BearingPointer as B;
     let s = session();

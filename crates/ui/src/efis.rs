@@ -609,6 +609,34 @@ pub(crate) fn chrome(
                     act(out, id, DisplayAction::OpenOverlay { overlay });
                 }
             }
+            // Touching the altitude tape sets the selected altitude to the current one, and touching
+            // the compass rose sets the heading bug to the current heading: the keypads' Set To
+            // Current, reached from the instruments themselves.
+            let tape = native_rect(screen, g.screen_rect(PfdElement::AltitudeTape));
+            if tape.width() > 0. && hit(ui, tape, "altitude-tape") {
+                act(
+                    out,
+                    id,
+                    DisplayAction::Shortcut {
+                        target: EntryTarget::Altitude,
+                        shortcut: flightcraft_control::touch_entry::EntryShortcut::SetToCurrent,
+                    },
+                );
+            }
+            let [px, py, ..] = g.panel;
+            let [cx, cy] = g.hsi_center;
+            let r = g.hsi_radius * 0.7;
+            let rose = native_rect(screen, [px + cx - r, py + cy - r, r * 2., r * 2.]);
+            if hit(ui, rose, "compass-rose") {
+                act(
+                    out,
+                    id,
+                    DisplayAction::Shortcut {
+                        target: EntryTarget::Heading,
+                        shortcut: flightcraft_control::touch_entry::EntryShortcut::SetToCurrent,
+                    },
+                );
+            }
             // Touching the G meter starts its record over.
             let meter = native_rect(screen, g.screen_rect(PfdElement::GMeter));
             if shared.g_meter && meter.width() > 0. && hit(ui, meter, "g-meter") {
