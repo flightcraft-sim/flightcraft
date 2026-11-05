@@ -321,9 +321,7 @@ impl Session {
 
     /// The facility's voice, from the same palette the fleet uses for its controller calls.
     fn advisory_voice(&self, st: &ComStation) -> u8 {
-        self.comms
-            .fleet
-            .as_ref()
+        self.fleet_of(st)
             .and_then(|f| {
                 let i = f
                     .field
@@ -346,10 +344,18 @@ impl Session {
         let now = self.sim.state().time_s;
         let in_use = self.carrier_in_use(st.channel_khz);
         let voice = self.advisory_voice(st);
+        let (khz, id) = (st.channel_khz, st.id.clone());
         let claimed = self
             .comms
             .fleet
-            .as_mut()?
+            .iter_mut()
+            .chain(self.comms.more_fleets.iter_mut())
+            .find(|f| {
+                f.field
+                    .stations
+                    .iter()
+                    .any(|s| s.id == id && s.channel_khz == khz)
+            })?
             .claim_channel(st.channel_khz, now, in_use, &text, voice);
         if !claimed {
             return None;
@@ -370,10 +376,9 @@ impl Session {
 
     fn channel_is_open(&self, st: &ComStation) -> bool {
         let now = self.sim.state().time_s;
-        self.comms
-            .fleet
-            .as_ref()
-            .is_some_and(|f| f.channel_open(st.channel_khz, now, self.carrier_in_use(st.channel_khz)))
+        // Airports that share a frequency share the carrier: it must be quiet at every one of them.
+        let in_use = self.carrier_in_use(st.channel_khz);
+        self.fleet_of(st).is_some() && self.fleets().all(|f| f.channel_open(st.channel_khz, now, in_use))
     }
 
     fn advisory_meaning(
@@ -599,10 +604,7 @@ impl Session {
         {
             return;
         }
-        let Some(fleet) = self.comms.fleet.as_ref() else {
-            return;
-        };
-        let Some(st) = self.advisory_station(fleet) else {
+        let Some(st) = self.fleets().find_map(|fleet| self.advisory_station(fleet)) else {
             self.comms.advisories.next_scan_s = now + 1.;
             return;
         };
@@ -777,11 +779,8 @@ impl Session {
     fn other_callsign(&self, text: &str) -> Option<&Ac> {
         let heard = words(text);
         let padded = format!(" {heard} ");
-        self.comms
-            .fleet
-            .as_ref()?
-            .craft
-            .iter()
+        self.fleets()
+            .flat_map(|f| f.craft.iter())
             .filter(|a| !a.gone)
             .find(|a| {
                 [&a.ident.full, &a.ident.short]
@@ -845,10 +844,8 @@ impl Session {
                 .find(|h| acknowledges && event.time_s - h.end_s <= ACK_WINDOW_S);
             if let Some(h) = read_back.or(acked) {
                 let who = self
-                    .comms
-                    .fleet
-                    .as_ref()
-                    .and_then(|f| f.craft.iter().find(|a| a.id == h.aircraft))
+                    .fleets()
+                    .find_map(|f| f.craft.iter().find(|a| a.id == h.aircraft))
                     .map(|a| (a.ident.spec().spoken.to_string(), a.ident.full.clone()));
                 if let Some((spoken, callsign)) = who {
                     self.comms.advisories.tally.acknowledged_other += 1;
@@ -961,7 +958,7 @@ impl Session {
 
     /// The traffic is a lander on base or final that will reach the runway before the user.
     fn landing_ahead(&self, id: u32, position_m: [f64; 3]) -> bool {
-        let Some(fleet) = &self.comms.fleet else {
+        let Some(fleet) = self.fleets().find(|f| f.craft.iter().any(|a| a.id == id)) else {
             return false;
         };
         let leg = self

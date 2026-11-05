@@ -125,6 +125,8 @@ pub(crate) struct Comms {
     panel: AudioPanel,
     pattern: Option<Pattern>,
     fleet: Option<fleet::Fleet>,
+    /// Busy-airspace traffic at further towered airports; `fleet` is the first airport.
+    more_fleets: Vec<fleet::Fleet>,
     advisories: fleet::AdvisoryBook,
     traffic_calls: VecDeque<TrafficCall>,
     pending: Vec<Pending>,
@@ -151,6 +153,7 @@ impl Default for Comms {
             panel: Default::default(),
             pattern: None,
             fleet: None,
+            more_fleets: Vec::new(),
             advisories: Default::default(),
             traffic_calls: VecDeque::new(),
             pending: Vec::new(),

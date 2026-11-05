@@ -12746,9 +12746,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -13122,6 +13149,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13728,9 +13764,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -14104,6 +14167,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -14711,9 +14783,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -15087,6 +15186,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15716,9 +15824,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -16092,6 +16227,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -16699,9 +16843,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -17075,6 +17246,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -17685,9 +17865,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -18061,6 +18268,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -18671,9 +18887,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -19047,6 +19290,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -19653,9 +19905,36 @@
               "description": "Wheel chocks are still in place: the aircraft cannot roll.",
               "type": "boolean"
             },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A tyre is cut or worn through to the cord: which wheel it is."
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A wheel fairing is cracked.",
+              "type": "boolean"
+            },
             "flap_hardware": {
               "default": false,
               "description": "Flap hinge hardware is missing: flaps become asymmetric when used.",
+              "type": "boolean"
+            },
+            "loose_cowl": {
+              "default": false,
+              "description": "An engine cowl fastener is loose.",
+              "type": "boolean"
+            },
+            "low_oil": {
+              "default": false,
+              "description": "The oil is below the dipstick MIN mark.",
               "type": "boolean"
             },
             "pitot_cover": {
@@ -20029,6 +20308,15 @@
             "ground_z_m"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -72109,6 +72397,14 @@
             "null"
           ]
         },
+        "airports": {
+          "default": [],
+          "description": "Further towered airports to fill at the same time (up to three more), each with its own\ncontrollers and frequencies. Transit traffic flies between them.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "density": {
           "$ref": "#/$defs/TrafficDensity"
         }
@@ -72292,6 +72588,28 @@
           ],
           "type": "object"
         },
+        "FleetAirport": {
+          "properties": {
+            "aircraft": {
+              "description": "Aircraft the airport's controllers are working now.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "airport": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "aircraft"
+          ],
+          "type": "object"
+        },
         "FleetFlight": {
           "enum": [
             "arrival",
@@ -72437,10 +72755,19 @@
           "type": "array"
         },
         "airport": {
+          "description": "The first airport (the only one unless several were asked for).",
           "type": [
             "string",
             "null"
           ]
+        },
+        "airports": {
+          "default": [],
+          "description": "Every airport with busy traffic, first airport first.",
+          "items": {
+            "$ref": "#/$defs/FleetAirport"
+          },
+          "type": "array"
         },
         "density": {
           "$ref": "#/$defs/TrafficDensity"
@@ -72659,6 +72986,28 @@
           ],
           "type": "object"
         },
+        "FleetAirport": {
+          "properties": {
+            "aircraft": {
+              "description": "Aircraft the airport's controllers are working now.",
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "airport": {
+              "type": "string"
+            },
+            "runway": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "airport",
+            "runway",
+            "aircraft"
+          ],
+          "type": "object"
+        },
         "FleetFlight": {
           "enum": [
             "arrival",
@@ -72804,10 +73153,19 @@
           "type": "array"
         },
         "airport": {
+          "description": "The first airport (the only one unless several were asked for).",
           "type": [
             "string",
             "null"
           ]
+        },
+        "airports": {
+          "default": [],
+          "description": "Every airport with busy traffic, first airport first.",
+          "items": {
+            "$ref": "#/$defs/FleetAirport"
+          },
+          "type": "array"
         },
         "density": {
           "$ref": "#/$defs/TrafficDensity"
@@ -98519,16 +98877,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -98733,6 +99110,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -99003,6 +99404,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -99029,6 +99452,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -99070,6 +99498,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -99358,6 +99791,36 @@
             "haze"
           ],
           "type": "string"
+        },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -99927,6 +100390,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -99998,6 +100469,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -100232,6 +100712,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -101000,6 +101489,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -101026,6 +101537,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -101067,6 +101583,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -101184,6 +101705,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -101878,6 +102408,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -101904,6 +102456,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -101945,6 +102502,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -102511,6 +103073,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -102614,16 +103185,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -102828,6 +103418,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -103098,6 +103712,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -103124,6 +103760,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -103165,6 +103806,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -103453,6 +104099,36 @@
             "haze"
           ],
           "type": "string"
+        },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -104022,6 +104698,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -104093,6 +104777,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -104327,6 +105020,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -110875,16 +111577,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -111045,6 +111766,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -111315,6 +112060,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -111341,6 +112108,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -111382,6 +112154,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -111671,6 +112448,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -111956,6 +112763,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -112027,6 +112842,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -112202,6 +113026,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -112283,16 +113116,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -112453,6 +113305,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -112723,6 +113599,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -112749,6 +113647,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -112790,6 +113693,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -113079,6 +113987,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -113364,6 +114302,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -113435,6 +114381,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -113610,6 +114565,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -113699,16 +114663,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -113869,6 +114852,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -114139,6 +115146,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -114165,6 +115194,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -114206,6 +115240,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -114495,6 +115534,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -114780,6 +115849,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -114851,6 +115928,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -115026,6 +116112,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -115888,16 +116983,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -116058,6 +117172,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -116328,6 +117466,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -116354,6 +117514,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -116395,6 +117560,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -116684,6 +117854,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -116969,6 +118169,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -117040,6 +118248,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -117215,6 +118432,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -125557,16 +126783,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -125727,6 +126972,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -125997,6 +127266,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -126023,6 +127314,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -126064,6 +127360,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -126353,6 +127654,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -126638,6 +127969,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -126709,6 +128048,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -126884,6 +128232,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -126998,16 +128355,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -127168,6 +128544,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -127438,6 +128838,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -127464,6 +128886,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -127505,6 +128932,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -127794,6 +129226,36 @@
           ],
           "type": "string"
         },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
+        },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
           "properties": {
@@ -128079,6 +129541,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -128150,6 +129620,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -128325,6 +129804,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [
@@ -129428,16 +130916,35 @@
           "type": "object"
         },
         "AnnunciationSource": {
-          "enum": [
-            "low_voltage",
-            "low_fuel_pressure",
-            "lane_fault",
-            "high_coolant_temperature",
-            "door_open",
-            "parachute_armed",
-            "engine_shutdown"
-          ],
-          "type": "string"
+          "oneOf": [
+            {
+              "enum": [
+                "low_voltage",
+                "low_fuel_pressure",
+                "lane_fault",
+                "high_coolant_temperature",
+                "door_open",
+                "parachute_armed",
+                "engine_shutdown"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "low_oil_pressure",
+              "description": "Oil pressure below the threshold (pascals) with the engine running.",
+              "type": "string"
+            },
+            {
+              "const": "high_oil_temperature",
+              "description": "Oil temperature above the threshold (degrees Celsius).",
+              "type": "string"
+            },
+            {
+              "const": "cowl_vibration",
+              "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+              "type": "string"
+            }
+          ]
         },
         "AvionicsState": {
           "properties": {
@@ -129642,6 +131149,30 @@
             "OVC"
           ],
           "type": "string"
+        },
+        "CowlState": {
+          "description": "A loose cowl fastener: vibration under power, and separation if flown fast.",
+          "properties": {
+            "separated": {
+              "description": "The cowl has come off.",
+              "type": "boolean"
+            },
+            "stress_s": {
+              "description": "Accumulated lift stress, in seconds at the reference excess speed.",
+              "format": "double",
+              "type": "number"
+            },
+            "vibration": {
+              "description": "The airframe is vibrating from the loose cowl.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stress_s",
+            "vibration",
+            "separated"
+          ],
+          "type": "object"
         },
         "ElectricalState": {
           "properties": {
@@ -129912,6 +131443,28 @@
               "default": false,
               "type": "boolean"
             },
+            "cowl_loose": {
+              "default": false,
+              "description": "An engine cowl fastener is loose: vibration, and the cowl can come off at speed.",
+              "type": "boolean"
+            },
+            "cowl_separated": {
+              "default": false,
+              "description": "The cowl has come off: a large drag increase and loss of engine cooling.",
+              "type": "boolean"
+            },
+            "damaged_tyre": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Wheel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A worn or cut tyre on this wheel: it rolls harder and drags that side."
+            },
             "door_open": {
               "default": false,
               "type": "boolean"
@@ -129938,6 +131491,11 @@
               "maximum": 1,
               "minimum": 0,
               "type": "number"
+            },
+            "fairing_crack": {
+              "default": false,
+              "description": "A cracked wheel fairing: a small parasite-drag increase.",
+              "type": "boolean"
             },
             "flap_asymmetry": {
               "default": false,
@@ -129979,6 +131537,11 @@
             },
             "trim_stuck": {
               "default": false,
+              "type": "boolean"
+            },
+            "tyre_flat": {
+              "default": false,
+              "description": "The damaged tyre has burst: very high rolling resistance on that wheel.",
               "type": "boolean"
             },
             "vacuum_pump": {
@@ -130267,6 +131830,36 @@
             "haze"
           ],
           "type": "string"
+        },
+        "OilState": {
+          "description": "Engine oil quantity and the damage a shortage does.",
+          "properties": {
+            "disturbed": {
+              "description": "A low-oil finding has been applied; gates the extra state hash words.",
+              "type": "boolean"
+            },
+            "fill": {
+              "description": "Oil in the tank as a fraction of the dipstick MAX mark.",
+              "format": "double",
+              "type": "number"
+            },
+            "seized": {
+              "description": "The engine has seized for want of oil and cannot be restarted.",
+              "type": "boolean"
+            },
+            "wear": {
+              "description": "Starvation wear, 0 (sound) to 1 (worn out and seized).",
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "wear",
+            "seized",
+            "disturbed"
+          ],
+          "type": "object"
         },
         "Power": {
           "description": "Each unit has its own rechargeable battery. Endurance is at rated continuous load.",
@@ -130836,6 +132429,14 @@
             "controls": {
               "$ref": "#/$defs/SystemControls"
             },
+            "cowl": {
+              "$ref": "#/$defs/CowlState",
+              "default": {
+                "separated": false,
+                "stress_s": 0.0,
+                "vibration": false
+              }
+            },
             "cranking_s": {
               "format": "double",
               "type": "number"
@@ -130907,6 +132508,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "oil": {
+              "$ref": "#/$defs/OilState",
+              "default": {
+                "disturbed": false,
+                "fill": 1.0,
+                "seized": false,
+                "wear": 0.0
+              }
             },
             "oil_pressure_pa": {
               "format": "double",
@@ -131141,6 +132751,15 @@
             "seed"
           ],
           "type": "object"
+        },
+        "Wheel": {
+          "description": "Which landing-gear wheel a tyre fault is on.",
+          "enum": [
+            "left",
+            "right",
+            "nose"
+          ],
+          "type": "string"
         },
         "Wing": {
           "enum": [

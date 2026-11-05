@@ -767,15 +767,34 @@
       ]
     },
     "AnnunciationSource": {
-      "type": "string",
-      "enum": [
-        "low_voltage",
-        "low_fuel_pressure",
-        "lane_fault",
-        "high_coolant_temperature",
-        "door_open",
-        "parachute_armed",
-        "engine_shutdown"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "low_voltage",
+            "low_fuel_pressure",
+            "lane_fault",
+            "high_coolant_temperature",
+            "door_open",
+            "parachute_armed",
+            "engine_shutdown"
+          ]
+        },
+        {
+          "description": "Oil pressure below the threshold (pascals) with the engine running.",
+          "type": "string",
+          "const": "low_oil_pressure"
+        },
+        {
+          "description": "Oil temperature above the threshold (degrees Celsius).",
+          "type": "string",
+          "const": "high_oil_temperature"
+        },
+        {
+          "description": "A cowl fastener is loose and the engine is making power: airframe vibration.",
+          "type": "string",
+          "const": "cowl_vibration"
+        }
       ]
     },
     "AudioPanelInstallation": {
@@ -1722,6 +1741,21 @@
           "type": "number",
           "format": "double"
         },
+        "oil": {
+          "description": "Engine oil system. Optional in a pack: the defaults are the Rotax 912 iS figures.",
+          "$ref": "#/$defs/OilDefinition",
+          "default": {
+            "consumption_l_h": 0.06,
+            "full_l": 3.0,
+            "low_finding_l": 2.1,
+            "max_temperature_c": 130.0,
+            "min_mark_l": 2.55,
+            "min_pressure_pa": 80000.0,
+            "starve_l": 1.6,
+            "starved_temperature_rise_c": 45.0,
+            "wear_out_s": 1800.0
+          }
+        },
         "single_mag_power_fraction": {
           "type": "number",
           "format": "double"
@@ -2476,6 +2510,67 @@
         "classic",
         "home_columns"
       ]
+    },
+    "OilDefinition": {
+      "description": "Engine oil quantity, pressure limits, and how a shortage damages the engine.\n\nDefaults follow the BRP-Rotax 912 iS operator's manual (OM-912 iS): see\n`docs/preflight.md` for the figures and where each comes from.",
+      "type": "object",
+      "properties": {
+        "consumption_l_h": {
+          "description": "Oil burned per hour at full power, litres. The manual's permitted maximum is 0.1.",
+          "type": "number",
+          "format": "double",
+          "default": 0.06
+        },
+        "full_l": {
+          "description": "Oil in the tank at the dipstick MAX mark, litres.",
+          "type": "number",
+          "format": "double",
+          "default": 3.0
+        },
+        "low_finding_l": {
+          "description": "Oil quantity a \"low oil\" pre-flight finding leaves in the tank, litres.",
+          "type": "number",
+          "format": "double",
+          "default": 2.1
+        },
+        "max_temperature_c": {
+          "description": "Maximum permitted oil temperature, degrees Celsius.",
+          "type": "number",
+          "format": "double",
+          "default": 130.0
+        },
+        "min_mark_l": {
+          "description": "Oil at the dipstick MIN mark, litres. Below this the engine is unfit to fly.",
+          "type": "number",
+          "format": "double",
+          "default": 2.55
+        },
+        "min_pressure_pa": {
+          "description": "Minimum permitted oil pressure, pascals.",
+          "type": "number",
+          "format": "double",
+          "default": 80000.0
+        },
+        "starve_l": {
+          "description": "Oil below which the pump draws air and pressure is lost, litres.",
+          "type": "number",
+          "format": "double",
+          "default": 1.6
+        },
+        "starved_temperature_rise_c": {
+          "description": "Oil temperature rise at the starvation point, degrees Celsius.",
+          "type": "number",
+          "format": "double",
+          "default": 45.0
+        },
+        "wear_out_s": {
+          "description": "Seconds at full load for starvation to wear the engine out.",
+          "type": "number",
+          "format": "double",
+          "default": 1800.0
+        }
+      },
+      "additionalProperties": false
     },
     "Outline": {
       "oneOf": [

@@ -1319,3 +1319,247 @@ fn a_pilot_who_stays_silent_fails_the_lesson_for_unanswered_calls() {
     );
     assert!(s.radio_discipline().no_response >= 1);
 }
+
+// ---------------------------------------------------------------- several airports at once
+
+// Seed 3 is one whose single-airport traffic already keeps the physics guard at zero for the whole
+// run; some other weather seeds trip the guard at KABE alone, which is not what these tests probe.
+fn two_airport_session(seed: u64) -> Session {
+    let mut s = atc_session("KABE");
+    listen_to_approach(&mut s);
+    s.execute(
+        "weather.set",
+        json!({"wind_from_deg":0.,"wind_speed_mps":0.,"shear":false,"turbulence":"off","seed":seed}),
+    )
+    .unwrap();
+    s.execute(
+        "traffic.density",
+        json!({"density":"busy","airport":"KABE","airports":["KMMU"]}),
+    )
+    .unwrap();
+    s
+}
+
+#[test]
+fn two_towered_airports_each_get_their_own_traffic_and_frequencies() {
+    let s = two_airport_session(3);
+    let state = s.fleet_state();
+    let names: Vec<&str> = state.airports.iter().map(|a| a.airport.as_str()).collect();
+    assert_eq!(names, ["KABE", "KMMU"]);
+    assert_eq!(state.airport.as_deref(), Some("KABE"));
+    assert!(
+        state.airports.iter().all(|a| (8..=16).contains(&a.aircraft)),
+        "{:?}",
+        state.airports
+    );
+    assert_eq!(
+        state.aircraft.len() as u32,
+        state.airports.iter().map(|a| a.aircraft).sum::<u32>()
+    );
+    let mut ids: Vec<u32> = state.aircraft.iter().map(|a| a.id).collect();
+    ids.sort();
+    ids.dedup();
+    assert_eq!(
+        ids.len(),
+        state.aircraft.len(),
+        "aircraft ids must be unique across airports"
+    );
+    for airport in ["KABE", "KMMU"] {
+        let mine: Vec<_> = state
+            .aircraft
+            .iter()
+            .filter(|a| a.intent.airport == airport)
+            .collect();
+        assert!(!mine.is_empty());
+        for a in mine {
+            // The controlling facility is one of this airport's own stations.
+            let st = s
+                .stations()
+                .into_iter()
+                .find(|st| st.id == a.facility_id && st.channel_khz == a.frequency_khz)
+                .unwrap();
+            let fleet = s.fleet_of(&st).unwrap();
+            assert_eq!(fleet.field.airport, airport, "{} {}", a.callsign, a.facility);
+        }
+    }
+    let freqs: std::collections::BTreeSet<u32> = state.frequencies.iter().map(|f| f.khz).collect();
+    let kabe = s
+        .fleets()
+        .next()
+        .unwrap()
+        .field
+        .stations
+        .iter()
+        .map(|x| x.channel_khz)
+        .collect::<Vec<_>>();
+    let kmmu = s
+        .fleets()
+        .nth(1)
+        .unwrap()
+        .field
+        .stations
+        .iter()
+        .map(|x| x.channel_khz)
+        .collect::<Vec<_>>();
+    assert!(freqs.iter().any(|f| kabe.contains(f)) && freqs.iter().any(|f| kmmu.contains(f)));
+    // The two airports have different towers.
+    assert_ne!(
+        s.fleets()
+            .next()
+            .unwrap()
+            .field
+            .st(s.fleets().next().unwrap().field.tower)
+            .channel_khz,
+        s.fleets()
+            .nth(1)
+            .unwrap()
+            .field
+            .st(s.fleets().nth(1).unwrap().field.tower)
+            .channel_khz
+    );
+}
+
+#[test]
+fn transit_traffic_flies_between_the_airports() {
+    let mut s = two_airport_session(3);
+    let mut seen: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> = Default::default();
+    for _ in 0..(3600 / 10) {
+        advance(&mut s, 10.);
+        for a in s.fleet_state().aircraft {
+            seen.entry(a.callsign).or_default().insert(a.intent.airport);
+        }
+    }
+    let crossed: Vec<_> = seen.iter().filter(|(_, v)| v.len() >= 2).collect();
+    assert!(
+        !crossed.is_empty(),
+        "no transit flight changed airports in an hour"
+    );
+    let st = s.fleet_state();
+    let notes: Vec<_> = s
+        .fleets()
+        .map(|f| {
+            format!(
+                "{}: {} ({} spawned)",
+                f.field.airport, f.guard_note, f.stats.spawned
+            )
+        })
+        .collect();
+    assert_eq!(st.stats.safety_slowdowns, 0, "{notes:?}");
+}
+
+#[test]
+fn several_airports_keep_separation_and_unique_callsigns() {
+    let mut s = two_airport_session(3);
+    for _ in 0..(1200 / 4) {
+        advance(&mut s, 4.);
+        let ac: Vec<_> = s.fleet_state().aircraft;
+        let mut names: Vec<&str> = ac.iter().map(|a| a.callsign.as_str()).collect();
+        names.sort();
+        let n = names.len();
+        names.dedup();
+        assert_eq!(names.len(), n, "two aircraft share a callsign");
+        let air: Vec<_> = ac.iter().filter(|a| !a.on_ground).collect();
+        for (i, a) in air.iter().enumerate() {
+            for b in &air[i + 1..] {
+                let lateral = libm::hypot(
+                    a.position_m[0] - b.position_m[0],
+                    a.position_m[1] - b.position_m[1],
+                ) / 1852.;
+                let vertical = (a.altitude_msl_ft - b.altitude_msl_ft).abs();
+                assert!(
+                    !(lateral < 1.0 && vertical < 500.),
+                    "{} ({}) and {} ({}) within {lateral:.2} NM, {vertical:.0} ft at {:.0}s",
+                    a.callsign,
+                    a.intent.airport,
+                    b.callsign,
+                    b.intent.airport,
+                    s.sim().state().time_s
+                );
+            }
+        }
+    }
+    let notes: Vec<_> = s
+        .fleets()
+        .map(|f| format!("{}: {}", f.field.airport, f.guard_note))
+        .collect();
+    assert_eq!(s.fleet_state().stats.safety_slowdowns, 0, "{notes:?}");
+}
+
+#[test]
+fn several_airports_are_deterministic_per_seed() {
+    let run = |seed: u64| {
+        let mut s = two_airport_session(seed);
+        advance(&mut s, 600.);
+        let positions: Vec<(String, u64, u64)> = s
+            .fleet_state()
+            .aircraft
+            .iter()
+            .map(|a| {
+                (
+                    a.callsign.clone(),
+                    a.position_m[0].to_bits(),
+                    a.position_m[1].to_bits(),
+                )
+            })
+            .collect();
+        (transcript(&s), positions)
+    };
+    let a = run(7);
+    assert!(a.0.len() > 10);
+    assert_eq!(a, run(7));
+    assert_ne!(a.1, run(8).1);
+}
+
+#[test]
+fn a_single_airport_is_unchanged_and_off_clears_every_airport() {
+    // One airport behaves exactly as before: no transit flights, one entry in the list.
+    let mut s = atc_session("KABE");
+    s.execute("traffic.density", json!({"density":"busy","airport":"KABE"}))
+        .unwrap();
+    advance(&mut s, 300.);
+    let st = s.fleet_state();
+    assert_eq!(st.airports.len(), 1);
+    assert!(s.fleets().all(|f| f.craft.iter().all(|a| a.transit.is_none())));
+    let mut s = two_airport_session(1);
+    assert_eq!(s.fleet_state().airports.len(), 2);
+    s.execute("traffic.density", json!({"density":"off"})).unwrap();
+    let st = s.fleet_state();
+    assert!(st.aircraft.is_empty() && st.airports.is_empty());
+    assert_eq!(s.fleets().count(), 0);
+    // Too many airports are refused.
+    let err = s.execute(
+        "traffic.density",
+        json!({"density":"light","airport":"KABE","airports":["KMMU","KEWR","KABE","KMMU"]}),
+    );
+    assert!(err.is_err());
+}
+
+#[test]
+fn the_user_hears_only_the_airport_in_range_but_both_keep_talking() {
+    let mut s = two_airport_session(2);
+    advance(&mut s, 900.);
+    let kabe: Vec<u32> = s
+        .fleets()
+        .next()
+        .unwrap()
+        .field
+        .stations
+        .iter()
+        .map(|x| x.channel_khz)
+        .collect();
+    let events = fleet_events(&s);
+    assert!(!events.is_empty());
+    // KMMU is 45 NM from the parked user: its calls happen but fall outside the radios' reach.
+    assert!(
+        events.iter().all(|(_, c)| kabe.contains(&c.frequency_khz)),
+        "{}",
+        transcript(&s).join("\n")
+    );
+    let state = s.fleet_state();
+    let heard = events.len() as u64;
+    assert!(
+        state.stats.transmissions > heard * 3 / 2,
+        "{} vs {heard}",
+        state.stats.transmissions
+    );
+}

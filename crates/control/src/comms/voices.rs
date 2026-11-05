@@ -248,11 +248,11 @@ impl Session {
                         Some(libm::hypot(o[0] - pn, o[1] - pe) / 1852.0 / st.range_nm.max(1.0))
                     })
             }
-            Speaker::Traffic { callsign } => self.comms.fleet.as_ref().and_then(|f| {
-                f.craft.iter().find(|a| &a.ident.full == callsign).map(|a| {
-                    libm::hypot(a.body.pos[0] - pn, a.body.pos[1] - pe) / 1852.0 / FLEET_PILOT_RANGE_NM
-                })
-            }),
+            Speaker::Traffic { callsign } => self
+                .fleets()
+                .flat_map(|f| f.craft.iter())
+                .find(|a| &a.ident.full == callsign)
+                .map(|a| libm::hypot(a.body.pos[0] - pn, a.body.pos[1] - pe) / 1852.0 / FLEET_PILOT_RANGE_NM),
             _ => None,
         };
         fraction.map_or(0.0, |v| v.clamp(0.0, 1.0) as f32)

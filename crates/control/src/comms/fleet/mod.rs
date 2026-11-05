@@ -14,6 +14,12 @@ use field::Field;
 
 /// Silent warm-up so a newly enabled frequency is already busy.
 const WARMUP_S: f64 = 600.0;
+/// Airports beyond the first that one `traffic.density` call may add.
+const MAX_EXTRA_AIRPORTS: usize = 3;
+/// Aircraft ids of airport `k` start at `k * FLEET_ID_STRIDE`, so ids are unique across airports.
+const FLEET_ID_STRIDE: u32 = 10_000;
+/// Airports farther apart than this get no transit traffic between them.
+const TRANSIT_RANGE_NM: f64 = 120.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -153,10 +159,21 @@ pub struct FleetFrequency {
     pub aircraft: u32,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct FleetAirport {
+    pub airport: String,
+    pub runway: String,
+    /// Aircraft the airport's controllers are working now.
+    pub aircraft: u32,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct FleetState {
     pub density: TrafficDensity,
+    /// The first airport (the only one unless several were asked for).
     pub airport: Option<String>,
     pub runway: Option<String>,
+    /// Every airport with busy traffic, first airport first.
+    #[serde(default)]
+    pub airports: Vec<FleetAirport>,
     pub seed: u64,
     pub aircraft: Vec<FleetAircraft>,
     pub frequencies: Vec<FleetFrequency>,
@@ -171,6 +188,10 @@ pub struct SetTrafficDensity {
     /// ATC airport, else the nearest towered airport.
     #[serde(default)]
     pub airport: Option<String>,
+    /// Further towered airports to fill at the same time (up to three more), each with its own
+    /// controllers and frequencies. Transit traffic flies between them.
+    #[serde(default)]
+    pub airports: Vec<String>,
 }
 impl Command for SetTrafficDensity {
     const NAME: &'static str = "traffic.density";
@@ -181,6 +202,7 @@ impl Command for SetTrafficDensity {
         s.comms.advisories = Default::default();
         if self.density == TrafficDensity::Off {
             s.comms.fleet = None;
+            s.comms.more_fleets.clear();
             return Ok(s.fleet_state());
         }
         let airport = match self.airport.or_else(|| s.comms.atc.airport.clone()) {
@@ -189,12 +211,45 @@ impl Command for SetTrafficDensity {
                 .nearest_towered()
                 .ok_or_else(|| invalid(Self::NAME, "no towered airport with imported frequencies"))?,
         };
-        let field = Field::build(s, &airport)?;
+        if self.airports.len() > MAX_EXTRA_AIRPORTS {
+            return Err(invalid(Self::NAME, "at most four airports at once"));
+        }
+        let mut fields: Vec<Field> = Vec::new();
+        for name in std::iter::once(airport).chain(self.airports) {
+            let field = Field::build(s, &name)?;
+            if !fields.iter().any(|f| f.airport == field.airport) {
+                fields.push(field);
+            }
+        }
         let call = s.pilot_callsign();
-        let seed = s.sim.weather().seed ^ fnv(&field.airport);
         let now = s.sim.state().time_s;
-        let reserved = vec![call.full, call.abbreviated, call.current];
-        s.comms.fleet = Some(Fleet::new(field, self.density, seed, now, reserved));
+        let centres: Vec<[f64; 2]> = fields.iter().map(|f| f.center).collect();
+        let mut built: Vec<Fleet> = Vec::new();
+        for (k, field) in fields.into_iter().enumerate() {
+            let seed = s.sim.weather().seed ^ fnv(&field.airport);
+            // Each airport's aircraft keep clear of the callsigns already flying at the others.
+            let mut reserved = vec![call.full.clone(), call.abbreviated.clone(), call.current.clone()];
+            reserved.extend(built.iter().flat_map(Fleet::callsigns));
+            let here = field.center;
+            let neighbours = centres
+                .iter()
+                .enumerate()
+                .filter(|(j, c)| *j != k && craft::dist(here, **c) <= TRANSIT_RANGE_NM * craft::NM)
+                .map(|(j, c)| (j, *c))
+                .collect();
+            built.push(Fleet::new(
+                field,
+                self.density,
+                seed,
+                now,
+                reserved,
+                k as u32 * FLEET_ID_STRIDE,
+                neighbours,
+            ));
+        }
+        let mut built = built.into_iter();
+        s.comms.fleet = built.next();
+        s.comms.more_fleets = built.collect();
         Ok(s.fleet_state())
     }
 }
@@ -257,18 +312,18 @@ impl Session {
     }
 
     pub fn fleet_state(&self) -> FleetState {
-        let Some(fleet) = &self.comms.fleet else {
+        let Some(primary) = &self.comms.fleet else {
             return FleetState {
                 density: TrafficDensity::Off,
                 airport: None,
                 runway: None,
+                airports: Vec::new(),
                 seed: 0,
                 aircraft: Vec::new(),
                 frequencies: Vec::new(),
                 stats: FleetStats::default(),
             };
         };
-        let f = &fleet.field;
         let [pn, pe, pd] = self.sim.state().position_m;
         let tuned: Vec<u32> = self
             .comms
@@ -276,11 +331,11 @@ impl Session {
             .iter()
             .filter_map(|r| carrier_thirds_hz(r.active_khz))
             .collect();
-        let aircraft: Vec<FleetAircraft> = fleet
-            .craft
-            .iter()
-            .filter(|a| !a.gone)
-            .map(|a| {
+        let aircraft: Vec<FleetAircraft> = self
+            .fleets()
+            .flat_map(|fleet| fleet.craft.iter().filter(|a| !a.gone).map(move |a| (fleet, a)))
+            .map(|(fleet, a)| {
+                let f = &fleet.field;
                 let st = f.st(a.station);
                 let geo = self.sim.world().geodetic(a.body.pos[0], a.body.pos[1]);
                 let grid_true = a.body.hdg + self.sim.heading_reference().grid_north_true_rad;
@@ -351,27 +406,41 @@ impl Session {
             }
         }
         frequencies.sort_by_key(|q| q.khz);
+        let mut stats = FleetStats::default();
+        for fleet in self.fleets() {
+            let t = &fleet.stats;
+            stats.spawned += t.spawned;
+            stats.completed += t.completed;
+            stats.transmissions += t.transmissions;
+            stats.readbacks_accepted += t.readbacks_accepted;
+            stats.readbacks_corrected += t.readbacks_corrected;
+            stats.safety_slowdowns += t.safety_slowdowns;
+            stats.stepped_on += t.stepped_on;
+        }
+        let airports = self
+            .fleets()
+            .map(|fleet| FleetAirport {
+                airport: fleet.field.airport.clone(),
+                runway: fleet.field.runway.clone(),
+                aircraft: fleet.craft.iter().filter(|a| !a.gone).count() as u32,
+            })
+            .collect();
         FleetState {
-            density: fleet.density,
-            airport: Some(f.airport.clone()),
-            runway: Some(f.runway.clone()),
-            seed: fleet.seed,
+            density: primary.density,
+            airport: Some(primary.field.airport.clone()),
+            runway: Some(primary.field.runway.clone()),
+            airports,
+            seed: primary.seed,
             aircraft,
             frequencies,
-            stats: fleet.stats.clone(),
+            stats,
         }
     }
 
     /// Circuit-style targets for the user's tower rules (`follow the Cherokee on left base`).
     pub(super) fn fleet_targets(&self) -> Vec<TrafficAircraft> {
-        let Some(fleet) = &self.comms.fleet else {
-            return Vec::new();
-        };
-        let f = &fleet.field;
-        fleet
-            .craft
-            .iter()
-            .filter(|a| !a.gone)
+        self.fleets()
+            .flat_map(|fleet| fleet.craft.iter().filter(|a| !a.gone))
             .filter_map(|a| {
                 let leg = match (a.kind, a.stage) {
                     (FleetFlight::Pattern, Stage::PatFly) => {
@@ -392,7 +461,6 @@ impl Session {
                     _ => return None,
                 };
                 let geo = self.sim.world().geodetic(a.body.pos[0], a.body.pos[1]);
-                let _ = f;
                 Some(TrafficAircraft {
                     address: 0xf20000 + a.id,
                     callsign: a.ident.full.clone(),
@@ -413,49 +481,112 @@ impl Session {
             .collect()
     }
 
+    /// Every airport's traffic, the first airport first.
+    pub(super) fn fleets(&self) -> impl Iterator<Item = &Fleet> {
+        self.comms.fleet.iter().chain(self.comms.more_fleets.iter())
+    }
+
+    /// The airport traffic whose facilities include this station.
+    pub(super) fn fleet_of(&self, station: &ComStation) -> Option<&Fleet> {
+        self.fleets().find(|f| {
+            f.field
+                .stations
+                .iter()
+                .any(|s| s.id == station.id && s.channel_khz == station.channel_khz)
+        })
+    }
+
     pub(super) fn sequence_fleet(&mut self, dt: f64) {
-        let Some(mut fleet) = self.comms.fleet.take() else {
+        let Some(first) = self.comms.fleet.take() else {
             return;
         };
+        let mut fleets = vec![first];
+        fleets.append(&mut self.comms.more_fleets);
         let now = self.sim.state().time_s;
-        if now >= fleet.info_at {
-            fleet.info = self
-                .atis_report(&fleet.field.airport)
-                .map_or_else(|| "alpha".into(), |r| r.information);
-            fleet.info_at = now + 60.0;
+        // No two aircraft in the region share a callsign: each airport avoids the others'.
+        let names: Vec<Vec<String>> = fleets.iter().map(Fleet::callsigns).collect();
+        for (k, fleet) in fleets.iter_mut().enumerate() {
+            fleet.foreign = names
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != k)
+                .flat_map(|(_, v)| v.iter().cloned())
+                .collect();
         }
-        // A call the user keyed over was blocked: the fleet sends it again once the channel clears.
-        let blocked: Vec<u32> = fleet
-            .chans
-            .iter()
-            .filter_map(|(khz, c)| {
-                let (end, _) = c.inflight.as_ref()?;
-                let id = c.event?;
-                (*end <= now + 1e-9
-                    && self
-                        .comms
-                        .record
-                        .events
-                        .iter()
-                        .rev()
-                        .any(|e| e.id == id && e.reception == Reception::Blocked))
-                .then_some(*khz)
-            })
+        for fleet in &mut fleets {
+            if now >= fleet.info_at {
+                fleet.info = self
+                    .atis_report(&fleet.field.airport)
+                    .map_or_else(|| "alpha".into(), |r| r.information);
+                fleet.info_at = now + 60.0;
+            }
+            // A call the user keyed over was blocked: the fleet sends it again once the channel clears.
+            let blocked: Vec<u32> = fleet
+                .chans
+                .iter()
+                .filter_map(|(khz, c)| {
+                    let (end, _) = c.inflight.as_ref()?;
+                    let id = c.event?;
+                    (*end <= now + 1e-9
+                        && self
+                            .comms
+                            .record
+                            .events
+                            .iter()
+                            .rev()
+                            .any(|e| e.id == id && e.reception == Reception::Blocked))
+                    .then_some(*khz)
+                })
+                .collect();
+            fleet.repeat_blocked(&blocked);
+            fleet.advance(now, dt);
+        }
+        // Transit flights that crossed the midpoint check in with the next airport.
+        let moved: Vec<(usize, _)> = fleets
+            .iter_mut()
+            .flat_map(|f| std::mem::take(&mut f.handoffs))
             .collect();
-        fleet.repeat_blocked(&blocked);
-        fleet.advance(now, dt);
-        self.comms.fleet = Some(fleet);
+        for (to, ac) in moved {
+            if let Some(fleet) = fleets.get_mut(to) {
+                fleet.adopt(ac, now);
+            }
+        }
+        let mut fleets = fleets.into_iter();
+        self.comms.fleet = fleets.next();
+        self.comms.more_fleets = fleets.collect();
         // The controller's call to the user takes the carrier ahead of queued traffic calls.
         self.sequence_advisories();
-        let Some(mut fleet) = self.comms.fleet.take() else {
+        let Some(first) = self.comms.fleet.take() else {
             return;
         };
-        let busy = self.busy_channels(&fleet);
-        let transmissions = fleet.start_tx(now, &busy);
-        for tx in transmissions {
-            self.emit_fleet(&mut fleet, tx);
+        let mut fleets = vec![first];
+        fleets.append(&mut self.comms.more_fleets);
+        for k in 0..fleets.len() {
+            let mut fleet = fleets.remove(k);
+            let mut busy = self.busy_channels(&fleet);
+            // Airports that share a frequency share its carrier, too.
+            for other in &fleets {
+                for (khz, c) in &other.chans {
+                    if (c.inflight.is_some() || now < c.quiet_until)
+                        && let Some(key) = fleet
+                            .chans
+                            .keys()
+                            .copied()
+                            .find(|k| carrier_thirds_hz(*k) == carrier_thirds_hz(*khz))
+                    {
+                        busy.push(key);
+                    }
+                }
+            }
+            let transmissions = fleet.start_tx(now, &busy);
+            for tx in transmissions {
+                self.emit_fleet(&mut fleet, tx);
+            }
+            fleets.insert(k, fleet);
         }
-        self.comms.fleet = Some(fleet);
+        let mut fleets = fleets.into_iter();
+        self.comms.fleet = fleets.next();
+        self.comms.more_fleets = fleets.collect();
     }
 
     /// Yield to anything already on a channel (the user, or a controller reply that is queued).

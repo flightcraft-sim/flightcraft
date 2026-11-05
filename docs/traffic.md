@@ -25,6 +25,34 @@ advisories to the user, and radio-discipline grading.
 an imported tower and approach control. `traffic.set` is unchanged: it still starts up to three CTAF
 circuit aircraft, and the two can run together.
 
+## Several airports at once
+
+`airports` lists further towered airports (up to three more) to fill at the same time:
+
+```json
+{"command":"traffic.density","input":{"density":"busy","airport":"KABE","airports":["KMMU"]}}
+```
+
+Each airport gets its own traffic at the chosen density, run by its own controllers on its own
+frequencies, runway, and approach procedure, and seeded by the weather seed and its own identifier.
+`traffic.state` lists them all in `aircraft` (every `intent.airport` names the field the aircraft
+works), the airports in `airports` (first airport first, which is also `airport` and `runway`), and
+the frequencies of all of them. Aircraft ids stay unique (airport `k` numbers from `k * 10000`), and
+no two aircraft anywhere share a spoken or short callsign.
+
+**Transit traffic.** With a second airport within 120 NM, about half of each airport's
+flight-following flights are transits to the other one. The track runs parallel to the line joining
+the fields and 9 NM off it, so it clears both circuits, at the hemispheric VFR altitude for its
+course. It starts 30 NM beyond the first field and ends 30 NM beyond the second. Past the midpoint,
+the first airport's approach terminates radar service and the second airport's approach high takes
+the flight: it checks in again with `request flight following` and carries on to the far exit point.
+The same aircraft keeps its callsign and track, and gets a new id. If it would share an altitude
+with flight-following traffic already near the hand-over point it leaves without service.
+
+Airports that share a frequency share its carrier: only one of them speaks at a time. A single
+airport behaves as before, with no transit flights and none of the extra random draws, so its
+transcripts are unchanged. `traffic.density` with `off` stops every airport.
+
 ## What flies
 
 | Flow | Route | Frequencies |
@@ -242,4 +270,7 @@ No wake model, wind, weather diversion, taxi movement (departures appear at the 
 leave the runway), ground or clearance delivery exchanges, or go-around sequencing beyond a simple
 circuit re-entry. One traffic call at a time (no `second traffic`), no safety alerts, and the
 traffic does not react to the user's aircraft. Separation is a training model, not a certified
-one. Traffic exists only around one airport at a time.
+one. At most four airports run at once; transit traffic flies between airports 120 NM apart or
+closer, and only in straight tracks between two fields. Controllers of different airports do not
+coordinate with each other beyond the hand-over, and the controller advisories to the user follow
+the facility the user is tuned to (any of the airports').

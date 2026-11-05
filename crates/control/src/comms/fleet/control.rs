@@ -94,6 +94,13 @@ pub(crate) struct Ac {
     pub dep_hdg: f64,
     pub speed_cmd_at: f64,
     pub contacted: bool,
+    /// A transit flight between two busy airports: the index of the airport it is flying to. The
+    /// departure area hands it over at the midpoint.
+    pub transit: Option<usize>,
+    /// Flies the corridor between two busy airports (a transit, before or after the hand-over). No
+    /// other flight-following traffic shares its altitude, since the two tracks would be long
+    /// and the faster aircraft would overtake the slower in the same lane.
+    pub corridor: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -165,6 +172,12 @@ pub(crate) struct Fleet {
     next_spawn: f64,
     last_release: f64,
     pub guard_note: String,
+    /// Other busy airports in the region: their index in the session and field centre.
+    pub neighbours: Vec<(usize, [f64; 2])>,
+    /// Callsigns in use at the other airports, so no two aircraft in the region share one.
+    pub foreign: Vec<String>,
+    /// Transit flights that crossed the midpoint to the airport at the index, for the session to hand over.
+    pub handoffs: Vec<(usize, Ac)>,
     scratch: Ac,
 }
 
@@ -189,7 +202,15 @@ fn eta_profile(spec: &TypeSpec, rem: f64) -> f64 {
 }
 
 impl Fleet {
-    pub fn new(field: Field, density: TrafficDensity, seed: u64, now: f64, reserved: Vec<String>) -> Self {
+    pub fn new(
+        field: Field,
+        density: TrafficDensity,
+        seed: u64,
+        now: f64,
+        reserved: Vec<String>,
+        id_base: u32,
+        neighbours: Vec<(usize, [f64; 2])>,
+    ) -> Self {
         let mut placeholder = Rng::new(0);
         let mut scratch = Ac {
             id: 0,
@@ -216,6 +237,8 @@ impl Fleet {
             dep_hdg: 0.0,
             speed_cmd_at: 0.0,
             contacted: false,
+            transit: None,
+            corridor: false,
         };
         scratch.gone = true;
         let mut fleet = Self {
@@ -230,12 +253,15 @@ impl Fleet {
             info_at: f64::MAX,
             reserved,
             rng: Rng::new(seed ^ u64::from(density as u8).wrapping_mul(0x1234_5677)),
-            next_id: 1,
+            next_id: id_base + 1,
             next_ex: 1,
             seq: 0,
             next_spawn: now - WARMUP_S,
             last_release: f64::MIN,
             guard_note: String::new(),
+            neighbours,
+            foreign: Vec::new(),
+            handoffs: Vec::new(),
             scratch,
         };
         // Run the traffic silently for ten minutes so the frequency opens already busy.
@@ -245,6 +271,7 @@ impl Fleet {
             let _ = fleet.tick(t, 0.25, &[]);
         }
         fleet.stats = FleetStats::default();
+        fleet.guard_note.clear();
         fleet.info_at = now;
         fleet
     }
@@ -429,8 +456,48 @@ impl Fleet {
         self.next_spawn = now + if ok { self.rng.range(8.0, 18.0) } else { 12.0 };
     }
 
+    /// Every spoken and short callsign of this airport's aircraft.
+    pub fn callsigns(&self) -> Vec<String> {
+        self.craft
+            .iter()
+            .flat_map(|a| [a.ident.full.clone(), a.ident.short.clone()])
+            .collect()
+    }
+
+    /// Take over a transit flight that the neighbouring airport handed over: it checks in with this
+    /// airport's approach and carries on to its exit point. Dropped if it would share an altitude with
+    /// flight-following traffic already close by.
+    pub fn adopt(&mut self, mut ac: Ac, now: f64) {
+        let clash = self
+            .craft
+            .iter()
+            .any(|o| !o.gone && o.kind == FleetFlight::FlightFollowing && o.cruise_ft == ac.cruise_ft);
+        if clash {
+            return;
+        }
+        ac.id = self.next_id;
+        self.next_id += 1;
+        self.stats.spawned += 1;
+        ac.station = self.field.hi;
+        ac.freq = self.field.st(ac.station).channel_khz;
+        ac.stage = Stage::FfCall;
+        ac.busy = false;
+        ac.gone = false;
+        ac.transit = None;
+        ac.corridor = true;
+        ac.contacted = false;
+        ac.cleared = false;
+        ac.remove_at = None;
+        ac.alt_ft = None;
+        ac.speed_kt = None;
+        ac.hdg_deg = None;
+        ac.call_at = now + ac.rng.range(3.0, 15.0);
+        self.craft.push(ac);
+    }
+
     fn taken(&self) -> Vec<String> {
         let mut v = self.reserved.clone();
+        v.extend(self.foreign.iter().cloned());
         for a in &self.craft {
             v.push(a.ident.full.clone());
             v.push(a.ident.short.clone());
@@ -483,6 +550,8 @@ impl Fleet {
             dep_hdg: 0.0,
             speed_cmd_at: f64::MIN,
             contacted: false,
+            transit: None,
+            corridor: false,
         }
     }
 
@@ -553,11 +622,28 @@ impl Fleet {
             }
             FleetFlight::FlightFollowing => {
                 for _ in 0..6 {
-                    let b = self.rng.range(0.0, core::f64::consts::TAU);
-                    let turn = self.rng.range(2.2, 4.0);
-                    let radius = 34.0 * NM;
-                    let a = offset(f.center, b, radius);
-                    let z = offset(f.center, b + turn, radius);
+                    // With another busy airport in the region, about half the flights are transits
+                    // between the two: a track parallel to the line joining the fields and 9 NM
+                    // off it, so it clears both circuits.
+                    let mut transit = None;
+                    let (a, z) = if !self.neighbours.is_empty() && self.rng.chance(0.55) {
+                        let pick = self.rng.below(self.neighbours.len() as u32) as usize;
+                        let (index, centre) = self.neighbours.get(pick).copied().unwrap_or((0, f.center));
+                        let axis = bearing(f.center, centre);
+                        let side = if self.rng.chance(0.5) { 1.0 } else { -1.0 };
+                        let shift =
+                            |p: [f64; 2]| offset(p, axis + side * core::f64::consts::FRAC_PI_2, 9.0 * NM);
+                        transit = Some(index);
+                        (
+                            shift(offset(f.center, axis + core::f64::consts::PI, 30.0 * NM)),
+                            shift(offset(centre, axis, 30.0 * NM)),
+                        )
+                    } else {
+                        let b = self.rng.range(0.0, core::f64::consts::TAU);
+                        let turn = self.rng.range(2.2, 4.0);
+                        let radius = 34.0 * NM;
+                        (offset(f.center, b, radius), offset(f.center, b + turn, radius))
+                    };
                     // Closest approach of the track to the field must clear the circuit by 6 NM.
                     let (dx, dy) = (z[0] - a[0], z[1] - a[1]);
                     let t = (((f.center[0] - a[0]) * dx + (f.center[1] - a[1]) * dy) / (dx * dx + dy * dy))
@@ -569,18 +655,22 @@ impl Fleet {
                     // VFR cruising altitudes (14 CFR 91.159): odd thousands plus 500 eastbound.
                     let course = f.mag_deg(bearing(a, z)) % 360;
                     let eastbound = course < 180;
-                    let level = 6 + self.rng.below(4);
+                    let level = if transit.is_some() {
+                        5 + self.rng.below(8)
+                    } else {
+                        6 + self.rng.below(4)
+                    };
                     let level = if (level % 2 == 1) == eastbound {
                         level
                     } else {
                         level + 1
                     };
                     let alt = level * 1000 + 500;
-                    if self
-                        .craft
-                        .iter()
-                        .any(|o| o.kind == kind && o.cruise_ft == alt && dist(o.body.pos, a) < 12.0 * NM)
-                    {
+                    if self.craft.iter().any(|o| {
+                        o.kind == kind
+                            && o.cruise_ft == alt
+                            && (dist(o.body.pos, a) < 12.0 * NM || o.corridor || transit.is_some())
+                    }) {
                         continue;
                     }
                     let mut body = Body::new(a, f64::from(alt) * FT, bearing(a, z), spec.cruise_kt);
@@ -588,6 +678,8 @@ impl Fleet {
                     let mut ac = self.new_ac(kind, now, f.hi, Stage::FfCall, body, ident.clone());
                     ac.cruise_ft = alt;
                     ac.exit = z;
+                    ac.transit = transit;
+                    ac.corridor = transit.is_some();
                     ac.call_at = now + ac.rng.range(3.0, 20.0);
                     self.craft.push(ac);
                     return true;
@@ -1203,6 +1295,22 @@ impl Fleet {
                     now,
                 );
             }
+            // A transit flight past the midpoint to the next busy airport is handed over to it.
+            Stage::Enroute
+                if self
+                    .ar(i)
+                    .transit
+                    .and_then(|k| self.neighbours.iter().find(|n| n.0 == k))
+                    .is_some_and(|n| dist(pos, n.1) < dist(pos, f.center)) =>
+            {
+                self.say_info(
+                    i,
+                    phraseology::radar_service_terminated(),
+                    FleetCallKind::Terminate,
+                    Stage::Done,
+                    now,
+                );
+            }
             Stage::Enroute if dist(pos, self.ar(i).exit) <= 6.0 * NM => {
                 self.say_info(
                     i,
@@ -1483,6 +1591,9 @@ impl Fleet {
                 if let Some(a) = self.craft.get_mut(i) {
                     a.gone = true;
                     a.stage = Stage::Done;
+                    if let Some(next) = a.transit {
+                        self.handoffs.push((next, a.clone()));
+                    }
                 }
                 self.stats.completed += 1;
             }
