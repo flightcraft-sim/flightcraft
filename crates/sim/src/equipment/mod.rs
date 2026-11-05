@@ -68,6 +68,12 @@ pub enum PanelSetting {
         #[schemars(range(min = 2.0, max = 10000.0))]
         altitude_m: f64,
     },
+    /// Move the altitude the hold mode is holding (the flight director's reference), as the
+    /// pitch wheel does in ALT. Only while altitude hold is the active vertical mode.
+    HoldAltitude {
+        #[schemars(range(min = 2.0, max = 10000.0))]
+        altitude_m: f64,
+    },
     VerticalSpeed {
         #[schemars(range(min = -8.0, max = 8.0))]
         vertical_speed_mps: f64,
@@ -489,6 +495,13 @@ impl Equipment {
                 self.state.altitude_m = altitude_m;
                 self.state.alts_armed = true;
                 self.capture_pending = true;
+            }
+            PanelSetting::HoldAltitude { altitude_m } => {
+                range(altitude_m, 2.0, 10000.0)?;
+                if self.state.active_vertical != Some(VerticalMode::Alt) {
+                    return Err(invalid("altitude hold is not the active vertical mode"));
+                }
+                self.state.captured_altitude_m = altitude_m;
             }
             PanelSetting::VerticalSpeed { vertical_speed_mps } => {
                 range(vertical_speed_mps, -8.0, 8.0)?;
@@ -966,6 +979,64 @@ mod tests {
         systems.sensed.lateral_acceleration_g = 0.2;
         let c = ap.update(&systems, pilot, 0.0, 40.0, 1.0, None);
         assert!(ap.state.yaw_servo_engaged && c.rudder < pilot.rudder);
+    }
+    #[test]
+    fn the_hold_altitude_steps_only_in_alt_and_moves_the_director_reference() {
+        let (mut ap, systems, pilot) = unit(AutopilotFamily::DigitalTwoAxis);
+        ap.set(PanelSetting::Engage { on: true }, &systems, pilot)
+            .unwrap();
+        // Without altitude hold active there is no reference to step.
+        assert!(
+            ap.set(PanelSetting::HoldAltitude { altitude_m: 1100.0 }, &systems, pilot)
+                .is_err()
+        );
+        ap.set(
+            PanelSetting::Vertical {
+                mode: VerticalMode::Alt,
+            },
+            &systems,
+            pilot,
+        )
+        .unwrap();
+        let held = ap.state.captured_altitude_m;
+        let level = ap.update(&systems, pilot, 0.0, 40.0, 1.0, None);
+        // Stepping the reference up 20 ft at a time: the stored hold altitude follows, and the mode,
+        // the selected altitude, and the armed capture are untouched.
+        let selected = ap.state.altitude_m;
+        ap.set(
+            PanelSetting::HoldAltitude {
+                altitude_m: held + 6.096,
+            },
+            &systems,
+            pilot,
+        )
+        .unwrap();
+        assert_eq!(ap.state.captured_altitude_m, held + 6.096);
+        assert_eq!(ap.state.active_vertical, Some(VerticalMode::Alt));
+        assert_eq!(ap.state.altitude_m, selected);
+        // A higher reference commands a climb (more up pitch than level hold).
+        ap.set(
+            PanelSetting::HoldAltitude {
+                altitude_m: held + 60.0,
+            },
+            &systems,
+            pilot,
+        )
+        .unwrap();
+        let climb = ap.update(&systems, pilot, 0.0, 40.0, 1.0, None);
+        assert!(
+            climb.elevator != level.elevator,
+            "the reference changes the pitch command"
+        );
+        // Bad values are refused and leave the reference alone.
+        let before = ap.state.captured_altitude_m;
+        for bad in [f64::NAN, 1.0, 20000.0] {
+            assert!(
+                ap.set(PanelSetting::HoldAltitude { altitude_m: bad }, &systems, pilot)
+                    .is_err()
+            );
+        }
+        assert_eq!(ap.state.captured_altitude_m, before);
     }
     #[test]
     fn selecting_an_altitude_while_in_alt_does_not_start_a_climb() {

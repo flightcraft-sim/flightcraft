@@ -155,6 +155,11 @@ impl Controller {
                                 airspeed_mps: (s.airspeed_mps + f64::from(steps) / 1.9438444924406)
                                     .clamp(20., 90.),
                             },
+                            // ALT: each detent moves the held altitude (and the director's reference) 20 ft.
+                            Some(VerticalMode::Alt) => PanelSetting::HoldAltitude {
+                                altitude_m: (s.captured_altitude_m + f64::from(steps) * 6.096)
+                                    .clamp(2., 10000.),
+                            },
                             Some(VerticalMode::Pit) => PanelSetting::Pitch {
                                 pitch_rad: (s.pitch_rad + f64::from(steps).to_radians()).clamp(-0.25, 0.35),
                             },

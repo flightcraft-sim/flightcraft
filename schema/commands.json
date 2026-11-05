@@ -94280,6 +94280,27 @@
             },
             {
               "additionalProperties": false,
+              "description": "Move the altitude the hold mode is holding (the flight director's reference), as the\npitch wheel does in ALT. Only while altitude hold is the active vertical mode.",
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 10000.0,
+                  "minimum": 2.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold_altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
               "properties": {
                 "kind": {
                   "const": "vertical_speed",
@@ -121881,6 +121902,27 @@
                 },
                 "kind": {
                   "const": "altitude",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "altitude_m"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "description": "Move the altitude the hold mode is holding (the flight director's reference), as the\npitch wheel does in ALT. Only while altitude hold is the active vertical mode.",
+              "properties": {
+                "altitude_m": {
+                  "format": "double",
+                  "maximum": 10000.0,
+                  "minimum": 2.0,
+                  "type": "number"
+                },
+                "kind": {
+                  "const": "hold_altitude",
                   "type": "string"
                 }
               },

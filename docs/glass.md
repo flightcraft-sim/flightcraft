@@ -387,6 +387,16 @@ step that found it above. It sounds again only after a climb back above, never a
 set below the aircraft, and never while the altitude data is invalid. The warning tone (`audio::Audio`) is
 tied to the autopilot disconnect and has no named callouts, so the voice path is the hook the engine has.
 
+### Altitude-hold reference stepping
+
+The autopilot setting `{"kind":"hold_altitude","altitude_m":n}` (2 to 10,000 m, finite) moves the altitude that
+altitude hold is holding, which is also the flight director's reference and the figure the AFCS box shows beside
+ALT. It is accepted only while ALT is the active vertical mode, and it changes nothing else: not the mode, the
+selected altitude, or the armed altitude capture. In the declared autopilot controller the pitch wheel steps it
+20 ft a detent in ALT (as it already steps vertical speed, airspeed, or pitch in their modes). The state it moves
+(`captured_altitude_m`) was already part of the autopilot's state, so nothing about the hash changes and a flight
+that never uses the setting is bit-identical.
+
 ### Set To Current from the instruments
 
 Touching the altitude tape sets the selected altitude to the current altitude (rounded to 100 ft), and touching the
@@ -639,7 +649,7 @@ bar and status bar, the CAS window, the trim and flap position indicators, touch
 (select, insert before and after, remove, activate leg), the CAS message list page (opened from the
 window's triangle or Select Page; one message acknowledged at a time), transponder IDENT, the touch entry
 keypads (baro, heading, altitude, course, minimums, direct-to) with their shortcuts, baro minimums (bug,
-annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, the two bearing pointers, Set To Current by touching the altitude tape or compass, vertical navigation (altitude
+annunciation, and callout), the data bar's clock and flight timer, the Vspeed bugs and their configuration page, the G meter, the two bearing pointers, Set To Current by touching the altitude tape or compass, altitude-hold reference stepping, vertical navigation (altitude
 constraints on flight-plan waypoints, the descent path computed back from them, the deviation indicator,
 vertical speed required, and path tracking by the autopilot), the COM1, NAV1, and transponder windows, the
 23-step range ladder with zoom buttons, the
@@ -662,7 +672,6 @@ airspace nearest pages, and reversion with the autopilot rule.
   host supplies the pilot's controls) and no aileron or rudder trim.
 - Touching the AFCS box (autopilot controls on the display) and the pitch offset option are not drawn;
   the other PFD options are synthetic vision, the Vspeed bugs, the G meter, and the bearing pointers.
-- Flight director altitude-hold reference stepping (needs a hold-altitude autopilot setting).
 - COM monitor, volume, squelch, 8.33 kHz entry, the audio panel and intercom windows.
   COM2 and NAV2 are not offered because the Sling's installation has one COM radio and no navigation
   receiver (see the radio windows above).
