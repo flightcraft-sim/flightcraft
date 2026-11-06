@@ -336,14 +336,38 @@ pub struct ChartIndex {
     pub tile_size: u32,
     pub tiles: Vec<ChartTile>,
     pub bytes: u64,
+    /// Tiles this index does not carry itself because a neighbouring region's chart of the same kind
+    /// holds the identical image (the website ships each shared tile once). Each is also in `tiles`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared: Option<SharedChartTiles>,
+}
+/// Tiles read from another region's chart directory of the same kind and edition.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SharedChartTiles {
+    /// The region id whose `charts/<kind>` directory holds these tiles.
+    pub region: String,
+    pub tiles: Vec<ChartTile>,
 }
 impl ChartIndex {
-    /// Version 2 uses lossless WebP; version 1 PNG indexes remain supported.
+    /// Version 2 uses lossless WebP; version 1 PNG indexes remain supported. A shared tile's path
+    /// leads from this chart's directory into the region that holds it.
     pub fn tile_path(&self, tile: ChartTile) -> String {
-        if self.version == 2 {
+        let own = if self.version == 2 {
             format!("{}/{}/{}.webp", tile.z, tile.x, tile.y)
         } else {
             tile.path()
+        };
+        match &self.shared {
+            Some(shared) if shared.tiles.contains(&tile) => {
+                let kind = if self.kind == BaseMap::Tac {
+                    "tac"
+                } else {
+                    "sectional"
+                };
+                format!("../../../{}/charts/{kind}/{own}", shared.region)
+            }
+            _ => own,
         }
     }
     pub fn from_json(bytes: &[u8]) -> Result<Self, String> {
@@ -373,6 +397,15 @@ impl ChartIndex {
                 .collect::<std::collections::BTreeSet<_>>()
                 .len()
                 != index.tiles.len()
+            || index.shared.as_ref().is_some_and(|shared| {
+                shared.region.is_empty()
+                    || shared.region.len() > 64
+                    || !shared
+                        .region
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+                    || shared.tiles.iter().any(|t| !index.tiles.contains(t))
+            })
         {
             return Err("invalid chart index".into());
         }
@@ -383,6 +416,45 @@ impl ChartIndex {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_shared_chart_tile_is_read_from_the_neighbouring_region() {
+        let tile = ChartTile { z: 8, x: 73, y: 95 };
+        let other = ChartTile { z: 8, x: 74, y: 95 };
+        let mut index = ChartIndex {
+            coverage_margin_nm: 40.0,
+            version: 2,
+            kind: BaseMap::Tac,
+            edition: "2026-10-29".into(),
+            expires: "2026-12-23".into(),
+            attribution: "FAA".into(),
+            min_zoom: 8,
+            max_zoom: 8,
+            tile_size: 256,
+            tiles: vec![tile, other],
+            bytes: 0,
+            shared: Some(SharedChartTiles {
+                region: "new-york".into(),
+                tiles: vec![tile],
+            }),
+        };
+        assert_eq!(index.tile_path(tile), "../../../new-york/charts/tac/8/73/95.webp");
+        assert_eq!(index.tile_path(other), "8/74/95.webp");
+        let json = serde_json::to_vec(&index).unwrap();
+        assert!(ChartIndex::from_json(&json).is_ok());
+        // A shared tile must be one of the index's tiles, and the region a plain id.
+        index
+            .shared
+            .as_mut()
+            .unwrap()
+            .tiles
+            .push(ChartTile { z: 8, x: 1, y: 1 });
+        assert!(ChartIndex::from_json(&serde_json::to_vec(&index).unwrap()).is_err());
+        index.shared = Some(SharedChartTiles {
+            region: "../x".into(),
+            tiles: vec![tile],
+        });
+        assert!(ChartIndex::from_json(&serde_json::to_vec(&index).unwrap()).is_err());
+    }
     #[test]
     fn projection_and_tile_edges() {
         for latitude_deg in [-85.0, -40.0, 0.0, 40.97, 85.0] {

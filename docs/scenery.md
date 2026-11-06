@@ -759,6 +759,12 @@ the complete installed site (Wasm, support files, every terrain, building and tr
 mip levels, charts). The 250 MB building allocation is the size of `hudson-corridor/buildings/`.
 Splitting release assets does not exempt any installed file from the website limit.
 
+The `new-york` and `eastern-pa` charts overlap, and about 270 sectional tiles (20.6 MB) are
+byte-identical. Web packaging keeps each such tile once: `eastern-pa`'s chart index lists them under
+`shared` (`{"region": "new-york", "tiles": [...]}`) and the map reads them from `new-york`'s chart
+directory. The first full-site build with the Hudson corridor measured 912 MB before this and about
+891 MB after. Desktop data keeps every region's charts whole.
+
 Urban reconstruction acceptance requires tall buildings, flat and stepped roofs, and open
 courtyards, in addition to the airport's long, low gable and flat hangars. Use roof planes from
 planar returns (building-class occupancy where the survey has it); preserve footprint interior

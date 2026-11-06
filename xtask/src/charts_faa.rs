@@ -608,6 +608,7 @@ fn generate(
         tile_size: 256,
         tiles: Vec::new(),
         bytes: 0,
+        shared: None,
     };
     for z in min..=max {
         let tiles: Vec<_> = corners.iter().filter_map(|p| ChartTile::at(*p, z)).collect();

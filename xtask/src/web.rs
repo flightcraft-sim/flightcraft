@@ -45,6 +45,7 @@ pub fn build() -> Result<(), String> {
                 }
             }
         }
+        share_identical_chart_tiles(&stage.join("terrain"))?;
         let bytes = check_package_budget(&stage)?;
         eprintln!(
             "xtask: web compile and showcase packaging check passed ({bytes} data bytes; full packaging also checks the complete site)"
@@ -157,9 +158,67 @@ pub fn build() -> Result<(), String> {
             }
         }
     }
+    share_identical_chart_tiles(&dist.join("terrain"))?;
     let bytes = check_package_budget(&dist)?;
     eprintln!("xtask: static web build ready in dist/ ({bytes} bytes)");
     Ok(())
+}
+
+/// The web regions overlap, so their charts share many byte-identical tiles. The website keeps
+/// each such tile once: the later region's index lists it under `shared` (read from the first
+/// region's directory) and its own copy is removed. The desktop data is never changed.
+fn share_identical_chart_tiles(terrain: &std::path::Path) -> Result<u64, String> {
+    use flightcraft_control::{ChartIndex, SharedChartTiles};
+    let (holder, sharer) = ("new-york", "eastern-pa");
+    let mut saved = 0;
+    for kind in ["sectional", "tac"] {
+        let from = terrain.join(holder).join("charts").join(kind);
+        let to = terrain.join(sharer).join("charts").join(kind);
+        let (Ok(from_json), Ok(to_json)) = (
+            std::fs::read(from.join("index.json")),
+            std::fs::read(to.join("index.json")),
+        ) else {
+            continue;
+        };
+        let from_index = ChartIndex::from_json(&from_json)?;
+        let mut to_index = ChartIndex::from_json(&to_json)?;
+        if from_index.shared.is_some()
+            || to_index.shared.is_some()
+            || from_index.version != to_index.version
+            || from_index.kind != to_index.kind
+            || from_index.edition != to_index.edition
+        {
+            continue;
+        }
+        let mut shared = Vec::new();
+        for tile in to_index.tiles.clone() {
+            if !from_index.tiles.contains(&tile) {
+                continue;
+            }
+            let path = to_index.tile_path(tile);
+            let (Ok(a), Ok(b)) = (std::fs::read(from.join(&path)), std::fs::read(to.join(&path))) else {
+                continue;
+            };
+            if a == b {
+                std::fs::remove_file(to.join(&path)).map_err(|e| e.to_string())?;
+                saved += b.len() as u64;
+                shared.push(tile);
+            }
+        }
+        if !shared.is_empty() {
+            to_index.shared = Some(SharedChartTiles {
+                region: holder.into(),
+                tiles: shared,
+            });
+            let json = serde_json::to_vec_pretty(&to_index).map_err(|e| e.to_string())?;
+            ChartIndex::from_json(&json)?;
+            std::fs::write(to.join("index.json"), json).map_err(|e| e.to_string())?;
+        }
+    }
+    if saved > 0 {
+        eprintln!("xtask: {saved} bytes of chart tiles shared between {holder} and {sharer}");
+    }
+    Ok(saved)
 }
 
 /// The one scenery area the website carries: the Fly NYC Hudson corridor.
@@ -463,5 +522,67 @@ mod scenery_package_tests {
                 .contains("Local")
         );
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod chart_sharing_tests {
+    use super::share_identical_chart_tiles;
+    use flightcraft_control::{BaseMap, ChartIndex, ChartTile};
+
+    fn region(root: &std::path::Path, id: &str, tiles: &[(ChartTile, &[u8])]) {
+        let dir = root.join(id).join("charts/sectional");
+        for (tile, bytes) in tiles {
+            let path = dir.join(format!("{}/{}/{}.webp", tile.z, tile.x, tile.y));
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
+        let index = ChartIndex {
+            coverage_margin_nm: 40.0,
+            version: 2,
+            kind: BaseMap::Sectional,
+            edition: "2026-10-29".into(),
+            expires: "2026-12-23".into(),
+            attribution: "FAA VFR raster charts".into(),
+            min_zoom: 8,
+            max_zoom: 8,
+            tile_size: 256,
+            tiles: tiles.iter().map(|(t, _)| *t).collect(),
+            bytes: 0,
+            shared: None,
+        };
+        std::fs::write(dir.join("index.json"), serde_json::to_vec(&index).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn identical_tiles_ship_once_and_every_tile_still_resolves() {
+        let root = std::env::temp_dir().join(format!("fc-web-chart-share-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let t = |x| ChartTile { z: 8, x, y: 95 };
+        region(
+            &root,
+            "new-york",
+            &[(t(73), b"same"), (t(74), b"ny edge"), (t(75), b"ny only")],
+        );
+        region(
+            &root,
+            "eastern-pa",
+            &[(t(72), b"pa only"), (t(73), b"same"), (t(74), b"pa edge")],
+        );
+        assert_eq!(share_identical_chart_tiles(&root).unwrap(), 4);
+        let dir = root.join("eastern-pa/charts/sectional");
+        let index = ChartIndex::from_json(&std::fs::read(dir.join("index.json")).unwrap()).unwrap();
+        assert_eq!(index.tiles.len(), 3);
+        assert_eq!(index.shared.as_ref().unwrap().tiles, vec![t(73)]);
+        assert!(!dir.join("8/73/95.webp").exists());
+        // Each tile, own or shared, reads the region's original image through its index path.
+        for (tile, bytes) in [(t(72), &b"pa only"[..]), (t(73), b"same"), (t(74), b"pa edge")] {
+            let path = dir.join(index.tile_path(tile));
+            assert_eq!(std::fs::read(&path).unwrap(), bytes, "{}", path.display());
+        }
+        // A second pass changes nothing.
+        assert_eq!(share_identical_chart_tiles(&root).unwrap(), 0);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }

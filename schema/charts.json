@@ -39,6 +39,17 @@
       "maximum": 255,
       "minimum": 0
     },
+    "shared": {
+      "description": "Tiles this index does not carry itself because a neighbouring region's chart of the same kind\nholds the identical image (the website ships each shared tile once). Each is also in `tiles`.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SharedChartTiles"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "tile_size": {
       "type": "integer",
       "format": "uint32",
@@ -107,6 +118,27 @@
         "z",
         "x",
         "y"
+      ]
+    },
+    "SharedChartTiles": {
+      "description": "Tiles read from another region's chart directory of the same kind and edition.",
+      "type": "object",
+      "properties": {
+        "region": {
+          "description": "The region id whose `charts/<kind>` directory holds these tiles.",
+          "type": "string"
+        },
+        "tiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChartTile"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "region",
+        "tiles"
       ]
     }
   }
