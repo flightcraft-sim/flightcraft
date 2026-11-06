@@ -2789,6 +2789,1166 @@
     },
     {
       "region": "eastern-pa",
+      "dataset": "scenery",
+      "tag": "region-data-2611-scenery-1n7-20261105",
+      "asset": "eastern-pa-scenery.zip",
+      "bytes": 49890837,
+      "sha256": "4d544ec0e137a59ae02a382d7b49737885caf3fcb64a83eae8fb17b611aa0290",
+      "files": [
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/ATTRIBUTION.txt",
+          "bytes": 1196,
+          "sha256": "9c161b5f082171b4047780a92075034fada952bd8d72889e4228c50f75fd5ae4"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/alignment-audit.json",
+          "bytes": 2083,
+          "sha256": "0b15037f9fab517662144e350ff5d74f1c62d5219405b81ef73e4da0cce6d2d8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/alignment-overlay.png",
+          "bytes": 360311,
+          "sha256": "5460477e7cec3c473da984de3f65c6be5d1ee8e898b7b1c427dd6a232073a7ce"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/build-report.json",
+          "bytes": 404,
+          "sha256": "1f87a39fcc78ef6bf69e59c3ae3302d47d44f302464e2dbd526fa404f7d257e8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00000.glb",
+          "bytes": 10888,
+          "sha256": "990056044c3c8d85ea78a5bbd0d9146ea9a309390f0fac6456cba993ecacc6d7"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00001.glb",
+          "bytes": 14648,
+          "sha256": "3a900683b95bd2b79a1df85b83c3e13f15f00333eadbb55f8e94ed640fd8bdc1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00002.glb",
+          "bytes": 17948,
+          "sha256": "97b23fdf256f4c0fdd2b85b6f71f3db0785ddc7d0f6a478faa776e1e1a95c7c3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00003.glb",
+          "bytes": 21568,
+          "sha256": "d12b998233b6c1348d9c9c6c7d3fb405bd64f48cd10cd255074acbeea2635c81"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00004.glb",
+          "bytes": 35912,
+          "sha256": "21b655637c771b6d1b13a91b5f1b519ff3266947a99a0f1914d7bcfccb59f3b6"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00005.glb",
+          "bytes": 15736,
+          "sha256": "c99f68e79af597806c064b5e269983abda4641de0a56410fb6a262dccecf92ae"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00006.glb",
+          "bytes": 9468,
+          "sha256": "ff8f5a29d3f340de38608b8db2d9c2fcdd07ae3c57d2cc9b3f219dfaed318079"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00007.glb",
+          "bytes": 17380,
+          "sha256": "eb6c662c466cb77477a96433d702195d7c5e892496e4fada376b0f3690cd2a9f"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00008.glb",
+          "bytes": 13776,
+          "sha256": "e4663912eb8a2268035a698c876a98c4cccb3d0089e9baf043adae424f96df06"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00009.glb",
+          "bytes": 17336,
+          "sha256": "1fd50f6e750b6015160288112c79dade04734569cdae1b415ae92e34c6ab4f33"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00010.glb",
+          "bytes": 15608,
+          "sha256": "0dd590e3f8502bb69a1d6b3e97b1e55172c4de1c973ff6f114d87ba43b6d0019"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00011.glb",
+          "bytes": 16232,
+          "sha256": "4863495dc85a5f0c207db7ab00fc185fef4e71dc5e2aeec484a9ed8e69ea5363"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00012.glb",
+          "bytes": 38372,
+          "sha256": "1d401c1e0e354b3bbc6e8d440f11c0b633a4b6ded8743590de495ccf5cc171aa"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00013.glb",
+          "bytes": 66636,
+          "sha256": "cc8de459523ac83f2f6eccca6ecce49b618d939e0042b77eee2719987f98cc32"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00014.glb",
+          "bytes": 15708,
+          "sha256": "c691c9ad215f4ea596b409ba12e945b70e5521b784a9239b26d01c80d567918e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00015.glb",
+          "bytes": 158024,
+          "sha256": "99ffdfb5bf6ab041d94a9e1c94193f37c777c042dfcbf058435160a697186957"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00016.glb",
+          "bytes": 16168,
+          "sha256": "725ac358d39fc947bf08d67334de1362e10680a6763d30ba72acddb9eccb2374"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00017.glb",
+          "bytes": 95636,
+          "sha256": "97b68263dffa8da3dedae0ce93cf6c66f5bc1c499b59a2fce2fdb59bf14f657a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00018.glb",
+          "bytes": 179812,
+          "sha256": "2393f3d40cf19748964b0558cd61af41e5cd6165b6d289fee21d2339313f3e40"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00019.glb",
+          "bytes": 16464,
+          "sha256": "b56568657a71652cc316da7023250258eed586724e144d9f72b6392b1fa3fcf3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00020.glb",
+          "bytes": 149796,
+          "sha256": "db4411b9bca0b7917a6286321509e704a8d0f398aba0afef30f75e3dcaa3bd12"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00021.glb",
+          "bytes": 147652,
+          "sha256": "7aeb3ffc25f0df20c06b0c33a6d7e79d8073ae76c96e31b649e2341ce36395ff"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00022.glb",
+          "bytes": 13676,
+          "sha256": "104830ac69aea894d48e2725dfbef58de58632ef32c981ca95b504f4da587c6e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00023.glb",
+          "bytes": 38012,
+          "sha256": "72052c89dc6d6e696b3c03ffdf956f872dac9a64852c09e02b17a17954f2eadc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00024.glb",
+          "bytes": 12412,
+          "sha256": "f991903aece816d43276fe9945326618492362e4e81f21c84e5670d06d406ab9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00025.glb",
+          "bytes": 11616,
+          "sha256": "d86a4515110e35437ad7d608e4d8d731d31e5df0fcb643348aeeaae5f604b864"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00026.glb",
+          "bytes": 16184,
+          "sha256": "22bb3b25758a1a5d5c1a838af009f46d52db41db5ee3d70f62b75bb98da8f505"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00027.glb",
+          "bytes": 17840,
+          "sha256": "d33fbc50b84191815a2b5a6d63db31e059ceae35085d50ad5eeedd3599b12fe0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00028.glb",
+          "bytes": 9744,
+          "sha256": "d75f966ba3ba973cef3c050d60828b3eb7b9a327891dffa1455c2b8b75257180"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00029.glb",
+          "bytes": 122772,
+          "sha256": "79ac872e526fbf0eb63df90c63c560ac834acaaef740b2cf9fb62ed5674e1f84"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00030.glb",
+          "bytes": 13792,
+          "sha256": "5992309043830c77905795d015c74ae2dc782fc11371023e61fed5524bb3ea0f"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00031.glb",
+          "bytes": 169796,
+          "sha256": "b47a04d5d2dc9fe5bdabbaac1264351fd692ab7feed7f6e481ed2575401c065a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00032.glb",
+          "bytes": 10064,
+          "sha256": "bc64d358cfb0c59bd4e5fedf2f2436ede1c8345529ce7c5b151b0476aac24e2d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00033.glb",
+          "bytes": 17048,
+          "sha256": "8bf62ae04498c793ed34a420d4cf8a87823d17a000965659eac70bf9006653d3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00034.glb",
+          "bytes": 15872,
+          "sha256": "161eb61c5e1dcf7c42855b0111c7441655b6cbd9dcbf16c637f9b1b8d49213b0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00035.glb",
+          "bytes": 16632,
+          "sha256": "b7312632dccaad81743df1f3ec9910af6207d81367c15e735ec04b707ab2a1a5"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00036.glb",
+          "bytes": 17164,
+          "sha256": "b699b5d17c6e964e898a4f8627c4d67129e5c13c3432e92472ac9cc18930f487"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00037.glb",
+          "bytes": 15860,
+          "sha256": "82fe5c9f713b8374f2f10ca22dcff1c268150a9522e89b96855a8c96decd2176"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00038.glb",
+          "bytes": 14180,
+          "sha256": "7c237826bbc87879e9ffd7d248d523de11b6ba2326efcfd4d1fd25db3979dd81"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00039.glb",
+          "bytes": 19932,
+          "sha256": "0651e2bd8e4f5acc7dd49886cbc3f447fd758ec0eab84cee48e62948f2309b86"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00040.glb",
+          "bytes": 12416,
+          "sha256": "fcbcef90253aa7f652d07013a08b012b665dc7067dcfdc579a0794bc7de1e5d6"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00041.glb",
+          "bytes": 29544,
+          "sha256": "0b3273326b78f526645a425807e8275a4de6379d0469b788327fdf432d247b8e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00042.glb",
+          "bytes": 13132,
+          "sha256": "f3e21c28d5b3f56fdf1d29012c314f79afc3cade702e0298b44cabf1acf180cc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00043.glb",
+          "bytes": 13804,
+          "sha256": "b0a029887dac685728b1e739570ee85d122b6477c700adf7b48a96b53dc0c7ea"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00044.glb",
+          "bytes": 61384,
+          "sha256": "4c0972bb86007763711a69a903f4348867f237203eab8e20649739d0e382f481"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00045.glb",
+          "bytes": 45272,
+          "sha256": "2e16b468831e592f6001c8b72be7ac0dc696af88d042d1a081ca431beea3eda8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00046.glb",
+          "bytes": 121068,
+          "sha256": "314d2bb8dce9df64a984b9b8dc673edbc4ea30805553f274dc98922b48a1d1d9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00047.glb",
+          "bytes": 12144,
+          "sha256": "384e229c3dd22f446f0e2f86e7d770620e9f0f7b53a4de19c7fa650b6a38c993"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00048.glb",
+          "bytes": 9760,
+          "sha256": "5ce7ed715061906adb3ff66bed7427e93d7a0cd9d93ea690b8d13e6572ba5de7"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00049.glb",
+          "bytes": 19696,
+          "sha256": "02dbbaf31e22d81f3e1324ce063dae49f4dafcde5328680b13f59bb3dc096e88"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00050.glb",
+          "bytes": 49200,
+          "sha256": "8af4e609a5d87731fddd93cb4872786b97b83c5976ccc4a46badaf3d15c92195"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00051.glb",
+          "bytes": 14096,
+          "sha256": "9fafe642000789de895c42d9a97a0c846a4f3e48c56c51823a5e266364251deb"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00052.glb",
+          "bytes": 11176,
+          "sha256": "f26cac375cc26bb737ecc21bd08abb3e145bddee92ec2695ddc553a14c390496"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00053.glb",
+          "bytes": 14092,
+          "sha256": "d52e425e1332a64736e74d00312a44873f87a44c287b986c230b166c3af5e721"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00054.glb",
+          "bytes": 14076,
+          "sha256": "d08897ac111f1c3ae44d6741d4e4ae9b27bfa32ff31cd9276a020af27ab402ad"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00055.glb",
+          "bytes": 77012,
+          "sha256": "0cdd1b057ad4d03077b23e715fcab4828aea634dcbc7ef509387de43604928b1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00056.glb",
+          "bytes": 9796,
+          "sha256": "d54797b98d682a2d05e2f73da942d88372eab72d037ab5c4f937780adaf9f45b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00057.glb",
+          "bytes": 16704,
+          "sha256": "8dc24a4d98c1af0001ce851b069ced69bff9d2b507ee1e73729a1e9822080c21"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00058.glb",
+          "bytes": 11620,
+          "sha256": "4ab786397bc610bcdccb226d064c4cdef8cfedb375d9ebbf9998376a1e6a2364"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00059.glb",
+          "bytes": 12740,
+          "sha256": "a4fbe8426f632eb2ab32c7bc6e8386defea7128aff4f624d79065cfc9e3d27f4"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00060.glb",
+          "bytes": 13692,
+          "sha256": "6a15e062e7d1c099e1efa962393c351e4fdf88119386204d6d7f60a315b04e62"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00061.glb",
+          "bytes": 14912,
+          "sha256": "b4553e8abca8073056c72c3cefc06ac4150568b5ad939ffebce997a9f8156de8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00062.glb",
+          "bytes": 55852,
+          "sha256": "3f466dcda62757b35ffd5120160de2770d52fbfa8ccb8b6d3b737baec443bacd"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00063.glb",
+          "bytes": 10424,
+          "sha256": "9d30c8c8089e20590bf289a1ac6b1dcdb5108c40876b27e825c99b1e6fea1b0c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00064.glb",
+          "bytes": 15928,
+          "sha256": "40ebf89b6dba8d25c6dc08d010793f3a7eef6515ccb575278a7226ab8aeea11b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00065.glb",
+          "bytes": 16768,
+          "sha256": "271f2e87d2a4ac40a06596227488c9bb5496408a6446c2738b29808e8716fcc2"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00066.glb",
+          "bytes": 12468,
+          "sha256": "2f32392f6b4775bd7b88aa7802d3816aed46931474308f9578b1623055aae81d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00067.glb",
+          "bytes": 13124,
+          "sha256": "b6b598dcd95e827912da8f318e689e9c6b5bc4aa25f1dd639e60295c1f414896"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00068.glb",
+          "bytes": 12528,
+          "sha256": "fd147d812591551969c93421543413a1279d412ab1fc3f3b04b284c27c095f41"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00069.glb",
+          "bytes": 14088,
+          "sha256": "8ae7ca3b144ad440feb3108a9a492497ee7b8e2a636436c63c16b1b261423115"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00070.glb",
+          "bytes": 18764,
+          "sha256": "a3e816fda23cb35ebca8998661df05082f895e9b30ad307d5a13681be7517757"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00071.glb",
+          "bytes": 10972,
+          "sha256": "e1bdb1822c1bf99e9f22965ef1497fe933cee4037e61e90c753cbd86824fddef"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00072.glb",
+          "bytes": 20324,
+          "sha256": "392c78b4234cd8ed7682a36646fd4755659b1ba1f194052567c4b721e63ace25"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00073.glb",
+          "bytes": 10604,
+          "sha256": "19010bae9f099180d38d7ac81050d5e1236cffe25f521cfd979acc866f3a4c53"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00074.glb",
+          "bytes": 14444,
+          "sha256": "60fae06c3313a903b3c69eadcbbda45d7eeeabfd73c2187c9a294df6af3d28ac"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00075.glb",
+          "bytes": 15424,
+          "sha256": "d3b20725047889268dcddf58e5a4314eaa51633655c0daee6b8af9df39363df1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00076.glb",
+          "bytes": 21120,
+          "sha256": "4c5c9144f78f9d0f5fdc364112f0e0e75a9dd26f21ed24a89ce140b666428a85"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00077.glb",
+          "bytes": 17432,
+          "sha256": "f807404d0c47f3ba0af26de3d004a1213b19abba420e6fb026efd2b60d04ac9a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00078.glb",
+          "bytes": 10548,
+          "sha256": "6a8032f3f153adc86bfc4a7e5562c30f34d750cb1400d46fe1219a971e142a1d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00079.glb",
+          "bytes": 13724,
+          "sha256": "17fe6ee7b00f5ea77f5a89da13da4924c36fbafa02d37b76e272777414241edf"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00080.glb",
+          "bytes": 13164,
+          "sha256": "c835abab63030ac0f150c4a10018f8740f6546713585ae32a9acd67f1051e3b6"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00081.glb",
+          "bytes": 18684,
+          "sha256": "26a52b556fc649e8951d2fdaaebee9f6e7e89e063bbfc7e18c289a65815ab6d9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00082.glb",
+          "bytes": 10668,
+          "sha256": "3da6930356ed51c14e3aff31bf789f84330cac02e93c3d838d21b0f7e4259199"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00083.glb",
+          "bytes": 13572,
+          "sha256": "73a76df9bf69e7c8081dd096facfc98e97786078b1b2803db75d59a4c2f744e0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/building-00084.glb",
+          "bytes": 15316,
+          "sha256": "99b9c20e776e015e705697c92f13a9c3de6829469d8199bcce95048f6bf1f97c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-0-0.glb",
+          "bytes": 2102208,
+          "sha256": "71df204fcac47b105cefe16038c535233cbe8a66d856d15ea215e3b8731e746b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-1-0.glb",
+          "bytes": 565960,
+          "sha256": "038d51fdc12bd09183197a9464be7dd81017d6a461c76c7f5d7975225b330d9d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-1-1.glb",
+          "bytes": 597388,
+          "sha256": "97dab3670d8360afc51a0d49d3b3a38d9fc700f680b4b96416c4ea5973f6a8e4"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-1-2.glb",
+          "bytes": 491140,
+          "sha256": "6c34ff59d842dcd609376387d81f916b268ac86760322ff4b6c90a91d6b666f3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-1-3.glb",
+          "bytes": 453212,
+          "sha256": "439f36004876e75432aea22f1ca570da5fd2ad7bc6b7c7c2e2a96d9dc73c86ff"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-0.glb",
+          "bytes": 368080,
+          "sha256": "8829e5d60683964f5c7a1a4e8d84ecd165ce85ba79ad70a1c9baf43310191e89"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-1.glb",
+          "bytes": 85376,
+          "sha256": "e2e27c793e4ed76227667f6a7952c4466e82bf79cee6833152c551f453a92349"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-10.glb",
+          "bytes": 83656,
+          "sha256": "d271f547aef14f75d2b184135634d69cdc6dbdf01c7215a717b7ffc49cd9c6b5"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-11.glb",
+          "bytes": 48488,
+          "sha256": "311f0eef8d5a3ccb82ac520e5b8bcbe1595d7d0381fc42510aebc50cb87774ce"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-12.glb",
+          "bytes": 87444,
+          "sha256": "7923992636de0489e4056fc7aef50c8154fe8458d09fe623881323a66c5ff44e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-13.glb",
+          "bytes": 77920,
+          "sha256": "c508ea61b8ea9cd93f223b0ba9dfe039687ae3dd9b7285488c435ca889eca8d1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-14.glb",
+          "bytes": 209232,
+          "sha256": "2ce3795c17642e3b8d0a1cdbed9bfb29868f12eb594d3f1fefbf3ce409c23361"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-15.glb",
+          "bytes": 83896,
+          "sha256": "7a78f1cc5e2e800d95ae4e94fe486f1f24ae2b08457154471e4c09c4db737c76"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-2.glb",
+          "bytes": 67140,
+          "sha256": "7e8377dae61e75380edd1ed1977e397bb1534d7bb277e6313fbcafb50aed2eb8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-3.glb",
+          "bytes": 50396,
+          "sha256": "a0de904daebe84769b85bb9e7c9c75748d56cfc097c9c0e8237f982081ef3a07"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-4.glb",
+          "bytes": 80448,
+          "sha256": "fb1fc6a953a83a741a0993f4f1abcf662e4fe6b51a0ba1111beae8171bc0a848"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-5.glb",
+          "bytes": 296740,
+          "sha256": "bf28d246b74f6f868309fdf8c75fe2b44bcc80802323329144e8c7ec5a6e9315"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-6.glb",
+          "bytes": 173108,
+          "sha256": "b6c35b65b443670b2c65e943f8cfeabbfafb4c50f76613076c7067e1c76cbe79"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-7.glb",
+          "bytes": 52196,
+          "sha256": "dd12359f8c546eab576ae5c0cfde3e5284693ab9ba3893ea272d5d9359bc94df"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-8.glb",
+          "bytes": 122384,
+          "sha256": "c1ac49bc4c06db5ec9836aac015405df7e465307104be76dbc5e38596272e5b1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/lod-2-9.glb",
+          "bytes": 241716,
+          "sha256": "a2dba10f7e589f005916054861ca771b6feed15c66190df8c3fb08c0885ee7b9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings/tileset.json",
+          "bytes": 124852,
+          "sha256": "a672ddf6b48b342768b73871cc822b5fd101aab942c8cc608e1956c493d5fed8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/buildings-audit.json",
+          "bytes": 51884,
+          "sha256": "634e79c49a374b7224ce315929ba8e65f51bba8cea0014ef0b2a3db4727645cb"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/datum-audit.json",
+          "bytes": 690,
+          "sha256": "99135f2e10606bdd587c7e00f0af99014f012211f8d6f740d9def207a289015a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/lidar-acceptance.json",
+          "bytes": 2900,
+          "sha256": "3c0d0a04a8d22f0bc4926b401e5448af28ce416975d78ead8042a121bff7cb0e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/lidar-audit.json",
+          "bytes": 415,
+          "sha256": "3c9187cabca29f5927463b07b7cc8e08035613000b13469944b57ff432b3beec"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/lidar-ground-audit.json",
+          "bytes": 484,
+          "sha256": "44de51ac7504dd3f686d3b041932e2ca2a649c517f7989d60cb2586fbde055bf"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/lidar-sources.jsonl",
+          "bytes": 129775,
+          "sha256": "d6b72464253494ae7e7e8f6fe5125ec59308eee941d363a3b8005409f5eed4c2"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/reconstruction-provider.json",
+          "bytes": 107,
+          "sha256": "85b021c38ff5d440817fe0bffb641bb4dfe76937c0805233d01b0493bf134a3a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/sources.json",
+          "bytes": 132149,
+          "sha256": "21be4c1620bdda1828a03bf586ae00b4c84889f13da9f025229844a40ddc0f56"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/0/0/0.glb",
+          "bytes": 422188,
+          "sha256": "fee359258f5b270c32d73abf8d754757d43a74838761447ce815b09828465806"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/1/0/0.glb",
+          "bytes": 391840,
+          "sha256": "904c88f58889c8c5c520f009275bd0900cbe95dcfa76844fd88d3d9a758790ca"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/1/0/1.glb",
+          "bytes": 366476,
+          "sha256": "3499dda0eddfc254bec272944896f586c10dda8774b2dcbbe618c0b85ccf1766"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/1/1/0.glb",
+          "bytes": 395400,
+          "sha256": "b3322b761efb80baec71c493ff806d172141e800672fdce50311b184b3a505a9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/1/1/1.glb",
+          "bytes": 397772,
+          "sha256": "f4aca3d124dcccab0f980771f8100050e80fd165a93b0f912a2d91365833c468"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/0/0.glb",
+          "bytes": 315532,
+          "sha256": "dfbbd59df6129b7ff07fbf483136642615e1ceee2242c8cdcf43c42c97376472"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/0/1.glb",
+          "bytes": 348704,
+          "sha256": "cf28574bc67c70b1bec710924fb32e9c8986dd899defc2941a007daadebcd9c9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/0/2.glb",
+          "bytes": 337664,
+          "sha256": "e3cf48374bd566f1965567f0af59049ec37fdca6cdfd5bfa80d652436d732ad4"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/0/3.glb",
+          "bytes": 343844,
+          "sha256": "3012fbde90c2dd710917dcdb76d58653b572d6e736a64806419d95e97bfe3229"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/1/0.glb",
+          "bytes": 366308,
+          "sha256": "fdb6fb1ada2d6eeefacfae2d62e5ef5c16ce936739e274b81ea0aa0c389e4b10"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/1/1.glb",
+          "bytes": 358056,
+          "sha256": "9b84fbd6bf2665a9cabf99a1968c93086e160a768b0dde5b9466b1814c9be2f3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/1/2.glb",
+          "bytes": 327620,
+          "sha256": "8b1775bc6543a247d717886b58a7a9da89bdf1a5533e340b214e6cfcf50cd2a9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/1/3.glb",
+          "bytes": 269948,
+          "sha256": "571e78dbe39ac5611a9501f8b893a1634cfc13a38564c4220e4a6514889e2864"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/2/0.glb",
+          "bytes": 365712,
+          "sha256": "4b2cb8d45c1fe2384e5db10828aea34601a987e7692faa2b9e8bea7d775333e2"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/2/1.glb",
+          "bytes": 337560,
+          "sha256": "00ed936aa5600bcd17f7db1bb32a09f96e18e252de6eb52437759729944b325d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/2/2.glb",
+          "bytes": 331740,
+          "sha256": "052b500812e24f13a28eb0865e8fee68435a578ab5843e3fb37940e95df34f28"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/2/3.glb",
+          "bytes": 338276,
+          "sha256": "cf9e58604c3c851bf7e6ee52210bff4c347372383e88cdbad34c5d1b9c00d89e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/3/0.glb",
+          "bytes": 332584,
+          "sha256": "bff571ef71adc116ac3033a80fdcf976c2dbfc6b1f8db7525f7190794c3d9e50"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/3/1.glb",
+          "bytes": 360276,
+          "sha256": "8e47b4830e6c6b4733f8327d1a859b26bb2125663bd6a81efca1bd365dff6d8e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/3/2.glb",
+          "bytes": 371376,
+          "sha256": "809376b5cf74a5e6f649fec92c1f614867c1441f1e4522073ac6c97988074b94"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/2/3/3.glb",
+          "bytes": 371660,
+          "sha256": "69b110b8c237bf85f24491a81096fa79b3da5acd8de2562ae3e7ba7583fe95ab"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/0.glb",
+          "bytes": 247132,
+          "sha256": "9764e3a30827ef5890fdebc2655619c712b24a1e4ed127e33269519183d037a1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/1.glb",
+          "bytes": 225260,
+          "sha256": "f2c7369a2018a97cfa78472a5a00d7be60c19ea8b6d9210d456a62ed08742bd1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/2.glb",
+          "bytes": 267432,
+          "sha256": "2d606d498d37d1cc3737948e7ad733a8421de5cfb5a07a2a9aea8b187bd53bd9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/3.glb",
+          "bytes": 288500,
+          "sha256": "352bc7028c57cc3cd283a34ee9f8e52d23e45a13cf151bef62b720f6f6e7f16b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/4.glb",
+          "bytes": 296080,
+          "sha256": "14fbd37d5868a9315ac85ac319232825dfb6515c4874cb4df4ab95f9a7d1a9f3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/5.glb",
+          "bytes": 250456,
+          "sha256": "57651910097fd9a6dd659d7fb744002498c42df4d9db1e38e94cb51ac4fe2fc0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/6.glb",
+          "bytes": 290384,
+          "sha256": "c2c65990161e5d234f123e953691f46d6a8749e7836fd857ec5ffafdbace17d8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/0/7.glb",
+          "bytes": 295916,
+          "sha256": "ec986a1574f578a3936bb132cb5682149b51ad9017b4dcd51c1a447c46d7d330"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/0.glb",
+          "bytes": 285508,
+          "sha256": "0fd870143f099ee3332356dcf87e014e08bafbc8eeee81a35fff3c05d081b784"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/1.glb",
+          "bytes": 275776,
+          "sha256": "7108e8f7a6be9414e43505c76f72b89ed6a6973c6128486791530467adcc10a9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/2.glb",
+          "bytes": 288936,
+          "sha256": "e7180a9b3d6e4a8fa9b563e9a0064ed02617950ade8a2a285d799666a2579858"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/3.glb",
+          "bytes": 290484,
+          "sha256": "c7daf74edbf09e217b004fc0fd4edf058fb2054f66610b6547757acf30d5c486"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/4.glb",
+          "bytes": 296028,
+          "sha256": "100aed2ea6b3b5c9136b548e893329c55e918d01fb5b621b6bac8ed3212e4579"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/5.glb",
+          "bytes": 268600,
+          "sha256": "ea664e1d8e90ffd4aa0b9fe0bbae244ed76893cab81e5280ae76c2d43e4f24c0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/6.glb",
+          "bytes": 264724,
+          "sha256": "01ca5ad5e570351159835b4d4b066524ebe8d07030aec178769cf7765d5cbae3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/1/7.glb",
+          "bytes": 266876,
+          "sha256": "f24369bd2b43c2798c462a52e3592db5109502efe5c83fdf0ffa0172fff62625"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/0.glb",
+          "bytes": 291424,
+          "sha256": "ff28aaf89d61cb3693e3cfc41b8288dc3b532ce794d60724c16d9b8320120045"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/1.glb",
+          "bytes": 290204,
+          "sha256": "ac280fe8bc457dc50918fdf14ec64f8bfbd879d232344f06b209359e77620c88"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/2.glb",
+          "bytes": 285464,
+          "sha256": "2d0d398b94a284dd8afb65cf638d089589153bb10df018cf8fbc6cb2e19f0209"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/3.glb",
+          "bytes": 291804,
+          "sha256": "d4d51ec697651064e503d8066bce9b1ad7a9953cafcbbf0645a0a1ae65ba7bc3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/4.glb",
+          "bytes": 277512,
+          "sha256": "5a40c709fe340baeac96f6400c5f26e024d865aeecbb06d806883775249080bc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/5.glb",
+          "bytes": 256372,
+          "sha256": "8ae551bbf002fe033317e2d4c49faefa1da1bf2ef627a29faf9e6e1872724b8c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/6.glb",
+          "bytes": 201968,
+          "sha256": "9ba823dbf9d25b5c4e2b0f9cb12066d86088000571797d472160907112eca608"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/2/7.glb",
+          "bytes": 234288,
+          "sha256": "24e05893771f942a66d77aa7e85fd593b0111ca5009ef5ef53103a307ae96967"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/0.glb",
+          "bytes": 301220,
+          "sha256": "152a57126344cf9fa727fb64a2ff5e058be10ece084eaa72e01d6638d36dcb72"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/1.glb",
+          "bytes": 286908,
+          "sha256": "837b3e6ae94acbead050389cce5d68eadc81e25bae1ae3cbc9638f67500f322f"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/2.glb",
+          "bytes": 292964,
+          "sha256": "c3c5792f059cbdb216acfcfea72a368cea14311e80d5a770563ae05a5bc5ef34"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/3.glb",
+          "bytes": 295720,
+          "sha256": "164a9d5d87686f694d789c3299277df6d5ccbd6f969da9cadc706303064dec75"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/4.glb",
+          "bytes": 236584,
+          "sha256": "6cecd81b3855cff4f565f285a8d8cf3057b35f2f2240487a1a22ac1afd883d02"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/5.glb",
+          "bytes": 274380,
+          "sha256": "592eeeab766caaf58155dab3c7d6df85e2c2b41a0b4997b541ab512a7b35041f"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/6.glb",
+          "bytes": 127708,
+          "sha256": "2ef5262697a7a65768ad91f12c097f79c67fc67a1de754d1e1134810a83a545d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/3/7.glb",
+          "bytes": 272224,
+          "sha256": "99ffeebc9a2f657c2a7ddc4b902041e4c8ac45d95da76ae660fc53a6a5335198"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/0.glb",
+          "bytes": 305936,
+          "sha256": "c657d878bf6769a64f09c31c655ea4108ae316295dabb70f337d410c07449de2"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/1.glb",
+          "bytes": 290884,
+          "sha256": "bafc8a9b9549c7e28448985b0caf24b84c6fdde1e9a62e0e99f7d3658e1be6ad"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/2.glb",
+          "bytes": 293176,
+          "sha256": "92c2ca71f21bd98c91f11bee4d5ed661dc81b8232aa0b49349c37b2d37962c82"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/3.glb",
+          "bytes": 267340,
+          "sha256": "016c28cb447f7d524bfc738ce9e40cab3ade2a9a1bd2cbc8bbc33c5754216a90"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/4.glb",
+          "bytes": 231840,
+          "sha256": "ddf65c4c960636aa92a908ee5f3213066f4f3efaa63ea0b36cc98ce8c39c166c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/5.glb",
+          "bytes": 289748,
+          "sha256": "56f094ee75bf39f93c2ed9d5dc5bdcbae9f9cd5e26e0efc755590543270ab849"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/6.glb",
+          "bytes": 232148,
+          "sha256": "292ebec168f296f14f719f7df55295573e1e4daf323b7da18a08faa180a8b8b2"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/4/7.glb",
+          "bytes": 279604,
+          "sha256": "333713cb8b7852974334b9bf12a53182c140cc23d88fd65d6cca6f78186b1887"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/0.glb",
+          "bytes": 299300,
+          "sha256": "c77154852bc62eab497191059c9e8b06c0c581537a00f2021f875f9462682cd3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/1.glb",
+          "bytes": 288544,
+          "sha256": "c265712c59b31ebe9202c331a13e7af2bf327ac4e126ffbc24bde3c1741b3350"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/2.glb",
+          "bytes": 280876,
+          "sha256": "72df05511dcb0fa1583df3c725a9db62dc596bd69e0f4fc5fcd89dbb6e498ece"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/3.glb",
+          "bytes": 243600,
+          "sha256": "5cb5623e2e198d1b3a4383dd516d4e18683ac6131bd79f191b4595cdb4b92bfd"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/4.glb",
+          "bytes": 269072,
+          "sha256": "7e6660d3d225097a12a0abcab5f14423f1bcbc01a0571cf0a0421a3688e87d43"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/5.glb",
+          "bytes": 269292,
+          "sha256": "c625f2e3c8f9a17a841c5ce13990258c4d2769b7d3c17c2b4c18c255986b3fbc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/6.glb",
+          "bytes": 284584,
+          "sha256": "cb4c233125155334bcc35268ea03f409dc21b1a143da78817df4eec9ac91cf5b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/5/7.glb",
+          "bytes": 299660,
+          "sha256": "3241ad00ae5f31e7fd65ad28125fa29f7d1c01ba694113a34496e02fa8965947"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/0.glb",
+          "bytes": 291388,
+          "sha256": "fd1dda4e8bffe785e92c2b60519126213f1ec1aa2f087ed60456b14bccd955bf"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/1.glb",
+          "bytes": 279212,
+          "sha256": "952631e22a3644e5ff05dc53e5c62482dbb66f9cd7b94f5368819b4977c1f596"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/2.glb",
+          "bytes": 278304,
+          "sha256": "c567b4c010d1fa188c0194d59b8e5f86e7cbf7d79a2f5cbf46e682df29453202"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/3.glb",
+          "bytes": 275140,
+          "sha256": "b0dd37cdaa02483067f207b044810e6dbfcbf1f4d7d7c7000a35545d53e02ae9"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/4.glb",
+          "bytes": 300996,
+          "sha256": "995996ae9db3744b32f226218f094290aaaf18e63c5b90939e157450ff8f9750"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/5.glb",
+          "bytes": 304044,
+          "sha256": "3ce7664e78880e0d0e4411d178af7aec06a17865b9255a66345244061c8d2b88"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/6.glb",
+          "bytes": 305968,
+          "sha256": "47b4083f1b85047991c9df5fbf76bedf51f85b489e785af2522fd2fb64f716bc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/6/7.glb",
+          "bytes": 306876,
+          "sha256": "fa12c4d4cacde06bfe14e45e9f58dcdb3c073284521649820a6acd8bcc30d068"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/0.glb",
+          "bytes": 255428,
+          "sha256": "27de87a73857b17081700af76bb784add68ba9f8ad4c661ebf4c63ce6b39503e"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/1.glb",
+          "bytes": 240988,
+          "sha256": "cf2987af09e53c3e812e412c9af8804e489bb1292a4041d893563aebe66c96ac"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/2.glb",
+          "bytes": 297192,
+          "sha256": "8c6bab2288041528470adfa7dcca718f61b48e91ade04da7cc8d2b5d1a175087"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/3.glb",
+          "bytes": 318164,
+          "sha256": "72cf888392136bc0c910bcb44193e993ee23cac4fa399c3a3a7a01f7430984de"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/4.glb",
+          "bytes": 306892,
+          "sha256": "3e7aea6bc540936ec59f2b2b61ba4969c147a1e9e3d8fa595ff4db553b8e3f71"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/5.glb",
+          "bytes": 316528,
+          "sha256": "9c9fe6693ca2a7343a33be7c356e1f1923fd3cfd90c4f672171cfe591048a658"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/6.glb",
+          "bytes": 318612,
+          "sha256": "25823a82114f2234657bd397f15214548162a5294031c18365966d1759c1fc0c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tiles/3/7/7.glb",
+          "bytes": 306328,
+          "sha256": "b5cfdfc95298d6997fd1c5fc10aac1f44be4f4c6f3d5f3156f6147daeda649c8"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/tileset.json",
+          "bytes": 124663,
+          "sha256": "98d94755e2cd7c29d20796c300a60592385fb4dbd043c496a1719c2ad60a8467"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/0-0-0.glb",
+          "bytes": 471436,
+          "sha256": "6b7aaedfbbbb1a4bc93a9dbc467d7ade763f6684104bac8bf0453724093b889a"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/1-0-0.glb",
+          "bytes": 225308,
+          "sha256": "9ae53fbc056c101cdb7e8f8c0132b3675218f02333e06faa0484ae07a1c89eb3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/1-0-1.glb",
+          "bytes": 285784,
+          "sha256": "3ce9e345d0139ce7f673ccc2b1f356aa85c87b05ff4653c9621d9cc4faa565c1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/1-1-0.glb",
+          "bytes": 239540,
+          "sha256": "98383da634aec1274f385c27d43b6aa54a2cd8b45a2ad2c2355c1565538e27f5"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/1-1-1.glb",
+          "bytes": 241844,
+          "sha256": "293671c16242142589e6b3e62a4c3c630030415bb3f26e109b52f8b3d095f168"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-0-0.glb",
+          "bytes": 705012,
+          "sha256": "86133be1da6c3999173f5817b329a2bee76e9f483b58ef67eee263b4fa49582b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-0-1.glb",
+          "bytes": 698156,
+          "sha256": "3f3213865e3967ab154f9b14065087cc52486fd80d939e893e38fc23bc8babf0"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-0-2.glb",
+          "bytes": 721548,
+          "sha256": "2f8fd1a7c0486cdca6eedfefd3350f8cb7bde63785c9dcaa3d5d6beb9814c8b3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-0-3.glb",
+          "bytes": 494764,
+          "sha256": "24988911a27282962d92c14a733c370e86903c6dfbabb6646891452da7e33284"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-1-0.glb",
+          "bytes": 627000,
+          "sha256": "885b9d4b1900bcfbf922ca14e855d492c2ca46faa589ecfa335971917b286105"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-1-1.glb",
+          "bytes": 424920,
+          "sha256": "f4940bfb63252b8511c84a8ab5cb1954b6a22001281e1de1fefb70568fe70c0c"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-1-2.glb",
+          "bytes": 727448,
+          "sha256": "4b7742deadcce59d0640c942d9b039986c1d89cfbbad9574d7696b2491d428f1"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-1-3.glb",
+          "bytes": 441164,
+          "sha256": "9c19a3aa7c9cfdae0879691091604a643fd91372a11d851dfa2e5913d874ccef"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-2-0.glb",
+          "bytes": 696520,
+          "sha256": "01038ddbe727f12f58197a2a2e60ac34aab075fcb20650c768009f8fb7046e29"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-2-1.glb",
+          "bytes": 495044,
+          "sha256": "4e1ffdbf6b1e883a11368a0152436bd5ba59c788e2920947516a6a118fe503bd"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-2-2.glb",
+          "bytes": 432380,
+          "sha256": "05437ca088b267b92420205001e1d4bbc5c9ac3ed3e8eb2390639d3531def0f3"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-2-3.glb",
+          "bytes": 519172,
+          "sha256": "118fa276853e6997292d8b7a0cb95715fde8981f5dd00d16f6d8116132c95481"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-3-0.glb",
+          "bytes": 705880,
+          "sha256": "bcc86a1b0ed69e1bdfe57bcb00da3d208ae84b67334dcf9e54e375457d87d0a7"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-3-1.glb",
+          "bytes": 702800,
+          "sha256": "dbd86dea7cf64068332e262b041e4cd7afc708dd42e7778e8551a17f0c9e2acc"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-3-2.glb",
+          "bytes": 697024,
+          "sha256": "bf3292119a480bf058ad15ef8fc87292228005159a7cbc477aee462ef3f32f50"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees/2-3-3.glb",
+          "bytes": 430356,
+          "sha256": "372cf51a6b4a0c87c15fdd649fab85ac345b93349f187558a35cb34fa9adfb1b"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees-audit.json",
+          "bytes": 386,
+          "sha256": "5adb9c09739366fd2042611f7168522c8e720d7ffa6eea54d60d91929ad79866"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/trees.json",
+          "bytes": 2653816,
+          "sha256": "e1272c3f4e29eefa10a12e8ef2aedcebba13cdfba5d05266eabe76f35eeb6a20"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/water/0.glb",
+          "bytes": 1087284,
+          "sha256": "d53b318c019a3a5349fc00fbfd50dfa8d6f8991c93f95ad1a24c929b59ff705d"
+        },
+        {
+          "path": "terrain/eastern-pa/scenery/1n7/water-audit.json",
+          "bytes": 4248,
+          "sha256": "754015d67fcbcd7ef995faa63d14dfbc3372377272b6b696e7f6fc3ab20060c2"
+        }
+      ]
+    },
+    {
+      "region": "eastern-pa",
       "dataset": "terrain",
       "tag": "region-data-2611-radio-20261029",
       "asset": "eastern-pa-terrain.zip",
