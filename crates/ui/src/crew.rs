@@ -373,6 +373,9 @@ impl CrewUi {
                 Err(e) => self.error = Some(e.to_string()),
             }
         }
+        if let Some(error) = &self.error {
+            ui.colored_label(theme::AMBER, error);
+        }
         let state = s.crew_state();
         if let Some(plan) = &state.plan {
             ui.separator();
@@ -382,23 +385,6 @@ impl CrewUi {
                 s.sim().aircraft().identity.display_name,
                 plan.altitude_m / 0.3048
             ));
-            let (map_rect, _) =
-                ui.allocate_exact_size(egui::vec2(ui.available_width(), 210.), egui::Sense::hover());
-            self.map.show_mfd_base(ui, map_rect, s, Some(BaseMap::Terrain));
-            egui::CollapsingHeader::new("Details")
-                .default_open(false)
-                .show(ui, |ui| {
-                    for check in &plan.checks {
-                        ui.small(check);
-                    }
-                    for leg in &plan.legs {
-                        ui.label(format!(
-                            "{} · {:.0} ft MSL",
-                            leg.name,
-                            -leg.position_m.get(2).copied().unwrap_or(0.) / 0.3048
-                        ));
-                    }
-                });
         }
         ui.separator();
         if ui.button("Open director camera").clicked() {
@@ -480,8 +466,27 @@ impl CrewUi {
                 }
             ));
         }
-        if let Some(error) = &self.error {
-            ui.colored_label(theme::AMBER, error);
+        // The route map and details sit last: the wheel zooms the map, so anything below it would be
+        // hard to reach, and the exchange above is what a new pilot needs next.
+        if let Some(plan) = &state.plan {
+            ui.separator();
+            let (map_rect, _) =
+                ui.allocate_exact_size(egui::vec2(ui.available_width(), 210.), egui::Sense::hover());
+            self.map.show_mfd_base(ui, map_rect, s, Some(BaseMap::Terrain));
+            egui::CollapsingHeader::new("Details")
+                .default_open(false)
+                .show(ui, |ui| {
+                    for check in &plan.checks {
+                        ui.small(check);
+                    }
+                    for leg in &plan.legs {
+                        ui.label(format!(
+                            "{} · {:.0} ft MSL",
+                            leg.name,
+                            -leg.position_m.get(2).copied().unwrap_or(0.) / 0.3048
+                        ));
+                    }
+                });
         }
     }
 }

@@ -221,6 +221,8 @@ mod worker {
                         if js_sys::Date::now() < owner.external_until
                             || owner.script.active()
                             || owner.session.holds_active()
+                            // A frame already on its way when the crew takes over is not an error.
+                            || owner.session.crew_owns_controls()
                         {
                             return Ok(
                                 serde_json::json!({"id":value.get("id"),"ok":owner.session.sim().controls()}),
