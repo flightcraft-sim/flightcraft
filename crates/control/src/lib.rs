@@ -659,6 +659,9 @@ impl Command for Reset {
         if !matches!(start, Start::ParkedAt { .. }) {
             replacement.prepare_departure();
         }
+        if matches!(start, Start::Air { .. } | Start::AirAt { .. }) {
+            replacement.move_elevator_to_trim();
+        }
         if session.flight_archive.autosave_enabled {
             session.save_flight()?;
         }

@@ -69,7 +69,9 @@ the deficit, including the starter, with charge-dependent voltage and current-de
 Without usable battery capacity, insufficient alternator output sheds the main bus first.
 Breakers integrate squared overcurrent and trip persistently; resetting an unresolved fault
 trips them again. Equipment with a backup battery continues until its internal charge runs out.
-Vacuum suction follows engine RPM, including windmilling. Loss of suction or electrical gyro
+Vacuum suction follows engine RPM, including windmilling. An air-driven gyro holds its rated speed
+down to 60% of nominal suction, so a normal idle reads low on the gauge without toppling anything.
+Loss of suction or electrical gyro
 power spins the sensor down; tracking weakens, drift accumulates, and its sensed attitude topples.
 Restored drive spins it up and erects it gradually.
 

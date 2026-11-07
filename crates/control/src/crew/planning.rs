@@ -195,6 +195,10 @@ pub(super) fn validate_path(s: &mut Session, plan: &mut CrewPlan) -> Result<(), 
                 let [n, e, _] = r.threshold_m;
                 local(s, sample.position, sample.altitude_m)
                     .is_ok_and(|[pn, pe, _]| libm::hypot(pn - n, pe - e) < 6500.)
+            }) || local(s, sample.position, sample.altitude_m).is_ok_and(|[pn, pe, _]| {
+                // An aircraft already flying climbs out of where it is: same collision-only check.
+                let [n, e, _] = s.sim.state().position_m;
+                libm::hypot(pn - n, pe - e) < 6500.
             });
             let clearance = if corridor { 0.0 } else { 304.8 };
             if sample.altitude_m < height + clearance - 2.0 {

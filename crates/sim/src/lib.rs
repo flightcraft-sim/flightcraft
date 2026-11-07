@@ -1046,6 +1046,15 @@ impl Sim {
         self.pilot_controls = self.controls;
     }
 
+    /// Hold an air start's trimmed elevator with the pitch trim, the way a pilot flies hands off:
+    /// the stick is then free, and centering it (a released key) leaves the aircraft in trim.
+    pub fn move_elevator_to_trim(&mut self) {
+        let trim = self.controls.elevator.clamp(-0.3, 0.3);
+        self.systems.controls.trim = trim;
+        self.controls.elevator -= trim;
+        self.pilot_controls.elevator -= trim;
+    }
+
     fn limit_controls(&self, controls: Controls) -> Controls {
         let controls = controls.clamped();
         let c = self.aircraft.limit_controls(dynamics::aero_controls(controls));

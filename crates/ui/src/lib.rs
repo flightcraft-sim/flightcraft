@@ -142,6 +142,7 @@ pub struct FlightCraftApp {
     radio: radio::RadioUi,
     live_weather: weather_live::LiveUi,
     scenarios: scenario::ScenarioUi,
+    fly_me: crew::FlyMeWindow,
     radio_ptt_held: [bool; 2],
     binding_message: Option<String>,
     scripted: bool,
@@ -450,6 +451,7 @@ impl FlightCraftApp {
             ),
             live_weather: weather_live::LiveUi::default(),
             scenarios: scenario::ScenarioUi::default(),
+            fly_me: crew::FlyMeWindow::default(),
             radio_ptt_held: [false; 2],
             audio: audio::Audio::with_preferences(
                 storage
@@ -1285,6 +1287,7 @@ impl FlightCraftApp {
             self.session.paused(),
         );
         self.scenarios.show(ctx, &mut self.session);
+        self.fly_me.show(ctx, &mut self.session, &self.keymap);
         self.live_weather.show(ctx, &mut self.session);
         let f = scenario::emergency_failures(&self.session);
         if f.engine_fire
@@ -1345,7 +1348,13 @@ impl FlightCraftApp {
                         }
                     });
                     self.radio.button(ui, &self.keymap);
-                    crate::crew::page_button(ui, &mut self.session, &self.keymap, &mut self.error);
+                    crate::crew::page_button(
+                        ui,
+                        &mut self.session,
+                        &self.keymap,
+                        &mut self.error,
+                        &mut self.fly_me,
+                    );
                     if ui.button("Scenarios").clicked() {
                         self.scenarios.open = !self.scenarios.open;
                     }

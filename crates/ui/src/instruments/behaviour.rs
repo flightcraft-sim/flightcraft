@@ -383,7 +383,8 @@ impl Instrument for RoundGauge {
                     ),
                     ("LOW VAC", s.vacuum_installed, s.suction_pa < 10000.),
                     ("LOW FUEL", !s.tanks.is_empty(), low_fuel),
-                    ("OIL PRESS", s.enabled, s.oil_pressure_pa < 150000.),
+                    // 20 psi: a normal idle (about 21 psi) does not light it.
+                    ("OIL PRESS", s.enabled, s.oil_pressure_pa < 137_900.),
                 ];
                 for (row, (label, _, active)) in lamps
                     .into_iter()

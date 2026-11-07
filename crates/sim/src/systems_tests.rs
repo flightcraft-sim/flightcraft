@@ -568,3 +568,19 @@ fn exterior_lights_follow_common_switch_breaker_and_master_power() {
     sim.step(1);
     assert!(!sim.light_powered(LoadSwitch::Landing));
 }
+
+/// A normal idle gives low suction, not a failed gyro.
+#[test]
+fn vacuum_gyros_stay_valid_at_idle_and_idle_suction_is_not_annunciated_low() {
+    let (mut s, m, mut r) = bench("corvid");
+    r.engine_rpm = 615.;
+    r.indicated_airspeed_mps = 0.;
+    seconds(&mut s, &m, r, Failures::default(), 300);
+    assert!(s.gyro_spin > 0.95, "spin {}", s.gyro_spin);
+    assert!(s.sensed.attitude_valid);
+    assert!(s.suction_pa >= 10_000., "suction {}", s.suction_pa);
+    // Well under idle the rotor does slow: a pump barely turning is not enough.
+    r.engine_rpm = 100.;
+    seconds(&mut s, &m, r, Failures::default(), 300);
+    assert!(!s.sensed.attitude_valid, "spin {}", s.gyro_spin);
+}

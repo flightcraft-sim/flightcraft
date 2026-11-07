@@ -2,6 +2,9 @@
 use crate::{DT_S, Failures, Readout, SimError};
 
 /// Primer charge one stroke of the plunger adds (five strokes fill it).
+/// An air-driven gyro holds its rated speed well below nominal suction: normal idle suction is low
+/// but does not topple it. It slows only under this fraction of nominal.
+const GYRO_FULL_SPEED_SUCTION: f64 = 0.6;
 pub const PRIMER_STROKE: f64 = 0.2;
 /// Charge above which a carburetted engine is flooded (more than three strokes).
 const PRIMER_FLOODED: f64 = 0.7;
@@ -1514,7 +1517,7 @@ impl SystemsState {
                 interpolate(&v.suction_pa.points, r.engine_rpm)
             };
             (
-                (self.suction_pa / v.nominal_suction_pa).clamp(0.0, 1.0),
+                (self.suction_pa / (GYRO_FULL_SPEED_SUCTION * v.nominal_suction_pa)).clamp(0.0, 1.0),
                 v.spin_up_s,
                 v.spin_down_s,
                 v.erection_rate_rps,

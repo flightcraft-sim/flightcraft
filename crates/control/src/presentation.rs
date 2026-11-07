@@ -256,6 +256,14 @@ pub struct WorkerSeed {
     pub world: flightcraft_world::WorldChoice,
     pub configuration: Option<flightcraft_aero::ResolvedAircraft>,
     pub screens: ScreenSet,
+    /// The `sim.reset` start the worker opens with; the world's runway when none is given.
+    #[serde(default)]
+    pub start: Option<serde_json::Value>,
+    #[serde(default = "airspace_shown_by_default")]
+    pub airspace_visible: bool,
+}
+fn airspace_shown_by_default() -> bool {
+    true
 }
 impl Session {
     pub fn worker_seed(&self) -> WorkerSeed {
@@ -270,6 +278,8 @@ impl Session {
             world: self.sim.world().choice(),
             configuration: self.active_configuration.clone(),
             screens: self.screens.clone(),
+            start: None,
+            airspace_visible: self.airspace_visible,
         }
     }
     pub fn from_worker_seed(seed: WorkerSeed) -> Result<Self, String> {
@@ -304,13 +314,18 @@ impl Session {
         session
             .execute(
                 "sim.reset",
-                serde_json::json!({"world":seed.world,"start":{"kind":"runway"},"paused":false}),
+                serde_json::json!({
+                    "world": seed.world,
+                    "start": seed.start.unwrap_or_else(|| serde_json::json!({"kind":"runway"})),
+                    "paused": false
+                }),
             )
             .map_err(|e| e.to_string())?;
         session
             .restore_callsign_preferences(seed.callsigns)
             .map_err(|e| e.to_string())?;
         session.screens = seed.screens;
+        session.airspace_visible = seed.airspace_visible;
         session.enable_app();
         Ok(session)
     }
@@ -329,6 +344,26 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_worker_opens_at_the_seeds_start_and_otherwise_on_the_runway() {
+        use crate::Session;
+        let fresh = Session::new().unwrap();
+        let on_runway = Session::from_worker_seed(fresh.worker_seed()).unwrap();
+        assert!(on_runway.sim().readout().height_agl_m < 5.);
+        let mut seed = fresh.worker_seed();
+        seed.start = Some(serde_json::json!({
+            "kind":"air","height_m":800.,"airspeed_mps":45.,"heading_rad":3.
+        }));
+        // The seed crosses to the worker as JSON.
+        let seed = serde_json::from_str(&serde_json::to_string(&seed).unwrap()).unwrap();
+        let airborne = Session::from_worker_seed(seed).unwrap();
+        assert!(airborne.sim().readout().height_agl_m > 500.);
+        assert!(airborne.airspace_visible());
+        let mut seed = fresh.worker_seed();
+        seed.airspace_visible = false;
+        assert!(!Session::from_worker_seed(seed).unwrap().airspace_visible());
+    }
+
     use crate::{SetAutopilot, SetControls, SetWeather};
     use serde_json::json;
 

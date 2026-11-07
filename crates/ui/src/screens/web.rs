@@ -271,10 +271,17 @@ impl ScreenApp {
         let window = web_sys::window().ok_or_else(|| std::io::Error::other("browser unavailable"))?;
         let query = web_sys::UrlSearchParams::new_with_str(&window.location().search().unwrap_or_default())
             .map_err(|_| std::io::Error::other("invalid query"))?;
+        // The website opens on the view: airspace curtains are a choice in Settings (`?airspace=on`).
+        if query.get("airspace").as_deref() != Some("on") {
+            session.run(flightcraft_control::SetAirspaceView { visible: false })?;
+        }
+        // The worker owns the flight, so it is told the same opening start.
+        let mut opening = None;
         if let Some(world) = session.worker_seed().regions.first() {
             let choice = world.region.id.clone();
             let start = crate::fly_nyc::start(&choice, query.get("start").as_deref());
             session.execute("sim.reset", json!({"world":choice,"start":start}))?;
+            opening = Some(start);
         }
         let remote = query.get("panel").as_deref() == Some("remote");
         let screen = query.get("screen").and_then(|s| s.parse().ok()).unwrap_or(0);
@@ -293,7 +300,9 @@ impl ScreenApp {
         let link = if remote {
             None
         } else {
-            Some(Link::worker(&cc.egui_ctx, session.worker_seed(), script).map_err(std::io::Error::other)?)
+            let mut seed = session.worker_seed();
+            seed.start = opening;
+            Some(Link::worker(&cc.egui_ctx, seed, script).map_err(std::io::Error::other)?)
         };
         session
             .apply_screen_snapshot(session.screen_snapshot())

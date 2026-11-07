@@ -19,6 +19,7 @@ pub struct CrewUi {
     director: bool,
     error: Option<String>,
     map: crate::map::PlanningMap,
+    destination_checked: bool,
 }
 impl Default for CrewUi {
     fn default() -> Self {
@@ -35,10 +36,61 @@ impl Default for CrewUi {
             director: true,
             error: None,
             map: Default::default(),
+            destination_checked: false,
         }
     }
 }
+/// The nearest airport a light aircraft can use, as its id and first runway end, for a default
+/// destination that exists in whichever region is loaded.
+fn nearest_airport(
+    catalogue: &flightcraft_world::Airports,
+    latitude_deg: f64,
+    longitude_deg: f64,
+) -> Option<(String, String)> {
+    const USABLE_RUNWAY_M: f64 = 700.;
+    let squeeze = latitude_deg.to_radians().cos();
+    let distance = |a: &flightcraft_world::Airport| {
+        let (north, east) = (
+            a.latitude_deg - latitude_deg,
+            (a.longitude_deg - longitude_deg) * squeeze,
+        );
+        north * north + east * east
+    };
+    let airport = catalogue
+        .airports
+        .iter()
+        .filter(|a| a.runways.iter().any(|r| r.length_m >= USABLE_RUNWAY_M))
+        .min_by(|a, b| distance(a).total_cmp(&distance(b)))?;
+    let runway = airport.runways.iter().find(|r| r.length_m >= USABLE_RUNWAY_M)?;
+    Some((
+        airport.icao.clone().unwrap_or_else(|| airport.ident.clone()),
+        runway.ends[0].ident.clone(),
+    ))
+}
 impl CrewUi {
+    /// The built-in default destination belongs to one region; elsewhere offer the nearest airport.
+    fn choose_destination_in_this_region(&mut self, s: &Session) {
+        if std::mem::replace(&mut self.destination_checked, true) {
+            return;
+        }
+        let Some(catalogue) = s.sim().world().airports() else {
+            return;
+        };
+        let installed = catalogue.airports.iter().any(|a| {
+            a.ident.eq_ignore_ascii_case(&self.destination)
+                || a.icao
+                    .as_ref()
+                    .is_some_and(|i| i.eq_ignore_ascii_case(&self.destination))
+        });
+        let readout = s.sim().readout();
+        if !installed
+            && let (Some(latitude), Some(longitude)) = (readout.latitude_deg, readout.longitude_deg)
+            && let Some((airport, runway)) = nearest_airport(catalogue, latitude, longitude)
+        {
+            self.destination = airport;
+            self.runway = runway;
+        }
+    }
     #[cfg(test)]
     pub(crate) fn scenic_preview() -> Self {
         Self {
@@ -110,6 +162,7 @@ impl CrewUi {
         }
     }
     pub(crate) fn panel(&mut self, ui: &mut egui::Ui, s: &mut Session, keymap: &Keymap) {
+        self.choose_destination_in_this_region(s);
         self.sync_intent(&s.crew_state());
         ui.label(RichText::new("Sit back. I'll fly.").size(22.).color(theme::TEXT));
         ui.label("Choose a flight, review the briefing, exchange controls, then Resume.");
@@ -138,6 +191,9 @@ impl CrewUi {
                 ]
                 .iter()
                 .enumerate()
+                // Hudson corridor (3) needs a verified Class B exclusion route, which the planner
+                // does not have yet, so it is not offered.
+                .filter(|(i, _)| *i != 3)
                 {
                     ui.selectable_value(&mut self.choice, i, *label);
                 }
@@ -432,15 +488,56 @@ impl CrewUi {
 
 fn open_page(s: &mut Session, kind: screens::PageKind, error: &mut Option<String>) {
     match s.execute("screen.open", json!({"page":{"kind":kind},"size":[1000.,800.]})) {
-        Ok(_) => *error = None,
+        Ok(screen) => {
+            *error = None;
+            // A browser shows another screen in its own tab; a native build opens a window from the set.
+            #[cfg(target_arch = "wasm32")]
+            if let Some(id) = screen.get("id").and_then(serde_json::Value::as_u64)
+                && let Some(window) = web_sys::window()
+                && !matches!(window.open_with_url(&format!("?screen={id}")), Ok(Some(_)))
+            {
+                *error = Some("The browser blocked the new tab; allow pop-ups for this site.".into());
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = screen;
+        }
         Err(e) => *error = Some(e.to_string()),
     }
 }
-pub fn page_button(ui: &mut egui::Ui, s: &mut Session, keymap: &Keymap, error: &mut Option<String>) {
+/// The Fly me page as a window inside the browser tab. A native build opens its own OS window
+/// instead, so this stays closed there.
+#[derive(Default)]
+pub struct FlyMeWindow {
+    pub open: bool,
+    crew: CrewUi,
+}
+impl FlyMeWindow {
+    pub fn show(&mut self, ctx: &egui::Context, s: &mut Session, keymap: &Keymap) {
+        let mut open = self.open;
+        egui::Window::new("Fly me")
+            .open(&mut open)
+            .default_size([520., 640.])
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| self.crew.panel(ui, s, keymap));
+            });
+        self.open = open;
+    }
+}
+pub fn page_button(
+    ui: &mut egui::Ui,
+    s: &mut Session,
+    keymap: &Keymap,
+    error: &mut Option<String>,
+    window: &mut FlyMeWindow,
+) {
     ui.ctx()
         .data_mut(|data| data.insert_temp(egui::Id::new("crew.keymap"), keymap.clone()));
     if ui.button("Fly me…").clicked() {
-        open_page(s, screens::PageKind::FlyMe, error);
+        if cfg!(target_arch = "wasm32") {
+            window.open = !window.open;
+        } else {
+            open_page(s, screens::PageKind::FlyMe, error);
+        }
     }
 }
 pub(crate) fn director_camera(s: &Session) -> flightcraft_render::CameraMode {
@@ -493,5 +590,62 @@ pub(crate) fn render_camera(mode: flightcraft_control::CameraMode) -> flightcraf
         flightcraft_control::CameraMode::Tower => CameraMode::Tower,
         flightcraft_control::CameraMode::Flyby => CameraMode::Flyby,
         flightcraft_control::CameraMode::Walkaround => CameraMode::Walkaround,
+    }
+}
+
+#[cfg(test)]
+mod fly_me_window_tests {
+    use super::*;
+
+    #[test]
+    fn the_default_destination_is_the_nearest_usable_airport_in_the_catalogue() {
+        let json = |ident: &str, lat: f64, length: f64| {
+            serde_json::json!({
+                "ident":ident,"name":ident,"elevation_m":3.,"latitude_deg":lat,"longitude_deg":-74.,
+                "runways":[{"designator":"06/24","length_m":length,"width_m":30.,"surface":"asphalt",
+                    "ends":[
+                        {"ident":"06","latitude_deg":lat,"longitude_deg":-74.,"elevation_m":3.,"heading_deg":60.},
+                        {"ident":"24","latitude_deg":lat,"longitude_deg":-74.,"elevation_m":3.,"heading_deg":240.}
+                    ]}]
+            })
+        };
+        let catalogue: flightcraft_world::Airports = serde_json::from_value(serde_json::json!({
+            "attribution":"test",
+            "airports":[json("FAR",41.5,2000.),json("TINY",40.86,300.),json("NEAR",40.9,1500.)]
+        }))
+        .unwrap();
+        assert_eq!(
+            nearest_airport(&catalogue, 40.86, -74.),
+            Some(("NEAR".to_owned(), "06".to_owned()))
+        );
+    }
+
+    #[test]
+    fn the_fly_me_window_shows_the_crew_panel_only_while_open() {
+        let mut session = Session::new().unwrap();
+        let keymap = Keymap::default();
+        let mut window = FlyMeWindow::default();
+        let shapes = |window: &mut FlyMeWindow, session: &mut Session| {
+            let ctx = egui::Context::default();
+            let mut count = 0;
+            for _ in 0..2 {
+                let output = ctx.run(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1200., 800.),
+                        )),
+                        ..Default::default()
+                    },
+                    |ctx| window.show(ctx, session, &keymap),
+                );
+                count = output.shapes.len();
+            }
+            count
+        };
+        assert_eq!(shapes(&mut window, &mut session), 0);
+        window.open = true;
+        assert!(shapes(&mut window, &mut session) > 10);
+        assert!(window.open);
     }
 }
