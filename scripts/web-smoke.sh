@@ -42,7 +42,9 @@ run() { # <name> <renderer> <query> <attempt> <wrapper command or empty> <chrome
     --remote-debugging-port="$devtools_port" --enable-logging=stderr "$@" about:blank >"$log" 2>&1 &
   local browser=$!
   local status=0
-  node "$here/web-smoke.mjs" "$devtools_port" "http://127.0.0.1:$http_port/?script=takeoff.jsonl&$query" 25000 \
+  # A pass that never answers (a browser that failed to start, a page that never settles) fails
+  # after three minutes instead of holding the job.
+  timeout 180 node "$here/web-smoke.mjs" "$devtools_port" "http://127.0.0.1:$http_port/?script=takeoff.jsonl&$query" 25000 \
     "$shots/$name-$attempt.png" "$renderer" || status=$?
   kill "$browser" 2>/dev/null || true
   wait "$browser" 2>/dev/null || true
@@ -83,8 +85,16 @@ webgpu webgpu-device-destroyed "lose_device=3&late_view=6" "$xvfb" "${webgpu_fla
 # after a real loss neither panics nor throws.
 SMOKE_LOSS_OK=1 webgpu webgpu-headless late_view=6 "" --enable-unsafe-webgpu --enable-features=Vulkan,WebGPU \
   --use-angle=swiftshader --enable-unsafe-swiftshader --use-webgpu-adapter=swiftshader || webgpu_status=1
-run webgl2 "WebGL 2" "gpu=webgl2&late_view=6" 1 "" --use-angle=swiftshader --enable-unsafe-swiftshader
-if [ "$webgpu_status" != 0 ]; then
+# Software WebGL 2 can also fail to start; retry it like the WebGPU passes.
+webgl2_status=1
+for attempt in 1 2 3; do
+  if run webgl2 "WebGL 2" "gpu=webgl2&late_view=6" "$attempt" "" --use-angle=swiftshader --enable-unsafe-swiftshader; then
+    webgl2_status=0
+    break
+  fi
+  echo "web-smoke: WebGL 2 pass attempt $attempt did not pass"
+done
+if [ "$webgpu_status" != 0 ] || [ "$webgl2_status" != 0 ]; then
   exit 1
 fi
 echo "web-smoke: WebGPU (live, destroyed and headless-lost device) and WebGL 2 all clean"

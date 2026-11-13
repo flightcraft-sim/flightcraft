@@ -65,6 +65,8 @@ jobs:
       # Load the page in headless Chrome on WebGPU and on WebGL 2: any shader or GPU validation error,
       # panic, or exception fails the build, and with it the Pages deploy.
       - name: Browser smoke test (WebGPU and WebGL 2)
+        # A software-GPU Chrome that never answers would otherwise hold the job for hours.
+        timeout-minutes: 20
         run: scripts/web-smoke.sh dist web-smoke
       - uses: actions/upload-artifact@v4
         if: always()
