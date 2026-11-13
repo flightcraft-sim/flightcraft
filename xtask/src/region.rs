@@ -373,8 +373,29 @@ pub fn payload(value: &Value, suffix: &str) -> Result<String, String> {
     }
     found.pop().ok_or_else(|| "missing APRA payload".into())
 }
+/// An APRA edition date, "MM/DD/YYYY" as the API sends it or ISO, as an ISO date.
+pub fn apra_date(text: &str) -> Option<String> {
+    let iso = match text.split('/').collect::<Vec<_>>()[..] {
+        [month, day, year] if month.len() == 2 && day.len() == 2 && year.len() == 4 => {
+            format!("{year}-{month}-{day}")
+        }
+        _ => text.get(..10)?.to_owned(),
+    };
+    flightcraft_world::navdata::iso_date(&iso).then_some(iso)
+}
+
 pub fn cycle(value: &Value) -> Result<String, String> {
     if let Some(o) = value.as_object() {
+        // The APRA API: {"editionDate":"10/29/2026","editionNumber":11} is cycle 2611.
+        if let (Some(number), Some(date)) = (
+            o.get("editionNumber")
+                .and_then(Value::as_u64)
+                .filter(|n| (1..=13).contains(n)),
+            o.get("editionDate").and_then(Value::as_str).and_then(apra_date),
+        ) && let Some(year) = date.get(2..4)
+        {
+            return Ok(format!("{year}{number:02}"));
+        }
         for key in ["cycle", "cycleNumber", "edition", "editionNumber", "productCode"] {
             if let Some(s) = o
                 .get(key)

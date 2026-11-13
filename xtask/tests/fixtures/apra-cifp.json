@@ -1,1 +1,1 @@
-{"status":"success","data":[{"cycle":"2611","editionDate":"2026-10-29","edition":"current","url":"https://example.test/CIFP_261029.zip"}]}
+{"status":{"code":200,"message":"OK"},"edition":[{"editionName":"CURRENT","format":"ZIP","editionDate":"10/29/2026","editionNumber":11,"product":{"productName":"CIFP","url":"https://example.test/CIFP_261029.zip"}}]}

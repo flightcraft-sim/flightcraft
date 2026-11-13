@@ -1,1 +1,1 @@
-{"status":"success","data":[{"cycle":"2611","editionDate":"2026-10-29","edition":"current"}]}
+{"status":{"code":200,"message":"OK"},"edition":[{"geoname":"US","editionName":"CURRENT","format":"ZIP","editionDate":"10/29/2026","editionNumber":11}]}

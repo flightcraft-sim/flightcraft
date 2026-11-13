@@ -1,1 +1,1 @@
-{"status":"success","data":[{"geoname":"New York","editionDate":"2026-10-29","edition":"current","format":"tiff","url":"https://example.test/New_York.zip"}]}
+{"status":{"code":200,"message":"OK"},"edition":[{"geoname":"US","editionName":"CURRENT","format":"ZIP","editionDate":"10/29/2026","editionNumber":99,"product":{"productName":"SECTIONAL","chartName":"Sectional.zip","url":"https://example.test/New_York.zip"}}]}

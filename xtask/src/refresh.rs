@@ -12,10 +12,9 @@ pub(super) fn edition(value: &Value) -> Option<String> {
             if let Some(s) = object
                 .get(key)
                 .and_then(Value::as_str)
-                .and_then(|s| s.get(..10))
-                .filter(|s| flightcraft_world::navdata::iso_date(s))
+                .and_then(super::region::apra_date)
             {
-                return Some(s.into());
+                return Some(s);
             }
         }
         for value in object.values() {
@@ -180,6 +179,14 @@ mod tests {
         );
         assert_eq!(
             super::edition(&serde_json::json!({"url":"https://example.test/chart.zip"})),
+            None
+        );
+        // The shape the APRA API actually returns, with the date as month/day/year.
+        let api: serde_json::Value =
+            serde_json::from_slice(include_bytes!("../tests/fixtures/apra-chart.json")).unwrap();
+        assert_eq!(super::edition(&api).as_deref(), Some("2026-10-29"));
+        assert_eq!(
+            super::edition(&serde_json::json!({"editionDate":"13/45/2026"})),
             None
         );
     }
