@@ -19,6 +19,11 @@ pub struct RegionOptions {
     pub errors: Vec<String>,
 }
 impl Session {
+    /// Whether a region with this id is installed and can be named in `sim.reset`.
+    #[must_use]
+    pub fn has_region(&self, id: &str) -> bool {
+        self.regions.contains_key(id)
+    }
     pub fn install_region(&mut self, world: World) -> Result<(), CommandError> {
         let Some(region) = world.region() else {
             return Err(CommandError::Failed("region metadata required".into()));

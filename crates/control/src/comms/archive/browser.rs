@@ -194,7 +194,7 @@ pub(super) fn list(state: Arc<Mutex<ArchiveStatus>>) -> Result<(), String> {
                 }
                 flights.push(serde_json::from_str(&text).map_err(|e| e.to_string())?);
             }
-            flights.sort_by(|a, b| b.created_unix_ms.cmp(&a.created_unix_ms));
+            flights.sort_by_key(|f| std::cmp::Reverse(f.created_unix_ms));
             if let Ok(mut s) = state.lock() {
                 s.flights = flights;
             }

@@ -277,9 +277,26 @@ impl ScreenApp {
         }
         // The worker owns the flight, so it is told the same opening start.
         let mut opening = None;
+        // `?scenario=<id>` (from Scenarios > Start here) opens at that scenario's start and runs it.
+        let scenario = query.get("scenario").and_then(|id| {
+            flightcraft_control::scenario::library()
+                .ok()?
+                .into_iter()
+                .find(|doc| doc.id == id)
+        });
+        let mut scenario_opening = None;
         if let Some(world) = session.worker_seed().regions.first() {
             let choice = world.region.id.clone();
-            let start = crate::fly_nyc::start(&choice, query.get("start").as_deref());
+            let placed = scenario
+                .as_ref()
+                .and_then(|doc| doc.start.as_ref())
+                .filter(|placement| placement.region == choice)
+                .and_then(|placement| placement.reset_input().get("start").cloned());
+            if placed.is_some() {
+                scenario_opening = scenario.clone();
+            }
+            let start =
+                placed.unwrap_or_else(|| crate::fly_nyc::start(&choice, query.get("start").as_deref()));
             session.execute("sim.reset", json!({"world":choice,"start":start}))?;
             opening = Some(start);
         }
@@ -307,6 +324,10 @@ impl ScreenApp {
         session
             .apply_screen_snapshot(session.screen_snapshot())
             .map_err(std::io::Error::other)?;
+        if let Some(doc) = scenario_opening {
+            // Queued for the worker, which opened at the same start.
+            session.run(flightcraft_control::scenario::ScenarioStart { scenario: doc })?;
+        }
         let mut main = crate::FlightCraftApp::from_presentation(session, cc.storage, renderer, chart_root)
             .map_err(std::io::Error::other)?;
         if query.get("scenery").as_deref() == Some("nyc") {

@@ -68,13 +68,19 @@ impl ScenarioUi {
                         .on_hover_text("Load the scenario's region, place the aircraft and start it")
                         .clicked()
                 {
-                    self.message = match s.execute("sim.reset", placement.reset_input()).and_then(|_| {
-                        s.run(ScenarioStart {
-                            scenario: doc.clone(),
-                        })
-                    }) {
-                        Ok(_) => "Scenario running".into(),
-                        Err(e) => e.to_string(),
+                    self.message = if cfg!(target_arch = "wasm32") && !s.has_region(&placement.region) {
+                        // The website loads one region; it reopens with the scenario's region and
+                        // starts the scenario there (the screen app reads `?scenario=`).
+                        reopen_for(&placement.region, &doc.id)
+                    } else {
+                        match s.execute("sim.reset", placement.reset_input()).and_then(|_| {
+                            s.run(ScenarioStart {
+                                scenario: doc.clone(),
+                            })
+                        }) {
+                            Ok(_) => "Scenario running".into(),
+                            Err(e) => e.to_string(),
+                        }
                     };
                 }
                 if ui.button("Validate").clicked() {
@@ -287,6 +293,31 @@ pub(crate) fn glide_map(ui: &mut egui::Ui, s: &mut Session, d: &EmergencyDebrief
         ui.label(format!("{prefix}{}", field.description(glide.origin_m)));
     }
     ui.label("Terrain screening: ≥1,969 ft long × 197 ft wide, local slope ≤3%, sampled along the wind. Land cover and obstacles are not verified.");
+}
+
+/// Reload the website with the scenario's region and the scenario named, keeping other options.
+#[cfg(target_arch = "wasm32")]
+fn reopen_for(region: &str, scenario: &str) -> String {
+    let reopen = || -> Option<()> {
+        let location = web_sys::window()?.location();
+        let query = web_sys::UrlSearchParams::new_with_str(&location.search().ok()?).ok()?;
+        for key in ["region", "scenario", "start", "scenery"] {
+            query.delete(key);
+        }
+        query.append("region", &format!("terrain/{region}/region.json"));
+        query.append("scenario", scenario);
+        location.set_search(&String::from(query.to_string())).ok()
+    };
+    match reopen() {
+        Some(()) => format!("Loading the {region} region for this scenario…"),
+        None => format!("The {region} region is not loaded and the page could not reopen with it."),
+    }
+}
+
+/// The desktop app installs every region, so it never needs to reopen.
+#[cfg(not(target_arch = "wasm32"))]
+fn reopen_for(region: &str, _scenario: &str) -> String {
+    format!("world region is not installed: {region}")
 }
 
 #[cfg(test)]

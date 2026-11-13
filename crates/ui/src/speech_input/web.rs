@@ -89,17 +89,17 @@ impl Browser {
             self.cancel();
         }
         if self.requested == active {
-            if active && js_sys::Date::now() - self.started_ms >= 29_000. {
-                if let Ok(mut state) = self.state.try_borrow_mut()
-                    && state.active
-                {
-                    state.active = false;
-                    state.released = js_sys::Date::now();
-                    if let Some(recognition) = &state.recognition {
-                        let _ = call(recognition, "stop", None);
-                    }
-                    stop_tracks(&mut state);
+            if active
+                && js_sys::Date::now() - self.started_ms >= 29_000.
+                && let Ok(mut state) = self.state.try_borrow_mut()
+                && state.active
+            {
+                state.active = false;
+                state.released = js_sys::Date::now();
+                if let Some(recognition) = &state.recognition {
+                    let _ = call(recognition, "stop", None);
                 }
+                stop_tracks(&mut state);
             }
             return;
         }
