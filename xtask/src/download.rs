@@ -25,7 +25,12 @@ impl Transport for Http {
             .into();
         let mut last = String::new();
         for _ in 0..3 {
-            match agent.get(url).call() {
+            // The FAA APRA API answers XML unless asked for JSON; file downloads ignore the header.
+            match agent
+                .get(url)
+                .header("Accept", "application/json, */*;q=0.1")
+                .call()
+            {
                 Ok(mut response) => {
                     let mut bytes = Vec::new();
                     response

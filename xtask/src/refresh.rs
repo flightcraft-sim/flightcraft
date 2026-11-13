@@ -57,11 +57,11 @@ pub fn run() -> Result<(), String> {
         directory: root.join(".cache/sources"),
         sources: Vec::new(),
     };
-    let api: Value =
-        serde_json::from_slice(&cache.get(region::CIFP, None, true)?).map_err(|e| e.to_string())?;
+    let api: Value = serde_json::from_slice(&cache.get(region::CIFP, None, true)?)
+        .map_err(|e| format!("{}: {e}", region::CIFP))?;
     let current_cycle = region::cycle(&api)?;
-    let dtpp: Value =
-        serde_json::from_slice(&cache.get(region::DTPP, None, true)?).map_err(|e| e.to_string())?;
+    let dtpp: Value = serde_json::from_slice(&cache.get(region::DTPP, None, true)?)
+        .map_err(|e| format!("{}: {e}", region::DTPP))?;
     if region::cycle(&dtpp)? != current_cycle {
         return Err(
             "APRA CIFP and d-TPP current editions disagree; retry after publication completes".into(),
@@ -87,8 +87,8 @@ pub fn run() -> Result<(), String> {
                     "https://external-api.faa.gov/apra/vfr/{kind}/chart?geoname={}&edition=current&format=tiff",
                     chart.name.replace(' ', "%20")
                 );
-                let response: Value =
-                    serde_json::from_slice(&cache.get(&url, None, true)?).map_err(|e| e.to_string())?;
+                let response: Value = serde_json::from_slice(&cache.get(&url, None, true)?)
+                    .map_err(|e| format!("{url}: {e}"))?;
                 let current =
                     edition(&response).ok_or("APRA chart response lacks a verified edition date")?;
                 let old: Value = download::json(
