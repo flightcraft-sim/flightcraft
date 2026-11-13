@@ -187,14 +187,17 @@ impl Controls {
                     .add(
                         egui::DragValue::new(&mut course)
                             .range(0. ..=360.)
+                            .speed(0.5)
+                            .fixed_decimals(0)
                             .suffix("° OBS"),
                     )
                     .changed()
                 {
+                    // An OBS turns in whole degrees.
                     commands.push(S::NavRadio {
                         setting: R::Course {
                             radio,
-                            degrees: course,
+                            degrees: course.round().rem_euclid(360.),
                         },
                     });
                 }
