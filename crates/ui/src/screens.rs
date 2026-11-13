@@ -183,13 +183,15 @@ impl Canvas {
                         }
                     }
                     #[cfg(target_arch = "wasm32")]
-                    {
-                        let path =
-                            if self.scenery_preferences.local_tileset.is_empty() && region.id == "new-york" {
-                                crate::FLY_NYC_TILESET.to_owned()
-                            } else {
-                                self.scenery_preferences.local_tileset.clone()
-                            };
+                    // An empty path means the website's own tileset for the region; only New York
+                    // ships one (the Fly NYC showcase), so another region simply has no 3D scenery.
+                    let path = match self.scenery_preferences.local_tileset.trim() {
+                        "" if region.id == "new-york" => Some(crate::FLY_NYC_TILESET.to_owned()),
+                        "" => None,
+                        chosen => Some(chosen.to_owned()),
+                    };
+                    #[cfg(target_arch = "wasm32")]
+                    if let Some(path) = path {
                         let provider = flightcraft_render::scenery::Provider {
                             location: flightcraft_render::scenery::Location::Url(path),
                             token_config_key: None,
