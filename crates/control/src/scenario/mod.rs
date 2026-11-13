@@ -501,6 +501,10 @@ mod placement_tests {
                 .clone()
                 .unwrap_or_else(|| panic!("{} has no start", doc.id));
             let mut s = crate::Session::new().unwrap();
+            let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../assets/terrain")
+                .join(&placement.region);
+            s.install_region(crate::read_region(&directory).unwrap()).unwrap();
             s.execute("sim.reset", placement.reset_input())
                 .unwrap_or_else(|e| panic!("{}: {e}", doc.id));
             let report = super::validate(&doc, &s);
