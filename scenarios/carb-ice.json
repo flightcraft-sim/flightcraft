@@ -69,5 +69,17 @@
         }
       ]
     }
-  ]
+  ],
+  "start": {
+    "region": "eastern-pa",
+    "at": {
+      "kind": "air",
+      "airport": "KAVP",
+      "distance_m": 48000,
+      "bearing_deg": 140,
+      "height_m": 1600,
+      "airspeed_mps": 52,
+      "heading_deg": 320
+    }
+  }
 }

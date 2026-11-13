@@ -44,5 +44,13 @@
         }
       ]
     }
-  ]
+  ],
+  "start": {
+    "region": "new-york",
+    "at": {
+      "kind": "runway",
+      "airport": "KMMU",
+      "end": "23"
+    }
+  }
 }

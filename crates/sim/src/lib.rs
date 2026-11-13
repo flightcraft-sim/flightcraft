@@ -590,6 +590,11 @@ impl Sim {
         self.refresh_glass_computers();
         self.refresh_avionics(false);
         self.refresh_equipment_sensors();
+        // A pilot sets the heading bug to the departure heading; a bug left on 000 reads as a fault.
+        let degrees = libm::round(self.readout().heading_rad.to_degrees()).rem_euclid(360.);
+        if self.set_heading_bug(degrees).is_err() {
+            self.systems.controls.heading_bug_rad = 0.;
+        }
     }
 
     #[must_use]

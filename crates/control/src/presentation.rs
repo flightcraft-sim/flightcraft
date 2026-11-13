@@ -364,6 +364,26 @@ mod tests {
         assert!(!Session::from_worker_seed(seed).unwrap().airspace_visible());
     }
 
+    /// A page's own browser requests stay on the page: the worker has no window to ask for the
+    /// device's location, and forwarding it came back as a stuck "awaits completion" message.
+    #[test]
+    fn a_page_keeps_location_and_place_search_and_forwards_flight_commands() {
+        use crate::Session;
+        let worker = Session::new().unwrap();
+        let mut page = Session::new().unwrap();
+        page.apply_screen_snapshot(worker.screen_snapshot()).unwrap();
+        for command in ["location.current", "geocode.lookup", "search.query"] {
+            assert!(crate::screens::page_local(command), "{command}");
+        }
+        page.execute("search.query", json!({"text": "Teterboro"}))
+            .unwrap();
+        assert!(page.take_screen_commands().is_empty());
+        page.execute("sim.pause", json!({})).unwrap();
+        let forwarded = page.take_screen_commands();
+        assert_eq!(forwarded.len(), 1);
+        assert_eq!(forwarded[0].0, "sim.pause");
+    }
+
     use crate::{SetAutopilot, SetControls, SetWeather};
     use serde_json::json;
 

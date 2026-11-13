@@ -24,6 +24,59 @@ pub struct Scenario {
     #[serde(default)]
     pub procedures: Vec<String>,
     pub steps: Vec<ScenarioStep>,
+    /// Where "Start here" puts the aircraft. Omitted, a scenario runs only on the current flight.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start: Option<ScenarioPlacement>,
+}
+
+/// An installed region and a position in it, by an airport in that region.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ScenarioPlacement {
+    pub region: String,
+    pub at: PlacementAt,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PlacementAt {
+    /// Lined up on a runway end, ready for takeoff.
+    Runway { airport: String, end: String },
+    /// In the air at a magnetic bearing and distance from the airport.
+    Air {
+        airport: String,
+        distance_m: f64,
+        /// Magnetic bearing from the airport to the aircraft, degrees.
+        bearing_deg: f64,
+        /// Height above airport elevation.
+        height_m: f64,
+        airspeed_mps: f64,
+        /// Magnetic heading, degrees.
+        heading_deg: f64,
+    },
+}
+
+impl ScenarioPlacement {
+    /// The `sim.reset` input that places the aircraft, running.
+    #[must_use]
+    pub fn reset_input(&self) -> serde_json::Value {
+        let start = match &self.at {
+            PlacementAt::Runway { airport, end } => {
+                serde_json::json!({"runway":{"airport":airport,"end":end}})
+            }
+            PlacementAt::Air {
+                airport,
+                distance_m,
+                bearing_deg,
+                height_m,
+                airspeed_mps,
+                heading_deg,
+            } => serde_json::json!({"air":{"airport":airport,"distance_m":distance_m,
+                "bearing_deg":bearing_deg,"height_m":height_m,"airspeed_mps":airspeed_mps,
+                "heading_rad":heading_deg.rem_euclid(360.).to_radians()}}),
+        };
+        serde_json::json!({"world": self.region, "start": start, "paused": false})
+    }
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -433,4 +486,30 @@ pub(super) fn contains_phrase(text: &str, phrase: &str) -> bool {
             .join(" ")
     };
     format!(" {} ", normalize(text)).contains(&format!(" {} ", normalize(phrase)))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod placement_tests {
+    /// Every library scenario opens where it can happen: the region loads, the aircraft is placed
+    /// and the scenario validates there. Runs where the region data is installed (every CI job).
+    #[test]
+    fn every_library_scenario_starts_in_place_and_validates() {
+        for doc in super::library().unwrap() {
+            let placement = doc
+                .start
+                .clone()
+                .unwrap_or_else(|| panic!("{} has no start", doc.id));
+            let mut s = crate::Session::new().unwrap();
+            s.execute("sim.reset", placement.reset_input())
+                .unwrap_or_else(|e| panic!("{}: {e}", doc.id));
+            let report = super::validate(&doc, &s);
+            assert!(report.valid, "{}: {:?}", doc.id, report.errors);
+            s.run(super::ScenarioStart {
+                scenario: doc.clone(),
+            })
+            .unwrap_or_else(|e| panic!("{}: {e}", doc.id));
+            assert!(!s.sim().readout().crashed, "{}", doc.id);
+        }
+    }
 }

@@ -272,7 +272,10 @@ impl Session {
             *self = snapshot;
             return result;
         }
-        if self.presentation_commands.is_some() && !screens::read_only(C::NAME) {
+        if self.presentation_commands.is_some()
+            && !screens::read_only(C::NAME)
+            && !screens::page_local(C::NAME)
+        {
             let input = serde_json::to_value(&command).map_err(|e| CommandError::Failed(e.to_string()))?;
             if let Some(commands) = self.presentation_commands.as_mut() {
                 if commands.len() >= 256 {

@@ -50,5 +50,13 @@
         }
       ]
     }
-  ]
+  ],
+  "start": {
+    "region": "new-york",
+    "at": {
+      "kind": "runway",
+      "airport": "1N7",
+      "end": "07"
+    }
+  }
 }

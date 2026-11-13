@@ -29,6 +29,17 @@
       "format": "uint64",
       "minimum": 0
     },
+    "start": {
+      "description": "Where \"Start here\" puts the aircraft. Omitted, a scenario runs only on the current flight.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ScenarioPlacement"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "steps": {
       "type": "array",
       "items": {
@@ -1143,6 +1154,78 @@
         "right_base"
       ]
     },
+    "PlacementAt": {
+      "oneOf": [
+        {
+          "description": "Lined up on a runway end, ready for takeoff.",
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "end": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "runway"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "end"
+          ]
+        },
+        {
+          "description": "In the air at a magnetic bearing and distance from the airport.",
+          "type": "object",
+          "properties": {
+            "airport": {
+              "type": "string"
+            },
+            "airspeed_mps": {
+              "type": "number",
+              "format": "double"
+            },
+            "bearing_deg": {
+              "description": "Magnetic bearing from the airport to the aircraft, degrees.",
+              "type": "number",
+              "format": "double"
+            },
+            "distance_m": {
+              "type": "number",
+              "format": "double"
+            },
+            "heading_deg": {
+              "description": "Magnetic heading, degrees.",
+              "type": "number",
+              "format": "double"
+            },
+            "height_m": {
+              "description": "Height above airport elevation.",
+              "type": "number",
+              "format": "double"
+            },
+            "kind": {
+              "type": "string",
+              "const": "air"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "airport",
+            "distance_m",
+            "bearing_deg",
+            "height_m",
+            "airspeed_mps",
+            "heading_deg"
+          ]
+        }
+      ]
+    },
     "Precipitation": {
       "type": "string",
       "enum": [
@@ -1373,6 +1456,23 @@
             "name"
           ]
         }
+      ]
+    },
+    "ScenarioPlacement": {
+      "description": "An installed region and a position in it, by an airport in that region.",
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/PlacementAt"
+        },
+        "region": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "region",
+        "at"
       ]
     },
     "ScenarioStep": {

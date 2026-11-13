@@ -61,8 +61,22 @@ impl ScenarioUi {
                 doc.route.last().map_or("", |p| p.reference.as_str()),
                 doc.seed
             ));
-            ui.label("Select a region with the scenario’s airports (New York or Eastern Pennsylvania) and position the aircraft, then start.");
             ui.horizontal(|ui| {
+                if let Some(placement) = &doc.start
+                    && ui
+                        .button(RichText::new("Start here").strong())
+                        .on_hover_text("Load the scenario's region, place the aircraft and start it")
+                        .clicked()
+                {
+                    self.message = match s.execute("sim.reset", placement.reset_input()).and_then(|_| {
+                        s.run(ScenarioStart {
+                            scenario: doc.clone(),
+                        })
+                    }) {
+                        Ok(_) => "Scenario running".into(),
+                        Err(e) => e.to_string(),
+                    };
+                }
                 if ui.button("Validate").clicked() {
                     let report = validate(doc, s);
                     self.message = if report.valid {

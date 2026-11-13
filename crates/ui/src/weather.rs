@@ -4,6 +4,8 @@ use eframe::egui;
 use flightcraft_control::{CommandError, Session, SetHood, SetWeather};
 use flightcraft_world::{CloudLayer, Coverage, Obscuration, Precipitation, TimeOfDay, WeatherPreset};
 
+const KNOT_MPS: f64 = 0.514444;
+
 pub fn note(session: &Session) -> String {
     let c = session.sim().conditions();
     let layers = c
@@ -65,14 +67,18 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
             .add(
                 egui::DragValue::new(&mut c.temperature_c)
                     .range(-60.0..=60.0)
-                    .prefix("Sea-level temp C "),
+                    .fixed_decimals(0)
+                    .prefix("Sea-level temp ")
+                    .suffix(" °C"),
             )
             .changed();
         changed |= ui
             .add(
                 egui::DragValue::new(&mut c.dewpoint_c)
                     .range(-100.0..=c.temperature_c)
-                    .prefix("Dew point C "),
+                    .fixed_decimals(0)
+                    .prefix("Dew point ")
+                    .suffix(" °C"),
             )
             .changed();
     });
@@ -82,7 +88,9 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
             egui::DragValue::new(&mut altimeter)
                 .range(23.63..=32.48)
                 .speed(0.01)
-                .prefix("Altimeter inHg "),
+                .fixed_decimals(2)
+                .prefix("Altimeter ")
+                .suffix(" inHg"),
         )
         .changed()
     {
@@ -132,7 +140,7 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
             changed = true;
         }
     });
-    egui::ComboBox::from_id_salt("obscuration")
+    egui::ComboBox::new("obscuration", "Obscuration")
         .selected_text(format!("{:?}", c.obscuration))
         .show_ui(ui, |ui| {
             for v in [
@@ -146,7 +154,7 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
                     .changed();
             }
         });
-    egui::ComboBox::from_id_salt("precipitation")
+    egui::ComboBox::new("precipitation", "Precipitation")
         .selected_text(format!("{:?}", c.precipitation))
         .show_ui(ui, |ui| {
             for v in [Precipitation::None, Precipitation::Rain, Precipitation::Snow] {
@@ -155,7 +163,7 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
                     .changed();
             }
         });
-    egui::ComboBox::from_id_salt("time-of-day")
+    egui::ComboBox::new("time-of-day", "Time of day")
         .selected_text(format!("{:?}", c.time_of_day))
         .show_ui(ui, |ui| {
             for v in [TimeOfDay::Day, TimeOfDay::Dusk, TimeOfDay::Night, TimeOfDay::Dawn] {
@@ -186,19 +194,29 @@ pub fn panel(ui: &mut egui::Ui, session: &mut Session, keymap: &Keymap) -> Resul
             .add(
                 egui::DragValue::new(&mut wind.wind_from_deg)
                     .range(0. ..=360.)
-                    .prefix("Wind from °M "),
+                    .fixed_decimals(0)
+                    .prefix("Wind from ")
+                    .suffix("° mag"),
             )
             .changed();
-        wind_changed |= ui
+        // Pilots read wind in knots; the simulation keeps metres per second.
+        let mut knots = wind.wind_speed_mps / KNOT_MPS;
+        if ui
             .add(
-                egui::DragValue::new(&mut wind.wind_speed_mps)
-                    .range(0. ..=75.)
-                    .prefix("m/s "),
+                egui::DragValue::new(&mut knots)
+                    .range(0. ..=145.)
+                    .fixed_decimals(0)
+                    .prefix("at ")
+                    .suffix(" kt"),
             )
-            .changed();
+            .changed()
+        {
+            wind.wind_speed_mps = (knots * KNOT_MPS).min(75.);
+            wind_changed = true;
+        }
     });
     wind_changed |= ui.checkbox(&mut wind.shear, "Surface wind shear").changed();
-    egui::ComboBox::from_id_salt("turbulence")
+    egui::ComboBox::new("turbulence", "Turbulence")
         .selected_text(format!("{:?}", wind.turbulence))
         .show_ui(ui, |ui| {
             for v in [

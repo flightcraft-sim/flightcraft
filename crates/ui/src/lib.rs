@@ -1484,12 +1484,18 @@ impl FlightCraftApp {
                 }
             });
         if let Some(error) = &self.error {
+            // Every message can be dismissed; a stale one must never cover the panel for good.
+            let mut open = true;
             egui::Window::new("FlightCraft message")
                 .constrain_to(theme::window_bounds(ctx))
                 .collapsible(false)
+                .open(&mut open)
                 .show(ctx, |ui| {
                     ui.label(RichText::new(error).color(theme::AMBER));
                 });
+            if !open {
+                self.error = None;
+            }
         }
         self.bindings_window(ctx);
         ctx.request_repaint_after(std::time::Duration::from_secs_f64(1.0 / 60.0));

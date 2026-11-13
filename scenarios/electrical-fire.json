@@ -40,5 +40,17 @@
         }
       ]
     }
-  ]
+  ],
+  "start": {
+    "region": "eastern-pa",
+    "at": {
+      "kind": "air",
+      "airport": "KABE",
+      "distance_m": 30000,
+      "bearing_deg": 57,
+      "height_m": 1500,
+      "airspeed_mps": 52,
+      "heading_deg": 237
+    }
+  }
 }

@@ -76,6 +76,11 @@ mod tests {
         )
         .unwrap();
         assert!(s.sim().systems().controls.trim != 0.);
+        // The heading bug starts on the heading flown, not 000.
+        let bug = s.sim().systems().controls.heading_bug_rad.to_degrees();
+        let heading = s.sim().readout().heading_rad.to_degrees();
+        let off = (bug - heading + 180.).rem_euclid(360.) - 180.;
+        assert!(off.abs() < 1., "bug {bug} heading {heading}");
         let start = s.sim().readout().altitude_msl_m;
         for _ in 0..(120 * 120) {
             // What the web and desktop input does every frame with no key held.

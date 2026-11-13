@@ -889,6 +889,12 @@ impl Command for SaveLayout {
 }
 
 /// Read-only queries admitted by the panel transport. No prefix matching or mutating queries.
+/// Commands the page answers itself with browser APIs (device location, address lookup, place
+/// search). A presentation page never forwards them to the simulation worker, which has no window.
+pub fn page_local(command: &str) -> bool {
+    matches!(command, "location.current" | "geocode.lookup" | "search.query")
+}
+
 pub fn read_only(command: &str) -> bool {
     if matches!(command, "lesson.list" | "lesson.debrief") {
         return true;

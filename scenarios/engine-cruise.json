@@ -44,5 +44,17 @@
         }
       ]
     }
-  ]
+  ],
+  "start": {
+    "region": "eastern-pa",
+    "at": {
+      "kind": "air",
+      "airport": "KMPO",
+      "distance_m": 37000,
+      "bearing_deg": 132,
+      "height_m": 1600,
+      "airspeed_mps": 52,
+      "heading_deg": 312
+    }
+  }
 }
