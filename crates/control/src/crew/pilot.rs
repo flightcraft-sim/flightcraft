@@ -400,7 +400,13 @@ impl Crew {
                 libm::hypot(tn - n, te - e) < 2.
             })
         {
-            self.change(s, PilotPhase::Complete, "At parking. Holding brakes.");
+            // The regions carry runways but no taxiways or ramps, so this is a short move clear of the
+            // runway, not a parking spot.
+            self.change(
+                s,
+                PilotPhase::Complete,
+                "Stopped clear of the runway and holding brakes. This airport has no taxiway or ramp data, so there is no real parking spot to taxi to.",
+            );
             phase = self.state.phase;
         }
         if phase == PilotPhase::Complete && self.radio.parking_authorized && r.ground_speed_mps < 0.2 {

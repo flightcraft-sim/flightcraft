@@ -72,6 +72,19 @@ pub enum CameraMode {
     Walkaround,
 }
 
+/// The near plane: as far out as the view allows, since depth precision scales with it. Inside the
+/// cabin and on the wing the panel and wing are centimetres away; the chase camera sits metres
+/// behind the aircraft and the tower and fly-by cameras farther still. WebGL2 has no depth clip
+/// control, so the reversed float buffer there gains little and the near plane carries the
+/// precision that keeps water and the riverbed under it from speckling.
+fn near_plane_m(camera: CameraMode, chase_distance_m: f32) -> f32 {
+    match camera {
+        CameraMode::Wing | CameraMode::Cockpit | CameraMode::Walkaround => 0.015,
+        CameraMode::Chase => (chase_distance_m * 0.25).clamp(0.05, 1.0),
+        CameraMode::Tower | CameraMode::Flyby => 1.0,
+    }
+}
+
 pub struct Scene {
     scenery: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>,
     imagery: Option<std::sync::Arc<std::sync::Mutex<scenery::Stream>>>,
@@ -556,14 +569,7 @@ impl Scene {
                 s.fov_rad.clamp(15_f32.to_radians(), 150_f32.to_radians())
             }),
             aspect,
-            if matches!(
-                self.camera,
-                CameraMode::Wing | CameraMode::Cockpit | CameraMode::Walkaround
-            ) {
-                0.015
-            } else {
-                0.05
-            },
+            near_plane_m(self.camera, self.chase_distance_m),
             16000.0,
         );
         let world_from_clip = (projection * Mat4::from_mat3(Mat3::from_mat4(view))).inverse();
@@ -798,6 +804,17 @@ impl Scene {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+
+    /// Views with nothing within a metre push the near plane out for depth precision; the cabin
+    /// and wing views keep the centimetre plane the panel and wing need.
+    #[test]
+    fn outside_views_push_the_near_plane_out_and_the_cabin_keeps_it_close() {
+        assert_eq!(near_plane_m(CameraMode::Cockpit, 19.), 0.015);
+        assert_eq!(near_plane_m(CameraMode::Wing, 19.), 0.015);
+        assert_eq!(near_plane_m(CameraMode::Chase, 19.), 1.0);
+        assert_eq!(near_plane_m(CameraMode::Chase, 2.), 0.5);
+        assert_eq!(near_plane_m(CameraMode::Tower, 19.), 1.0);
+    }
 
     #[test]
     fn north_east_down_maps_to_right_up_back() {
